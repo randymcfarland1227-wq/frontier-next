@@ -705,3 +705,8 @@
 .sk-app .sk-backup.is-error .sk-rs b, .sk-app .sk-backup.is-error .sk-rs strong { color: var(--sk-alert-ink); }
 .sk-app .sk-notice { margin: 0 0 var(--sk-s2); }
 .sk-app .sk-bar-done .sk-row.is-done .sk-rt { text-decoration: none; opacity: 1; }
+
+/* The "writes disabled" preview banner must not cover the phone tab bar */
+@media (max-width: 960px) {
+  .preview-banner { bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important; padding: 6px 14px !important; font-size: 12px; line-height: 1.3; }
+}

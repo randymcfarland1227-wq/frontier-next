@@ -12,7 +12,7 @@ export const reveal = (id: string) => {
 };
 
 /** Fixed meaning colours. One colour = one meaning, everywhere. */
-export type Tone = 'needs' | 'done' | 'open' | 'habit' | 'sched' | 'ground' | 'marvel' | 'alert' | 'ops' | 'role' | 'vent' | 'paper';
+export type Tone = 'needs' | 'done' | 'open' | 'habit' | 'sched' | 'ground' | 'marvel' | 'alert' | 'ops' | 'role' | 'vent' | 'paper' | 'focus';
 
 /**
  * A Home section: a Title-sized disclosure head with a one-line summary of what's inside, then its

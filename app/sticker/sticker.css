@@ -17,11 +17,11 @@
    ===================================================================== */
 .sk-app {
   --sk-ink: #16141f; --sk-ink-2: #4a4656; --sk-edge: #16141f; --sk-line: #16141f1f; --sk-tint: #2343c4;
-  --sk-page: #eceefe; --sk-grid: #e1e4ff; --sk-paper: #fff; --sk-side: #f6f6ff; --sk-wash: #ffffff8c; --sk-hover: #16141f0d;
+  --sk-page: #eceefe; --sk-grid: #e1e4ff; --sk-paper: #fbf8f1; --sk-side: #f6f6ff; --sk-wash: #ffffff8c; --sk-hover: #16141f0d;
   --sk-on-fill: #16141f;
   --sk-needs: #ffe14d; --sk-needs-soft: #fff6c2; --sk-done: #c4f2ad; --sk-open: #cfe6ff; --sk-habit: #b3ebe5;
   --sk-sched: #e3daff; --sk-ground: #f2e8d3; --sk-marvel: #ffdcec; --sk-alert: #ff6b6b; --sk-alert-ink: #a3121b;
-  --sk-ops: #ffe2cf; --sk-role: #dde3ec; --sk-vent: #ececb6;
+  --sk-ops: #ffe2cf; --sk-focus: #ffd6a0; --sk-role: #dde3ec; --sk-vent: #ececb6;
   --sk-s1: 4px; --sk-s2: 8px; --sk-s3: 12px; --sk-s4: 16px; --sk-s5: 24px; --sk-s6: 40px;
   --sk-large: 600 34px/1.12 "Unbounded", system-ui, sans-serif;
   --sk-title: 600 22px/1.25 "Unbounded", system-ui, sans-serif;
@@ -80,6 +80,7 @@
 .sk-app .tone-role { --skf: var(--sk-role); }
 .sk-app .tone-vent { --skf: var(--sk-vent); }
 .sk-app .tone-paper { --skf: var(--sk-paper); --tbg: var(--sk-paper); }
+.sk-app .tone-focus { --skf: var(--sk-focus); }
 .sk-app .tone-red { --skf: var(--sk-alert); }
 .sk-app .tone-yellow { --skf: var(--sk-needs); }
 .sk-app .tone-green { --skf: #5cc46a; }
@@ -153,6 +154,20 @@
 .sk-app .sk-zoom .zoom-control { display: inline-flex; border: 2px solid var(--sk-edge); border-radius: 9px; background: var(--sk-paper); padding: 2px; gap: 2px; }
 .sk-app .sk-zoom .zoom-control button { font: var(--sk-caption); padding: 4px 9px; border-radius: 6px; border: 0; background: none; color: var(--sk-ink); min-width: 30px; min-height: 28px; box-shadow: none; }
 .sk-app .sk-zoom .zoom-control button:hover:not(:disabled) { background: var(--sk-hover); }
+.sk-app .sk-sidehead { display: flex; align-items: center; justify-content: space-between; gap: var(--sk-s1); }
+.sk-app .sk-sidehead .sk-brand { padding-bottom: var(--sk-s1); }
+/* Collapsed sidebar: a 68px icon rail (site swatches show their initial), labels as tooltips */
+.sk-app[data-side="slim"] { grid-template-columns: 68px minmax(0, 1fr); }
+.sk-app[data-side="slim"] .sk-side { padding-inline: var(--sk-s2); }
+.sk-app[data-side="slim"] :is(.sk-brand, .sk-navl, .sk-navh, .sk-sidefoot .sk-sec, .sk-zoom, .sk-navcount) { display: none; }
+.sk-app[data-side="slim"] .sk-sidehead { justify-content: center; }
+.sk-app[data-side="slim"] .sk-navgroup { padding-top: var(--sk-s2); margin-top: var(--sk-s2); border-top: 1px solid var(--sk-line); }
+.sk-app[data-side="slim"] .sk-navi { justify-content: center; padding: 6px; position: relative; }
+.sk-app[data-side="slim"] .sk-sw { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; }
+.sk-app[data-side="slim"] .sk-sw::after { content: attr(data-initial); font: var(--sk-caption); color: var(--sk-on-fill); }
+.sk-app[data-side="slim"] .sk-sidefoot { padding-inline: 0; }
+.sk-app[data-side="slim"] .sk-tools { flex-direction: column; align-items: center; }
+.sk-app[data-side="slim"] .sk-tools .sk-btn:not(.is-icon) { font-size: 0; gap: 0; }
 .sk-app .sk-main { min-width: 0; }
 .sk-app[data-page="classic"] .sk-main { background: var(--bg); }
 .sk-app .sk-content { max-width: 1280px; margin: 0 auto; padding: var(--sk-s6) var(--sk-s6) 96px; }
@@ -166,21 +181,22 @@
 .sk-app .sk-status { margin-top: var(--sk-s2); font: var(--sk-body); font-size: 17px; color: var(--sk-ink-2); max-width: var(--sk-measure); }
 
 /* ---------------- readouts: the signature stickers, and they are buttons ---------------- */
-.sk-app .sk-readouts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sk-s4); margin-top: var(--sk-s5); }
+.sk-app .sk-readouts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sk-s3); margin-top: var(--sk-s4); }
 .sk-app .sk-ro {
-  display: grid; gap: var(--sk-s2); align-content: start; padding: 14px var(--sk-s4) var(--sk-s4); border: 2px solid var(--sk-edge); border-radius: 16px;
-  background: var(--skf); color: var(--sk-on-fill); box-shadow: 4px 4px 0 var(--sk-edge); transition: transform .1s, box-shadow .1s;
+  display: grid; gap: var(--sk-s1); align-content: start; padding: 10px 14px 12px; border: 2px solid var(--sk-edge); border-radius: 14px;
+  background: var(--skf); color: var(--sk-on-fill); box-shadow: 3px 3px 0 var(--sk-edge); transition: transform .1s, box-shadow .1s;
   text-align: left; cursor: pointer; font: var(--sk-body);
 }
-.sk-app .sk-ro:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--sk-edge); }
+.sk-app .sk-ro:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--sk-edge); }
 .sk-app .sk-ro:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--sk-edge); }
 .sk-app .sk-ro-top { display: flex; justify-content: space-between; align-items: center; }
 .sk-app .sk-ro-top > span { display: flex; align-items: center; gap: var(--sk-s2); font: var(--sk-label); }
 .sk-app .sk-ro-chev { opacity: .55; width: 16px; height: 16px; }
 .sk-app .sk-figure { font: var(--sk-figure); letter-spacing: -.04em; }
+.sk-app .sk-ro .sk-figure { font-size: 28px; }
 .sk-app .sk-figure small { font: var(--sk-secondary); font-weight: 500; color: color-mix(in srgb, var(--sk-on-fill) 78%, transparent); letter-spacing: 0; margin-left: 6px; }
 /* Notes wrap instead of cutting off — the full sentence is the point */
-.sk-app .sk-ro-note { font: var(--sk-secondary); color: color-mix(in srgb, var(--sk-on-fill) 86%, transparent); text-wrap: pretty; }
+.sk-app .sk-ro-note { font: var(--sk-secondary); font-size: 13px; color: color-mix(in srgb, var(--sk-on-fill) 86%, transparent); text-wrap: pretty; }
 .sk-app .sk-meter { height: 8px; border-radius: 99px; background: #16141f1a; overflow: hidden; margin-top: 5px; }
 .sk-app .sk-meter i { display: block; height: 100%; background: #16141f; border-radius: 99px; }
 
@@ -216,6 +232,9 @@
 .sk-app .sk-group { border: 2px solid var(--sk-edge); border-radius: 16px; background: var(--tbg, var(--skf)); color: var(--sk-ink); }
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-group { background: color-mix(in srgb, var(--skf) 13%, var(--sk-paper)); }
 .sk-app .sk-group + .sk-group { margin-top: var(--sk-s4); }
+/* Nothing pure white: inputs, option cards and forms inside a group are a light shade of the group's own colour */
+.sk-app .sk-group > * { --sk-paper: color-mix(in srgb, var(--skf) 32%, #fdfbf6); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-group > * { --sk-paper: color-mix(in srgb, var(--skf) 16%, #26222f); }
 .sk-app .sk-ghead { display: flex; align-items: center; gap: var(--sk-s2) var(--sk-s3); padding: 14px var(--sk-s4); border-bottom: 2px solid var(--sk-edge); flex-wrap: wrap; }
 .sk-app .sk-ghead-meta { flex: 1; min-width: 12ch; }
 .sk-app .sk-ghead-actions { display: flex; gap: var(--sk-s4); align-items: center; }
@@ -510,8 +529,8 @@
 .sk-app .sk-either-cell { display: flex; align-items: center; gap: var(--sk-s2); min-width: 0; }
 .sk-app .sk-or { flex: none; }
 .sk-app .sk-opt {
-  flex: 1; min-width: 0; align-self: stretch; display: grid; gap: 2px; align-content: center; padding: 8px 10px; text-align: center; cursor: pointer;
-  color: var(--sk-ink); border: 2px solid var(--sk-edge); border-radius: 10px; background: var(--sk-paper); box-shadow: 2px 2px 0 var(--sk-edge);
+  flex: 1; min-width: 0; align-self: stretch; display: grid; gap: 1px; align-content: center; padding: 5px 12px; text-align: center; cursor: pointer;
+  color: var(--sk-ink); border: 1.5px solid var(--sk-edge); border-radius: 999px; background: var(--sk-paper); box-shadow: 1.5px 1.5px 0 var(--sk-edge);
 }
 .sk-app .sk-opt-t { font: var(--sk-secondary); font-weight: 600; }
 .sk-app .sk-opt-d { font: var(--sk-caption); font-weight: 400; color: var(--sk-ink-2); }
@@ -603,7 +622,7 @@
 }
 @media (max-width: 960px) {
   .sk-app .sk-trio { grid-template-columns: 1fr; }
-  .sk-app { grid-template-columns: 1fr; }
+  .sk-app, .sk-app[data-side="slim"] { grid-template-columns: 1fr; }
   .sk-app .sk-side { display: none; }
   .sk-app .sk-tabbar {
     display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
@@ -710,3 +729,48 @@
 @media (max-width: 960px) {
   .preview-banner { bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important; padding: 6px 14px !important; font-size: 12px; line-height: 1.3; }
 }
+
+/* ---------------- Today's List: a sheet from the right ---------------- */
+.sk-app .sk-sheetside-back { place-items: stretch end; padding: 0; }
+.sk-app .sk-sheetside {
+  width: min(440px, 100%); height: 100%; overflow: auto; box-sizing: border-box; color: var(--sk-ink);
+  background: color-mix(in srgb, var(--sk-needs) 22%, #fdfbf6); border-left: 2px solid var(--sk-edge);
+  padding: var(--sk-s4) var(--sk-s5) var(--sk-s5); display: flex; flex-direction: column; gap: var(--sk-s3);
+  --sk-paper: color-mix(in srgb, var(--sk-needs) 10%, #fdfbf6);
+}
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-sheetside { background: color-mix(in srgb, var(--sk-needs) 9%, #211e2b); --sk-paper: #26222f; }
+.sk-app .sk-sheetside .sk-dialog-head { margin: 0; }
+.sk-app .sk-todaylist .sk-row.is-done .sk-rt { text-decoration: line-through; color: var(--sk-ink-2); }
+.sk-app .sk-circle.is-on { background: var(--sk-done); }
+.sk-app .sk-circle.is-on .sk-icon { opacity: 1; }
+.sk-app .sk-origin { display: inline-flex; align-items: center; gap: 6px; font: var(--sk-secondary); margin: 0; padding: 2px 0; min-height: 24px; }
+.sk-app .sk-todayadd { grid-template-columns: minmax(0, 9em) minmax(0, 1fr) auto; align-items: center; margin-top: auto; }
+.sk-app .sk-todayadd select {
+  min-height: 40px; padding: 6px 8px; font: var(--sk-secondary); color: var(--sk-ink); background: var(--sk-paper);
+  border: 2px solid var(--sk-edge); border-radius: 8px; color-scheme: light dark;
+}
+@media (max-width: 960px) { .sk-app .sk-sheetside { padding-bottom: 96px; } }
+
+/* ---------------- right-click menus and the inline day menu, in the theme ---------------- */
+.sk-app .row-menu {
+  min-width: 200px; padding: 6px; border: 2px solid var(--sk-edge); border-radius: 12px; background: color-mix(in srgb, var(--sk-sched) 30%, #fdfbf6);
+  color: var(--sk-ink); box-shadow: 3px 3px 0 var(--sk-edge); font: var(--sk-secondary);
+}
+.frontier-shell[data-color-mode="dark"] .sk-app .row-menu { background: #2a2636; }
+.sk-app .row-menu-title { font: var(--sk-caption); color: var(--sk-ink-2); border-bottom: 1px solid var(--sk-line); padding: 4px 10px 6px; }
+.sk-app .row-menu-item { font: var(--sk-secondary); color: var(--sk-ink); border-radius: 8px; min-height: 32px; padding: 6px 10px; }
+.sk-app .row-menu-item:hover, .sk-app .row-menu-item:focus-visible { background: var(--sk-hover); }
+.sk-app .row-menu-item.is-on::after { color: var(--sk-tint); }
+.sk-app .day-menu { background: var(--sk-paper); border: 1.5px solid var(--sk-line); border-radius: 10px; padding: 6px 8px; gap: 6px; }
+.sk-app .day-menu-label { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app :is(.day-menu-btn, .day-menu-date) {
+  height: 28px; font: var(--sk-caption); color: var(--sk-ink); background: color-mix(in srgb, var(--sk-paper) 60%, transparent);
+  border: 1.5px solid var(--sk-edge); border-radius: 999px;
+}
+.sk-app .day-menu-date { border-radius: 8px; color-scheme: light dark; }
+.sk-app .day-menu-btn:hover { background: var(--sk-hover); }
+.sk-app .day-menu-btn.is-on { background: var(--sk-ink); border-color: var(--sk-ink); color: var(--sk-page); }
+.sk-app .day-menu-crit.is-on { background: var(--sk-alert); border-color: var(--sk-edge); color: var(--sk-on-fill); }
+.sk-app .day-menu-close { background: none; border-color: transparent; color: var(--sk-ink-2); }
+.frontier-shell:has(.preview-banner) .sk-app .sk-sheetside { padding-bottom: 64px; }
+.sk-app .sk-sidehead .sk-brand { font-size: 14px; white-space: nowrap; padding-inline: var(--sk-s2) 0; }

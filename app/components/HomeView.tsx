@@ -157,10 +157,6 @@ export function HomeView({
         <DailyBrief snapshots={snapshots} bills={bills} enter={enter} />
       </Section>
 
-      <Section id="priority" title="Doing Now" summary={<PrioritySummary />}>
-        <PriorityBoard snapshots={snapshots} enter={id => enter(id)} onComplete={payFromPriority} bills={bills.filter(b => !b.skipped)} />
-      </Section>
-
       {grounding ? (
         <Section id="grounding" title="Grounding" summary={<GroundingSummary />}>
           {grounding}
@@ -172,6 +168,10 @@ export function HomeView({
       </Section>
 
       <FocusSection snapshots={snapshots} enter={enter} />
+
+      <Section id="priority" title="Doing Now" summary={<PrioritySummary />}>
+        <PriorityBoard snapshots={snapshots} enter={id => enter(id)} onComplete={payFromPriority} bills={bills.filter(b => !b.skipped)} />
+      </Section>
 
       <SitesSection
         snapshots={snapshots}

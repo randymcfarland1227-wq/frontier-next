@@ -1,9 +1,19 @@
 'use client';
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { FocusItem, SourceId, SpaceId } from '../../lib/types';
-import { sources } from '../../lib/sources';
+import { sources, sourceById } from '../../lib/sources';
+import { Row } from '../sticker/kit';
+import { Icon } from '../sticker/Icon';
+import { SITE_GROUPS } from '../sticker/StickerShell';
 
+const toneOf = (id: SourceId) => SITE_GROUPS.find(g => g.ids.includes(id))?.tone || 'ops';
+
+/**
+ * Today's List: a sheet from the right, inside the sticker theme. Each item names its site,
+ * opens that site's Life Hub page, and links out (↗) to the site itself.
+ */
 export function FocusDrawer({
   open,
   close,
@@ -37,62 +47,85 @@ export function FocusDrawer({
     setNewText('');
   }
 
-  return (
-    <div className={`drawer-wrap ${open ? 'open' : ''}`} aria-hidden={!open}>
-      <button className="drawer-scrim" onClick={close} aria-label="Close daily focus" tabIndex={open ? 0 : -1} />
-      <aside className="focus-drawer" role="dialog" aria-modal={open} aria-label="Today's tasks">
-        <div className="drawer-head">
-          <div>
-            <p>Across all sources</p>
-            <h2>Today&apos;s tasks</h2>
-          </div>
-          <button ref={closeRef} onClick={close} aria-label="Close Today's tasks" tabIndex={open ? 0 : -1}>
-            ×
+  const toggle = (id: number) => setFocus(focus.map(current => (current.id === id ? { ...current, done: !current.done } : current)));
+  const left = focus.filter(f => !f.done).length;
+
+  if (!open || typeof document === 'undefined') return null;
+  const host = document.querySelector('.sk-app') || document.querySelector('.frontier-shell') || document.body;
+  return createPortal(
+    <div className="sk-dialog-back sk-sheetside-back" role="presentation" onClick={close}>
+      <aside className="sk-sheetside tone-needs" role="dialog" aria-modal="true" aria-label="Today's List" onClick={e => e.stopPropagation()}>
+        <header className="sk-dialog-head">
+          <Icon name="checks" size={20} />
+          <h2 className="sk-title">Today&apos;s List</h2>
+          <button ref={closeRef} type="button" className="sk-btn is-icon is-small" onClick={close} aria-label="Close Today's List">
+            <Icon name="close" size={16} />
           </button>
-        </div>
-        <p className="drawer-intro">Quick focus list for anything across the Life Hub. Stored in this browser.</p>
-        <div className="focus-list">
-          {focus.map(item => (
-            <div className={`focus-item ${item.done ? 'done' : ''}`} key={item.id}>
-              <button
-                className="check"
-                onClick={() =>
-                  setFocus(focus.map(current => (current.id === item.id ? { ...current, done: !current.done } : current)))
+        </header>
+        <p className="sk-sec">
+          {focus.length ? `${left} of ${focus.length} left · ` : ''}What you said you&apos;d do today, from any site. Kept in this browser.
+        </p>
+        <div className="sk-list sk-todaylist">
+          {focus.map(item => {
+            const src = sourceById[item.space];
+            return (
+              <Row
+                key={item.id}
+                className={item.done ? 'is-done' : undefined}
+                lead={
+                  <button
+                    type="button"
+                    className={`sk-circle${item.done ? ' is-on' : ''}`}
+                    onClick={() => toggle(item.id)}
+                    aria-pressed={item.done}
+                    aria-label={item.done ? `Mark "${item.text}" not done` : `Mark "${item.text}" done`}
+                  >
+                    <Icon name="check" size={12} />
+                  </button>
                 }
-                aria-label={item.done ? 'Mark incomplete' : 'Mark complete'}
-              >
-                {item.done ? '✓' : ''}
-              </button>
-              <button
-                className="focus-copy"
-                onClick={() => {
-                  enter(item.space);
-                  close();
-                }}
-              >
-                <span>{sources.find(src => src.id === item.space)?.shortName || item.space}</span>
-                <strong>{item.text}</strong>
-              </button>
-            </div>
-          ))}
+                title={item.text}
+                sub={
+                  <button
+                    type="button"
+                    className="sk-link sk-origin"
+                    onClick={() => {
+                      enter(item.space);
+                      close();
+                    }}
+                    title={`Open ${src?.name || item.space} in the Life Hub`}
+                  >
+                    <span className={`sk-sw tone-${toneOf(item.space)}`} aria-hidden="true" />
+                    {src?.name || item.space}
+                  </button>
+                }
+                value={
+                  src?.url ? (
+                    <a className="sk-link" href={src.url} target="_blank" rel="noreferrer" title={`Open ${src.label || src.name}`} aria-label={`Open ${src.name} site`}>
+                      <Icon name="external" size={14} />
+                    </a>
+                  ) : null
+                }
+              />
+            );
+          })}
+          {!focus.length ? <p className="sk-empty">Nothing on today&apos;s list yet. Add the first thing below.</p> : null}
         </div>
-        <form className="quick-add" onSubmit={addFocus}>
-          <select value={space} onChange={e => setSpace(e.target.value as SourceId)} aria-label="Focus source">
+        <form className="sk-form sk-todayadd" onSubmit={addFocus}>
+          <select value={space} onChange={e => setSpace(e.target.value as SourceId)} aria-label="Which site it belongs to">
             {sources.map(s => (
               <option key={s.id} value={s.id}>
-                {s.shortName}
+                {s.name}
               </option>
             ))}
           </select>
-          <input
-            value={newText}
-            onChange={event => setNewText(event.target.value)}
-            placeholder="Add a task for today…"
-            aria-label="New focus item"
-          />
-          <button type="submit" aria-label="Add task">+</button>
+          <input value={newText} onChange={event => setNewText(event.target.value)} placeholder="Add something for today…" aria-label="New item for today" />
+          <button type="submit" className="sk-btn">
+            <Icon name="plus" size={14} />
+            Add
+          </button>
         </form>
       </aside>
-    </div>
+    </div>,
+    host,
   );
 }

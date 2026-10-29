@@ -153,7 +153,7 @@ function RowMenuPop({ at, items, title, onClose }: { at: { x: number; y: number 
     };
   }, [onClose]);
 
-  const host = document.querySelector('.frontier-shell') || document.body;
+  const host = document.querySelector('.sk-app') || document.querySelector('.frontier-shell') || document.body;
   return createPortal(
     <div
       ref={ref}

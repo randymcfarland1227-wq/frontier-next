@@ -7,11 +7,12 @@ const MIN = 60;
 const MAX = 160;
 const STEP = 10;
 
-/** Default size by screen width: bigger monitors get bigger text so it stays readable. */
+/**
+ * Default size is 100%: the browser's own zoom (Cmd − / Cmd +) decides. Scaling up by window width
+ * fought it — zooming out widens the CSS viewport, which bumped the auto size straight back up.
+ */
 function autoZoom() {
-  if (typeof window === 'undefined') return 100;
-  const w = window.innerWidth;
-  return w >= 1750 ? 125 : w >= 1400 ? 112 : 100;
+  return 100;
 }
 
 /**
@@ -24,14 +25,9 @@ export function ZoomControl() {
     const v = readSaved<number | null>(STORAGE_KEYS.zoom, null);
     return typeof v === 'number' && v !== 100 ? v : null;
   });
-  const [auto, setAuto] = useState(autoZoom);
+  const [auto] = useState(autoZoom);
   const zoom = saved ?? auto;
 
-  useEffect(() => {
-    const onResize = () => setAuto(autoZoom());
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
 
   useEffect(() => {
     document.documentElement.style.setProperty('zoom', zoom === 100 ? '' : String(zoom / 100));
@@ -54,7 +50,7 @@ export function ZoomControl() {
         type="button"
         className="zoom-value"
         onClick={() => pick(null)}
-        title={saved === null ? 'Auto size for this screen' : 'Back to auto size for this screen'}
+        title={saved === null ? 'Browser zoom decides (Cmd − / Cmd +)' : 'Back to browser zoom'}
       >
         {saved === null ? 'Auto' : `${zoom}%`}
       </button>

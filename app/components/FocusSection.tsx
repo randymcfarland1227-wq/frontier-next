@@ -223,7 +223,7 @@ export function FocusSection({ enter }: { snapshots?: Snaps; enter: (id: SpaceId
   return (
     <Section id="focus" title="Focus" summary={summary}>
       <div className="sk-trio" data-day={day}>
-        <Group tone="paper" icon="target" title="Short-Term Focus" meta={open || undefined}>
+        <Group tone="focus" icon="target" title="Short-Term Focus" meta={open || undefined}>
           <ListHead title="Right now" />
           <FocusList list={now} label="What needs doing" noteLabel="The detail: what, why, next step" empty="Type what needs real attention right now." />
           <ListHead title="Next few weeks" />

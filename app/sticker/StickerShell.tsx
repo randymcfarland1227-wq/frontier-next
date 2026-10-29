@@ -50,6 +50,23 @@ export function StickerShell({
   children: ReactNode;
 }) {
   const [more, setMore] = useState(false);
+  // Collapsed = a slim icon rail; remembered per device.
+  const [slim, setSlim] = useState(() => {
+    try {
+      return localStorage.getItem('sk-side-slim') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleSlim = () =>
+    setSlim(v => {
+      try {
+        localStorage.setItem('sk-side-slim', v ? '0' : '1');
+      } catch {
+        /* private window: just don't remember */
+      }
+      return !v;
+    });
   useEffect(() => {
     if (!more) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMore(false);
@@ -69,8 +86,8 @@ export function StickerShell({
       <h2 className="sk-navh">{g.label}</h2>
       {g.ids.map(id => (
         <button key={id} type="button" className="sk-navi" aria-current={current(id)} onClick={() => go(id)} title={sourceById[id].label}>
-          <span className={`sk-sw tone-${g.tone}`} aria-hidden="true" />
-          {sourceById[id].name}
+          <span className={`sk-sw tone-${g.tone}`} aria-hidden="true" data-initial={sourceById[id].name.slice(0, 1)} />
+          <span className="sk-navl">{sourceById[id].name}</span>
         </button>
       ))}
     </div>
@@ -110,22 +127,34 @@ export function StickerShell({
   const todayButton = (
     <button type="button" className="sk-navi" onClick={() => { setMore(false); openFocus(); }} title="Today: what you said you'd do today">
       <Icon name="checks" />
-      Today&apos;s List
+      <span className="sk-navl">Today&apos;s List</span>
       {unfinished ? <span className="sk-navcount">{unfinished}</span> : null}
     </button>
   );
 
   return (
-    <div className="sk-app" data-page={active === 'home' ? 'home' : 'classic'}>
+    <div className="sk-app" data-page={active === 'home' ? 'home' : 'classic'} data-side={slim ? 'slim' : 'full'}>
       <aside className="sk-side" aria-label="Life Hub">
-        <button type="button" className="sk-brand" onClick={() => go('home')}>
-          Randy&apos;s Life Hub
-        </button>
+        <div className="sk-sidehead">
+          <button type="button" className="sk-brand" onClick={() => go('home')}>
+            Randy&apos;s Life Hub
+          </button>
+          <button
+            type="button"
+            className="sk-btn is-small is-icon sk-slimtoggle"
+            onClick={toggleSlim}
+            aria-pressed={slim}
+            aria-label={slim ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={slim ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <Icon name="sidebar" size={14} />
+          </button>
+        </div>
         <nav className="sk-nav" aria-label="Pages">
           {PAGES.map(p => (
             <button key={p.id} type="button" className="sk-navi" aria-current={current(p.id)} onClick={() => go(p.id)} title={p.hint}>
               <Icon name={p.icon} />
-              {p.label}
+              <span className="sk-navl">{p.label}</span>
             </button>
           ))}
           {todayButton}

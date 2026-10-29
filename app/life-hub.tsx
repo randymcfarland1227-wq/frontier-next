@@ -13,7 +13,7 @@ import type {
 import { emptySnapshots, normalizeSourceId, sourceById, sources } from '../lib/sources';
 import { readSaved, writeSaved, STORAGE_KEYS } from '../lib/storage';
 import { applyHubStars, HUB_STAR_SOURCES, HUB_STARS_EVENT, loadHubStars, setHubStar } from '../lib/hubStars';
-import { originAllowed, requestSnapshot, sendComplete, sendStar } from '../lib/protocol';
+import { originAllowed, requestSnapshot, sendComplete, sendStar, updatedLabel } from '../lib/protocol';
 import {
   addSelfItem,
   loadSelfItems,
@@ -39,7 +39,8 @@ import {
   isTickTickHabit,
   projectIdFromTask,
 } from '../lib/ticktickComplete';
-import { Header } from './components/Header';
+import { StickerShell } from './sticker/StickerShell';
+import './sticker/sticker.css';
 import { HomeView } from './components/HomeView';
 import { SourceCard } from './components/SourceCard';
 import { SourceView } from './components/SourceView';
@@ -1000,17 +1001,24 @@ goalsData ? (
   );
 
   return (
-    <main className={`frontier-shell theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' ? 'home' : active}`} data-color-mode={theme}>
-      <Header
+    <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' ? 'home' : active}`} data-color-mode={theme}>
+      <StickerShell
         active={active}
         enter={enter}
         unfinished={unfinished}
         openFocus={() => setFocusOpen(true)}
-        onRefreshConnectors={() => void refreshEverything()}
-        connectorSyncing={connectorSyncing}
+        onRefresh={() => void refreshEverything()}
+        syncing={connectorSyncing}
+        syncLabel={updatedLabel(
+          Object.values(visibleSnapshots)
+            .map(item => item.refreshedAt)
+            .filter(Boolean)
+            .sort()
+            .at(-1) || '',
+        )}
         theme={theme}
         onToggleTheme={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
-      />
+      >
       {active === 'home' ? (
         <HomeView
           key={rolledDay}
@@ -1031,7 +1039,8 @@ goalsData ? (
             else completeOnHub('self', t.selfId);
           }}
           onAddPrep={(target, title, due) => syncSelf(addSelfItem(title, '', { due, forEvent: target }))}
-          onRefresh={() => void refreshEverything()}
+          unfinished={unfinished}
+          openFocus={() => setFocusOpen(true)}
           grounding={<DailyGrounding move={visibleSnapshots.move} goals={goalsData} enter={enter} />}
           onBillPaid={(due: BillDue) =>
             setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }))
@@ -1147,6 +1156,7 @@ goalsData ? (
           onSelfStar={id => syncSelf(toggleSelfStar(id))}
         />
       )}
+      </StickerShell>
       {import.meta.env.VITE_LOCAL_PREVIEW === 'true' && <aside style={{position:'fixed',bottom:0,left:0,right:0,padding:'10px 20px',background:'#202824',color:'#fff',zIndex:9999}}>Local review · live writes disabled · <a href="/flow/#sync">Open Flow connections</a></aside>}
       <UpdateNotice />
       {import.meta.env.VITE_LOCAL_PREVIEW !== 'true' && <BackupGuard />}

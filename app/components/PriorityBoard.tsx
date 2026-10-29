@@ -11,6 +11,8 @@ import { PriorityPanel, type PriorityItem } from './PriorityPanel';
 import { DayMenu } from './DayMenu';
 import { MenuRow } from './RowMenu';
 import { countdown, fromDayKey, money, type BillDue } from '../../lib/schedule';
+import { Circle, Dot, ListHead, Tag } from '../sticker/kit';
+import { Icon } from '../sticker/Icon';
 
 /** Self's stand-in detail for starred items with no note — not worth a subtext line. */
 const FILLER_DETAIL = 'Captured in Self inbox';
@@ -207,216 +209,219 @@ export function PriorityBoard({
     onDrop: onDrop(lane, item.key),
   });
 
-  const levelClass = (item: PriorityItem) => {
-    const lv = levelOf(item.source, item.id);
-    return `${lv ? ` lv-${lv}` : ''}${isCritical(item.source, item.id) ? ' is-critical' : ''}`;
-  };
+  const levelClass = (item: PriorityItem) =>
+    `${dragging === item.key ? ' is-dragging' : ''}${over === item.key ? ' is-over' : ''}${isCritical(item.source, item.id) ? ' is-critical' : ''}`;
 
-  /** Title button (opens the side panel) + the small chips that matter: due day, waiting, note. */
-  const rowTitle = (item: PriorityItem) => {
+  /** Title + one secondary line: level, site, type, waiting, steps and plan note — then the day or Critical on the right. */
+  const rowBody = (item: PriorityItem, showSite: boolean) => {
     const entry = lanes[item.key];
     const blocked = openBefore(entry);
     const critical = isCritical(item.source, item.id);
+    const level = levelOf(item.source, item.id);
     const subTotal = entry?.subs?.length || 0;
-    const hasSub = Boolean(item.tag || critical || entry?.due || blocked || entry?.note || subTotal);
+    const day = entry?.due ? dueChip(entry.due) : '';
+    const hasSub = Boolean(level || showSite || item.tag || blocked || entry?.note || subTotal);
     return (
       <>
         <button
           type="button"
-          className="pv-title"
+          className="sk-rmain"
           onClick={() => setOpenKey(item.key)}
           title={[item.title, item.detail, entry?.note].filter(Boolean).join(' — ')}
         >
-          <span className="pv-text">{item.title}</span>
+          <span className="sk-rt">{item.title}</span>
+          {hasSub ? (
+            <span className="sk-rs sk-facts">
+              {level ? <Dot tone={level} hint={`Level: ${level}`} /> : null}
+              {showSite ? <span>{sourceById[item.source].shortName}</span> : null}
+              {item.tag ? <span className={`sk-tag kind-${tagTone(item.tag)}`} title={item.tag}>{item.tag}</span> : null}
+              {blocked ? (
+                <span className="sk-fact is-wait" title={`Waiting on ${blocked} thing${blocked === 1 ? '' : 's'} first`}>
+                  <Icon name="clock" size={12} />
+                  Waiting · {blocked}
+                </span>
+              ) : null}
+              {subTotal ? (
+                <span className="sk-fact" title="Subtasks done">
+                  <Icon name="steps" size={12} />
+                  {entry!.subs!.filter(x => x.done).length}/{subTotal}
+                </span>
+              ) : null}
+              {entry?.note ? (
+                <span className="sk-fact" title={entry.note} aria-label="Has a plan note">
+                  <Icon name="pencil" size={12} />
+                  Note
+                </span>
+              ) : null}
+            </span>
+          ) : null}
         </button>
-        {/* Type, date and status sit together on one small line under the name */}
-        {hasSub ? (
-          <span className="pv-sub">
-            {item.tag ? <span className={`task-tag tone-${tagTone(item.tag)}`} title={item.tag}>{item.tag}</span> : null}
-            {critical ? <span className="pv-chip is-crit">Critical</span> : null}
-            {entry?.due ? <span className="pv-chip">{dueChip(entry.due)}</span> : null}
-            {blocked ? (
-              <span className="pv-chip is-wait" title={`Waiting on ${blocked} thing${blocked === 1 ? '' : 's'} first`}>
-                Waiting · {blocked}
-              </span>
-            ) : null}
-            {subTotal ? (
-              <span className="pv-chip" title="Subtasks done">
-                ☑ {entry!.subs!.filter(x => x.done).length}/{subTotal}
-              </span>
-            ) : null}
-            {entry?.note ? (
-              <span className="pv-chip is-note" title={entry.note} aria-label="Has a plan note">
-                ✎
-              </span>
-            ) : null}
-          </span>
-        ) : null}
+        <span className="sk-rv">
+          {critical ? <Tag tone="alert">Critical</Tag> : day ? <Tag tone={day === 'Today' ? 'needs' : day.endsWith('(past)') ? 'alert' : undefined}>{day}</Tag> : null}
+        </span>
+        <Icon name="chevron" className="sk-rchev" size={14} />
       </>
     );
   };
 
   const check = (item: PriorityItem) =>
-    onComplete ? (
-      <button type="button" className="pv-check" onClick={() => finish(item)} aria-label={`Done: ${item.title}`} title="Mark done" />
-    ) : null;
+    onComplete ? <Circle onDone={() => finish(item)} label={`Done: ${item.title}`} /> : <span />;
 
   const openItem = openKey ? catalog.get(openKey) : undefined;
   const openLane: Lane | null = openKey ? (lanes[openKey]?.lane as Lane | null) ?? (criticals.includes(openKey) ? DECK : null) : null;
 
   return (
-    <section className="priority-board workstation glass-panel pb-v3" aria-label="Priority">
-      <div className="pv-head">
-        <h2 className="pv-heading">Doing now</h2>
-        <p className="pv-counts">
-          <b>{plan.length}</b> on your list · <b>{deckCount}</b> on deck
-        </p>
-        <div className="ws-add pv-search">
+    <div className="sk-group tone-open sk-doing" aria-label="Doing now">
+      <div className="sk-gbody">
+        <div className="sk-search">
+          <Icon name="search" />
           <input
             type="search"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Pull in a task from any site…"
+            placeholder="Pull in a task from any site"
             aria-label="Find a task to add to Doing now"
           />
           {matches.length ? (
-            <div className="ws-matches glass-panel" role="listbox">
+            <div className="sk-pop" role="listbox">
               {matches.map(m => (
                 <button
                   key={m.key}
                   type="button"
                   role="option"
                   aria-selected={false}
-                  className={`ws-match src-${m.source}`}
+                  className="sk-row"
                   onClick={() => {
                     placePin(m.key, DECK);
                     setQuery('');
                   }}
                 >
-                  <SiteIcon source={m.source} className="ws-match-icon" />
-                  <strong>{m.title}</strong>
-                  {m.tag ? <span className={`task-tag tone-${tagTone(m.tag)}`} title={m.tag}>{m.tag}</span> : null}
-                  <span className="ws-match-add">+ Add</span>
+                  <span className="sk-rlead">
+                    <SiteIcon source={m.source} className="sk-siteicon" />
+                  </span>
+                  <span className="sk-rmain">
+                    <span className="sk-rt">{m.title}</span>
+                    <span className="sk-rs">{sourceById[m.source].shortName}{m.tag ? ` · ${m.tag}` : ''}</span>
+                  </span>
+                  <span className="sk-link">
+                    <Icon name="plus" size={14} />
+                    Add
+                  </span>
+                  <span />
                 </button>
               ))}
             </div>
           ) : q ? (
-            <div className="ws-matches glass-panel">
-              <p className="review-empty">No open task matches “{query.trim()}”.</p>
+            <div className="sk-pop">
+              <p className="sk-empty">No open task matches “{query.trim()}”.</p>
             </div>
           ) : null}
         </div>
-      </div>
 
-      <div className="pv-cols">
-        <div
-          className={`pv-col pv-plan${dragging && !plan.some(i => i.key === dragging) ? ' is-target' : ''}`}
-          onDragOver={e => {
-            if (dragging) e.preventDefault();
-          }}
-          onDrop={onDrop(PLAN)}
-        >
-          <h3 className="pv-col-head">
-            Action list <span>in the order you&apos;ll do it</span>
-          </h3>
-          {plan.length ? (
-            <ol className="pv-list">
-              {plan.map((item, i) => (
-                <MenuRow
-                  as="li"
-                  key={item.key}
-                  title={item.title}
-                  items={[
-                    { label: lanes[item.key]?.due ? 'Change day…' : 'Give it a day…', onSelect: () => setDayFor(item.key) },
-                    { label: 'Back on deck', onSelect: () => move(item, DECK) },
-                    { label: 'Take off the plan', onSelect: () => remove(item), danger: true },
-                  ]}
-                  className={`pv-row src-${item.source}${levelClass(item)}${dragging === item.key ? ' is-dragging' : ''}${over === item.key ? ' is-over' : ''}`}
-                  dragProps={dragProps(item, PLAN)}
-                >
-                  <span className="pv-num" aria-hidden="true">
-                    {i + 1}
-                  </span>
-                  {check(item)}
-                  <SiteIcon source={item.source} className="pv-site" />
-                  {rowTitle(item)}
-                  {dayFor === item.key ? <DayMenu itemKey={item.key} title={item.title} onClose={() => setDayFor(null)} /> : null}
-                </MenuRow>
-              ))}
-            </ol>
-          ) : (
-            <p className="pv-empty">Nothing on your list yet. Press and hold (or right-click) a task in On deck and choose Add to action list — or drag it here.</p>
-          )}
-        </div>
+        <div className="sk-doing-cols">
+          <div
+            className={`sk-col sk-plan${dragging && !plan.some(i => i.key === dragging) ? ' is-target' : ''}`}
+            onDragOver={e => {
+              if (dragging) e.preventDefault();
+            }}
+            onDrop={onDrop(PLAN)}
+          >
+            <ListHead title="Action List" meta={plan.length ? `${plan.length} in the order you'll do them` : 'In the order you’ll do it'} />
+            {plan.length ? (
+              <ol className="sk-list">
+                {plan.map((item, i) => (
+                  <MenuRow
+                    as="li"
+                    key={item.key}
+                    title={item.title}
+                    items={[
+                      { label: lanes[item.key]?.due ? 'Change day…' : 'Give it a day…', onSelect: () => setDayFor(item.key) },
+                      { label: 'Back on deck', onSelect: () => move(item, DECK) },
+                      { label: 'Take off the plan', onSelect: () => remove(item), danger: true },
+                    ]}
+                    className={`sk-row is-numbered${levelClass(item)}`}
+                    dragProps={dragProps(item, PLAN)}
+                  >
+                    <span className="sk-num" aria-label={`Step ${i + 1}`}>{i + 1}</span>
+                    <span className="sk-rlead">{check(item)}</span>
+                    {rowBody(item, true)}
+                    {dayFor === item.key ? <DayMenu itemKey={item.key} title={item.title} onClose={() => setDayFor(null)} /> : null}
+                  </MenuRow>
+                ))}
+              </ol>
+            ) : (
+              <p className="sk-empty">Nothing on your list yet. Press and hold (or right-click) a task in On Deck and choose Add to action list, or drag it here.</p>
+            )}
+          </div>
 
-        <div className="pv-col pv-deck">
-          <h3 className="pv-col-head">
-            On deck <span>by site · press and hold a task for + List</span>
-          </h3>
-          {groups.length ? (
-            // A grid of site boxes that grows with the number of sites: 2 → 2×1, 3 → 3×1, 4+ → 3 across.
-            <div className="pv-groups" style={{ '--cols': Math.min(groups.length, 3) } as React.CSSProperties}>
-              {groups.map((group, gi) => {
-                const def = sourceById[group.source];
-                const isLocked = Boolean(lockedSlots[group.source]);
-                return (
-                  <section key={group.source} className={`pv-group src-${group.source}`} aria-label={def.name}>
-                    <div className="pv-group-headrow">
-                      <button type="button" className="pv-group-head" onClick={() => enter(group.source)} title={`Open ${def.name} page · ${group.items.length} on deck`}>
-                        <SiteIcon source={group.source} className="pv-site" />
-                        <span>{def.name}</span>
-                      </button>
-                      <select
-                        className="pv-pos"
-                        value={gi + 1}
-                        onChange={e => setPosition(group.source, Number(e.target.value))}
-                        aria-label={`Position of ${def.name}`}
-                        title={isLocked ? 'Position (locked)' : 'Position — lock it to keep it after a refresh'}
-                      >
-                        {groups.map((_, i) => (
-                          <option key={i} value={i + 1}>
-                            {i + 1}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        className={`pv-lock${isLocked ? ' is-on' : ''}`}
-                        aria-pressed={isLocked}
-                        onClick={() => toggleLock(group.source, gi + 1)}
-                        aria-label={`${isLocked ? 'Unlock' : 'Lock'} ${def.name} at position ${gi + 1}`}
-                        title={isLocked ? 'Locked here — click to go back to auto sort' : 'Lock it at this position'}
-                      >
-                        {isLocked ? '🔒' : '🔓'}
-                      </button>
-                    </div>
-                    <ul className="pv-list">
-                      {group.items.map(item => (
-                        <MenuRow
-                          as="li"
-                          key={item.key}
-                          title={item.title}
-                          items={[
-                            { label: 'Add to action list', onSelect: () => move(item, PLAN) },
-                            { label: lanes[item.key]?.due ? 'Change day…' : 'Give it a day…', onSelect: () => setDayFor(item.key) },
-                            { label: 'Take off the plan', onSelect: () => remove(item), danger: true },
-                          ]}
-                          className={`pv-row${levelClass(item)}${dragging === item.key ? ' is-dragging' : ''}`}
-                          dragProps={dragProps(item, DECK)}
+          <div className="sk-col sk-deck">
+            <ListHead title="On Deck" meta={deckCount ? `${deckCount} waiting · press and hold a task for + List` : undefined} />
+            {groups.length ? (
+              // Site columns that grow with the number of sites: 2 → 2 across, 3+ → 3 across.
+              <div className="sk-deck-grid" style={{ '--cols': Math.min(groups.length, 3) } as React.CSSProperties}>
+                {groups.map((group, gi) => {
+                  const def = sourceById[group.source];
+                  const isLocked = Boolean(lockedSlots[group.source]);
+                  return (
+                    <section key={group.source} className="sk-site" aria-label={def.name}>
+                      <div className="sk-srch">
+                        <SiteIcon source={group.source} className="sk-siteicon" />
+                        <button type="button" className="sk-hl sk-srch-name" onClick={() => enter(group.source)} title={`Open ${def.name} page · ${group.items.length} on deck`}>
+                          {def.shortName}
+                        </button>
+                        <span className="sk-count">{group.items.length}</span>
+                        <select
+                          className="sk-pos"
+                          value={gi + 1}
+                          onChange={e => setPosition(group.source, Number(e.target.value))}
+                          aria-label={`Position of ${def.name}`}
+                          title={isLocked ? 'Position (locked)' : 'Position — lock it to keep it after a refresh'}
                         >
-                          {check(item)}
-                          {rowTitle(item)}
-                          {dayFor === item.key ? <DayMenu itemKey={item.key} title={item.title} onClose={() => setDayFor(null)} /> : null}
-                        </MenuRow>
-                      ))}
-                    </ul>
-                  </section>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="pv-empty">Nothing waiting. Pin items from any card, or search above.</p>
-          )}
+                          {groups.map((_, i) => (
+                            <option key={i} value={i + 1}>
+                              {i + 1}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="sk-lock"
+                          aria-pressed={isLocked}
+                          onClick={() => toggleLock(group.source, gi + 1)}
+                          aria-label={`${isLocked ? 'Unlock' : 'Lock'} ${def.name} at position ${gi + 1}`}
+                          title={isLocked ? 'Locked here — click to go back to auto sort' : 'Lock it at this position'}
+                        >
+                          <Icon name={isLocked ? 'lock' : 'unlock'} size={14} />
+                        </button>
+                      </div>
+                      <ul className="sk-list">
+                        {group.items.map(item => (
+                          <MenuRow
+                            as="li"
+                            key={item.key}
+                            title={item.title}
+                            items={[
+                              { label: 'Add to action list', onSelect: () => move(item, PLAN) },
+                              { label: lanes[item.key]?.due ? 'Change day…' : 'Give it a day…', onSelect: () => setDayFor(item.key) },
+                              { label: 'Take off the plan', onSelect: () => remove(item), danger: true },
+                            ]}
+                            className={`sk-row${levelClass(item)}`}
+                            dragProps={dragProps(item, DECK)}
+                          >
+                            <span className="sk-rlead">{check(item)}</span>
+                            {rowBody(item, false)}
+                            {dayFor === item.key ? <DayMenu itemKey={item.key} title={item.title} onClose={() => setDayFor(null)} /> : null}
+                          </MenuRow>
+                        ))}
+                      </ul>
+                    </section>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="sk-empty">Nothing waiting. Pin items from any card, or search above.</p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -450,6 +455,6 @@ export function PriorityBoard({
           close={() => setOpenKey(null)}
         />
       ) : null}
-    </section>
+    </div>
   );
 }

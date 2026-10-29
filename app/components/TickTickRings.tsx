@@ -42,12 +42,8 @@ function Ring({ label, counts }: { label: string; counts: Counts }) {
   );
 }
 
-/**
- * TickTick today, as two rings: how much of today's tasks and habits are logged — done or marked
- * won't do — versus still open. Open counts are the card's own numbers; done comes from the
- * completion ledger (today); won't do comes from TickTick's last pull.
- */
-export function TickTickRings({ ledger, openTasks, openHabits }: { ledger: CompletionLedger; openTasks: number; openHabits: number }) {
+/** TickTick today: done (from the ledger) and won't do / skipped (from TickTick's last pull). */
+export function useTickTickDay(ledger: CompletionLedger) {
   const [log, setLog] = useState(loadDayLog);
   useEffect(() => {
     const reload = () => setLog(loadDayLog());
@@ -67,10 +63,20 @@ export function TickTickRings({ ledger, openTasks, openHabits }: { ledger: Compl
     if (e.taskId.startsWith('habit-')) habitsDone++;
     else tasksDone++;
   }
+  return { tasksDone, habitsDone, wontDoTasks: log.wontDoTasks.length, skippedHabits: log.skippedHabits.length };
+}
+
+/**
+ * TickTick today, as two rings: how much of today's tasks and habits are logged — done or marked
+ * won't do — versus still open. Open counts are the card's own numbers; done comes from the
+ * completion ledger (today); won't do comes from TickTick's last pull.
+ */
+export function TickTickRings({ ledger, openTasks, openHabits }: { ledger: CompletionLedger; openTasks: number; openHabits: number }) {
+  const { tasksDone, habitsDone, wontDoTasks, skippedHabits } = useTickTickDay(ledger);
   return (
     <>
-      <Ring label="Tasks" counts={{ done: tasksDone, skipped: log.wontDoTasks.length, open: openTasks }} />
-      <Ring label="Habits" counts={{ done: habitsDone, skipped: log.skippedHabits.length, open: openHabits }} />
+      <Ring label="Tasks" counts={{ done: tasksDone, skipped: wontDoTasks, open: openTasks }} />
+      <Ring label="Habits" counts={{ done: habitsDone, skipped: skippedHabits, open: openHabits }} />
     </>
   );
 }

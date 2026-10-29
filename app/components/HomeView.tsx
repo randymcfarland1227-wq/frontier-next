@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import type { FeaturedItem, SourceId, SourceSnapshot, SpaceId, TaskItem } from '../../lib/types';
 import { sourceById } from '../../lib/sources';
-import { updatedLabel } from '../../lib/protocol';
 import type { CompletionLedger, CompletionStats, CompletionEntry } from '../../lib/completions';
 import type { FocusAreaConfig } from '../../lib/focusAreas';
 import type { EnergyWindow } from '../../lib/energy';
@@ -15,15 +14,16 @@ import { DailyBrief, BriefSummary } from './DailyBrief';
 import { useBriefPush } from '../../lib/dailyBrief';
 import { Collapsible } from './Collapsible';
 import { shownMetric } from '../../lib/actionable';
-import { usePriorityPins } from '../../lib/priorityPins';
+import { PLAN, usePriorityPins } from '../../lib/priorityPins';
 import { criticalKeys, useFeaturedLevels } from '../../lib/featuredLevels';
 import { addDays, billDues, eventStart, onDay, paidBillKeys, type BillDue, type CalTask, type ScheduleSnapshot } from '../../lib/schedule';
 import { applyBillEdits, isOverdue, useBillEdits } from '../../lib/billEdits';
 import { usePlans } from '../../lib/plans';
 import { ScheduleSection } from './ScheduleSection';
 import { BillsList } from './BillsList';
-import { TickTickRings } from './TickTickRings';
 import { FocusSection } from './FocusSection';
+import { HomeTop } from '../sticker/HomeTop';
+import { Section } from '../sticker/kit';
 
 const ROW_1: SourceId[] = ['ticktick', 'radall', 'self', 'gmail', 'outlook', 'repair'];
 const ROW_2: SourceId[] = ['role', 'move'];
@@ -53,23 +53,13 @@ function DailyOps({ card }: { card: (id: SourceId) => ReactNode }) {
   );
 }
 
-/** Pinned + critical counts for the collapsed Priority bar. */
+/** "3 on your list · 13 on deck · 1 critical" for the Doing Now head. */
 function PrioritySummary() {
-  const { pins } = usePriorityPins();
+  const { pins, lanes } = usePriorityPins();
   const { levels } = useFeaturedLevels();
   const critical = criticalKeys(levels).length;
-  return (
-    <>
-      <span className="sum-chip">
-        <b>{pins.length}</b> pinned
-      </span>
-      {critical ? (
-        <span className="sum-chip is-critical">
-          <b>{critical}</b> critical
-        </span>
-      ) : null}
-    </>
-  );
+  const plan = pins.filter(k => lanes[k]?.lane === PLAN).length;
+  return <>{[`${plan} on your list`, `${pins.length - plan} pinned on deck`, critical ? `${critical} critical` : null].filter(Boolean).join(' · ')}</>;
 }
 
 /** Collapsed Schedule bar: today's events, maybes waiting on an answer, bills due within 3 days. */
@@ -209,7 +199,8 @@ export function HomeView({
   onTaskDone,
   onAddPrep,
   grounding,
-  onRefresh,
+  unfinished,
+  openFocus,
 }: {
   snapshots: Record<SourceId, SourceSnapshot>;
   enter: (id: SpaceId) => void;
@@ -232,17 +223,11 @@ export function HomeView({
   onAddPrep: (target: { id: string; title: string; date: string }, title: string, due?: string) => void;
   /** Daily grounding: reminder guides + directions (rendered by the page) */
   grounding?: ReactNode;
-  /** Full refresh (Refresh button on phones, where the header has no room for it) */
-  onRefresh?: () => void;
+  /** Today drawer: items not done yet, and how to open it (the one prominent button) */
+  unfinished: number;
+  openFocus: () => void;
 }) {
   const { lanes } = usePriorityPins();
-  const latest =
-    Object.values(snapshots)
-      .map(item => item.refreshedAt)
-      .filter(Boolean)
-      .sort()
-      .at(-1) || '';
-
   // Open to-dos per site — the same blue numbers each card shows.
   const openBySite = [...ROW_1, ...ROW_2, ...ROW_3]
     .map(id => ({ id, name: sourceById[id].shortName, count: shownMetric(id, snapshots[id], lanes).value || 0 }))
@@ -281,67 +266,30 @@ export function HomeView({
       ) : null}
     </div>
   );
-  // TickTick split: tasks (the card's "to do") over habits still to check in today.
-  const tt = snapshots.ticktick;
-  const ticktickTasks = shownMetric('ticktick', tt, lanes).value || 0;
-  const ticktickHabits = Number(tt?.metrics?.habits) || 0;
-
   return (
     <>
-      <section className="hero hero-flush" id="top">
-        <div className="hero-title-row">
-          <h1>
-            Randy&apos;s <em>Life Hub.</em>
-          </h1>
-          <div className="hero-counts" aria-live="polite">
-            <div className="hero-stats">
-              <div className="hero-stat stat-done" title="Real completions recorded today, across every site">
-                <strong>{completionStats.today}</strong>
-                <span>done today</span>
-              </div>
-              <div className="hero-stat stat-open" title="Open to-dos across every site (each card's blue number)">
-                <strong>{openTotal}</strong>
-                <span>
-                  open · {openBySite.length} {openBySite.length === 1 ? 'site' : 'sites'}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="hero-stat stat-ticktick has-rings"
-                onClick={() => enter('ticktick')}
-                title="TickTick today: how much is logged (done or won't do) — opens TickTick's page"
-              >
-                <TickTickRings ledger={ledger} openTasks={ticktickTasks} openHabits={ticktickHabits} />
-              </button>
-            </div>
-            {openBySite.length ? (
-              <div className="hero-count-sites">
-                {openBySite.map(site => (
-                  <button key={site.id} type="button" onClick={() => enter(site.id)} title={`Open ${site.name}`}>
-                    {site.name} <b>{site.count}</b>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <p className="hero-status" title="Most recent source refresh">
-          {updatedLabel(latest)}
-          {onRefresh ? (
-            <button type="button" className="hero-refresh" onClick={onRefresh}>
-              ⟳ Refresh
-            </button>
-          ) : null}
-        </p>
-      </section>
+      <HomeTop
+        snapshots={snapshots}
+        bills={bills}
+        stats={completionStats}
+        ledger={ledger}
+        schedule={schedule}
+        openTotal={openTotal}
+        openSites={openBySite.length}
+        unfinished={unfinished}
+        openFocus={openFocus}
+        enter={enter}
+      />
 
+      <Section id="brief" title="Today" summary={<BriefSummary snapshots={snapshots} bills={bills} />}>
+        <DailyBrief snapshots={snapshots} bills={bills} enter={enter} />
+      </Section>
 
-      <section className="source-row" aria-label="Daily brief">
-        <Collapsible id="brief" label="Today" title="Daily brief" labelHeader tone="review" icon="☀" summary={<BriefSummary snapshots={snapshots} bills={bills} />}>
-          <DailyBrief snapshots={snapshots} bills={bills} enter={enter} />
-        </Collapsible>
-      </section>
+      <Section id="priority" title="Doing Now" summary={<PrioritySummary />}>
+        <PriorityBoard snapshots={snapshots} enter={id => enter(id)} onComplete={payFromPriority} bills={bills.filter(b => !b.skipped)} />
+      </Section>
 
+      <div className="sk-classic" aria-label="Not rebuilt yet">
       {grounding ? (
         <section className="source-row" aria-label="Daily grounding">
           <Collapsible id="grounding" label="Grounding" title="Daily grounding" tone="grounding" icon="🌱" summary={<GroundingSummary />}>
@@ -362,17 +310,7 @@ export function HomeView({
         </Collapsible>
       </section>
 
-      <section className="source-row" aria-label="Priority">
-        <Collapsible id="priority" label="Priority" title="Doing now" tone="priority" icon="◎" summary={<PrioritySummary />}>
-          <PriorityBoard
-            snapshots={snapshots}
-            enter={id => enter(id)}
-            onComplete={payFromPriority}
-            bills={bills.filter(b => !b.skipped)}
-          />
-        </Collapsible>
-      </section>
-
+      <div id="sk-sites">
       <SourceRow
         ids={ROW_1}
         extra={{ self: capturesPanel, radall: bills.length ? financeBills : undefined }}
@@ -411,8 +349,9 @@ export function HomeView({
         onCompleteTask={onCompleteTask}
         onStarTask={onStarTask}
       />
+      </div>
 
-      <section className="source-row" aria-label="Review">
+      <section className="source-row" aria-label="Review" id="sk-review">
         <Collapsible
           id="review"
           label="Review"
@@ -434,6 +373,7 @@ export function HomeView({
           />
         </Collapsible>
       </section>
+      </div>
 
       <footer className="home-footer">
         <span>Randy&apos;s Life Hub</span>

@@ -35,6 +35,8 @@ export function ZoomControl() {
 
   useEffect(() => {
     document.documentElement.style.setProperty('zoom', zoom === 100 ? '' : String(zoom / 100));
+    // Full-height pieces (the sticker sidebar) divide by this so they still fit the window.
+    document.documentElement.style.setProperty('--page-zoom', String(zoom / 100));
   }, [zoom]);
 
   const pick = (next: number | null) => {

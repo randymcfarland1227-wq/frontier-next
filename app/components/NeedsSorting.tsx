@@ -8,6 +8,8 @@ import { goalOf, linkGoalIndex, type GoalLink, type GoalsData } from '../../lib/
 import { sourceById } from '../../lib/sources';
 import { taskRuleKey, useTaskRules } from '../../lib/taskRules';
 import { AreaSelect, GoalSelect } from './SortControls';
+import { Icon } from '../sticker/Icon';
+import { Tag } from '../sticker/kit';
 
 const SHOW = 8;
 
@@ -54,23 +56,27 @@ export function NeedsSorting({
   if (!pending.length) return null;
 
   return (
-    <div className="needs-sorting" role="region" aria-label="Completed tasks that need sorting">
-      <button type="button" className="needs-sorting-head" aria-expanded={open} onClick={() => setOpen(o => !o)}>
-        <span className="needs-sorting-dot" aria-hidden="true" />
-        <strong>
-          {pending.length} completed task{pending.length === 1 ? '' : 's'} need{pending.length === 1 ? 's' : ''} a bucket or goal
-        </strong>
-        <span className="featured-fold-icon" aria-hidden="true">{open ? '▾' : '▸'}</span>
+    <div className="sk-sorting" role="region" aria-label="Completed tasks that need sorting">
+      <button type="button" className="sk-callout" aria-expanded={open} onClick={() => setOpen(o => !o)}>
+        <span>
+          <span className="sk-hl">
+            {pending.length} Completed Task{pending.length === 1 ? '' : 's'} Need{pending.length === 1 ? 's' : ''} an Area
+          </span>
+          <span className="sk-sec">So they count toward Balance</span>
+        </span>
+        <Icon name={open ? 'chevronDown' : 'chevron'} size={14} />
       </button>
       {open ? (
         <>
-          <div className="needs-sorting-list">
+          <div className="sk-sort-list">
             {pending.slice(0, SHOW).map(p => (
-              <div className="sorting-row" key={p.key}>
-                <div className="sorting-task">
-                  <span className="priority-source">{sourceById[p.entry.source]?.shortName || p.entry.source}</span>
-                  <strong title={p.entry.title}>{p.entry.title || p.entry.taskId}</strong>
-                  {p.n > 1 ? <span className="sorting-sub">{p.n}×</span> : null}
+              <div className="sk-sort-row" key={p.key}>
+                <div className="sk-sort-task">
+                  <Tag>{sourceById[p.entry.source]?.shortName || p.entry.source}</Tag>
+                  <span className="sk-rt" title={p.entry.title}>
+                    {p.entry.title || p.entry.taskId}
+                  </span>
+                  {p.n > 1 ? <span className="sk-sec">{p.n}×</span> : null}
                 </div>
                 <AreaSelect
                   areas={areas}
@@ -87,11 +93,11 @@ export function NeedsSorting({
               </div>
             ))}
           </div>
-          <p className="needs-sorting-foot">
+          <p className="sk-sec sk-sort-foot">
             Saved as you pick — the same task sorts itself next time.
             {pending.length > SHOW ? ` +${pending.length - SHOW} more. ` : ' '}
-            <button type="button" className="link-button" onClick={openSorting}>
-              Open Task sorting
+            <button type="button" className="sk-link" onClick={openSorting}>
+              Open Task Sorting
             </button>
           </p>
         </>

@@ -15,6 +15,8 @@ import {
   type EnergyWindow,
   type Suggestion,
 } from '../../lib/energy';
+import { Icon } from '../sticker/Icon';
+import { ListHead, Tag, type Tone } from '../sticker/kit';
 
 /** Items listed in the Charge pop-up before "+N more". */
 const SHOW_SUGGESTIONS = 6;
@@ -32,7 +34,8 @@ function meta(a: AreaEnergy) {
 
 
 
-const PROGRESS_ICON = { charge: '⚡', inline: '〰', onfire: '🔥' } as const;
+const PROGRESS_TONE: Record<string, Tone | undefined> = { charge: undefined, inline: 'open', onfire: 'ops' };
+const FOCUS_TONE: Record<string, Tone> = { under: 'needs', balanced: 'done', over: 'alert' };
 
 function round(n: number) {
   return n >= 10 ? Math.round(n) : Math.round(n * 10) / 10;
@@ -86,50 +89,43 @@ export function BalanceStrip({
     setEditing(true);
   };
 
+  const periodName = window === 'today' ? 'Today' : window === 'last7' ? 'Past 7 days' : window === 'month' ? 'This month' : 'All time';
   return (
-    <div className="balance-strip" aria-label="Balance across life buckets">
-      <div className="balance-head">
-        <div>
-          <p className="section-label">
-            Balance · {window === 'today' ? 'today' : window === 'last7' ? 'past 7 days' : window === 'month' ? 'this month' : 'all time'}
-          </p>
-          <p className="review-lede">
-            {report.totalDone ? summary(report.areas) : 'Nothing completed in this window yet.'}
-          </p>
-        </div>
-        <div className="balance-controls">
-          <button
-            type="button"
-            className="balance-gear"
-            aria-label="Balance settings"
-            aria-expanded={editing}
-            title="Set each bucket's pace"
-            onClick={() => (editing ? setEditing(false) : openSettings())}
-          >
-            ⚙
-          </button>
-        </div>
-      </div>
+    <div className="sk-balance" aria-label="Balance across life buckets">
+      <ListHead title="Balance" meta={periodName}>
+        <button
+          type="button"
+          className="sk-link"
+          aria-label="Balance settings"
+          aria-expanded={editing}
+          title="Set each bucket's pace"
+          onClick={() => (editing ? setEditing(false) : openSettings())}
+        >
+          <Icon name="settings" size={14} />
+          Pace
+        </button>
+      </ListHead>
+      <p className="sk-sec sk-bal-sum">{report.totalDone ? summary(report.areas) : 'Nothing completed in this window yet.'}</p>
 
       {editing ? (
         <form
-          className="balance-settings"
+          className="sk-form sk-pace-form"
           onSubmit={e => {
             e.preventDefault();
             onSaveSettings(Object.fromEntries(Object.entries(draft).map(([k, v]) => [k, Math.max(1, Math.min(100, v)) / 100])));
             setEditing(false);
           }}
         >
-          <p className="balance-settings-lede">
-            <strong>Pace</strong> = how much of a bucket&apos;s available work makes a good day. Lower it as a site&apos;s list
-            shrinks and each task gets harder.
+          <p className="sk-sec sk-field is-wide">
+            <b>Pace</b> = how much of a bucket&apos;s available work makes a good day. Lower it as a site&apos;s list shrinks and each task
+            gets harder.
           </p>
           {config.areas.map(a => {
             const pct = draft[a.id] ?? 0;
             const avail = today[a.id] || 0;
             return (
-              <label key={a.id} className="balance-pace">
-                <span className="balance-pace-name">{a.name}</span>
+              <label key={a.id} className="sk-field is-wide sk-pace">
+                <span>{a.name}</span>
                 <input
                   type="range"
                   min={1}
@@ -138,73 +134,75 @@ export function BalanceStrip({
                   onChange={e => setDraft(d => ({ ...d, [a.id]: Number(e.target.value) }))}
                   aria-label={`${a.name} pace`}
                 />
-                <span className="balance-pace-value">
-                  {pct}% <em>≈ {round((avail * pct) / 100)} of {avail} today</em>
+                <span>
+                  {pct}% · ≈ {round((avail * pct) / 100)} of {avail} today
                 </span>
               </label>
             );
           })}
-          <div className="balance-settings-actions">
-            <button type="submit" className="row-action">
+          <div className="sk-form-actions">
+            <button type="submit" className="sk-btn is-small">
               Save
             </button>
-            <button type="button" className="row-action ghost" onClick={() => setDraft(Object.fromEntries(config.areas.map(a => [a.id, Math.round((DEFAULT_PACES[a.id] ?? 0.2) * 100)])))}>
-              Reset to defaults
+            <button type="button" className="sk-btn is-small is-quiet" onClick={() => setDraft(Object.fromEntries(config.areas.map(a => [a.id, Math.round((DEFAULT_PACES[a.id] ?? 0.2) * 100)])))}>
+              Reset to Defaults
             </button>
-            <button type="button" className="row-action ghost" onClick={() => setEditing(false)}>
+            <button type="button" className="sk-btn is-small is-quiet" onClick={() => setEditing(false)}>
               Cancel
             </button>
           </div>
         </form>
       ) : null}
 
-      <div className="review-bars">
-        {report.areas.map(a => (
-          <div className={`review-bar-row energy-row is-${a.progress} focus-${a.focus}`} key={a.id}>
-            <div className="review-bar-label">
-              <span>{a.name}</span>
-              <span className="energy-badges">
-                {(a.progress === 'charge' || a.focus === 'under') && (suggestions[a.id] || []).length ? (
-                  <span className={`energy-charge${openCharge === a.id ? ' is-open' : ''}`}>
+      <div className="sk-bal-list">
+        {report.areas.map(a => {
+          const sugg = suggestions[a.id] || [];
+          const canCharge = (a.progress === 'charge' || a.focus === 'under') && sugg.length > 0;
+          const isOpen = openCharge === a.id;
+          return (
+            <div className="sk-bal" key={a.id}>
+              <div className="sk-bal-line">
+                <span className="sk-rt">{a.name}</span>
+                <span className="sk-bal-tags">
+                  {canCharge ? (
                     <button
                       type="button"
-                      className={`energy-badge progress-${a.progress} energy-charge-btn`}
-                      aria-expanded={openCharge === a.id}
+                      className="sk-tagbtn"
+                      aria-expanded={isOpen}
                       aria-label={`${PROGRESS_LABEL[a.progress]} — show what could charge ${a.name}`}
                       onClick={() => setOpenCharge(o => (o === a.id ? null : a.id))}
                     >
-                      {PROGRESS_ICON[a.progress]} {PROGRESS_LABEL[a.progress]}
+                      <Tag tone={PROGRESS_TONE[a.progress]}>{PROGRESS_LABEL[a.progress]}</Tag>
+                      <Icon name={isOpen ? 'chevronDown' : 'chevron'} size={14} />
                     </button>
-                    <span className="energy-pop" role="tooltip">
-                      <span className="energy-pop-title">Could charge it</span>
-                      {suggestions[a.id].slice(0, SHOW_SUGGESTIONS).map(s => (
-                        <span key={s.title} className="energy-pop-item">
-                          {s.title}
-                          {s.why === 'habit' ? <em> · habit</em> : null}
-                        </span>
-                      ))}
-                      {suggestions[a.id].length > SHOW_SUGGESTIONS ? (
-                        <span className="energy-pop-more">+{suggestions[a.id].length - SHOW_SUGGESTIONS} more</span>
-                      ) : null}
+                  ) : (
+                    <Tag tone={PROGRESS_TONE[a.progress]}>{PROGRESS_LABEL[a.progress]}</Tag>
+                  )}
+                  <Tag tone={FOCUS_TONE[a.focus]}>{FOCUS_LABEL[a.focus]}</Tag>
+                </span>
+              </div>
+              <div className="sk-meter has-goal" role="img" aria-label={tip(a, window)}>
+                {a.ratio > 0 ? <i style={{ width: `${Math.min(100, (a.ratio / 1.5) * 100)}%` }} /> : null}
+                <span className="sk-goal-tick" style={{ left: `${(1 / 1.5) * 100}%` }} />
+              </div>
+              <p className="sk-rs">{meta(a)}</p>
+              {isOpen ? (
+                <div className="sk-charge" role="region" aria-label={`Could charge ${a.name}`}>
+                  <span className="sk-hl">Could Charge It</span>
+                  {sugg.slice(0, SHOW_SUGGESTIONS).map(s => (
+                    <span key={s.title} className="sk-rt">
+                      {s.title}
+                      {s.why === 'habit' ? <span className="sk-sec"> · habit</span> : null}
                     </span>
-                  </span>
-                ) : (
-                  <span className={`energy-badge progress-${a.progress}`}>
-                    {PROGRESS_ICON[a.progress]} {PROGRESS_LABEL[a.progress]}
-                  </span>
-                )}
-                <span className={`energy-badge focus-${a.focus}`}>{FOCUS_LABEL[a.focus]}</span>
-              </span>
+                  ))}
+                  {sugg.length > SHOW_SUGGESTIONS ? <span className="sk-sec">+{sugg.length - SHOW_SUGGESTIONS} more</span> : null}
+                </div>
+              ) : null}
             </div>
-            <div className="review-bar-track energy-track" role="img" aria-label={tip(a, window)}>
-              {a.ratio > 0 ? <div className="review-bar-fill" style={{ width: `${Math.min(100, (a.ratio / 1.5) * 100)}%` }} /> : null}
-              <div className="balance-marker" style={{ left: `${(1 / 1.5) * 100}%` }} />
-            </div>
-            <p className="energy-meta">{meta(a)}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
-      <p className="review-empty balance-legend">
+      <p className="sk-sec sk-bal-legend">
         Bar = progress toward each bucket&apos;s goal (tick = goal met). Longer periods average the days.
         {report.estimated ? ' Earlier days use today’s workload until Life Hub has seen them.' : ''}
       </p>

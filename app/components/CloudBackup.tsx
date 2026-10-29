@@ -14,6 +14,7 @@ import {
   SYNC_STATUS_EVENT,
   type SyncStatus,
 } from '../../lib/cloudSync';
+import { Group } from '../sticker/kit';
 
 function ago(iso?: string) {
   if (!iso) return '';
@@ -101,10 +102,11 @@ export function CloudBackup() {
   const c = status.counts;
 
   return (
-    <div className={`cloud-backup is-${status.state}`} aria-live="polite">
-      {status.notice ? <p className="cloud-notice">✓ {status.notice}</p> : null}
-      <div className="cloud-row">
-        <p className="cloud-text">
+    <Group tone="paper" title="Cloud Backup" className={`sk-backup is-${status.state}`}>
+    <div aria-live="polite">
+      {status.notice ? <p className="sk-sec sk-notice">✓ {status.notice}</p> : null}
+      <div className="sk-bk-row">
+        <p className="sk-rs">
           <strong>
             {status.state === 'off' && '○ Backup off'}
             {status.state === 'syncing' && '◌ Backing up…'}
@@ -117,54 +119,54 @@ export function CloudBackup() {
             `${ago(status.at)}${c ? ` · ${c.completions} completions, ${c.captures} ideas, ${c.self} Self items` : ''}`}
           {status.state === 'error' && (ERRORS[status.error || ''] || status.error)}
         </p>
-        <div className="cloud-actions">
+        <div className="sk-bk-actions">
           {!on ? (
             <>
-              <button type="button" className="row-action" onClick={() => void enableBackup()}>
-                Turn on backup
+              <button type="button" className="sk-btn is-small" onClick={() => void enableBackup()}>
+                Turn On Backup
               </button>
-              <button type="button" className="row-action ghost" onClick={() => setJoining(j => !j)}>
-                I have a link or key
+              <button type="button" className="sk-btn is-small is-quiet" onClick={() => setJoining(j => !j)}>
+                I Have a Link or Key
               </button>
             </>
           ) : (
             <>
-              <button type="button" className="row-action ghost" onClick={() => void copyLink()}>
-                {copied ? 'Link copied' : 'Link another device'}
+              <button type="button" className="sk-btn is-small is-quiet" onClick={() => void copyLink()}>
+                {copied ? 'Link copied' : 'Link Another Device'}
               </button>
               {status.state === 'error' ? (
-                <button type="button" className="row-action ghost" onClick={() => void syncNow()}>
+                <button type="button" className="sk-btn is-small is-quiet" onClick={() => void syncNow()}>
                   Retry
                 </button>
               ) : null}
               <button
                 type="button"
-                className="row-action ghost"
+                className="sk-btn is-small is-quiet"
                 onClick={() => {
                   if (window.confirm('Stop backing up this browser? Your saved backup stays in the cloud.')) disableBackup();
                 }}
               >
-                Turn off
+                Turn Off
               </button>
             </>
           )}
         </div>
       </div>
-      <div className="cloud-row">
-        <p className="cloud-text">
+      <div className="sk-bk-row">
+        <p className="sk-rs">
           <strong>Safe copies</strong> that don&apos;t depend on any device: {fileMsg || 'download a data file and a recovery sheet, and keep them in Drive or a password manager.'}
         </p>
-        <div className="cloud-actions">
-          <button type="button" className="row-action ghost" onClick={() => void saveData()}>Download data file</button>
-          {on ? <button type="button" className="row-action ghost" onClick={saveSheet}>Download recovery sheet</button> : null}
-          <label className="row-action ghost" style={{ cursor: 'pointer' }}>
-            Restore from file
+        <div className="sk-bk-actions">
+          <button type="button" className="sk-btn is-small is-quiet" onClick={() => void saveData()}>Download Data File</button>
+          {on ? <button type="button" className="sk-btn is-small is-quiet" onClick={saveSheet}>Download Recovery Sheet</button> : null}
+          <label className="sk-btn is-small is-quiet">
+            Restore From File
             <input type="file" accept=".json,application/json" hidden onChange={e => { void restore(e.target.files?.[0]); e.target.value = ''; }} />
           </label>
         </div>
       </div>
       {joining && !on ? (
-        <form className="cloud-join" onSubmit={join}>
+        <form className="sk-form is-inline" onSubmit={join}>
           <input
             value={key}
             onChange={e => setKey(e.target.value)}
@@ -173,11 +175,12 @@ export function CloudBackup() {
             autoComplete="off"
             spellCheck={false}
           />
-          <button type="submit" className="row-action">
+          <button type="submit" className="sk-btn is-small">
             Link
           </button>
         </form>
       ) : null}
     </div>
+    </Group>
   );
 }

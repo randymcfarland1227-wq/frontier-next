@@ -7,6 +7,8 @@ import { sourceById } from '../../lib/sources';
 import type { FocusAreaConfig } from '../../lib/focusAreas';
 import { BalanceStrip } from './BalanceStrip';
 import { CloudBackup } from './CloudBackup';
+import { Dot, Group, ListHead, Row } from '../sticker/kit';
+import { Icon } from '../sticker/Icon';
 
 const SHOW_DONE = 40;
 
@@ -73,89 +75,71 @@ export function ReviewPanel({
   }, [inPeriod]);
   const periodLabel = PERIODS.find(p => p.id === period)!.label.toLowerCase();
   const max = Math.max(1, ...periodShares.map(s => s.count));
+  const [openSource, setOpenSource] = useState<string | null>(null);
   return (
-    <section className="review-panel glass-panel" aria-label="Completion review">
-      <div className="review-columns">
-      <div className="review-main">
-      <div className="review-head">
-        <p className="section-label">Review</p>
-        <h2>Completions across sites</h2>
-        <p className="review-lede">
-          <strong>{stats.allTime}</strong> total tasks completed across all sources
-          <span className="review-sep">·</span>
-          <strong>{stats.openAcrossSources}</strong> open now
-          <span className="review-sep">·</span>
-          <strong>{stats.inventoryTasks}</strong> in hub inventory
-        </p>
-      </div>
-      <div className="review-body">
-      <div className="stats-strip period-tiles" role="group" aria-label="Choose a period">
-        {PERIODS.map(p => (
-          <button
-            type="button"
-            key={p.id}
-            className={p.id === period ? 'active' : ''}
-            aria-pressed={p.id === period}
-            onClick={() => setPeriod(p.id)}
-          >
-            <strong>{stats[p.key] as number}</strong>
-            <span>{p.id === 'today' ? 'Completed today' : p.label}</span>
-          </button>
-        ))}
-      </div>
-      <div className="review-sources-col">
-      <p className="section-label review-sources-label">By source · {periodLabel}</p>
-      <div className="review-bars">
-        {periodShares.length === 0 ? (
-          <p className="review-empty">Nothing completed {period === 'all' ? 'yet' : periodLabel}.</p>
-        ) : (
-          periodShares.map(row => {
-            const done = inPeriod.filter(e => e.source === row.id);
-            return (
-              <details className="review-bar-row review-source" key={row.id}>
-                <summary>
-                  <div className="review-bar-label">
-                    <span>
-                      <span className="review-caret" aria-hidden="true">▸</span>
-                      {row.name}
-                    </span>
-                    <span>
-                      {row.percent}% ({row.count} task{row.count === 1 ? '' : 's'})
-                    </span>
+    <div className="sk-review" aria-label="Completion review">
+      <Group tone="done" title="Completions Across Sites" meta={`${stats.allTime} total · ${stats.openAcrossSources} open now · ${stats.inventoryTasks} in hub inventory`}>
+        <div className="sk-review-grid">
+          <div className="sk-review-col">
+            <div className="sk-periods" role="group" aria-label="Choose a period">
+              {PERIODS.map(p => (
+                <button type="button" key={p.id} aria-pressed={p.id === period} onClick={() => setPeriod(p.id)}>
+                  <b>{stats[p.key] as number}</b>
+                  <span>{p.id === 'today' ? 'Completed Today' : p.label}</span>
+                </button>
+              ))}
+            </div>
+            <ListHead title="By Source" meta={periodLabel} />
+            {periodShares.length === 0 ? (
+              <p className="sk-empty">Nothing completed {period === 'all' ? 'yet' : periodLabel}.</p>
+            ) : (
+              periodShares.map(row => {
+                const done = inPeriod.filter(e => e.source === row.id);
+                const open = openSource === row.id;
+                return (
+                  <div className={`sk-bar${open ? ' is-open' : ''}`} key={row.id}>
+                    <button type="button" className="sk-bar-line" aria-expanded={open} onClick={() => setOpenSource(open ? null : row.id)}>
+                      <Icon name="chevron" size={14} className="sk-bar-chev" />
+                      <span className="sk-rt">{row.name}</span>
+                      <span className="sk-rv">
+                        {row.count} · {row.percent}%
+                      </span>
+                      <span className="sk-meter" aria-hidden="true">
+                        <i style={{ width: `${(row.count / max) * 100}%` }} />
+                      </span>
+                    </button>
+                    {open ? (
+                      <div className="sk-bar-done">
+                        {done.slice(0, SHOW_DONE).map(e => (
+                          <Row
+                            key={`${e.taskId}-${e.completedAt}`}
+                            className="is-done"
+                            lead={<Dot tone="done" />}
+                            title={e.title || e.taskId}
+                            value={<time dateTime={e.completedAt}>{doneWhen(e.completedAt)}</time>}
+                          />
+                        ))}
+                        {done.length > SHOW_DONE ? <p className="sk-sec sk-more">+ {done.length - SHOW_DONE} earlier</p> : null}
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="review-bar-track" aria-hidden="true">
-                    <div className="review-bar-fill" style={{ width: `${(row.count / max) * 100}%` }} />
-                  </div>
-                </summary>
-                <ol className="review-done-list">
-                  {done.slice(0, SHOW_DONE).map(e => (
-                    <li key={`${e.taskId}-${e.completedAt}`}>
-                      <span>{e.title || e.taskId}</span>
-                      <time dateTime={e.completedAt}>{doneWhen(e.completedAt)}</time>
-                    </li>
-                  ))}
-                  {done.length > SHOW_DONE ? <li className="review-done-more">+ {done.length - SHOW_DONE} earlier</li> : null}
-                </ol>
-              </details>
-            );
-          })
-        )}
-      </div>
-      </div>
-      </div>
-      {renderSorting ? renderSorting(inPeriod) : null}
-      </div>
-      {focusConfig ? (
-        <div className="review-side">
-          {renderBalance ? (
-            renderBalance(period)
-          ) : (
-            <BalanceStrip ledger={ledger} config={focusConfig} today={{}} settings={{ paces: {}, updatedAt: '' }} onSaveSettings={() => undefined} window={period} />
-          )}
+                );
+              })
+            )}
+          </div>
+          {focusConfig ? (
+            <div className="sk-review-col">
+              {renderBalance ? (
+                renderBalance(period)
+              ) : (
+                <BalanceStrip ledger={ledger} config={focusConfig} today={{}} settings={{ paces: {}, updatedAt: '' }} onSaveSettings={() => undefined} window={period} />
+              )}
+            </div>
+          ) : null}
+          {renderSorting ? <div className="sk-review-col">{renderSorting(inPeriod)}</div> : null}
         </div>
-      ) : null}
-      </div>
+      </Group>
       <CloudBackup />
-    </section>
+    </div>
   );
 }

@@ -11,7 +11,6 @@ import { GroundingSummary } from './DailyGrounding';
 import { ReviewPanel } from './ReviewPanel';
 import { DailyBrief, BriefSummary } from './DailyBrief';
 import { useBriefPush } from '../../lib/dailyBrief';
-import { Collapsible } from './Collapsible';
 import { shownMetric } from '../../lib/actionable';
 import { PLAN, usePriorityPins } from '../../lib/priorityPins';
 import { criticalKeys, useFeaturedLevels } from '../../lib/featuredLevels';
@@ -184,30 +183,23 @@ export function HomeView({
         extra={{ self: capturesPanel, radall: bills.length ? financeBills : undefined }}
       />
 
-      <div className="sk-classic" aria-label="Not rebuilt yet">
-      <section className="source-row" aria-label="Review" id="sk-review">
-        <Collapsible
-          id="review"
-          label="Review"
-          title="Completions across sites"
-          tone="review"
-          icon="✓"
-          summary={
-            <span className="sum-chip is-done" title="Completed today across all sites">
-              <b>{completionStats.today}</b> done today
-            </span>
-          }
-        >
-          <ReviewPanel
-            stats={completionStats}
-            ledger={ledger}
-            focusConfig={focusConfig}
-            renderBalance={renderBalance}
-            renderSorting={renderSorting}
-          />
-        </Collapsible>
-      </section>
-      </div>
+      <Section
+        id="review"
+        title="Review"
+        summary={
+          <>
+            {completionStats.today} done today · {completionStats.allTime} total · {completionStats.openAcrossSources} open
+          </>
+        }
+      >
+        <ReviewPanel
+          stats={completionStats}
+          ledger={ledger}
+          focusConfig={focusConfig}
+          renderBalance={renderBalance}
+          renderSorting={renderSorting}
+        />
+      </Section>
 
       <footer className="home-footer">
         <span>Randy&apos;s Life Hub</span>

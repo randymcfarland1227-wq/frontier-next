@@ -563,8 +563,34 @@
 .sk-app .sk-shelf-link:hover { text-decoration-color: currentColor; }
 .sk-app .sk-srcbody > .sk-listh:first-child { padding-top: var(--sk-s2); }
 .sk-app .sk-src .sk-row > .sk-rmain { min-height: 28px; align-content: center; }
-/* Self's Captures tool keeps its classic body for now; its own "Self" heading repeats the block head. */
-.sk-app .sk-src .captures-head :is(.section-label, h2) { display: none; }
+/* Self · Captures: one capture line that opens into kind chips + fields; status chips over kit rows */
+.sk-app .sk-capform { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sk-s2); margin: var(--sk-s2) 0 var(--sk-s3); }
+.sk-app .sk-capform .sk-fc-add { margin: 0; }
+.sk-app .sk-capform.is-open { padding: var(--sk-s3); background: var(--sk-paper); border: 1.5px solid var(--sk-line); border-radius: 12px; }
+.sk-app .sk-capform .sk-chips { padding-top: 0; }
+.sk-app .sk-capfields { display: flex; flex-wrap: wrap; gap: var(--sk-s2); }
+.sk-app .sk-capfields > * { flex: 1 1 140px; }
+.sk-app :is(.sk-capfields input, .sk-capfields select, .sk-capform textarea, .sk-capdue) {
+  min-width: 0; min-height: 36px; box-sizing: border-box; padding: 6px 10px; font: var(--sk-body); color: var(--sk-ink);
+  background: var(--sk-paper); border: 2px solid var(--sk-edge); border-radius: 10px; outline-offset: 2px;
+}
+.sk-app .sk-capform textarea { resize: vertical; font: var(--sk-secondary); }
+.sk-app :is(.sk-capfields input, .sk-capform textarea)::placeholder { color: var(--sk-ink-2); opacity: 1; }
+.frontier-shell[data-color-mode="dark"] .sk-app :is(.sk-capfields input, .sk-capfields select, .sk-capform textarea, .sk-capdue) { color-scheme: dark; }
+.sk-app .sk-capdue { justify-self: start; margin-top: 6px; }
+.sk-app .sk-caplogged { display: flex; align-items: center; gap: 6px; margin: 0; font: var(--sk-secondary); color: var(--sk-ink); }
+.sk-app .sk-captabs { padding: var(--sk-s2) 0 var(--sk-s2); }
+.sk-app .sk-chips > button[aria-selected="true"] { background: var(--sk-ink); color: var(--sk-page); }
+.sk-app .sk-chipcount { margin-left: 6px; font: var(--sk-caption); }
+.sk-app .sk-capnote { display: block; margin-top: 2px; white-space: pre-line; }
+.sk-app .sk-capture .sk-ract { padding-left: 0; }
+.sk-app .sk-capture .sk-rlead:empty { display: none; }
+.sk-app .sk-capture { grid-template-columns: minmax(0, 1fr) auto auto; }
+.sk-app .sk-capture.is-dropped .sk-rt { text-decoration: line-through; color: var(--sk-ink-2); }
+.sk-app .sk-capture .sk-shelf-link { display: inline; }
+.sk-app .sk-capture .sk-shelf-link .sk-icon { vertical-align: -2px; margin-left: 4px; }
+.sk-app .sk-icon.sk-starred { fill: currentColor; color: var(--sk-ink-2); }
+.sk-app .sk-captures .sk-listh .sk-hl { display: inline-flex; align-items: center; gap: 6px; }
 
 @media (max-width: 1200px) {
   .sk-app .sk-ops-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   CAPTURE_KINDS,
   type Capture,
@@ -9,7 +9,9 @@ import {
 } from '../../lib/captures';
 import type { FocusArea } from '../../lib/focusAreas';
 import type { SelfItem } from '../../lib/adapters/self';
-import { MenuRow, type RowMenuItem } from './RowMenu';
+import { useRowMenu, type RowMenuItem } from './RowMenu';
+import { Circle, ListHead, Row, Tag } from '../sticker/kit';
+import { Icon } from '../sticker/Icon';
 import { usePriorityPins } from '../../lib/priorityPins';
 
 /** Where a Self task can be moved (it then shows in that site's card). */
@@ -62,7 +64,7 @@ function DueInput({ due, onChange, onClose }: { due?: string; onChange: (due?: s
   return (
     <input
       type="date"
-      className="capture-due-input"
+      className="sk-capdue"
       autoFocus
       defaultValue={due || localDay()}
       aria-label="Day for this task"
@@ -76,12 +78,6 @@ function DueInput({ due, onChange, onClose }: { due?: string; onChange: (due?: s
       }}
     />
   );
-}
-
-/** A set day, as a small read-only chip (change it from the row menu). */
-function DueText({ due }: { due?: string }) {
-  if (!due) return null;
-  return <span className={`capture-due${due < localDay() ? ' is-late' : ''}`}>{dueLabel(due)}</span>;
 }
 
 const TABS: Array<{ id: Tab; label: string }> = [
@@ -226,46 +222,35 @@ export function CapturesPanel({
   }
 
   return (
-    <section className="captures-panel glass-panel" aria-label="Ideas and research">
-      <div className="captures-head">
-        <div>
-          <p className="section-label">Self</p>
-          <h2>Thoughts, ideas, research &amp; tasks</h2>
-          <p className="review-lede">
-            Tasks count toward Review when done. Log done records something you already finished off-site. Thoughts, ideas, and research stay off task boards and Balance —
-            promote one when it becomes a task.
-          </p>
+    <div className="sk-captures" aria-label="Thoughts, ideas, research and tasks">
+      <form className={`sk-capform${formOpen ? ' is-open' : ''}`} onSubmit={submit} ref={formRef} onFocus={() => setExpanded(true)}>
+        <div className="sk-fc-add">
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder={
+              !formOpen
+                ? 'Capture a task or thought'
+                : kind === 'task'
+                  ? 'What needs doing?'
+                  : kind === 'log'
+                    ? 'What did you get done?'
+                    : "What's the thought, idea, or question?"
+            }
+            aria-label="Capture title"
+          />
+          <button type="submit" className="sk-btn is-small" disabled={!title.trim() || (kind === 'log' && !area)}>
+            <Icon name="plus" size={14} />
+            {!formOpen ? 'Add' : kind === 'task' ? 'Add Task' : kind === 'log' ? 'Log as Done' : 'Capture'}
+          </button>
         </div>
-      </div>
-
-      <form
-        className={`capture-form${formOpen ? '' : ' is-compact'}`}
-        onSubmit={submit}
-        ref={formRef}
-        onFocus={() => setExpanded(true)}
-      >
-        <input
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          placeholder={
-            !formOpen
-              ? 'Add a task, log something done, or jot a thought…'
-              : kind === 'task'
-                ? 'What needs doing?'
-                : kind === 'log'
-                  ? 'What did you get done?'
-                  : "What's the thought, idea, or question?"
-          }
-          aria-label="Capture title"
-        />
         {formOpen ? (
           <>
-            <div className="seg" role="group" aria-label="Capture kind">
+            <div className="sk-chips" role="group" aria-label="Capture kind">
               {KINDS.map(k => (
                 <button
                   key={k.id}
                   type="button"
-                  className={k.id === kind ? 'active' : ''}
                   aria-pressed={k.id === kind}
                   onClick={() => {
                     setKind(k.id);
@@ -276,7 +261,14 @@ export function CapturesPanel({
                 </button>
               ))}
             </div>
-            <div className={`capture-form-row${kind === 'log' || kind === 'task' ? ' has-date' : ''}`}>
+            <p className="sk-sec">
+              {kind === 'task'
+                ? 'Tasks count toward Review when done.'
+                : kind === 'log'
+                  ? 'Log done records something you already finished off-site.'
+                  : 'Thoughts, ideas and research stay off task boards and Balance. Promote one when it becomes a task.'}
+            </p>
+            <div className="sk-capfields">
               <input value={url} onChange={e => setUrl(e.target.value)} placeholder="Link (optional)" aria-label="Link" inputMode="url" />
               {kind === 'log' ? (
                 <input
@@ -307,154 +299,199 @@ export function CapturesPanel({
               </select>
             </div>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Notes (optional)" aria-label="Notes" />
-            <button type="submit" disabled={!title.trim() || (kind === 'log' && !area)}>
-              {kind === 'task' ? 'Add task' : kind === 'log' ? 'Log as done' : 'Capture'}
-            </button>
           </>
         ) : null}
-        {kind === 'log' && logged ? <p className="capture-logged" role="status">✓ {logged}</p> : null}
+        {kind === 'log' && logged ? (
+          <p className="sk-caplogged" role="status">
+            <Icon name="check" size={14} />
+            {logged}
+          </p>
+        ) : null}
       </form>
 
       {starredTasks.length ? (
-        <div className="self-starred" aria-label="Starred Self tasks">
-          <p className="self-starred-head">
-            <span aria-hidden="true">★</span> Starred <span className="seg-count">{starredTasks.length}</span>
-          </p>
+        <div className="sk-src-starred" aria-label="Starred Self tasks">
+          <ListHead
+            title={
+              <>
+                <Icon name="star" size={14} className="sk-starred" />
+                Starred
+              </>
+            }
+            meta={starredTasks.length}
+          />
           {starredTasks.map(t => {
             const pinned = isPinned('self', t.id);
             return (
-              <MenuRow className="capture-row is-task is-starred" key={t.id} items={() => taskMenu(t)} title={t.title}>
-                <div className="capture-main">
-                  {t.due || pinned ? (
-                    <div className="capture-meta">
-                      <DueText due={t.due} />
-                      {pinned ? <span title="On your Priority list">📌</span> : null}
-                    </div>
-                  ) : null}
-                  <h3 title={[t.title, t.detail].filter(Boolean).join(' — ')}>{t.title}</h3>
-                  {dayFor === t.id ? <DueInput due={t.due} onChange={due => onTaskDue(t.id, due)} onClose={() => setDayFor(null)} /> : null}
-                </div>
-                <div className="capture-actions">
-                  <button type="button" className="row-action" onClick={() => onTaskDone(t.id)}>
-                    Done
-                  </button>
-                </div>
-              </MenuRow>
+              <SelfTaskRow
+                key={t.id}
+                t={t}
+                items={() => taskMenu(t)}
+                onDone={() => onTaskDone(t.id)}
+                onUndo={() => onTaskUndo(t.id)}
+                sub={
+                  pinned ? (
+                    <span className="sk-facts">
+                      <span className="sk-fact" title="On your Priority list">
+                        <Icon name="pin" size={14} />
+                        Pinned
+                      </span>
+                    </span>
+                  ) : undefined
+                }
+              >
+                {dayFor === t.id ? <DueInput due={t.due} onChange={due => onTaskDue(t.id, due)} onClose={() => setDayFor(null)} /> : null}
+              </SelfTaskRow>
             );
           })}
         </div>
       ) : null}
 
-      <div className="seg capture-tabs" role="tablist" aria-label="Capture status">
-        {/* Empty tabs step aside (the open one always shows), so the row stays one line. */}
+      <div className="sk-chips sk-captabs" role="tablist" aria-label="Capture status">
+        {/* Empty tabs step aside (the open one always shows). */}
         {TABS.filter(t => t.id === tab || t.id === 'inbox' || t.id === 'tasks' || counts[t.id] > 0).map(t => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={t.id === tab}
-            className={t.id === tab ? 'active' : ''}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label} <span className="seg-count">{counts[t.id]}</span>
+          <button key={t.id} type="button" role="tab" aria-selected={t.id === tab} onClick={() => setTab(t.id)}>
+            {t.label}
+            <span className="sk-chipcount">{counts[t.id]}</span>
           </button>
         ))}
       </div>
 
       {tab === 'tasks' ? (
-        <div className="capture-list">
-          {openTasks.length === 0 ? (
-            <p className="capture-empty">No Self tasks yet.</p>
-          ) : null}
+        <div className="sk-list" role="tabpanel" aria-label="Tasks">
+          {openTasks.length === 0 ? <p className="sk-empty">No Self tasks yet.</p> : null}
           {openTasks.map(t => (
-            <MenuRow className={`capture-row is-task${t.done ? ' is-done' : ''}`} key={t.id} items={() => taskMenu(t)} title={t.title}>
-              <div className="capture-main">
-                <div className="capture-meta">
-                  <span className="capture-kind kind-task">Task</span>
-                  {areaName(t.focusAreaId) ? <span className="capture-area">{areaName(t.focusAreaId)}</span> : null}
-                  {t.done ? <span>done · {shortDay(t.createdAt)}</span> : <span className="capture-ago">{ago(t.createdAt)}</span>}
-                  {t.due ? (t.done ? <span>{dueLabel(t.due)}</span> : <DueText due={t.due} />) : null}
-                  {t.forEvent ? <span className="capture-for">for {t.forEvent.title}</span> : null}
-                </div>
-                <h3>{t.title}</h3>
-                {t.detail ? <p>{t.detail}</p> : null}
-                {dayFor === t.id ? <DueInput due={t.due} onChange={due => onTaskDue(t.id, due)} onClose={() => setDayFor(null)} /> : null}
-              </div>
-              <div className="capture-actions">
-                {t.done ? (
-                  <button type="button" className="row-action ghost" onClick={() => onTaskUndo(t.id)}>
-                    Undo
-                  </button>
-                ) : (
-                  <button type="button" className="row-action" onClick={() => onTaskDone(t.id)}>
-                    Done
-                  </button>
-                )}
-              </div>
-            </MenuRow>
+            <SelfTaskRow
+              key={t.id}
+              t={t}
+              items={() => taskMenu(t)}
+              onDone={() => onTaskDone(t.id)}
+              onUndo={() => onTaskUndo(t.id)}
+              sub={
+                <>
+                  <span className="sk-facts">
+                    {areaName(t.focusAreaId) ? <span>{areaName(t.focusAreaId)}</span> : null}
+                    <span>{t.done ? `done · ${shortDay(t.createdAt)}` : ago(t.createdAt)}</span>
+                    {t.forEvent ? (
+                      <span className="sk-fact">
+                        <Icon name="calendar" size={14} />
+                        for {t.forEvent.title}
+                      </span>
+                    ) : null}
+                  </span>
+                  {t.detail ? <span className="sk-capnote">{t.detail}</span> : null}
+                </>
+              }
+            >
+              {dayFor === t.id ? <DueInput due={t.due} onChange={due => onTaskDue(t.id, due)} onClose={() => setDayFor(null)} /> : null}
+            </SelfTaskRow>
           ))}
         </div>
       ) : (
-      <div className="capture-list">
-        {visible.length === 0 ? (
-          <p className="capture-empty">{tab === 'inbox' ? 'Inbox clear.' : `Nothing ${tab}.`}</p>
-        ) : (
-          visible.map(c => {
-            const task = c.promotedTo?.source === 'self' ? selfItems.find(i => i.id === c.promotedTo?.taskId) : undefined;
-            return (
-              <article className={`capture-row is-${c.status}`} key={c.id}>
-                <div className="capture-main">
-                  <div className="capture-meta">
-                    <span className={`capture-kind kind-${c.kind}`}>{KIND_LABEL[c.kind]}</span>
-                    {areaName(c.focusAreaId) ? <span className="capture-area">{areaName(c.focusAreaId)}</span> : null}
-                    <span className="capture-ago">{ago(c.createdAt)}</span>
-                  </div>
-                  <h3>
-                    {c.url ? (
-                      <a href={c.url} target="_blank" rel="noopener noreferrer">
-                        {c.title} ↗
+        <div className="sk-list" role="tabpanel" aria-label={TABS.find(t => t.id === tab)?.label}>
+          {visible.length === 0 ? (
+            <p className="sk-empty">{tab === 'inbox' ? 'Inbox clear.' : `Nothing ${tab}.`}</p>
+          ) : (
+            visible.map(c => {
+              const task = c.promotedTo?.source === 'self' ? selfItems.find(i => i.id === c.promotedTo?.taskId) : undefined;
+              return (
+                <Row
+                  key={c.id}
+                  className={`sk-capture is-${c.status}`}
+                  title={
+                    c.url ? (
+                      <a className="sk-shelf-link" href={c.url} target="_blank" rel="noopener noreferrer">
+                        {c.title}
+                        <Icon name="external" size={14} />
                       </a>
                     ) : (
                       c.title
-                    )}
-                  </h3>
-                  {c.notes ? <p>{c.notes}</p> : null}
-                  {c.status === 'promoted' ? (
-                    <p className="capture-promoted">
-                      → Self task · {task ? (task.done ? 'done ✓' : 'open') : 'removed'}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="capture-actions">
-                  {c.status === 'inbox' || c.status === 'parked' ? (
+                    )
+                  }
+                  sub={
                     <>
-                      <button type="button" className="row-action" onClick={() => onPromote(c)}>
+                      <span className="sk-facts">
+                        {areaName(c.focusAreaId) ? <span>{areaName(c.focusAreaId)}</span> : null}
+                        <span>{ago(c.createdAt)}</span>
+                      </span>
+                      {c.notes ? <span className="sk-capnote">{c.notes}</span> : null}
+                      {c.status === 'promoted' ? (
+                        <span className="sk-capnote">Now a Self task · {task ? (task.done ? 'done' : 'open') : 'removed'}</span>
+                      ) : null}
+                    </>
+                  }
+                  value={<Tag>{KIND_LABEL[c.kind]}</Tag>}
+                >
+                  {c.status === 'inbox' || c.status === 'parked' ? (
+                    <div className="sk-ract">
+                      <button type="button" className="sk-link" onClick={() => onPromote(c)}>
                         Promote
                       </button>
-                      <button
-                        type="button"
-                        className="row-action ghost"
-                        onClick={() => onStatus(c.id, c.status === 'inbox' ? 'parked' : 'inbox')}
-                      >
+                      <button type="button" className="sk-link" onClick={() => onStatus(c.id, c.status === 'inbox' ? 'parked' : 'inbox')}>
                         {c.status === 'inbox' ? 'Park' : 'Unpark'}
                       </button>
-                      <button type="button" className="row-action ghost" onClick={() => onStatus(c.id, 'dropped')}>
+                      <button type="button" className="sk-link" onClick={() => onStatus(c.id, 'dropped')}>
                         Drop
                       </button>
-                    </>
+                    </div>
                   ) : null}
                   {c.status === 'dropped' ? (
-                    <button type="button" className="row-action ghost" onClick={() => onStatus(c.id, 'inbox')}>
-                      Restore
-                    </button>
+                    <div className="sk-ract">
+                      <button type="button" className="sk-link" onClick={() => onStatus(c.id, 'inbox')}>
+                        Restore
+                      </button>
+                    </div>
                   ) : null}
-                </div>
-              </article>
-            );
-          })
-        )}
-      </div>
+                </Row>
+              );
+            })
+          )}
+        </div>
       )}
-    </section>
+    </div>
+  );
+}
+
+/** A Self task in the kit row: circle to finish, the day as its value, everything else in the right-click / long-press menu. */
+function SelfTaskRow({
+  t,
+  items,
+  sub,
+  onDone,
+  onUndo,
+  children,
+}: {
+  t: SelfItem;
+  items: () => RowMenuItem[];
+  sub?: ReactNode;
+  onDone: () => void;
+  onUndo: () => void;
+  children?: ReactNode;
+}) {
+  const { bind, menu } = useRowMenu(items, t.title);
+  const late = Boolean(t.due && !t.done && t.due < localDay());
+  return (
+    <>
+      <Row
+        bind={bind}
+        className={t.done ? 'is-done' : undefined}
+        lead={t.done ? null : <Circle onDone={onDone} label={`Done: ${t.title}`} />}
+        title={t.title}
+        sub={sub}
+        value={t.due ? dueLabel(t.due) : undefined}
+        valueTone={late ? 'late' : undefined}
+        hint={[t.title, t.detail, 'Right-click or long-press to star, pin, set a day or move'].filter(Boolean).join(' — ')}
+      >
+        {t.done ? (
+          <div className="sk-ract">
+            <button type="button" className="sk-link" onClick={onUndo}>
+              Undo
+            </button>
+          </div>
+        ) : null}
+        {children}
+      </Row>
+      {menu}
+    </>
   );
 }

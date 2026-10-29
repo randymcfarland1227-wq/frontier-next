@@ -8,6 +8,8 @@ import { ALIGNMENT, type AlignmentItem } from '../../lib/alignment';
 import { localDayKey, useDayKey } from '../../lib/dayKey';
 import { LOCAL_WRITE_EVENT, readSaved, writeSaved } from '../../lib/storage';
 import { modeOf, routinesFor, setGoalMode, useGoalModes, type GoalModes } from '../../lib/goalModes';
+import { Dot, Group, Row, Tag } from '../sticker/kit';
+import { Icon } from '../sticker/Icon';
 
 const AFFIRMATIONS_KEY = 'lifehub-grounding-affirmations';
 const dayKey = localDayKey;
@@ -25,10 +27,12 @@ function useAffirmations() {
     const interval = window.setInterval(refresh, 30_000);
     window.addEventListener('focus', refresh);
     window.addEventListener('storage', refresh);
+    window.addEventListener(LOCAL_WRITE_EVENT, refresh);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener('focus', refresh);
       window.removeEventListener('storage', refresh);
+      window.removeEventListener(LOCAL_WRITE_EVENT, refresh);
     };
   }, []);
   const submit = (id: string, text: string): boolean => {
@@ -48,13 +52,13 @@ function useAffirmations() {
   return { day, entries: saved?.day === day ? saved.entries || {} : {}, submit };
 }
 
-/** The affirmation for one reminder: put it in your own words, press Enter. Required daily to count as reviewed. */
+/** The affirmation for one reminder: trace it in your own words over the faint guide, press Enter. Required daily to count as reviewed. */
 function AffirmationForm({ guide, reviewed, submit }: { guide: AlignmentItem; reviewed?: string; submit: (id: string, text: string) => boolean }) {
   const [draft, setDraft] = useState(reviewed || '');
   const [error, setError] = useState('');
   return (
     <form
-      className="gr-affirm"
+      className="sk-aff-form"
       aria-label={`${guide.title} affirmation`}
       onSubmit={event => {
         event.preventDefault();
@@ -68,36 +72,46 @@ function AffirmationForm({ guide, reviewed, submit }: { guide: AlignmentItem; re
         } else setError('Your affirmation couldn’t be saved. Please try again.');
       }}
     >
-      <label htmlFor={`affirmation-${guide.id}`}>{reviewed ? '✓ Affirmed today' : 'Affirmation'}</label>
-      <div className="gr-affirm-row">
-        <span className="gr-trace">
-          <span className="gr-ghost" aria-hidden="true">{guide.ghost}</span>
-          <textarea
-            id={`affirmation-${guide.id}`}
-            rows={3}
-            value={draft}
-            maxLength={1000}
-            autoComplete="off"
-            aria-invalid={!!error}
-            aria-describedby={error ? `affirmation-error-${guide.id}` : undefined}
-            onChange={event => {
-              setDraft(event.target.value);
-              setError('');
-            }}
-            onKeyDown={event => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                event.currentTarget.form?.requestSubmit();
-              }
-            }}
-          />
-        </span>
-        <button type="submit" className="gr-btn is-primary" disabled={!draft.trim() || draft.trim() === reviewed}>
-          {reviewed ? 'Update' : 'Affirm'}
-        </button>
-      </div>
+      <label className="sk-cap" htmlFor={`affirmation-${guide.id}`}>
+        {reviewed ? (
+          <>
+            <Icon name="check" size={14} /> Affirmed today
+          </>
+        ) : (
+          'In your own words'
+        )}
+      </label>
+      <span className="sk-trace">
+        {draft ? null : (
+          <span className="sk-ghost" aria-hidden="true">
+            {guide.ghost}
+          </span>
+        )}
+        <textarea
+          id={`affirmation-${guide.id}`}
+          rows={3}
+          value={draft}
+          maxLength={1000}
+          autoComplete="off"
+          aria-invalid={!!error}
+          aria-describedby={error ? `affirmation-error-${guide.id}` : undefined}
+          onChange={event => {
+            setDraft(event.target.value);
+            setError('');
+          }}
+          onKeyDown={event => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
+          }}
+        />
+      </span>
+      <button type="submit" className="sk-btn is-small" disabled={!draft.trim() || draft.trim() === reviewed}>
+        {reviewed ? 'Update' : 'Affirm'}
+      </button>
       {error ? (
-        <p id={`affirmation-error-${guide.id}`} className="gr-affirm-error" role="alert">
+        <p id={`affirmation-error-${guide.id}`} className="sk-aff-error" role="alert">
           {error}
         </p>
       ) : null}
@@ -105,22 +119,24 @@ function AffirmationForm({ guide, reviewed, submit }: { guide: AlignmentItem; re
   );
 }
 
-
-/** Collapsed-bar summary: how many reminders are affirmed today. */
+/** Section head summary: how many reminders are affirmed today. */
 export function GroundingSummary() {
   const { entries } = useAffirmations();
   const total = ALIGNMENT.length;
   const done = Object.values(entries).filter(v => v?.trim()).length;
   return (
-    <span className={`sum-chip${done >= total ? ' is-done' : ''}`}>
-      <b>{Math.min(done, total)}</b>/{total} affirmed
-    </span>
+    <>
+      {Math.min(done, total)} of {total} affirmed today
+    </>
   );
 }
 
+const MODE_LABEL = { active: 'Active', passive: 'Passive', none: 'No routine yet' } as const;
+const MODE_TONE = { active: 'done', passive: 'open', none: 'paper' } as const;
+
 /**
- * Daily grounding, top to bottom: Alignment (one box per item, each with its own affirmation, left to right)
- * → current goals as boxes by area → what unlocks the move.
+ * Daily grounding, top to bottom: Alignment (one card per reminder, each with its own affirmation)
+ * → current goals by area (opens a sheet with each goal's why and practices) → what unlocks the move.
  */
 export function DailyGrounding({ move, goals, enter }: { move?: SourceSnapshot; goals: GoalsData | null; enter: (space: SpaceId) => void }) {
   const { day, entries, submit } = useAffirmations();
@@ -139,52 +155,49 @@ export function DailyGrounding({ move, goals, enter }: { move?: SourceSnapshot; 
     writeSaved('lifehub-why-tab', 'flow');
     enter('why');
   };
+  useEffect(() => {
+    if (!openCat) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpenCat(null);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [openCat]);
 
   return (
-    <section className="grounding glass-panel" aria-label="Daily grounding">
-      <header className="gr-head">
-        <p className="section-label">Grounding</p>
-        <h2>Today</h2>
-        <p className="gr-sub">{new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-        <span className="gr-progress" aria-live="polite" aria-label={`${affirmed} of ${ALIGNMENT.length} affirmed today`}>
-          {ALIGNMENT.map(g => (
-            <i key={g.id} className={entries[g.id]?.trim() ? 'is-done' : ''} />
-          ))}
-          <b>
-            {affirmed}/{ALIGNMENT.length}
-          </b>{' '}
-          affirmed
-        </span>
-      </header>
-
+    <>
       {/* 1 · Alignment */}
-      <div className="gr-part">
-        <h3 className="gr-part-title">
-          Alignment <span>· read each one, then put it in your own words</span>
-        </h3>
-        <div className="gr-align">
+      <Group
+        tone="ground"
+        icon="sprout"
+        title="Alignment"
+        meta={
+          <span className="sk-aff-meter" aria-live="polite" aria-label={`${affirmed} of ${ALIGNMENT.length} affirmed today`}>
+            {ALIGNMENT.map(g => (
+              <i key={g.id} className={entries[g.id]?.trim() ? 'is-done' : ''} />
+            ))}
+            Read each one, then put it in your own words
+          </span>
+        }
+      >
+        <div className="sk-aff">
           {ALIGNMENT.map(item => (
-            <article key={item.id} className={`gr-item tone-${item.tone}${entries[item.id]?.trim() ? ' is-done' : ''}`} aria-label={item.title}>
-              <header>
-                <span className="gr-card-icon" aria-hidden="true">
-                  {item.icon}
-                </span>
-                <h4>{item.title}</h4>
-              </header>
-              <ul>
+            <article key={item.id} className={`sk-aff-card${entries[item.id]?.trim() ? ' is-done' : ''}`} aria-label={item.title}>
+              <h4 className="sk-hl">
+                <span aria-hidden="true">{item.icon}</span> {item.title}
+              </h4>
+              <ul className="sk-aff-lines">
                 {item.lines.map(l => (
                   <li key={l}>{l}</li>
                 ))}
               </ul>
               {item.via ? (
-                <span className="gr-via">
+                <span className="sk-aff-via">
                   {item.via.map(v => (
-                    <i key={v}>{v}</i>
+                    <Tag key={v}>{v}</Tag>
                   ))}
                 </span>
               ) : null}
               {item.link?.url ? (
-                <a className="gr-link gr-item-link" href={item.link.url} target="_blank" rel="noopener noreferrer">
+                <a className="sk-link" href={item.link.url} target="_blank" rel="noopener noreferrer">
                   {item.link.label} ↗
                 </a>
               ) : null}
@@ -192,144 +205,162 @@ export function DailyGrounding({ move, goals, enter }: { move?: SourceSnapshot; 
             </article>
           ))}
         </div>
-      </div>
+      </Group>
 
-      {/* 2 · Current goals */}
-      <div className="gr-part">
-        <h3 className="gr-part-title">
-          Current goals <span>· tap one for its why and practices</span>
-          <span className="gr-legend" aria-label="Key">
-            <span className="gr-key is-active">Active {counts.active}</span>
-            <span className="gr-key is-passive">Passive {counts.passive}</span>
-            {counts.none ? <span className="gr-key is-none">No routine yet {counts.none}</span> : null}
-          </span>
-          <button type="button" className="gr-link" onClick={openFlow}>
-            Open Flow →
-          </button>
-        </h3>
-        {goals === null ? (
-          <p className="gr-empty">Loading goals…</p>
-        ) : (
-          <>
-            <div className="gr-cats">
+      <div className="sk-cols sk-ground-cols" style={{ '--cols': 2 } as React.CSSProperties}>
+        {/* 2 · Current goals */}
+        <Group
+          tone="ground"
+          icon="target"
+          title="Current goals"
+          meta={`${counts.active} active · ${counts.passive} passive${counts.none ? ` · ${counts.none} no routine yet` : ''}`}
+          actions={
+            <button type="button" className="sk-link" onClick={openFlow}>
+              Open Flow
+              <Icon name="chevron" size={14} />
+            </button>
+          }
+        >
+          {goals === null ? (
+            <p className="sk-empty">Loading goals…</p>
+          ) : (
+            <div className="sk-list">
               {goals.categories.map(c => {
                 const list = currentGoals.filter(g => g.categoryId === c.id);
                 if (!list.length) return null;
                 return (
-                  <button key={c.id} type="button" className={`gr-cat area-${c.id}`} onClick={() => { setOpenCat(c.id); selectGoal(null); }}>
-                    <span className="gr-cat-icon" aria-hidden="true">{c.icon}</span>
-                    <span className="gr-cat-name">{c.label}</span>
-                    <span className="gr-cat-count">{list.length} goals</span>
-                  </button>
+                  <Row
+                    key={c.id}
+                    lead={<span aria-hidden="true">{c.icon}</span>}
+                    title={c.label}
+                    value={`${list.length} goal${list.length === 1 ? '' : 's'}`}
+                    hint="Each goal’s why and practices"
+                    onOpen={() => {
+                      setOpenCat(c.id);
+                      selectGoal(null);
+                    }}
+                  />
                 );
               })}
             </div>
-            {openCategory ? createPortal(
-              <div className="gr-pop-back" role="presentation" onClick={() => setOpenCat(null)}>
-                <div className={`gr-pop area-${openCategory.id}`} role="dialog" aria-label={openCategory.label} onClick={e => e.stopPropagation()}>
-                  <header>
-                    <strong><span aria-hidden="true">{openCategory.icon}</span> {openCategory.label}</strong>
-                    <button type="button" className="gr-pop-x" aria-label="Close" onClick={() => setOpenCat(null)}>✕</button>
-                  </header>
-                  <div className="gr-boxes">
-                    {popGoals.map(g => {
-                      const { mode } = modeOf(g.id, modes);
-                      return (
-                        <button key={g.id} type="button" className={`gr-gbox is-${mode || 'none'}${selectedGoal === g.id ? ' is-open' : ''}`} onClick={() => selectGoal(selectedGoal === g.id ? null : g.id)}>
-                          <span className="gr-gbox-title">{g.title}</span>
-                          <span className="gr-gbox-mode">{mode === 'active' ? 'Active' : mode === 'passive' ? 'Passive' : 'No routine yet'}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {selected && selected.categoryId === openCategory.id ? <GoalDetail goal={selected} modes={modes} close={() => selectGoal(null)} openFlow={openFlow} /> : null}
-                </div>
-              </div>,
-              document.querySelector('.frontier-shell') || document.body,
-            ) : null}
-          </>
-        )}
+          )}
+        </Group>
+
+        {/* 3 · Move */}
+        <Group
+          tone="ground"
+          icon="truck"
+          title="Move"
+          meta="What unlocks the move"
+          actions={
+            <button type="button" className="sk-link" onClick={() => enter('move')}>
+              Open Move OS
+              <Icon name="chevron" size={14} />
+            </button>
+          }
+        >
+          {moveGoals.length ? (
+            <div className="sk-list">
+              {moveGoals.map(g => (
+                <Row key={g.id} lead={<Dot tone="ground" />} title={g.title} sub={g.detail} />
+              ))}
+            </div>
+          ) : (
+            <p className="sk-empty">Open Move OS once and its goals show here.</p>
+          )}
+        </Group>
       </div>
 
-      {/* 3 · Move */}
-      <div className="gr-part">
-        <h3 className="gr-part-title">
-          Move <span>· what unlocks the move</span>
-          <button type="button" className="gr-link" onClick={() => enter('move')}>
-            Open Move OS →
-          </button>
-        </h3>
-        {moveGoals.length ? (
-          <ul className="gr-move">
-            {moveGoals.map(g => (
-              <li key={g.id}>
-                <strong>{g.title}</strong>
-                {g.detail ? <small>{g.detail}</small> : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="gr-empty">Open Move OS once and its goals show here.</p>
-        )}
-      </div>
-    </section>
+      {openCategory
+        ? createPortal(
+            <div className="sk-dialog-back" role="presentation" onClick={() => setOpenCat(null)}>
+              <div className="sk-dialog" role="dialog" aria-modal="true" aria-label={openCategory.label} onClick={e => e.stopPropagation()}>
+                <header className="sk-dialog-head">
+                  <span aria-hidden="true">{openCategory.icon}</span>
+                  <h3 className="sk-title">{openCategory.label}</h3>
+                  <button type="button" className="sk-btn is-icon is-small" aria-label="Close" onClick={() => setOpenCat(null)}>
+                    <Icon name="close" size={16} />
+                  </button>
+                </header>
+                <div className="sk-list">
+                  {popGoals.map(g => {
+                    const mode = modeOf(g.id, modes).mode || 'none';
+                    const open = selectedGoal === g.id;
+                    return (
+                      <div key={g.id}>
+                        <Row
+                          title={g.title}
+                          value={<Tag tone={MODE_TONE[mode]}>{MODE_LABEL[mode]}</Tag>}
+                          highlight={open}
+                          onOpen={() => selectGoal(open ? null : g.id)}
+                        />
+                        {open && selected ? <GoalDetail goal={selected} modes={modes} close={() => selectGoal(null)} openFlow={openFlow} /> : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>,
+            document.querySelector('.sk-app') || document.querySelector('.frontier-shell') || document.body,
+          )
+        : null}
+    </>
   );
 }
 
 const TIER_LABEL: Record<string, string> = { drive: 'Drives it', enable: 'Makes it easier', upkeep: 'Keeps it up' };
 
-/** The opened goal, under its area row: your why and how, active or passive, and the Flow routines behind it. */
+/** The opened goal, under its row: your why and how, active or passive, and the Flow routines behind it. */
 function GoalDetail({ goal, modes, close, openFlow }: { goal: Goal; modes: GoalModes; close: () => void; openFlow: () => void }) {
   const { mode, mine } = modeOf(goal.id, modes);
   const routines = routinesFor(goal.id);
   const tiers = ['drive', 'enable', 'upkeep'].map(t => ({ t, list: routines.filter(r => r.tier === t) })).filter(x => x.list.length);
   return (
-    <div className="gr-goal">
-      <div className="gr-goal-head">
-        <strong>{goal.title}</strong>
-        <span className="gr-mode" role="group" aria-label={`${goal.title}: active or passive`}>
+    <div className="sk-goal">
+      <div className="sk-goal-head">
+        <span className="sk-seg" role="group" aria-label={`${goal.title}: active or passive`}>
           {(['active', 'passive'] as const).map(m => (
-            <button key={m} type="button" className={mode === m ? 'is-on' : ''} aria-pressed={mode === m} onClick={() => setGoalMode(goal.id, m)}>
+            <button key={m} type="button" aria-pressed={mode === m} onClick={() => setGoalMode(goal.id, m)}>
               {m === 'active' ? 'Active' : 'Passive'}
             </button>
           ))}
         </span>
-        <small className="gr-mode-src">{mine ? 'your call' : mode ? 'from Flow' : 'no routine yet — pick one'}</small>
+        <span className="sk-cap">{mine ? 'Your call' : mode ? 'From Flow' : 'No routine yet — pick one'}</span>
         {mine ? (
-          <button type="button" className="gr-link" onClick={() => setGoalMode(goal.id, null)}>
+          <button type="button" className="sk-link" onClick={() => setGoalMode(goal.id, null)}>
             Use Flow’s
           </button>
         ) : null}
-        <button type="button" className="gr-link gr-goal-close" onClick={close} aria-label={`Close ${goal.title}`}>
-          ✕
+        <button type="button" className="sk-link sk-goal-close" onClick={close} aria-label={`Close ${goal.title}`}>
+          <Icon name="close" size={14} />
         </button>
       </div>
-      {goal.why ? <p className="gr-goal-why">{goal.why}</p> : null}
+      {goal.why ? <p className="sk-goal-why">{goal.why}</p> : null}
       {goal.how ? (
-        <p className="gr-goal-how">
+        <p className="sk-goal-how">
           <b>How:</b> {goal.how}
         </p>
       ) : null}
       {tiers.length ? (
-        <div className="gr-goal-tiers">
+        <dl className="sk-goal-tiers">
           {tiers.map(({ t, list }) => (
-            <div key={t} className={`gr-tier tier-${t}`}>
-              <span className="gr-tier-name">{TIER_LABEL[t] || t}</span>
-              <span className="gr-tier-list">
+            <div key={t}>
+              <dt className="sk-cap">{TIER_LABEL[t] || t}</dt>
+              <dd>
                 {list.map(r => (
-                  <span key={r.id} className="gr-routine" title={r.when}>
+                  <Tag key={r.id} tone="habit" hint={r.when}>
                     {r.title}
-                  </span>
+                  </Tag>
                 ))}
-              </span>
+              </dd>
             </div>
           ))}
-        </div>
+        </dl>
       ) : (
-        <p className="gr-goal-how">
+        <p className="sk-goal-how">
           Nothing in Flow drives this yet.{' '}
-          <button type="button" className="gr-link" onClick={openFlow}>
-            Link a routine in Flow →
+          <button type="button" className="sk-link" onClick={openFlow}>
+            Link a routine in Flow
           </button>
         </p>
       )}

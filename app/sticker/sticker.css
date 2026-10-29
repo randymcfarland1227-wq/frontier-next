@@ -304,7 +304,64 @@
 .sk-app .sk-sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sk-s2); }
 
 /* ---------------- compact widths ---------------- */
+/* ---- Grounding ---- */
+.sk-app .sk-aff-meter { display: inline-flex; align-items: center; gap: 4px; }
+.sk-app .sk-aff-meter i { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--sk-edge); }
+.sk-app .sk-aff-meter i.is-done { background: var(--sk-done); }
+.sk-app .sk-aff-meter i:last-of-type { margin-right: 6px; }
+.sk-app .sk-aff { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--sk-s3); }
+.sk-app .sk-aff-card {
+  display: flex; flex-direction: column; gap: var(--sk-s2); min-width: 0; padding: var(--sk-s3);
+  background: var(--sk-paper); border: 1.5px solid var(--sk-line); border-radius: 12px;
+}
+.sk-app .sk-aff-card.is-done { background: color-mix(in srgb, var(--sk-done) 35%, var(--sk-paper)); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-aff-card.is-done { background: color-mix(in srgb, var(--sk-done) 12%, var(--sk-paper)); }
+.sk-app .sk-aff-card > .sk-hl { margin: 0; }
+.sk-app .sk-aff-lines { margin: 0; padding-left: 1.1em; font: var(--sk-secondary); color: var(--sk-ink-2); display: grid; gap: 2px; }
+.sk-app .sk-aff-via { display: flex; flex-wrap: wrap; gap: 4px; }
+.sk-app .sk-aff-card .sk-link { align-self: flex-start; margin: -7px -6px; }
+.sk-app .sk-aff-form { margin-top: auto; display: grid; gap: 6px; justify-items: start; }
+.sk-app .sk-aff-form > .sk-cap { display: inline-flex; align-items: center; gap: 4px; color: var(--sk-ink-2); }
+.sk-app .sk-trace { display: grid; width: 100%; }
+.sk-app .sk-trace > * { grid-area: 1 / 1; }
+.sk-app .sk-ghost, .sk-app .sk-trace textarea {
+  font: var(--sk-body); line-height: 1.5; padding: 4px 0; margin: 0; width: 100%; box-sizing: border-box; letter-spacing: 0;
+}
+/* The guide sits in the same grid cell as the textarea, so the box is always tall enough to trace all of it. */
+.sk-app .sk-ghost { color: var(--sk-ink-2); opacity: .55; pointer-events: none; white-space: pre-wrap; border-bottom: 2px solid transparent; }
+.sk-app .sk-trace textarea {
+  display: block; resize: vertical; min-height: 3.2em; height: 100%; field-sizing: content; color: var(--sk-ink); background: transparent;
+  border: 0; border-bottom: 2px dashed var(--sk-edge); border-radius: 0; outline: none;
+}
+.sk-app .sk-trace textarea:focus-visible { border-bottom-style: solid; border-bottom-color: var(--sk-tint); }
+.sk-app .sk-aff-error { margin: 0; font: var(--sk-secondary); color: var(--sk-alert-ink); }
+
+.sk-app .sk-ground-cols { margin-top: var(--sk-s4); align-items: start; }
+.sk-app .sk-ground-cols > .sk-group { margin: 0; }
+
+/* Goal sheet: a dialog over Home. Flat outlined panel; its rows and buttons carry the press cues. */
+.sk-app .sk-dialog-back { position: fixed; inset: 0; z-index: 60; background: #16141f66; display: grid; place-items: center; padding: var(--sk-s4); }
+.sk-app .sk-dialog {
+  width: min(560px, 100%); max-height: 85vh; overflow: auto; background: var(--sk-paper); color: var(--sk-ink);
+  border: 2px solid var(--sk-edge); border-radius: 18px; padding: var(--sk-s4) var(--sk-s5) var(--sk-s5);
+}
+.sk-app .sk-dialog-head { display: flex; align-items: center; gap: var(--sk-s2); margin-bottom: var(--sk-s3); }
+.sk-app .sk-dialog-head .sk-title { margin: 0; flex: 1; }
+.sk-app .sk-goal { margin: 0 0 var(--sk-s3) 0; padding: var(--sk-s3) var(--sk-s4); background: var(--sk-side); border-radius: 12px; display: grid; gap: var(--sk-s2); }
+.sk-app .sk-goal-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sk-s2) var(--sk-s3); }
+.sk-app .sk-goal-head > .sk-cap { color: var(--sk-ink-2); }
+.sk-app .sk-goal-close { margin-left: auto; }
+.sk-app .sk-goal-why, .sk-app .sk-goal-how { margin: 0; font: var(--sk-secondary); color: var(--sk-ink); max-width: var(--sk-measure); }
+.sk-app .sk-goal-tiers { margin: 0; display: grid; gap: var(--sk-s2); }
+.sk-app .sk-goal-tiers dt { color: var(--sk-ink-2); margin-bottom: 2px; }
+.sk-app .sk-goal-tiers dd { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.sk-app .sk-seg { display: inline-flex; border: 2px solid var(--sk-edge); border-radius: 10px; overflow: hidden; box-shadow: 2px 2px 0 var(--sk-edge); }
+.sk-app .sk-seg button { font: var(--sk-label); font-size: 14px; min-height: 32px; padding: 4px 12px; background: var(--sk-paper); color: var(--sk-ink); border: 0; cursor: pointer; }
+.sk-app .sk-seg button + button { border-left: 2px solid var(--sk-edge); }
+.sk-app .sk-seg button[aria-pressed="true"] { background: var(--sk-ink); color: var(--sk-paper); }
+
 @media (max-width: 1200px) {
+  .sk-app .sk-aff { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sk-app .sk-cols { grid-template-columns: repeat(min(var(--cols, 3), 2), minmax(0, 1fr)); }
   .sk-app .sk-doing-cols { grid-template-columns: 1fr; }
 }
@@ -325,6 +382,7 @@
   .sk-app .sk-ev-name { display: none; }
 }
 @media (max-width: 700px) {
+  .sk-app .sk-aff { grid-template-columns: 1fr; }
   .sk-app .sk-cols, .sk-app .sk-deck-grid { grid-template-columns: 1fr; }
   .sk-app .sk-top .sk-btn.is-prominent { width: 100%; justify-content: center; }
   .sk-app .sk-ghead-actions { width: 100%; }

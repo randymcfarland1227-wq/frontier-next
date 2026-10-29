@@ -289,15 +289,13 @@ export function HomeView({
         <PriorityBoard snapshots={snapshots} enter={id => enter(id)} onComplete={payFromPriority} bills={bills.filter(b => !b.skipped)} />
       </Section>
 
-      <div className="sk-classic" aria-label="Not rebuilt yet">
       {grounding ? (
-        <section className="source-row" aria-label="Daily grounding">
-          <Collapsible id="grounding" label="Grounding" title="Daily grounding" tone="grounding" icon="🌱" summary={<GroundingSummary />}>
-            {grounding}
-          </Collapsible>
-        </section>
+        <Section id="grounding" title="Grounding" summary={<GroundingSummary />}>
+          {grounding}
+        </Section>
       ) : null}
 
+      <div className="sk-classic" aria-label="Not rebuilt yet">
       <section className="source-row" aria-label="Schedule">
         <Collapsible id="schedule" label="Schedule" title="Calendar" tone="schedule" icon="▦" summary={<ScheduleSummary schedule={schedule} bills={bills} />}>
           <ScheduleSection schedule={schedule} bills={bills} onBillPaid={onBillPaid} tasks={calTasks} onTaskDone={onTaskDone} onAddPrep={onAddPrep} />

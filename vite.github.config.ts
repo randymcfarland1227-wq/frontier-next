@@ -2,7 +2,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "/frontier/",
+  // The deploy workflow sets PAGES_BASE from the repo name, so frontier and frontier-next share this file.
+  base: process.env.PAGES_BASE || "/frontier/",
   plugins: [
     {
       name: "frontier-static-css",

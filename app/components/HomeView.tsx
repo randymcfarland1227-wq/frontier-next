@@ -72,23 +72,7 @@ function ScheduleSummary({ schedule, bills }: { schedule: ScheduleSnapshot | nul
     plans.filter(p => p.status === 'open').length +
     events.filter(e => (e.myStatus === 'invited' || e.myStatus === 'maybe') && eventStart(e) >= addDays(today, -1)).length;
   const soon = bills.filter(b => b.days <= 3 && !(b.bill.kind && b.days < 0)).length;
-  return (
-    <>
-      <span className="sum-chip">
-        <b>{todayCount}</b> today
-      </span>
-      {maybes ? (
-        <span className="sum-chip">
-          <b>{maybes}</b> not confirmed
-        </span>
-      ) : null}
-      {soon ? (
-        <span className="sum-chip is-critical">
-          <b>{soon}</b> {soon === 1 ? 'payment' : 'payments'} due soon
-        </span>
-      ) : null}
-    </>
-  );
+  return <>{[`${todayCount} today`, maybes ? `${maybes} to confirm` : null, soon ? `${soon} ${soon === 1 ? 'payment' : 'payments'} due soon` : null].filter(Boolean).join(' · ')}</>;
 }
 
 /** "TickTick 17 · Gmail 5" — one chip per site in a row, for its section bar. */
@@ -295,12 +279,11 @@ export function HomeView({
         </Section>
       ) : null}
 
+      <Section id="schedule" title="Schedule" summary={<ScheduleSummary schedule={schedule} bills={bills} />}>
+        <ScheduleSection schedule={schedule} bills={bills} onBillPaid={onBillPaid} tasks={calTasks} onTaskDone={onTaskDone} onAddPrep={onAddPrep} />
+      </Section>
+
       <div className="sk-classic" aria-label="Not rebuilt yet">
-      <section className="source-row" aria-label="Schedule">
-        <Collapsible id="schedule" label="Schedule" title="Calendar" tone="schedule" icon="▦" summary={<ScheduleSummary schedule={schedule} bills={bills} />}>
-          <ScheduleSection schedule={schedule} bills={bills} onBillPaid={onBillPaid} tasks={calTasks} onTaskDone={onTaskDone} onAddPrep={onAddPrep} />
-        </Collapsible>
-      </section>
 
       <section className="source-row" aria-label="Focus">
         <Collapsible id="focus" label="Focus" title="Focus now" labelHeader tone="self" icon="✧">

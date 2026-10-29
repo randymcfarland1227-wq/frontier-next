@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type HTMLAttributes, type ReactNode } from 'react';
 import { useFold } from '../components/Collapsible';
 import { Icon, type IconName } from './Icon';
 
@@ -92,7 +92,8 @@ export function ListHead({ title, meta, children }: { title: ReactNode; meta?: R
 
 /**
  * The one row anatomy: [lead check/dot] [title / subtitle] [trailing value] [chevron if it opens].
- * With `onOpen` the whole row is one button.
+ * With `onOpen` the whole row is one button. `children` (actions, a form) span a full-width line
+ * under it; with both, only the title opens. `bind` spreads gesture handlers (right-click menus).
  */
 export function Row({
   lead,
@@ -103,6 +104,9 @@ export function Row({
   onOpen,
   hint,
   highlight,
+  className,
+  bind,
+  children,
 }: {
   lead?: ReactNode;
   title: ReactNode;
@@ -112,25 +116,39 @@ export function Row({
   onOpen?: () => void;
   hint?: string;
   highlight?: boolean;
+  className?: string;
+  bind?: HTMLAttributes<HTMLElement>;
+  children?: ReactNode;
 }) {
+  const split = Boolean(onOpen && children);
+  const main = (
+    <>
+      <span className="sk-rt">{title}</span>
+      {sub ? <span className="sk-rs">{sub}</span> : null}
+    </>
+  );
   const body = (
     <>
       <span className="sk-rlead">{lead}</span>
-      <span className="sk-rmain">
-        <span className="sk-rt">{title}</span>
-        {sub ? <span className="sk-rs">{sub}</span> : null}
-      </span>
+      {split ? (
+        <button type="button" className="sk-rmain" onClick={onOpen} title={hint}>
+          {main}
+        </button>
+      ) : (
+        <span className="sk-rmain">{main}</span>
+      )}
       <span className={`sk-rv${valueTone ? ` is-${valueTone}` : ''}`}>{value}</span>
       {onOpen ? <Icon name="chevron" className="sk-rchev" size={14} /> : <span />}
+      {children}
     </>
   );
-  const cls = `sk-row${highlight ? ' is-needs' : ''}`;
-  return onOpen ? (
-    <button type="button" className={cls} onClick={onOpen} title={hint}>
+  const cls = `sk-row${highlight ? ' is-needs' : ''}${className ? ` ${className}` : ''}`;
+  return onOpen && !split ? (
+    <button type="button" className={cls} onClick={onOpen} title={hint} {...bind}>
       {body}
     </button>
   ) : (
-    <div className={cls} title={hint}>
+    <div className={cls} title={split ? undefined : hint} {...bind}>
       {body}
     </div>
   );

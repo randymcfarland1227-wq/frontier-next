@@ -31,10 +31,12 @@ import { EVENTS_AHEAD_DAYS, eventDaysAway, eventTone, eventIcon, isAppointmentTi
 import { readSaved, writeSaved } from '../../lib/storage';
 import { BillsList } from './BillsList';
 import { BillPinButton, useBillPin } from './BillControls';
-import { MenuRow, useRowMenu } from './RowMenu';
-import { DaysBadge } from './BillsList';
+import { useRowMenu } from './RowMenu';
+import { BillChangeForm, FlagBadges, billChangeText } from './BillControls';
+import { Circle, Dot, Group, ListHead, Row } from '../sticker/kit';
+import { Icon } from '../sticker/Icon';
 import { isOverdue } from '../../lib/billEdits';
-import { CalendarView, SEASON, type CalItem } from './CalendarView';
+import { CalendarView, type CalItem } from './CalendarView';
 
 const PLAN_COLOR = '#7b4a68';
 const EVENT_COLOR = '#b4532a';
@@ -77,16 +79,16 @@ function PrepList({
   const [due, setDue] = useState(() => prepDefault(target.date));
   if (!onAdd && !tasks.length) return null;
   return (
-    <div className="prep">
+    <div className="sk-prep">
       {tasks.length ? (
-        <ul className="prep-list">
+        <ul className="sk-prep-list">
           {tasks.map(t => (
             <li key={t.id} className={t.done ? 'is-done' : ''}>
-              <label>
+              <label className="sk-check">
                 <input type="checkbox" checked={t.done} disabled={!onDone || !t.selfId} onChange={() => onDone?.(t)} />
                 <span>{t.title}</span>
               </label>
-              <small>{t.date === target.date ? 'same day' : dayName(fromDayKey(t.date))}</small>
+              <span className="sk-cap">{t.date === target.date ? 'Same day' : dayName(fromDayKey(t.date))}</span>
             </li>
           ))}
         </ul>
@@ -94,7 +96,7 @@ function PrepList({
       {onAdd ? (
         adding ? (
           <form
-            className="prep-add"
+            className="sk-form is-inline"
             onSubmit={e => {
               e.preventDefault();
               if (!title.trim()) return;
@@ -105,16 +107,17 @@ function PrepList({
           >
             <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="What needs doing first? e.g. Change oil" aria-label="Prep task" />
             <input type="date" value={due} max={target.date} onChange={e => setDue(e.target.value)} aria-label="Do it by" title="Do it by" />
-            <button type="submit" className="row-action" disabled={!title.trim()}>
+            <button type="submit" className="sk-btn is-small" disabled={!title.trim()}>
               Add
             </button>
-            <button type="button" className="row-action ghost" onClick={() => setAdding(false)}>
+            <button type="button" className="sk-btn is-small" onClick={() => setAdding(false)}>
               Cancel
             </button>
           </form>
         ) : (
-          <button type="button" className="prep-open" onClick={() => setAdding(true)}>
-            + Prep task{tasks.length ? '' : ' (something to do before this)'}
+          <button type="button" className="sk-link" onClick={() => setAdding(true)}>
+            <Icon name="plus" size={14} />
+            Prep Task{tasks.length ? '' : ' (something to do before this)'}
           </button>
         )
       ) : null}
@@ -165,7 +168,7 @@ function PlanForm({ onDone, date: initialDate }: { onDone: () => void; date?: st
   };
   return (
     <form
-      className="plan-form"
+      className="sk-form"
       onSubmit={submit}
       onKeyDown={e => {
         if (e.key !== 'Escape') return;
@@ -173,31 +176,31 @@ function PlanForm({ onDone, date: initialDate }: { onDone: () => void; date?: st
         onDone();
       }}
     >
-      <label className="plan-form-wide">
+      <label className="sk-field is-wide">
         <span>What</span>
         <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Jess's birthday dinner" required />
       </label>
-      <label>
+      <label className="sk-field">
         <span>Day</span>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
       </label>
-      <label>
+      <label className="sk-field">
         <span>From</span>
         <input type="time" value={from} onChange={e => setFrom(e.target.value)} />
       </label>
-      <label>
+      <label className="sk-field">
         <span>To</span>
         <input type="time" value={to} onChange={e => setTo(e.target.value)} />
       </label>
-      <label className="plan-form-wide">
+      <label className="sk-field is-wide">
         <span>Who asked / notes</span>
         <input value={note} onChange={e => setNote(e.target.value)} placeholder="Optional" />
       </label>
-      <div className="plan-form-actions">
-        <button type="submit" className="row-action">
+      <div className="sk-form-actions">
+        <button type="submit" className="sk-btn is-small">
           Add maybe
         </button>
-        <button type="button" className="row-action ghost" onClick={onDone}>
+        <button type="button" className="sk-btn is-small" onClick={onDone}>
           Cancel
         </button>
       </div>
@@ -206,19 +209,25 @@ function PlanForm({ onDone, date: initialDate }: { onDone: () => void; date?: st
 }
 
 /** "TOM" / "SAT" over "Oct 24": a narrow date column so the bill names get the room. */
-function AgendaDay({ day }: { day: Date }) {
-  const diff = Math.round((startOfDay(day).getTime() - startOfDay(new Date()).getTime()) / 86400000);
-  const top = diff === 0 ? 'TODAY' : diff === 1 ? 'TOM' : day.toLocaleDateString([], { weekday: 'short' }).toUpperCase();
-  return (
-    <>
-      <b>{top}</b>
-      <small>{day.toLocaleDateString([], { month: 'short', day: 'numeric' })}</small>
-    </>
-  );
+/** "Today" / "Tomorrow" / "Thu 29" — the day part of a row's subtitle. */
+function shortDay(k: string) {
+  const d = fromDayKey(k);
+  const diff = Math.round((startOfDay(d).getTime() - startOfDay(new Date()).getTime()) / 86400000);
+  return diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `${d.toLocaleDateString([], { weekday: 'short' })} ${d.getDate()}`;
 }
 
-/** A bill in Upcoming: small kind tag, name, amount. Pay ↗ / Pin live on right-click (long-press). */
-function AgendaBill({ due }: { due: BillDue }) {
+/** How far off an event is, for the trailing value. */
+function awayText(days: number) {
+  return days < 0 ? 'Now' : days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`;
+}
+
+/** The item's own colour (Google calendar, bill kind, task) as the row's lead. */
+function EvDot({ color }: { color?: string }) {
+  return <span className="sk-evdot" style={color ? ({ '--ev': color } as React.CSSProperties) : undefined} aria-hidden="true" />;
+}
+
+/** A bill in Upcoming: name, kind, amount. Pay ↗ / Pin live on right-click (long-press). */
+function UpcomingBill({ due, onShow }: { due: BillDue; onShow: (date: string) => void }) {
   const pin = useBillPin(due);
   const { bind, menu } = useRowMenu(
     () => [
@@ -229,27 +238,31 @@ function AgendaBill({ due }: { due: BillDue }) {
   );
   const b = due.bill;
   return (
-    <li {...bind}>
-      <span
-        className={`agenda-item agenda-bill${b.kind ? ` is-money kind-${b.kind}` : ''}${due.skipped ? ' is-skipped' : due.days <= 3 && !b.kind ? ' is-soon' : ''}`}
-        style={{ '--ev': billColor(due) } as React.CSSProperties}
-        title={[moneyTag(due), b.name, money(b.amount), b.notes].filter(Boolean).join(' · ')}
-      >
-        <span className="agenda-time agenda-kind">{due.skipped ? 'Skip' : moneyTag(due)}</span>
-        <span className="agenda-title">
-          <span className="agenda-name">{b.name}</span>
-          <span className="agenda-sub">
-            {[money(b.amount), due.skipped ? due.editNote : '', b.payBy ? `Pay by ${fromDayKey(b.payBy).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : ''].filter(Boolean).join(' · ')}
-          </span>
-        </span>
-      </span>
+    <>
+      <Row
+        bind={bind}
+        className={due.skipped ? 'is-skipped' : undefined}
+        lead={<EvDot color={billColor(due)} />}
+        title={b.name}
+        sub={[
+          shortDay(due.due),
+          due.skipped ? ['Skipped', due.editNote].filter(Boolean).join(' · ') : moneyTag(due),
+          b.payBy ? `Pay by ${fromDayKey(b.payBy).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+        value={money(b.amount)}
+        valueTone="amt"
+        hint={[moneyTag(due), b.name, money(b.amount), b.notes, 'Right-click or long-press for Pay and Pin'].filter(Boolean).join(' · ')}
+        onOpen={() => onShow(due.due)}
+      />
       {menu}
-    </li>
+    </>
   );
 }
 
-/** Upcoming: the next 7 days, grouped by day. With `bills`, bills sit on their due day too. */
-function Agenda({
+/** Upcoming: the next 7 days as one list. With `bills` / `tasks`, those sit on their due day too. */
+function Upcoming({
   events,
   bills,
   tasks,
@@ -267,14 +280,14 @@ function Agenda({
   const today = startOfDay(new Date());
   const now = new Date();
   const weekOut = addDays(today, 8);
-  type Row = { key: string; day: string; sort: number; event?: CalEvent; bill?: BillDue; task?: CalTask };
-  const rows: Row[] = events
+  type UpRow = { key: string; day: string; sort: number; event?: CalEvent; bill?: BillDue; task?: CalTask };
+  const rows: UpRow[] = events
     .filter(e => isConfirmed(e) && eventEnd(e) > now && eventStart(e) < weekOut)
     .map(e => {
       const day = dayKey(eventStart(e) < today ? today : eventStart(e));
       return { key: e.id, day, sort: e.allDay ? 0 : eventStart(e).getTime(), event: e };
     });
-  // Bills due this week. Past ones aren't here: unpaid ones are in the Overdue box below.
+  // Bills due this week. Past ones aren't here: unpaid ones are in Overdue below.
   for (const b of bills || []) {
     if (b.days > 7 || b.days < 0) continue;
     rows.push({ key: b.key, day: b.due, sort: -1, bill: b });
@@ -286,53 +299,35 @@ function Agenda({
     rows.push({ key: `task:${t.id}`, day: t.date, sort: -2, task: t });
   }
   rows.sort((a, b) => a.day.localeCompare(b.day) || a.sort - b.sort);
-  const shown = rows.slice(0, limit);
-  const byDay = new Map<string, Row[]>();
-  for (const r of shown) byDay.set(r.day, [...(byDay.get(r.day) || []), r]);
 
   if (!rows.length) {
-    return <p className="sched-empty">{schedule ? 'Nothing coming up this week.' : 'Shows your next 7 days once Google Calendar is connected.'}</p>;
+    return <p className="sk-empty">{schedule ? 'Nothing coming up this week.' : 'Shows your next 7 days once Google Calendar is connected.'}</p>;
   }
   return (
-    <ol className="agenda">
-      {[...byDay.entries()].map(([k, list]) => (
-        <li key={k}>
-          <button type="button" className="agenda-day" onClick={() => onShow(k)} title={dayName(fromDayKey(k))}>
-            <AgendaDay day={fromDayKey(k)} />
-          </button>
-          <ul>
-            {list.map(r =>
-              r.task ? (
-                <li key={r.key}>
-                  <button type="button" className="agenda-item agenda-task" style={{ '--ev': TASK_COLOR } as React.CSSProperties} onClick={() => onShow(r.day)}>
-                    <span className="agenda-time">Task</span>
-                    <span className="agenda-title">
-                      {r.task.title}
-                      {r.task.forEvent ? <span className="agenda-sub"> · for {r.task.forEvent.title}</span> : null}
-                    </span>
-                  </button>
-                </li>
-              ) : r.event ? (
-                <li key={r.key}>
-                  <button
-                    type="button"
-                    className="agenda-item"
-                    style={r.event.color ? ({ '--ev': r.event.color } as React.CSSProperties) : undefined}
-                    onClick={() => onShow(r.day, r.event!.id)}
-                  >
-                    <span className="agenda-time">{r.event.allDay ? 'All day' : timeLabel(eventStart(r.event))}</span>
-                    <span className="agenda-title">{r.event.title}</span>
-                  </button>
-                </li>
-              ) : (
-                <AgendaBill key={r.key} due={r.bill!} />
-              ),
-            )}
-          </ul>
-        </li>
-      ))}
-      {rows.length > limit ? <li className="sched-more">+{rows.length - limit} more this week — open a day on the calendar</li> : null}
-    </ol>
+    <>
+      {rows.slice(0, limit).map(r =>
+        r.task ? (
+          <Row
+            key={r.key}
+            lead={<Icon name="todo" size={14} />}
+            title={r.task.title}
+            sub={[shortDay(r.day), 'Task', r.task.forEvent ? `for ${r.task.forEvent.title}` : ''].filter(Boolean).join(' · ')}
+            onOpen={() => onShow(r.day)}
+          />
+        ) : r.event ? (
+          <Row
+            key={r.key}
+            lead={<EvDot color={r.event.color} />}
+            title={r.event.title}
+            sub={`${shortDay(r.day)} · ${r.event.allDay ? 'All day' : timeLabel(eventStart(r.event))}`}
+            onOpen={() => onShow(r.day, r.event!.id)}
+          />
+        ) : (
+          <UpcomingBill key={r.key} due={r.bill!} onShow={onShow} />
+        ),
+      )}
+      {rows.length > limit ? <p className="sk-sec sk-sched-more">{rows.length - limit} more this week — open a day on the calendar.</p> : null}
+    </>
   );
 }
 
@@ -361,7 +356,7 @@ function EventForm({ onDone, appt }: { onDone: () => void; appt?: boolean }) {
   };
   return (
     <form
-      className="plan-form"
+      className="sk-form"
       onSubmit={submit}
       onKeyDown={e => {
         if (e.key !== 'Escape') return;
@@ -369,29 +364,29 @@ function EventForm({ onDone, appt }: { onDone: () => void; appt?: boolean }) {
         onDone();
       }}
     >
-      <label className="plan-form-wide">
+      <label className="sk-field is-wide">
         <span>{appt ? 'Appointment' : 'Event'}</span>
         <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder={appt ? 'e.g. Dentist — cleaning' : 'e.g. Trip to Morgantown'} required />
       </label>
-      <label>
+      <label className="sk-field">
         <span>{appt ? 'Date' : 'From'}</span>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
       </label>
       {appt ? null : (
-        <label>
+        <label className="sk-field">
           <span>To (optional)</span>
           <input type="date" value={endDate} min={date} onChange={e => setEndDate(e.target.value)} />
         </label>
       )}
-      <label className="plan-form-wide">
+      <label className="sk-field is-wide">
         <span>Note</span>
         <input value={note} onChange={e => setNote(e.target.value)} placeholder={appt ? 'Time, place — optional' : 'Optional'} />
       </label>
-      <div className="plan-form-actions">
-        <button type="submit" className="row-action">
+      <div className="sk-form-actions">
+        <button type="submit" className="sk-btn is-small">
           {appt ? 'Add appointment' : 'Add event'}
         </button>
-        <button type="button" className="row-action ghost" onClick={onDone}>
+        <button type="button" className="sk-btn is-small" onClick={onDone}>
           Cancel
         </button>
       </div>
@@ -401,17 +396,21 @@ function EventForm({ onDone, appt }: { onDone: () => void; appt?: boolean }) {
 
 /**
  * Events: trips, parties, showers, appointments… over the next few months, apart from the
- * everyday calendar. Google events are picked automatically (see lib/events.ts); ✕ hides one,
- * ☆ in a day's pop-out adds one, and "+ Add an event" covers things not in Google Calendar.
+ * everyday calendar. Google events are picked automatically (see lib/events.ts); Remove (right-click)
+ * hides one, ☆ in a day's pop-out adds one, and Add Event covers things not in Google Calendar.
  */
+type EvRow = { id: string; title: string; slot: Slot; note?: string; url?: string; plan?: Plan };
+
 function EventsList({
   list = 'event',
+  title,
   events,
   plans,
   onShow,
   onDropPlan,
 }: {
   list?: ListKind;
+  title: string;
   events: CalEvent[];
   plans: Plan[];
   onShow: (date: string, id?: string) => void;
@@ -422,8 +421,7 @@ function EventsList({
   const [adding, setAdding] = useState(false);
   const now = new Date();
   const horizon = addDays(startOfDay(now), EVENTS_AHEAD_DAYS);
-  type Row = { id: string; title: string; slot: Slot; note?: string; url?: string; plan?: Plan };
-  const rows: Row[] = [
+  const rows: EvRow[] = [
     ...events
       .filter(e => listKindOf(e, marks) === list && eventEnd(e) > now && eventStart(e) < horizon)
       .map(e => ({ id: e.id, title: e.title, slot: e as Slot, note: e.location, url: e.url })),
@@ -435,89 +433,132 @@ function EventsList({
 
   return (
     <>
-      {rows.length ? (
-        <ul className="events-list">
-          {rows.map(r => {
-            const start = eventStart(r.slot);
-            const days = eventDaysAway(start, now);
-            const where = appt ? 'Appointments' : 'Events';
-            return (
-              <MenuRow
-                as="li"
-                key={r.id}
-                className={`event-row ${eventTone(start, now)}`}
-                title={r.title}
-                items={[
-                  { label: 'Add to Google Calendar ↗', href: googleCalendarLink({ title: r.title, ...r.slot, details: r.note }), hidden: !r.plan },
-                  { label: `Remove from ${where}`, danger: true, onSelect: () => (r.plan ? onDropPlan(r.plan) : setEventMark(r.id, 'hide')) },
-                ]}
-              >
-                <button type="button" className="event-main" onClick={() => onShow(dayKey(start < startOfDay(now) ? now : start), r.id)} title={[r.title, r.note].filter(Boolean).join(' — ')}>
-                  <span className="event-icon" aria-hidden="true">
-                    {eventIcon(r.title)}
-                  </span>
-                  <span className="event-text">
-                    <strong>{r.title}</strong>
-                    <span className="event-when">{eventDates(r.slot)}</span>
-                  </span>
-                  <span className="event-soon">
-                    <DaysBadge days={days} />
-                  </span>
-                </button>
-              </MenuRow>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="sched-empty">
-          {appt ? 'No appointments coming up.' : 'No trips or events coming up. Add one, or press ☆ on anything in a day\'s pop-out.'}
-        </p>
-      )}
-      {adding ? (
-        <EventForm appt={appt} onDone={() => setAdding(false)} />
-      ) : (
-        <button type="button" className="sched-add" onClick={() => setAdding(true)}>
-          {appt ? '+ Add an appointment' : '+ Add an event'}
+      <ListHead title={title} meta={rows.length || undefined}>
+        <button type="button" className="sk-link" onClick={() => setAdding(true)} aria-expanded={adding}>
+          <Icon name="plus" size={14} />
+          {appt ? 'Add Appointment' : 'Add Event'}
         </button>
-      )}
+      </ListHead>
+      {adding ? <EventForm appt={appt} onDone={() => setAdding(false)} /> : null}
+      {rows.length
+        ? rows.map(r => <EventRow key={r.id} r={r} appt={appt} now={now} onShow={onShow} onDropPlan={onDropPlan} />)
+        : adding
+          ? null
+          : <p className="sk-empty">{appt ? 'No appointments coming up.' : 'No trips or events coming up. Add one, or press ☆ on anything in a day\'s pop-out.'}</p>}
     </>
   );
 }
 
-/** Bills past their day and not marked paid (or skipped), under Upcoming. Hidden when there are none. */
-function OverdueBox({ bills, onBillPaid }: { bills: BillDue[]; onBillPaid: (due: BillDue) => void }) {
+function EventRow({ r, appt, now, onShow, onDropPlan }: { r: EvRow; appt: boolean; now: Date; onShow: (date: string, id?: string) => void; onDropPlan: (p: Plan) => void }) {
+  const start = eventStart(r.slot);
+  const where = appt ? 'Appointments' : 'Events';
+  const { bind, menu } = useRowMenu(
+    () => [
+      { label: 'Add to Google Calendar ↗', href: googleCalendarLink({ title: r.title, ...r.slot, details: r.note }), hidden: !r.plan },
+      { label: `Remove from ${where}`, danger: true, onSelect: () => (r.plan ? onDropPlan(r.plan) : setEventMark(r.id, 'hide')) },
+    ],
+    r.title,
+  );
+  return (
+    <>
+      <Row
+        bind={bind}
+        className={eventTone(start, now) || undefined}
+        lead={
+          <span className="sk-emoji" aria-hidden="true">
+            {eventIcon(r.title)}
+          </span>
+        }
+        title={r.title}
+        sub={eventDates(r.slot)}
+        value={awayText(eventDaysAway(start, now))}
+        hint={[r.title, r.note, 'Right-click or long-press for more'].filter(Boolean).join(' — ')}
+        onOpen={() => onShow(dayKey(start < startOfDay(now) ? now : start), r.id)}
+      />
+      {menu}
+    </>
+  );
+}
+
+/** Bills past their day and not marked paid (or skipped): one summary row under Upcoming that opens the list. */
+function Overdue({ bills, onBillPaid }: { bills: BillDue[]; onBillPaid: (due: BillDue) => void }) {
   const overdue = bills.filter(isOverdue);
   const [folded, setFolded] = useState(() => readSaved<boolean>('lifehub-overdue-folded', false));
+  const [changing, setChanging] = useState<string | null>(null);
   if (!overdue.length) return null;
+  const total = overdue.reduce((sum, d) => sum + (d.bill.amount || 0), 0);
   return (
-    <section className={`sched-block sc-overdue${folded ? ' is-folded' : ''}`} aria-labelledby="sc-overdue">
-      <h3 id="sc-overdue">
-        <button
-          type="button"
-          className="sc-overdue-toggle"
-          aria-expanded={!folded}
-          onClick={() => {
-            writeSaved('lifehub-overdue-folded', !folded);
-            setFolded(!folded);
-          }}
-          title={folded ? 'Show overdue items' : 'Hide overdue items'}
-        >
-          <span aria-hidden="true">{folded ? '▸' : '▾'}</span> Overdue <span>· {overdue.length} not marked paid</span>
-        </button>
-      </h3>
-      {folded ? null : <BillsList dues={overdue} onPaid={onBillPaid} compact />}
-    </section>
+    <>
+      <Row
+        className={`sk-overdue${folded ? '' : ' is-open'}`}
+        bind={{ 'aria-expanded': !folded }}
+        lead={<Dot tone="alert" />}
+        title={`${overdue.length} overdue ${overdue.length === 1 ? 'bill' : 'bills'}`}
+        sub="Not marked paid"
+        value={money(total)}
+        valueTone="late"
+        hint={folded ? 'Show overdue items' : 'Hide overdue items'}
+        onOpen={() => {
+          writeSaved('lifehub-overdue-folded', !folded);
+          setFolded(!folded);
+        }}
+      />
+      {folded
+        ? null
+        : overdue.map(d => (
+            <OverdueBill key={d.key} d={d} onPaid={onBillPaid} changing={changing === d.key} setChanging={on => setChanging(on ? d.key : null)} />
+          ))}
+    </>
+  );
+}
+
+function OverdueBill({ d, onPaid, changing, setChanging }: { d: BillDue; onPaid: (due: BillDue) => void; changing: boolean; setChanging: (on: boolean) => void }) {
+  const pin = useBillPin(d);
+  const { bind, menu } = useRowMenu(
+    () => [
+      { label: 'Pay ↗', href: d.bill.payUrl, hidden: !d.bill.payUrl || d.skipped },
+      { label: 'Mark paid', onSelect: () => onPaid(d), hidden: d.skipped },
+      { label: pin.pinned ? 'Unpin from Doing now' : 'Pin to Doing now', onSelect: pin.toggle, on: pin.pinned, hidden: d.skipped },
+      { label: 'Skip, move or change amount…', onSelect: () => setChanging(true) },
+    ],
+    d.bill.name,
+  );
+  const date = fromDayKey(d.due).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  const late = -d.days;
+  return (
+    <>
+      <Row
+        bind={bind}
+        className="is-nested"
+        lead={d.skipped ? null : <Circle onDone={() => onPaid(d)} label={`Mark ${d.bill.name} paid for ${date}`} />}
+        title={d.bill.name}
+        sub={
+          <>
+            {[`${late} ${late === 1 ? 'day' : 'days'} late`, date, billChangeText(d)].filter(Boolean).join(' · ')}
+            <FlagBadges d={d} />
+          </>
+        }
+        value={money(d.bill.amount)}
+        valueTone="late"
+        hint="Right-click or long-press for Pay, Pin, Skip or change"
+      >
+        {changing ? <BillChangeForm due={d} onDone={() => setChanging(false)} /> : null}
+      </Row>
+      {menu}
+    </>
   );
 }
 
 /** Needs to confirm: Google invitations not answered yet + maybe-plans, each with how it fits. */
 function MaybeList({
+  title,
   invites,
   plans,
   events,
   onShow,
   onAnswer,
 }: {
+  title: string;
   invites: CalEvent[];
   plans: Plan[];
   events: CalEvent[];
@@ -528,65 +569,63 @@ function MaybeList({
   const today = startOfDay(new Date());
   return (
     <>
-      {invites.length || plans.length ? (
-        <ul className="maybe-list">
-          {invites.map(e => {
-            const fit = fitText(e, events, e.id);
-            return (
-              <li key={e.id} className="maybe-row">
-                <button type="button" className="maybe-main" onClick={() => onShow(dayKey(eventStart(e)), e.id)}>
-                  <strong>{e.title}</strong>
-                  <span className="maybe-when">
-                    {whenText(e)} · {e.myStatus === 'maybe' ? 'you said maybe' : `invited${e.organizer ? ` by ${e.organizer}` : ''}`}
-                  </span>
-                  <span className={`maybe-fit ${fit.tone}`}>{fit.text}</span>
-                </button>
-                {e.url ? (
-                  <a className="row-action ghost" href={e.url} target="_blank" rel="noopener noreferrer" aria-label={`Reply to ${e.title} in Google Calendar`}>
-                    Reply ↗
-                  </a>
-                ) : null}
-              </li>
-            );
-          })}
-          {plans.map(p => {
-            const slot = planSlot(p);
-            const past = eventEnd(slot) < today;
-            const fit = fitText(slot, events);
-            return (
-              <li key={p.id} className={`maybe-row is-plan${past ? ' is-past' : ''}`}>
-                <button type="button" className="maybe-main" onClick={() => onShow(p.date, p.id)}>
-                  <strong>{p.title}</strong>
-                  <span className="maybe-when">
-                    {whenText(slot)}
-                    {p.note ? ` · ${p.note}` : ''}
-                  </span>
-                  {past ? <span className="maybe-fit is-busy">That date has passed</span> : <span className={`maybe-fit ${fit.tone}`}>{fit.text}</span>}
-                </button>
-                <span className="maybe-actions">
-                  {past ? null : (
-                    <button type="button" className="row-action" onClick={() => onAnswer(p, true)} title="Opens Google Calendar with it filled in" aria-label={`Yes to ${p.title}: add it to Google Calendar`}>
-                      Yes
-                    </button>
-                  )}
-                  <button type="button" className="row-action ghost" onClick={() => onAnswer(p, false)} aria-label={past ? `Clear ${p.title}` : `No to ${p.title}`}>
-                    {past ? 'Clear' : 'No'}
-                  </button>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="sched-empty">Nothing waiting on an answer. Add something you&apos;ve been asked to, to see how it fits.</p>
-      )}
-      {adding ? (
-        <PlanForm onDone={() => setAdding(false)} />
-      ) : (
-        <button type="button" className="sched-add" onClick={() => setAdding(true)}>
-          + Add a maybe
+      <ListHead title={title} meta={invites.length + plans.length}>
+        <button type="button" className="sk-link" onClick={() => setAdding(true)} aria-expanded={adding}>
+          <Icon name="plus" size={14} />
+          Add Maybe
         </button>
-      )}
+      </ListHead>
+      {adding ? <PlanForm onDone={() => setAdding(false)} /> : null}
+      {invites.map(e => {
+        const fit = fitText(e, events, e.id);
+        return (
+          <Row
+            key={e.id}
+            highlight
+            lead={<Dot tone="needs" />}
+            title={e.title}
+            sub={`${whenText(e)} · ${e.myStatus === 'maybe' ? 'You said maybe' : `Invited${e.organizer ? ` by ${e.organizer}` : ''}`}`}
+            onOpen={() => onShow(dayKey(eventStart(e)), e.id)}
+          >
+            <span className="sk-ract">
+              <span className={`sk-fit ${fit.tone}`}>{fit.text}</span>
+              {e.url ? (
+                <a className="sk-btn is-small" href={e.url} target="_blank" rel="noopener noreferrer" aria-label={`Reply to ${e.title} in Google Calendar`}>
+                  Reply ↗
+                </a>
+              ) : null}
+            </span>
+          </Row>
+        );
+      })}
+      {plans.map(p => {
+        const slot = planSlot(p);
+        const past = eventEnd(slot) < today;
+        const fit = fitText(slot, events);
+        return (
+          <Row
+            key={p.id}
+            highlight={!past}
+            lead={<Dot tone="needs" />}
+            title={p.title}
+            sub={`${whenText(slot)}${p.note ? ` · ${p.note}` : ''}`}
+            onOpen={() => onShow(p.date, p.id)}
+          >
+            <span className="sk-ract">
+              {past ? <span className="sk-fit is-busy">That date has passed</span> : <span className={`sk-fit ${fit.tone}`}>{fit.text}</span>}
+              {past ? null : (
+                <button type="button" className="sk-btn is-small" onClick={() => onAnswer(p, true)} title="Opens Google Calendar with it filled in" aria-label={`Yes to ${p.title}: add it to Google Calendar`}>
+                  Yes
+                </button>
+              )}
+              <button type="button" className="sk-btn is-small" onClick={() => onAnswer(p, false)} aria-label={past ? `Clear ${p.title}` : `No to ${p.title}`}>
+                {past ? 'Clear' : 'No'}
+              </button>
+            </span>
+          </Row>
+        );
+      })}
+      {!invites.length && !plans.length && !adding ? <p className="sk-empty">Nothing waiting on an answer. Add something you&apos;ve been asked to, to see how it fits.</p> : null}
     </>
   );
 }
@@ -596,30 +635,46 @@ const thisMonth = () => {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 };
 
-/** ◀ October 2026 Today ▶ — sits in the Schedule header so the month gets the room. */
-function MonthNav({ month, setMonth }: { month: Date; setMonth: (fn: (m: Date) => Date) => void }) {
+/** A small mark after the month's name, like v5's 🎃🦇. */
+const MONTH_MARK = ['❄️', '💘', '🍀', '🌷', '🌼', '☀️', '🎆', '🌻', '🍎', '🎃', '🍂', '🎄'];
+
+/** ‹ Today › beside the month name. */
+function MonthNav({ setMonth }: { setMonth: (fn: (m: Date) => Date) => void }) {
   return (
-    <div className="mini-bar">
-      <button type="button" className="row-action ghost" onClick={() => setMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))} aria-label="Previous month">
-        ◀
+    <div className="sk-mnav">
+      <button type="button" className="sk-mbtn" onClick={() => setMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))} aria-label="Previous month">
+        <Icon name="chevron" className="is-flip" />
       </button>
-      <h3 className="mini-title" aria-live="polite">
-        <span className="mini-long">{month.toLocaleDateString([], { month: 'long', year: 'numeric' })}</span>
-        <span className="mini-short">
-          {month.toLocaleDateString([], { month: 'short', year: 'numeric' })}
-        </span>
-      </h3>
-      <button type="button" className="row-action ghost" onClick={() => setMonth(() => thisMonth())}>
+      <button type="button" className="sk-mbtn is-text" onClick={() => setMonth(() => thisMonth())}>
         Today
       </button>
-      <button type="button" className="row-action ghost" onClick={() => setMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))} aria-label="Next month">
-        ▶
+      <button type="button" className="sk-mbtn" onClick={() => setMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))} aria-label="Next month">
+        <Icon name="chevron" />
       </button>
     </div>
   );
 }
 
-/** Month at a glance: two lines per day; pick a day to see all of it. */
+type Layers = { google: boolean; money: boolean; tasks: boolean };
+
+/** What the calendar shows: Google events, money due, dated tasks. */
+function LayerSeg({ layers, toggle }: { layers: Layers; toggle: (k: keyof Layers) => void }) {
+  return (
+    <div className="sk-seg sk-layers" role="group" aria-label="Show on the calendar">
+      <button type="button" aria-pressed={layers.google} onClick={() => toggle('google')} title="Google Calendar events">
+        Google
+      </button>
+      <button type="button" aria-pressed={layers.money} onClick={() => toggle('money')} title="Bills, card minimums, subscriptions and pay-later from the Radall sheet">
+        Money
+      </button>
+      <button type="button" aria-pressed={layers.tasks} onClick={() => toggle('tasks')} title="Self tasks with a day, and Priority items you gave a day">
+        Tasks
+      </button>
+    </div>
+  );
+}
+
+/** Month at a glance: up to two lines per day; pick a day to see all of it. */
 function MonthMini({ month, items, picked, onPick }: { month: Date; items: CalItem[]; picked?: string; onPick: (day: string, cell: HTMLElement) => void }) {
   const today = dayKey(new Date());
   const start = startOfWeek(month);
@@ -627,54 +682,49 @@ function MonthMini({ month, items, picked, onPick }: { month: Date; items: CalIt
   const cells = Array.from({ length: weeks * 7 }, (_, i) => addDays(start, i));
   const names = cells.slice(0, 7).map(d => d.toLocaleDateString([], { weekday: 'narrow' }));
   return (
-    <div className="mini">
-      <div className="mini-grid">
-        {names.map((n, i) => (
-          <span key={i} className="mini-name" aria-hidden="true">
-            {n}
-          </span>
-        ))}
-        {cells.map(d => {
-          const k = dayKey(d);
-          const dayItems = items
-            .filter(it => onDay(it, d))
-            .sort((a, b) => Number(b.allDay) - Number(a.allDay) || eventStart(a).getTime() - eventStart(b).getTime());
-          const label = `${d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}: ${
-            dayItems.length ? `${dayItems.length} thing${dayItems.length === 1 ? '' : 's'}` : 'nothing'
-          }`;
-          return (
-            <button
-              key={k}
-              type="button"
-              className={`mini-cell${d.getMonth() !== month.getMonth() ? ' is-other' : ''}${k < today ? ' is-past' : ''}${k === today ? ' is-today' : ''}${k === picked ? ' is-picked' : ''}${
-                dayItems.some(i => i.kind === 'plan' || i.kind === 'invite') ? ' has-maybe' : ''
-              }`}
-              onClick={e => onPick(k, e.currentTarget)}
-              aria-label={label}
-              aria-haspopup="dialog"
-            >
-              <span className="mini-day">{d.getDate()}</span>
-              {/* Two lines per day: two titles, or one title and "+N". */}
-              {dayItems.slice(0, dayItems.length > 2 ? 1 : 2).map(it => (
-                <span
-                  key={it.id}
-                  className={`mini-item kind-${it.kind}`}
-                  style={it.color ? ({ '--ev': it.color } as React.CSSProperties) : undefined}
-                >
-                  {it.kind === 'bill' ? '$ ' : it.kind === 'task' ? (it.task?.done ? '✓ ' : '☐ ') : ''}
-                  {it.title}
-                </span>
-              ))}
-              {dayItems.length > 2 ? <span className="mini-more">+{dayItems.length - 1} more</span> : null}
-              <span className="mini-dots" aria-hidden="true">
-                {dayItems.slice(0, 4).map(it => (
-                  <i key={it.id} className={`kind-${it.kind}`} style={it.color ? ({ '--ev': it.color } as React.CSSProperties) : undefined} />
-                ))}
+    <div className="sk-mgrid">
+      {names.map((n, i) => (
+        <span key={i} className="sk-dow" aria-hidden="true">
+          {n}
+        </span>
+      ))}
+      {cells.map(d => {
+        const k = dayKey(d);
+        const dayItems = items
+          .filter(it => onDay(it, d))
+          .sort((a, b) => Number(b.allDay) - Number(a.allDay) || eventStart(a).getTime() - eventStart(b).getTime());
+        const label = `${d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}: ${
+          dayItems.length ? `${dayItems.length} thing${dayItems.length === 1 ? '' : 's'}` : 'nothing'
+        }`;
+        return (
+          <button
+            key={k}
+            type="button"
+            className={`sk-day${d.getMonth() !== month.getMonth() ? ' is-other' : ''}${k < today ? ' is-past' : ''}${k === today ? ' is-today' : ''}${k === picked ? ' is-picked' : ''}${
+              dayItems.some(i => i.kind === 'plan' || i.kind === 'invite') ? ' has-maybe' : ''
+            }`}
+            onClick={e => onPick(k, e.currentTarget)}
+            aria-label={label}
+            aria-haspopup="dialog"
+            title={dayItems.map(it => it.title).join('\n') || undefined}
+          >
+            <span className="sk-dnum">{d.getDate()}</span>
+            {/* Two lines per day: two titles, or one title and "+N". */}
+            {dayItems.slice(0, dayItems.length > 2 ? 1 : 2).map(it => (
+              <span key={it.id} className={`sk-ditem kind-${it.kind}`} style={it.color ? ({ '--ev': it.color } as React.CSSProperties) : undefined}>
+                {it.kind === 'bill' ? '$ ' : it.kind === 'task' ? (it.task?.done ? '✓ ' : '☐ ') : ''}
+                {it.title}
               </span>
-            </button>
-          );
-        })}
-      </div>
+            ))}
+            {dayItems.length > 2 ? <span className="sk-ditem is-more">+{dayItems.length - 1} more</span> : null}
+            <span className="sk-ddots" aria-hidden="true">
+              {dayItems.slice(0, 4).map(it => (
+                <i key={it.id} style={it.color ? ({ '--ev': it.color } as React.CSSProperties) : undefined} />
+              ))}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -690,7 +740,7 @@ function EventStar({ event }: { event: CalEvent }) {
   return (
     <button
       type="button"
-      className={`row-action ghost event-star${on ? ' is-on' : ''}`}
+      className={`sk-btn is-small${on ? ' is-on' : ''}`}
       aria-pressed={on}
       onClick={() => setEventMark(event.id, on ? 'hide' : name === 'Appointment' ? 'appt' : 'event')}
       title={on ? `In ${listName} — click to take it out` : `Show in ${listName}`}
@@ -741,7 +791,7 @@ function DayPopover({
     // Close on a click outside (a click on another day re-opens it there).
     const onDown = (e: MouseEvent) => {
       const t = e.target as Element | null;
-      if (ref.current && t && !ref.current.contains(t) && !t.closest('.mini-cell')) closeLatest.current();
+      if (ref.current && t && !ref.current.contains(t) && !t.closest('.sk-day')) closeLatest.current();
     };
     window.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onDown);
@@ -760,65 +810,39 @@ function DayPopover({
   const heading = ['Today', 'Tomorrow', 'Yesterday'].includes(rel) ? `${rel} · ${title}` : title;
 
   void pos;
-  const host = typeof document !== 'undefined' ? document.querySelector('.frontier-shell') || document.body : null;
+  const host = typeof document !== 'undefined' ? document.querySelector('.sk-app') || document.querySelector('.frontier-shell') || document.body : null;
   if (!host) return null;
   return createPortal(
-    <>
-    <div className="day-pop-backdrop" aria-hidden="true" />
-    <div
-      ref={ref}
-      className="day-pop is-modal"
-      role="dialog"
-      aria-modal="true"
-      aria-label={heading}
-    >
-      <div className="day-pop-head">
-        <h3 ref={headRef} tabIndex={-1}>
-          {heading}
-        </h3>
-        <button type="button" className="plan-panel-close" onClick={onClose} aria-label="Close day">
-          ×
-        </button>
-      </div>
-      {dayItems.length ? (
-        <ul className="day-pop-list">
-          {dayItems.map(it => {
+    <div className="sk-dialog-back" role="presentation">
+      <div ref={ref} className="sk-dialog sk-daypop" role="dialog" aria-modal="true" aria-label={heading}>
+        <header className="sk-dialog-head">
+          <h3 ref={headRef} tabIndex={-1} className="sk-title">
+            {heading}
+          </h3>
+          <button type="button" className="sk-btn is-small is-icon" onClick={onClose} aria-label="Close day">
+            <Icon name="close" />
+          </button>
+        </header>
+        {dayItems.length ? (
+          dayItems.map(it => {
             const plan = it.kind === 'plan' ? plans.find(p => p.id === it.id) : undefined;
             const fit = it.kind === 'plan' || it.kind === 'invite' ? fitText(it, events, it.id) : null;
+            const calEvent = it.kind === 'event' ? events.find(e => e.id === it.id) : undefined;
+            const when = it.kind === 'bill' ? 'Bill' : it.kind === 'task' ? 'Task' : it.allDay ? 'All day' : rangeLabel(it);
+            const sub =
+              it.kind === 'bill' && it.bill
+                ? [when, money(it.bill.bill.amount), it.bill.bill.notes, it.bill.bill.kind && it.bill.days < 0 ? 'Earlier' : countdown(it.bill.days), it.bill.bill.autopay ? 'Autopay' : '']
+                : [when, it.sub];
             return (
-              <li key={it.id} className={`day-pop-row kind-${it.kind}`} style={it.color ? ({ '--ev': it.color } as React.CSSProperties) : undefined}>
-                <span className="day-pop-time">{it.kind === 'bill' ? 'Bill' : it.kind === 'task' ? 'Task' : it.allDay ? 'All day' : timeLabel(eventStart(it))}</span>
-                <span className="day-pop-main">
-                  <strong>{it.title}</strong>
-                  <span className="day-pop-sub">
-                    {it.kind === 'bill' && it.bill
-                      ? [
-                          money(it.bill.bill.amount),
-                          it.bill.bill.notes,
-                          it.bill.bill.kind && it.bill.days < 0 ? 'Earlier' : countdown(it.bill.days),
-                          it.bill.bill.autopay ? 'Autopay' : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')
-                      : [it.allDay ? '' : rangeLabel(it), it.sub].filter(Boolean).join(' · ')}
-                  </span>
-                  {fit ? <span className={`maybe-fit ${fit.tone}`}>{fit.text}</span> : null}
-                  {it.kind === 'event' || it.kind === 'invite' || it.kind === 'plan' ? (
-                    <PrepList
-                      target={{ id: it.id, title: it.title, date: dayKey(eventStart(it)) }}
-                      tasks={tasks.filter(t => t.forEvent?.id === it.id)}
-                      onAdd={onAddPrep}
-                      onDone={onTaskDone}
-                    />
-                  ) : null}
-                </span>
-                <span className="day-pop-actions">
+              <Row key={it.id} className={`kind-${it.kind}`} highlight={Boolean(fit)} lead={<EvDot color={it.color} />} title={it.title} sub={sub.filter(Boolean).join(' · ')}>
+                <span className="sk-ract">
+                  {fit ? <span className={`sk-fit ${fit.tone}`}>{fit.text}</span> : null}
                   {plan ? (
                     <>
-                      <button type="button" className="row-action" onClick={() => onAnswer(plan, true)} aria-label={`Yes to ${plan.title}: add it to Google Calendar`}>
+                      <button type="button" className="sk-btn is-small" onClick={() => onAnswer(plan, true)} aria-label={`Yes to ${plan.title}: add it to Google Calendar`}>
                         Yes
                       </button>
-                      <button type="button" className="row-action ghost" onClick={() => onAnswer(plan, false)} aria-label={`No to ${plan.title}`}>
+                      <button type="button" className="sk-btn is-small" onClick={() => onAnswer(plan, false)} aria-label={`No to ${plan.title}`}>
                         No
                       </button>
                     </>
@@ -826,51 +850,58 @@ function DayPopover({
                   {it.kind === 'bill' && it.bill ? (
                     <>
                       {it.url ? (
-                        <a className="row-action" href={it.url} target="_blank" rel="noopener noreferrer" aria-label={`Pay ${it.title}`}>
+                        <a className="sk-btn is-small" href={it.url} target="_blank" rel="noopener noreferrer" aria-label={`Pay ${it.title}`}>
                           Pay ↗
                         </a>
                       ) : null}
-                      <button type="button" className="row-action ghost" onClick={() => onBillPaid(it.bill!)} aria-label={`Mark ${it.title} paid`}>
+                      <button type="button" className="sk-btn is-small" onClick={() => onBillPaid(it.bill!)} aria-label={`Mark ${it.title} paid`}>
                         Paid
                       </button>
-                      <BillPinButton due={it.bill} />
+                      <BillPinButton due={it.bill} className="sk-btn is-small" />
                     </>
                   ) : null}
                   {it.kind === 'task' && it.task?.selfId && onTaskDone ? (
-                    <button type="button" className={it.task.done ? 'row-action ghost' : 'row-action'} onClick={() => onTaskDone(it.task!)}>
+                    <button type="button" className="sk-btn is-small" onClick={() => onTaskDone(it.task!)}>
                       {it.task.done ? 'Undo' : 'Done'}
                     </button>
                   ) : null}
-                  {it.kind === 'event' && events.some(e => e.id === it.id) ? (
-                    <EventStar event={events.find(e => e.id === it.id)!} />
-                  ) : null}
+                  {calEvent ? <EventStar event={calEvent} /> : null}
                   {(it.kind === 'event' || it.kind === 'invite') && it.url ? (
-                    <a className="row-action ghost" href={it.url} target="_blank" rel="noopener noreferrer" aria-label={`${it.kind === 'invite' ? 'Reply to' : 'Open'} ${it.title} in Google Calendar`}>
+                    <a className="sk-btn is-small" href={it.url} target="_blank" rel="noopener noreferrer" aria-label={`${it.kind === 'invite' ? 'Reply to' : 'Open'} ${it.title} in Google Calendar`}>
                       {it.kind === 'invite' ? 'Reply ↗' : 'Open ↗'}
                     </a>
                   ) : null}
                 </span>
-              </li>
+                {it.kind === 'event' || it.kind === 'invite' || it.kind === 'plan' ? (
+                  <PrepList
+                    target={{ id: it.id, title: it.title, date: dayKey(eventStart(it)) }}
+                    tasks={tasks.filter(t => t.forEvent?.id === it.id)}
+                    onAdd={onAddPrep}
+                    onDone={onTaskDone}
+                  />
+                ) : null}
+              </Row>
             );
-          })}
-        </ul>
-      ) : (
-        <p className="sched-empty">Nothing planned this day.</p>
-      )}
-      {adding ? (
-        <PlanForm date={day} onDone={() => setAdding(false)} />
-      ) : (
-        <div className="day-pop-foot">
-          <button type="button" className="sched-add" onClick={() => setAdding(true)}>
-            + Add a maybe this day
-          </button>
-          <button type="button" className="row-action ghost" onClick={() => onWeek(day)}>
-            See the week →
-          </button>
-        </div>
-      )}
-    </div>
-    </>,
+          })
+        ) : (
+          <p className="sk-empty">Nothing planned this day.</p>
+        )}
+        {adding ? (
+          <PlanForm date={day} onDone={() => setAdding(false)} />
+        ) : (
+          <div className="sk-dfoot">
+            <button type="button" className="sk-link" onClick={() => setAdding(true)}>
+              <Icon name="plus" size={14} />
+              Add Maybe This Day
+            </button>
+            <button type="button" className="sk-btn is-small" onClick={() => onWeek(day)}>
+              See the Week
+              <Icon name="chevron" size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>,
     host,
   );
 }
@@ -903,7 +934,7 @@ export function ScheduleSection({
   const [pop, setPop] = useState<{ day: string; top: number; left: number; above: boolean; maxHeight?: number } | null>(null);
   const [month, setMonth] = useState(thisMonth);
   const [layers, setLayers] = useState(() => ({ tasks: true, ...readSaved<{ google: boolean; money: boolean; tasks?: boolean }>(LAYERS_KEY, { google: true, money: true }) }));
-  const toggleLayer = (k: 'google' | 'money' | 'tasks') =>
+  const toggleLayer = (k: keyof Layers) =>
     setLayers(l => {
       const next = { ...l, [k]: !l[k] };
       writeSaved(LAYERS_KEY, next);
@@ -980,7 +1011,7 @@ export function ScheduleSection({
   /** Open a day's pop-out under (or above) its cell, kept inside the month box. */
   const openDay = (day: string, cell?: HTMLElement | null) => {
     const box = monthBox.current;
-    const target = cell || box?.querySelector<HTMLElement>(`.mini-cell[aria-label^="${fromDayKey(day).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}"]`);
+    const target = cell || box?.querySelector<HTMLElement>(`.sk-day[aria-label^="${fromDayKey(day).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}"]`);
     if (!box || !target) {
       setPop({ day, top: 0, left: 0, above: false });
       return;
@@ -1019,75 +1050,53 @@ export function ScheduleSection({
 
   const selPlan = selected?.kind === 'plan' ? plans.find(p => p.id === selected.id) : undefined;
   const selEvent = selected && (selected.kind === 'event' || selected.kind === 'invite') ? events.find(e => e.id === selected.id) : undefined;
-  const maybeCount = openPlans.length + invites.length;
+
+  const sync = schedule ? `Google Calendar · updated ${new Date(schedule.refreshedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Google Calendar not connected yet';
+  const dropPlan = (p: Plan) => update(p.id, { status: 'dropped' });
 
   return (
-    <section className={`schedule glass-panel${expanded ? ' is-expanded' : ' is-compact'}`} aria-label="Schedule">
-      <div className="sched-head">
-        <p className="section-label">Schedule</p>
-        <h2>Calendar</h2>
-        <p className="sched-sync">
-          {schedule ? `Google Calendar · updated ${new Date(schedule.refreshedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Google Calendar not connected yet'}
-        </p>
-        <div className="layer-chips" role="group" aria-label="Show on the calendar">
-          <button type="button" className={`layer-chip is-google${layers.google ? ' on' : ''}`} aria-pressed={layers.google} onClick={() => toggleLayer('google')} title="Google Calendar events">
-            Google
+    <Group
+      tone="sched"
+      icon="calendar"
+      title="Calendar"
+      meta={sync}
+      className={`sk-sched${expanded ? ' is-expanded' : ''}`}
+      actions={
+        <>
+          {expanded ? <LayerSeg layers={layers} toggle={toggleLayer} /> : null}
+          <button type="button" className="sk-btn is-small" onClick={() => setView(!expanded)} aria-pressed={expanded}>
+            {expanded ? 'Month View' : 'Week View'}
           </button>
-          <button type="button" className={`layer-chip is-money${layers.money ? ' on' : ''}`} aria-pressed={layers.money} onClick={() => toggleLayer('money')} title="Bills, card minimums, subscriptions and pay-later from the Radall sheet">
-            $ Money
-          </button>
-          <button type="button" className={`layer-chip is-tasks${layers.tasks ? ' on' : ''}`} aria-pressed={layers.tasks} onClick={() => toggleLayer('tasks')} title="Self tasks with a day, and Priority items you gave a day">
-            ☐ Tasks
-          </button>
-        </div>
-        {!expanded ? (
-          <MonthNav
-            month={month}
-            setMonth={fn => {
-              setPop(null);
-              setMonth(fn);
-            }}
-          />
-        ) : null}
-        <button type="button" className="row-action ghost sched-toggle" onClick={() => setView(!expanded)} aria-pressed={expanded}>
-          {expanded ? 'Month view' : 'Expand ⤢'}
-        </button>
-      </div>
-
+        </>
+      }
+    >
       {!expanded ? (
-        <div className="sched-compact">
-          <div className="sc-left">
-            <section className="sched-block sc-upcoming" aria-labelledby="sc-up">
-              <h3 id="sc-up">
-                Upcoming <span>· next 7 days</span>
-              </h3>
-              <Agenda events={events} bills={shownBills} tasks={shownTasks} schedule={schedule} onShow={show} limit={16} />
-            </section>
-            <OverdueBox bills={bills} onBillPaid={onBillPaid} />
+        <div className="sk-sched-grid">
+          <div className="sk-col">
+            <ListHead title="Upcoming" meta="Next 7 days" />
+            <Upcoming events={events} bills={shownBills} tasks={shownTasks} schedule={schedule} onShow={show} limit={16} />
+            <Overdue bills={bills} onBillPaid={onBillPaid} />
           </div>
-          <div className="sc-mid">
-            <section className="sched-block sc-events" aria-labelledby="sc-events">
-              <h3 id="sc-events">
-                Events <span>· trips, parties, plans</span>
-              </h3>
-              <EventsList events={events} plans={plans} onShow={show} onDropPlan={p => update(p.id, { status: 'dropped' })} />
-            </section>
-            <section className="sched-block sc-appts" aria-labelledby="sc-appts">
-              <h3 id="sc-appts">
-                Appointments <span>· doctor, dentist, vet…</span>
-              </h3>
-              <EventsList list="appt" events={events} plans={plans} onShow={show} onDropPlan={p => update(p.id, { status: 'dropped' })} />
-            </section>
-            <section className="sched-block sc-confirm" aria-labelledby="sc-confirm">
-              <h3 id="sc-confirm">
-                Needs to confirm <span>· {maybeCount}</span>
-              </h3>
-              <MaybeList invites={invites} plans={openPlans} events={events} onShow={show} onAnswer={answer} />
-            </section>
+          <div className="sk-col">
+            <MaybeList title="Needs to Confirm" invites={invites} plans={openPlans} events={events} onShow={show} onAnswer={answer} />
+            <EventsList title="Events" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
+            <EventsList list="appt" title="Appointments" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
           </div>
-          <div className="sc-month cal-themed" ref={monthBox} data-season={SEASON[month.getMonth()]}>
-            <h3 className="cal-title cal-script-title">{month.toLocaleDateString(undefined, { month: 'long' })}</h3>
-            {!schedule ? <p className="cal-notice">Google Calendar isn&apos;t connected yet — maybe-plans and bills still show.</p> : null}
+          <div className="sk-month" ref={monthBox}>
+            <div className="sk-mtop">
+              <h3 className="sk-mtitle" aria-live="polite">
+                {month.toLocaleDateString([], { month: 'long', year: 'numeric' })}
+                <span aria-hidden="true"> {MONTH_MARK[month.getMonth()]}</span>
+              </h3>
+              <MonthNav
+                setMonth={fn => {
+                  setPop(null);
+                  setMonth(fn);
+                }}
+              />
+            </div>
+            <LayerSeg layers={layers} toggle={toggleLayer} />
+            {!schedule ? <p className="sk-mnote">Google Calendar isn&apos;t connected yet — maybes and bills still show.</p> : null}
             <MonthMini month={month} items={items} picked={pop?.day} onPick={openDay} />
             {pop ? (
               <DayPopover
@@ -1113,48 +1122,21 @@ export function ScheduleSection({
         </div>
       ) : (
         <div className="sched-grid">
-          <aside className="sched-rail" aria-label="Coming up, events, not confirmed, bills">
-            <section className="sched-block">
-              <h3>
-                Coming up <span>· next 7 days</span>
-              </h3>
-              <Agenda events={events} schedule={schedule} onShow={show} />
-            </section>
-            <OverdueBox bills={bills} onBillPaid={onBillPaid} />
-
-            <section className="sched-block">
-              <h3>
-                Events <span>· trips, parties, plans</span>
-              </h3>
-              <EventsList events={events} plans={plans} onShow={show} onDropPlan={p => update(p.id, { status: 'dropped' })} />
-            </section>
-
-            <section className="sched-block">
-              <h3>
-                Appointments <span>· doctor, dentist, vet…</span>
-              </h3>
-              <EventsList list="appt" events={events} plans={plans} onShow={show} onDropPlan={p => update(p.id, { status: 'dropped' })} />
-            </section>
-
-            <section className="sched-block">
-              <h3>
-                Not confirmed yet <span>· {maybeCount}</span>
-              </h3>
-              <MaybeList invites={invites} plans={openPlans} events={events} onShow={show} onAnswer={answer} />
-            </section>
-
-            <section className="sched-block">
-              <h3>
-                Money due <span>· from the Radall sheet</span>
-              </h3>
-              <BillsList
-                dues={shownBills.filter(b => b.days >= 0 && b.days <= 14)}
-                onPaid={onBillPaid}
-                compact
-                limit={5}
-                empty={schedule ? 'No bills due in the next two weeks.' : 'Shows bills from the Finances "Bills" tab once it’s connected.'}
-              />
-            </section>
+          <aside className="sched-rail sk-col" aria-label="Coming up, events, not confirmed, bills">
+            <ListHead title="Coming Up" meta="Next 7 days" />
+            <Upcoming events={events} schedule={schedule} onShow={show} />
+            <Overdue bills={bills} onBillPaid={onBillPaid} />
+            <EventsList title="Events" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
+            <EventsList list="appt" title="Appointments" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
+            <MaybeList title="Not Confirmed Yet" invites={invites} plans={openPlans} events={events} onShow={show} onAnswer={answer} />
+            <ListHead title="Money Due" meta="From the Radall sheet" />
+            <BillsList
+              dues={shownBills.filter(b => b.days >= 0 && b.days <= 14)}
+              onPaid={onBillPaid}
+              compact
+              limit={5}
+              empty={schedule ? 'No bills due in the next two weeks.' : 'Shows bills from the Finances "Bills" tab once it’s connected.'}
+            />
           </aside>
 
           <div className="sched-cal">
@@ -1186,34 +1168,34 @@ export function ScheduleSection({
                 <div className="cal-detail-actions">
                   {selPlan ? (
                     <>
-                      <button type="button" className="row-action" onClick={() => answer(selPlan, true)}>
+                      <button type="button" className="sk-btn is-small" onClick={() => answer(selPlan, true)}>
                         Yes — add to Google Calendar
                       </button>
-                      <button type="button" className="row-action ghost" onClick={() => answer(selPlan, false)}>
+                      <button type="button" className="sk-btn is-small" onClick={() => answer(selPlan, false)}>
                         No
                       </button>
                     </>
                   ) : null}
                   {selected.kind === 'task' && selected.task?.selfId && onTaskDone ? (
-                    <button type="button" className="row-action" onClick={() => onTaskDone(selected.task!)}>
+                    <button type="button" className="sk-btn is-small" onClick={() => onTaskDone(selected.task!)}>
                       {selected.task.done ? 'Undo' : 'Done'}
                     </button>
                   ) : null}
                   {selEvent?.url ? (
-                    <a className="row-action ghost" href={selEvent.url} target="_blank" rel="noopener noreferrer">
+                    <a className="sk-btn is-small" href={selEvent.url} target="_blank" rel="noopener noreferrer">
                       {selected.kind === 'invite' ? 'Reply in Google Calendar ↗' : 'Open in Google Calendar ↗'}
                     </a>
                   ) : null}
                   {selected.bill ? (
                     <>
                       {selected.bill.bill.payUrl ? (
-                        <a className="row-action" href={selected.bill.bill.payUrl} target="_blank" rel="noopener noreferrer">
+                        <a className="sk-btn is-small" href={selected.bill.bill.payUrl} target="_blank" rel="noopener noreferrer">
                           Pay ↗
                         </a>
                       ) : null}
                       <button
                         type="button"
-                        className="row-action ghost"
+                        className="sk-btn is-small"
                         onClick={() => {
                           onBillPaid(selected.bill!);
                           setSelected(null);
@@ -1223,7 +1205,7 @@ export function ScheduleSection({
                       </button>
                     </>
                   ) : null}
-                  <button type="button" className="row-action ghost" onClick={() => setSelected(null)} aria-label="Close details">
+                  <button type="button" className="sk-btn is-small" onClick={() => setSelected(null)} aria-label="Close details">
                     ✕
                   </button>
                 </div>
@@ -1233,6 +1215,6 @@ export function ScheduleSection({
           </div>
         </div>
       )}
-    </section>
+    </Group>
   );
 }

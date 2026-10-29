@@ -12,7 +12,9 @@ export const reveal = (id: string) => {
 };
 
 /** Fixed meaning colours. One colour = one meaning, everywhere. */
-export type Tone = 'needs' | 'done' | 'open' | 'habit' | 'sched' | 'ground' | 'marvel' | 'alert' | 'ops' | 'role' | 'vent' | 'paper' | 'focus';
+export type Tone = 'needs' | 'done' | 'open' | 'habit' | 'sched' | 'ground' | 'marvel' | 'alert' | 'ops' | 'role' | 'vent' | 'paper' | 'focus' | MoneyTone;
+/** Money's own areas, one tone each (cash, cards, savings, bills due, credit, outstanding, plan, shopping, subscriptions). */
+export type MoneyTone = 'cash' | 'card' | 'save' | 'due' | 'credit' | 'owed' | 'plan' | 'shop' | 'sub';
 
 /**
  * A Home section: a Title-sized disclosure head with a one-line summary of what's inside, then its

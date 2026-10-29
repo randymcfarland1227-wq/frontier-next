@@ -133,7 +133,7 @@ export function StickerShell({
   );
 
   return (
-    <div className="sk-app" data-page={active === 'home' ? 'home' : 'classic'} data-side={slim ? 'slim' : 'full'}>
+    <div className="sk-app" data-page={active === 'home' ? 'home' : active === 'money' ? 'money' : 'classic'} data-side={slim ? 'slim' : 'full'}>
       <aside className="sk-side" aria-label="Life Hub">
         <div className="sk-sidehead">
           <button type="button" className="sk-brand" onClick={() => go('home')}>

@@ -13,6 +13,7 @@ import { isSettled, owedOf } from '../../lib/debtFile';
 import { bankRows } from './MoneyBoards';
 import { UpdateFiguresButton } from './UpdateFigures';
 import { BrandLogo } from './BrandLogo';
+import { Icon } from '../sticker/Icon';
 import { useDebtFile } from '../../lib/debtFile';
 import {
   amountOf,
@@ -196,7 +197,7 @@ function BalancingAdd({ table, onSave }: { table: Table; onSave: Save }) {
   const items = table.rows.filter(row => !row.some(cell => cell.formula) && !/^(cash on hand|balanced cash)/i.test(row[0]?.text || ''));
   const anchor = items.length > 1 ? items[items.length - 1] : table.firstRow;
   if (!anchor) return null;
-  if (!open) return <button type="button" className="mny-btn" onClick={() => setOpen(true)}>+ Add an account</button>;
+  if (!open) return <button type="button" className="sk-btn is-small" onClick={() => setOpen(true)}>+ Add an account</button>;
   const cancel = () => {
     if (busy) return;
     setOpen(false);
@@ -226,7 +227,7 @@ function BalancingAdd({ table, onSave }: { table: Table; onSave: Save }) {
       <label><span>Amount</span><input inputMode="decimal" disabled={busy} value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" /></label>
       {table.header.some(h => /^pend/i.test(h)) ? <label><span>Pending amount</span><input inputMode="decimal" disabled={busy} value={pending} onChange={e => setPending(e.target.value)} placeholder="Optional" /></label> : null}
       {error ? <p role="alert" className="sub-form-wide">{error}</p> : null}
-      <div className="sub-form-actions"><button type="submit" className="mny-btn" disabled={busy}>{busy ? 'Adding…' : 'Add line item'}</button><button type="button" className="mny-btn" disabled={busy} onClick={cancel}>Cancel</button></div>
+      <div className="sub-form-actions"><button type="submit" className="sk-btn is-small" disabled={busy}>{busy ? 'Adding…' : 'Add line item'}</button><button type="button" className="sk-btn is-small" disabled={busy} onClick={cancel}>Cancel</button></div>
     </form>
   );
 }
@@ -357,7 +358,7 @@ function SheetTable({ table, onSave, opts = {} }: { table: Table; onSave: Save; 
 // plan, shop, save), and the color means the same thing everywhere on the page.
 // ---------------------------------------------------------------------------
 
-type Tone = 'cash' | 'due' | 'owed' | 'plan' | 'shop' | 'save' | 'card' | 'sub';
+type Tone = 'cash' | 'due' | 'owed' | 'plan' | 'shop' | 'save' | 'card' | 'sub' | 'credit';
 
 function Section({
   tone,
@@ -379,26 +380,27 @@ function Section({
   className?: string;
   children: ReactNode;
 }) {
+  // A sticker Group in its money tone: title + hint left, the one figure right, the body on tinted paper.
   return (
-    <section className={`mny-sec tone-${tone} ${className}`}>
-      <header className="mny-sec-head">
-        <div className="mny-sec-titles">
-          <h2>{title}</h2>
-          {hint ? <p>{hint}</p> : null}
+    <section className={`sk-group tone-${tone} skm-sec ${className}`} aria-label={title}>
+      <header className="sk-ghead skm-head">
+        <div className="skm-titles">
+          <h2 className="sk-hl">{title}</h2>
+          {hint ? <p className="sk-sec">{hint}</p> : null}
         </div>
         {figure !== undefined ? (
-          <div className="mny-sec-figure">
+          <div className="skm-fig">
             <b>{figure}</b>
-            {figureLabel ? <span>{figureLabel}</span> : null}
+            {figureLabel ? <span className="sk-cap">{figureLabel}</span> : null}
           </div>
         ) : null}
         {href ? (
-          <a className="mny-sec-link" href={href} target="_blank" rel="noopener noreferrer" title="Open this part of the sheet">
+          <a className="sk-btn is-small" href={href} target="_blank" rel="noopener noreferrer" title="Open this part of the sheet">
             Sheet ↗
           </a>
         ) : null}
       </header>
-      <div className="mny-sec-body">{children}</div>
+      <div className="sk-gbody skm-body">{children}</div>
     </section>
   );
 }
@@ -416,15 +418,16 @@ function Fold({
   open?: boolean;
   children: ReactNode;
 }) {
+  // A row that opens inside a Section: chevron · title · meta · total on the right.
   return (
-    <details className="mny-fold" open={open}>
+    <details className="skm-fold" open={open}>
       <summary>
-        <span className="mny-fold-chev" aria-hidden="true" />
-        <span className="mny-fold-title">{title}</span>
-        {meta ? <span className="mny-fold-meta">{meta}</span> : null}
-        {total ? <span className="mny-fold-total">{total}</span> : null}
+        <Icon name="chevron" className="skm-fchev" />
+        <span className="skm-ftitle">{title}</span>
+        {meta ? <span className="sk-sec skm-fmeta">{meta}</span> : null}
+        {total ? <b className="skm-ftotal">{total}</b> : null}
       </summary>
-      <div className="mny-fold-body">{children}</div>
+      <div className="skm-fbody">{children}</div>
     </details>
   );
 }
@@ -454,14 +457,14 @@ function DueRow({ d, onPaid, showDay }: { d: BillDue; onPaid: (d: BillDue) => vo
         <span className="mny-due-amt">{money(d.bill.amount) || '?'}</span>
         <span className="mny-due-tools">
           {d.skipped ? null : (
-            <button type="button" className="mny-btn" onClick={() => onPaid(d)} aria-label={`Mark ${d.bill.name} paid`} title="Mark paid on Life Hub">
+            <button type="button" className="sk-btn is-small" onClick={() => onPaid(d)} aria-label={`Mark ${d.bill.name} paid`} title="Mark paid on Life Hub">
               Paid
             </button>
           )}
-          {d.skipped ? null : <BillPinButton due={d} className="mny-btn" />}
+          {d.skipped ? null : <BillPinButton due={d} className="sk-btn is-small" />}
           <button
             type="button"
-            className="mny-btn"
+            className="sk-btn is-small"
             aria-expanded={changing}
             onClick={() => setChanging(v => !v)}
             aria-label={`Change ${d.bill.name}: skip, move or amount`}
@@ -711,7 +714,7 @@ function MonthRow({ d, paidAt, onPaid, fullDate = false }: { d: BillDue; paidAt:
       </span>
       <span className="mm-tools">
         {done ? null : (
-          <button type="button" className="mny-btn" onClick={() => onPaid(d)} aria-label={`Mark ${d.bill.name} paid`}>
+          <button type="button" className="sk-btn is-small" onClick={() => onPaid(d)} aria-label={`Mark ${d.bill.name} paid`}>
             Paid
           </button>
         )}
@@ -903,13 +906,13 @@ function CardTiles({ model, dues, paidAt, onPaid, onSave }: { model: MoneyModel;
             <div className="cc-tools">
               {due && !paid && !due.skipped ? (
                 <>
-                  <button type="button" className="mny-btn is-primary" onClick={() => onPaid(due)}>
+                  <button type="button" className="sk-btn is-small is-prominent" onClick={() => onPaid(due)}>
                     Paid
                   </button>
-                  <BillPinButton due={due} className="mny-btn" />
+                  <BillPinButton due={due} className="sk-btn is-small" />
                 </>
               ) : null}
-              <button type="button" className="mny-btn" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : c.name)}>
+              <button type="button" className="sk-btn is-small" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : c.name)}>
                 {isOpen ? 'Close' : 'Edit'}
               </button>
             </div>
@@ -1012,10 +1015,10 @@ function ExtraCardTiles({ sheetNames = [] }: { sheetNames?: string[] }) {
             }}
           >
             <input value={name} onChange={e => setName(e.target.value)} placeholder="Card name" aria-label="Card name" autoFocus />
-            <button type="submit" className="mny-btn is-primary">Add</button>
+            <button type="submit" className="sk-btn is-small is-prominent">Add</button>
           </form>
         ) : (
-          <button type="button" className="mny-btn" onClick={() => setAdding(true)}>+ Add a card</button>
+          <button type="button" className="sk-btn is-small" onClick={() => setAdding(true)}>+ Add a card</button>
         )}
       </li>
     </>
@@ -1100,10 +1103,10 @@ function SubAdd({ onDone }: { onDone: () => void }) {
         <input value={note} onChange={e => setNote(e.target.value)} placeholder="Optional — e.g. cancel before the trial ends" />
       </label>
       <div className="sub-form-actions">
-        <button type="submit" className="mny-btn is-primary">
+        <button type="submit" className="sk-btn is-small is-prominent">
           Add subscription
         </button>
-        <button type="button" className="mny-btn" onClick={onDone}>
+        <button type="button" className="sk-btn is-small" onClick={onDone}>
           Cancel
         </button>
       </div>
@@ -1186,7 +1189,7 @@ function SubsView({ model, lifeSubs, paidAt, dues, onSave }: { model: MoneyModel
           <b>{money(chargedSoFar)}</b>
           <span>charged so far this month</span>
         </div>
-        <button type="button" className="mny-btn is-primary subs-add" onClick={() => setAdding(v => !v)} aria-expanded={adding}>
+        <button type="button" className="sk-btn is-small is-prominent subs-add" onClick={() => setAdding(v => !v)} aria-expanded={adding}>
           + Add subscription
         </button>
       </div>
@@ -1212,14 +1215,14 @@ function SubsView({ model, lifeSubs, paidAt, dues, onSave }: { model: MoneyModel
               <span className={`subs-state ${st.tone}`}>{st.text}</span>
               <span className="subs-tools">
                 {r.from === 'sheet' && r.row ? (
-                  <button type="button" className="mny-btn" onClick={() => void onSave([strikeEdit(r.row!, r.status !== 'skipped')])} title="Crosses it out in the sheet (done or skipped this month)">
+                  <button type="button" className="sk-btn is-small" onClick={() => void onSave([strikeEdit(r.row!, r.status !== 'skipped')])} title="Crosses it out in the sheet (done or skipped this month)">
                     {r.status === 'skipped' ? 'Uncross' : 'Cross off'}
                   </button>
                 ) : null}
                 {r.sub ? (
                   <>
                     <select
-                      className="mny-btn"
+                      className="sk-btn is-small"
                       value={r.sub.status}
                       aria-label={`Status of ${r.name}`}
                       onChange={e => updateLifeSub(r.sub!.id, { status: e.target.value as LifeSub['status'] })}
@@ -1231,7 +1234,7 @@ function SubsView({ model, lifeSubs, paidAt, dues, onSave }: { model: MoneyModel
                     </select>
                     <button
                       type="button"
-                      className="mny-btn"
+                      className="sk-btn is-small"
                       onClick={() => window.confirm(`Remove ${r.name} from Life Hub?`) && updateLifeSub(r.sub!.id, { removed: true })}
                       aria-label={`Remove ${r.name}`}
                     >
@@ -1276,7 +1279,7 @@ function IncomeSection({ list, upcoming }: { list: Incoming[]; upcoming: Incomin
         <span>
           <b>{money(next30.reduce((s, d) => s + (d.item.amount || 0), 0))}</b> coming in the next 30 days
         </span>
-        <button type="button" className="mny-btn is-primary" onClick={() => setAdding(v => !v)} aria-expanded={adding}>
+        <button type="button" className="sk-btn is-small is-prominent" onClick={() => setAdding(v => !v)} aria-expanded={adding}>
           + Log income
         </button>
       </div>
@@ -1303,7 +1306,7 @@ function IncomeSection({ list, upcoming }: { list: Incoming[]; upcoming: Incomin
               <option value="once">Just once</option>
             </select>
           </label>
-          <button type="submit" className="mny-btn is-primary">Save</button>
+          <button type="submit" className="sk-btn is-small is-prominent">Save</button>
         </form>
       ) : null}
       {list.length ? (
@@ -1320,7 +1323,7 @@ function IncomeSection({ list, upcoming }: { list: Incoming[]; upcoming: Incomin
                 <span className="mny-due-amt is-in">+{money(it.amount) || '?'}</span>
                 <button
                   type="button"
-                  className="mny-btn"
+                  className="sk-btn is-small"
                   aria-label={`Remove ${it.source}`}
                   onClick={() => window.confirm(`Remove ${it.source} from incoming funds?`) && updateIncoming(it.id, { removed: true })}
                 >
@@ -1339,11 +1342,11 @@ function IncomeSection({ list, upcoming }: { list: Incoming[]; upcoming: Incomin
 
 function SubTabs<T extends string>({ value, options, onChange, label }: { value: T; options: Array<[T, string, string?]>; onChange: (v: T) => void; label: string }) {
   return (
-    <div className="mny-subtabs" role="tablist" aria-label={label}>
+    <div className="skm-subtabs" role="tablist" aria-label={label}>
       {options.map(([id, text, fig]) => (
-        <button key={id} type="button" role="tab" aria-selected={value === id} className={`mny-subtab${value === id ? ' is-on' : ''}`} onClick={() => onChange(id)}>
-          {text}
-          {fig ? <small>{fig}</small> : null}
+        <button key={id} type="button" role="tab" aria-selected={value === id} className={`skm-subtab${value === id ? ' is-on' : ''}`} onClick={() => onChange(id)}>
+          <span className="skm-subtab-l">{text}</span>
+          {fig ? <small className="skm-subtab-f">{fig}</small> : null}
         </button>
       ))}
     </div>
@@ -1929,7 +1932,7 @@ function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week'
           {adding ? (
             <NewItemForm book={book} onDone={() => setAdding(false)} />
           ) : (
-            <button type="button" className="mny-btn" onClick={() => setAdding(true)}>
+            <button type="button" className="sk-btn is-small" onClick={() => setAdding(true)}>
               + New item (not in Upcoming)
             </button>
           )}
@@ -2046,16 +2049,18 @@ function Modal({ label, onClose, onBack, children }: { label: string; onClose: (
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   return (
-    <div className="bal-dlg-backdrop" onClick={onClose}>
-      <div className="bal-dlg" role="dialog" aria-modal="true" aria-label={label} onClick={e => e.stopPropagation()}>
-        {onBack ? (
-          <button type="button" className="bal-dlg-back" onClick={onBack}>
-            ‹ Back
+    <div className="bal-dlg-backdrop skm-dlg-wrap" onClick={onClose}>
+      <div className="bal-dlg skm-dlg" role="dialog" aria-modal="true" aria-label={label} onClick={e => e.stopPropagation()}>
+        <div className="skm-dlg-bar">
+          {onBack ? (
+            <button type="button" className="sk-btn is-small" onClick={onBack}>
+              <Icon name="chevron" className="skm-back" /> Back
+            </button>
+          ) : <span />}
+          <button type="button" className="sk-btn is-small is-icon" onClick={onClose} aria-label="Close">
+            ✕
           </button>
-        ) : null}
-        <button type="button" className="bal-dlg-x" onClick={onClose} aria-label="Close">
-          ✕
-        </button>
+        </div>
         {children}
       </div>
     </div>
@@ -2405,7 +2410,7 @@ function ChangeThisOne({ due }: { due: BillDue }) {
       {open ? (
         <BillChangeForm due={due} onDone={() => setOpen(false)} />
       ) : (
-        <button type="button" className="mny-btn" onClick={() => setOpen(true)}>
+        <button type="button" className="sk-btn is-small" onClick={() => setOpen(true)}>
           {changed ? 'Edit change' : 'Change amount / due day / note'}
         </button>
       )}
@@ -2456,8 +2461,8 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
       <PaidHistory list={history} paidAt={paidAt} />
       {l.due ? <ChangeThisOne due={l.due} /> : null}
       <div className="bal-dlg-actions">
-        <button type="button" className="mny-btn" onClick={() => setMeta(l.key, { closed: l.closed ? undefined : true })}>{l.closed ? 'Reopen' : 'Mark closed'}</button>
-        {l.due && state && !PAID_STATES.includes(state) ? <button type="button" className="mny-btn is-primary" onClick={() => { onPaid(l.due!); onClose(); }}>Mark paid</button> : null}
+        <button type="button" className="sk-btn is-small" onClick={() => setMeta(l.key, { closed: l.closed ? undefined : true })}>{l.closed ? 'Reopen' : 'Mark closed'}</button>
+        {l.due && state && !PAID_STATES.includes(state) ? <button type="button" className="sk-btn is-small is-prominent" onClick={() => { onPaid(l.due!); onClose(); }}>Mark paid</button> : null}
       </div>
     </Modal>
   );
@@ -2500,7 +2505,7 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
       </select>
       <PaidHistory list={list} paidAt={paidAt} />
       {mine ? <ChangeThisOne due={mine} /> : null}
-      {mine && state && !PAID_STATES.includes(state) ? <button type="button" className="mny-btn" onClick={() => { onPaid(mine); onClose(); }}>Mark paid</button> : null}
+      {mine && state && !PAID_STATES.includes(state) ? <button type="button" className="sk-btn is-small" onClick={() => { onPaid(mine); onClose(); }}>Mark paid</button> : null}
     </Modal>
   );
 }
@@ -2539,7 +2544,7 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
             <b>{money(c.due.bill.amount || 0)}</b>
             <small>due {longDate(c.due.due)} · {STATE_TEXT[monthState(c.due, paidAt)](c.due, paidAt)}</small>
           </button>
-          {PAID_STATES.includes(monthState(c.due, paidAt)) ? null : <button type="button" className="mny-btn" onClick={() => { onPaid(c.due!); onClose(); }}>Mark paid</button>}
+          {PAID_STATES.includes(monthState(c.due, paidAt)) ? null : <button type="button" className="sk-btn is-small" onClick={() => { onPaid(c.due!); onClose(); }}>Mark paid</button>}
         </>
       ) : (
         <p className="mny-empty">No payment on the schedule this month.</p>
@@ -2608,7 +2613,7 @@ function ItemPanel({ id, dues, model, paidAt, onPaid, onBack, onClose }: { id: s
       ) : null}
       <ChangeThisOne due={d} />
       {['paid', 'crossed', 'charged', 'skipped'].includes(state) ? null : (
-        <button type="button" className="mny-btn" onClick={() => { onPaid(d); onClose(); }}>Mark paid</button>
+        <button type="button" className="sk-btn is-small" onClick={() => { onPaid(d); onClose(); }}>Mark paid</button>
       )}
     </Modal>
   );
@@ -3073,7 +3078,7 @@ export function MoneyPage({
     return (
       <button
         type="button"
-        className="mny-btn"
+        className="sk-btn is-small"
         title={`Move it to ${label} in the sheet`}
         onClick={() => void save([{ tab: row[0].tab, r: row[0].r, c: row[0].c, c1: row[0].c, c2: row[row.length - 1].c, expect: row[0].text, moveAfter: after }])}
       >
@@ -3150,14 +3155,14 @@ export function MoneyPage({
     { id: 'accounts', tone: 'cash', label: 'Accounts & cards', figure: model.cashOnHand?.text ? `${model.cashOnHand.text} on hand` : '' },
     { id: 'spend', tone: 'sub', label: 'Bills & spending', figure: `${billsLeft} bills left` },
     { id: 'owed', tone: 'owed', label: 'Outstanding', figure: money(dashOwed.reduce((t, o) => t + o.sum, 0)) },
-    { id: 'debts', tone: 'owed', label: 'Credit', figure: 'collections · past due · scores' },
+    { id: 'debts', tone: 'credit', label: 'Credit', figure: 'collections · past due · scores' },
     { id: 'save', tone: 'save', label: 'Savings & move', figure: '' },
     { id: 'plan', tone: 'plan', label: 'Plan', figure: livePlan ? livePlan.title : 'New' },
   ];
 
   return (
     <MoneyPanelCtx.Provider value={panelApi}>
-    <div className="settings-view money-view mny">
+    <div className="settings-view money-view mny skm">
       <MoneyDash
         model={model}
         overdue={overdue.filter(d => !paidAt[d.key])}
@@ -3173,11 +3178,11 @@ export function MoneyPage({
             <span className="mny-stand-meta">
               Radall sheet · {new Date(model.refreshedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · {model.cashOnHand?.text || '—'} on hand · {money(dueWeek)} due this week
               <UpdateFiguresButton model={model} monthDues={monthDues} onSave={save} />
-              <button type="button" className="mny-btn" onClick={onRefresh} disabled={syncing}>
+              <button type="button" className="sk-btn is-small" onClick={onRefresh} disabled={syncing}>
                 {syncing ? 'Syncing…' : 'Refresh'}
               </button>
               {model.sheetUrl ? (
-                <a className="mny-btn" href={model.sheetUrl} target="_blank" rel="noopener noreferrer">
+                <a className="sk-btn is-small" href={model.sheetUrl} target="_blank" rel="noopener noreferrer">
                   Open sheet ↗
                 </a>
               ) : null}
@@ -3190,11 +3195,12 @@ export function MoneyPage({
           </>
         }
         tabs={
-      <nav className="mny-tabs" role="tablist" aria-label="Money sections">
+      <nav className="skm-tabs" role="tablist" aria-label="Money sections">
         {TABS.map(t => (
-          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`mny-tab tone-${t.tone}${tab === t.id ? ' is-on' : ''}`} onClick={() => setTab(t.id)}>
-            <span className="mny-tab-label">{t.label}</span>
-            {t.figure ? <span className="mny-tab-fig">{t.figure}</span> : null}
+          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`skm-tab tone-${t.tone}${tab === t.id ? ' is-on' : ''}`} onClick={() => setTab(t.id)}>
+            <i className="sk-sw" aria-hidden="true" />
+            <span className="skm-tab-l">{t.label}</span>
+            {t.figure ? <span className="skm-tab-f">{t.figure}</span> : null}
           </button>
         ))}
       </nav>
@@ -3218,7 +3224,7 @@ export function MoneyPage({
         {tab === 'flow' && flowView === 'ledger' ? (
           <div className="money-ledger-toolbar">
             <SubTabs label="Ledger view" value={ledgerView} onChange={setLedgerView} options={[['date', 'By date'], ['category', 'By category'], ['selector', 'Selector tool']]} />
-            <button type="button" className="mny-btn" aria-pressed={hidePaid} onClick={() => { setHidePaid(!hidePaid); writeSaved('lifehub-money-ledger-hide-paid', !hidePaid); }}>{hidePaid ? 'Show paid items' : 'Hide paid items'}</button>
+            <button type="button" className="sk-btn is-small" aria-pressed={hidePaid} onClick={() => { setHidePaid(!hidePaid); writeSaved('lifehub-money-ledger-hide-paid', !hidePaid); }}>{hidePaid ? 'Show paid items' : 'Hide paid items'}</button>
           </div>
         ) : null}
         {tab === 'accounts' ? (

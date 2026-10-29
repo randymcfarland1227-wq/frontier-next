@@ -35,7 +35,7 @@ export function MoneySelector({ dues, paidAt, hidePaid, renderRow }: {
         {weeks.map((w, i) => <option value={i} key={w.from}>{short(w.from)}–{short(w.to)}{i === Math.floor((today.getDate() - 1) / 7) ? ' · This week' : ''}</option>)}
       </select></label>
       <label><input type="checkbox" checked={includeOverdue} onChange={e => setIncludeOverdue(e.target.checked)} /> Include all unpaid overdue items</label>
-      <button type="button" className="mny-btn" onClick={() => { setTypes([]); setItems([]); }}>Clear selections</button>
+      <button type="button" className="sk-btn is-small" onClick={() => { setTypes([]); setItems([]); }}>Clear selections</button>
     </div>
     <fieldset className="money-selector-types"><legend>Pick types to add to your list</legend>
       {choices.map(t => <label key={t.id} className={`mny-chip${types.includes(t.id) ? ' is-on' : ''}`}>
@@ -44,7 +44,7 @@ export function MoneySelector({ dues, paidAt, hidePaid, renderRow }: {
       </label>)}
       {!choices.length ? <p className="mny-empty">No payments in this range.</p> : null}
     </fieldset>
-    <button type="button" className="mny-btn" aria-expanded={showItems} onClick={() => setShowItems(!showItems)}>{showItems ? 'Close item picker' : 'Add individual items'}</button>
+    <button type="button" className="sk-btn is-small" aria-expanded={showItems} onClick={() => setShowItems(!showItems)}>{showItems ? 'Close item picker' : 'Add individual items'}</button>
     {showItems ? <div className="money-selector-picker">
       <label>Find an item <input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or type" /></label>
       <ul>{visible.filter(d => `${d.bill.name} ${ledgerType(d).label}`.toLowerCase().includes(search.toLowerCase())).map(d => {

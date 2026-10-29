@@ -16,6 +16,7 @@ import { metaName, monthlyCarry, removeMeta, setMeta, useMoneyMeta, type MetaEnt
 import { isOverdue } from '../../lib/billEdits';
 import { isLedgerPaid, ledgerMonthRows } from '../../lib/moneyLedger';
 import { MenuRow } from './RowMenu';
+import { Icon } from '../sticker/Icon';
 
 export type CellView = (c: Cell | undefined, placeholder?: string) => ReactNode;
 type Get = (key: string) => MetaEntry | undefined;
@@ -178,7 +179,7 @@ function SaleAdd({ platform }: { platform: 'ebay' | 'posh' }) {
   const [availOn, setAvailOn] = useState('');
   if (!open) {
     return (
-      <button type="button" className="mny-btn mb-add" onClick={() => setOpen(true)}>
+      <button type="button" className="sk-btn is-small mb-add" onClick={() => setOpen(true)}>
         + Add a sale
       </button>
     );
@@ -204,10 +205,10 @@ function SaleAdd({ platform }: { platform: 'ebay' | 'posh' }) {
         <option value="avail">Available</option>
       </select>
       <input type="date" value={availOn} onChange={e => setAvailOn(e.target.value)} aria-label="Est. available on" title="Est. available on" />
-      <button type="submit" className="mny-btn">
+      <button type="submit" className="sk-btn is-small">
         Add
       </button>
-      <button type="button" className="mny-btn" onClick={() => setOpen(false)}>
+      <button type="button" className="sk-btn is-small" onClick={() => setOpen(false)}>
         Cancel
       </button>
     </form>
@@ -586,7 +587,7 @@ export function WeekBoard({ dues, monthDues, paidAt, onPaid, onOpen, onAdd, isAd
           ) : null}
           <Box tone="due" title="Upcoming · this week" figure={usd(sumOf(thisWeek.map(d => d.bill.amount)))} figureLabel={`${thisWeek.length} through Sun`} className="mb-fixed">
             {onAdd && thisWeek.some(d => !isAdded?.(d.key)) ? (
-              <button type="button" className="mny-btn" onClick={() => thisWeek.filter(d => !isAdded?.(d.key)).forEach(d => onAdd(d.key))}>
+              <button type="button" className="sk-btn is-small" onClick={() => thisWeek.filter(d => !isAdded?.(d.key)).forEach(d => onAdd(d.key))}>
                 + Add all to balancing sheet
               </button>
             ) : null}
@@ -779,45 +780,38 @@ export function MoneyDash({
   const cardLim = sumOf(cards.filter(c => c.limit).map(c => c.limit));
   const cardBal = sumOf(cards.filter(c => c.limit).map(c => c.bal));
   const paidPct = monthCount ? Math.round((monthPaid / monthCount) * 100) : undefined;
+  const monthLabel = new Date().toLocaleDateString([], { month: 'long' });
+  // Drawing 1: six columns, each its own sticker Group in its money tone. Boxes = sums. It sits at
+  // the top of the page and scrolls away with it (never pinned).
   return (
-    <>
-    <section className="mb-dash" aria-label="Money at a glance">
-      <div className="mb-dash-top">
-        <p className="mny-eyebrow">Money · at a glance</p>
+    <section className="skm-dash" aria-label="Money at a glance">
+      <div className="skm-dash-top">
+        <h1 className="sk-large">Money</h1>
         {top}
       </div>
-      <div className="mb-dash-cols">
-        <DashCol tone="cash" go="accounts" onGo={onGo}>
-          <h3>Cash · pend</h3>
-          <div className="mb-dc-grid is-3">
+      <div className="skm-dash-cols">
+        <DashCol tone="cash" title="Cash · pend" go="accounts" onGo={onGo}>
+          <div className="skm-grid is-3">
             <span />
             <small>avail</small>
             <small>pend</small>
             {rows.map(r => (
               <DashRow key={r.name} onOpen={() => onOpenAccount(r.name)} label={r.label}>
                 <b>{usd(r.now ?? 0)}</b>
-                <b className="mb-pend">{r.pend ? usd(r.pend) : '·'}</b>
+                <b className="is-pend">{r.pend ? usd(r.pend) : '·'}</b>
               </DashRow>
             ))}
           </div>
-          <div className="mb-dc-sums">
-            <span>
-              <small>avail</small>
-              <b>{usd(sumOf(rows.map(r => r.now)))}</b>
-            </span>
-            <span>
-              <small>pend</small>
-              <b>{usd(sumOf(rows.map(r => r.pend)))}</b>
-            </span>
-            <span>
-              <small>both</small>
-              <b>{usd(sumOf(rows.map(r => (r.now || 0) + (r.pend || 0))))}</b>
-            </span>
-          </div>
+          <DashSums
+            sums={[
+              ['avail', usd(sumOf(rows.map(r => r.now)))],
+              ['pend', usd(sumOf(rows.map(r => r.pend)))],
+              ['both', usd(sumOf(rows.map(r => (r.now || 0) + (r.pend || 0))))],
+            ]}
+          />
         </DashCol>
-        <DashCol tone="card" go="cards" onGo={onGo}>
-          <h3>Cards</h3>
-          <div className="mb-dc-grid is-4">
+        <DashCol tone="card" title="Cards" go="cards" onGo={onGo}>
+          <div className="skm-grid is-4">
             <span />
             <small>limit</small>
             <small>avail</small>
@@ -826,28 +820,20 @@ export function MoneyDash({
               <DashRow key={c.key} onOpen={() => onOpenCard(c.name)} label={c.name.replace(/^cap(ital)?\s*1\s*/i, 'C1 ')} title={c.name}>
                 <b>{usd(c.limit)}</b>
                 <b>{usd(c.avail)}</b>
-                <b className={c.util !== undefined && c.util >= 90 ? 'mb-late' : ''}>{pct(c.util)}</b>
+                <b className={c.util !== undefined && c.util >= 90 ? 'is-late' : ''}>{pct(c.util)}</b>
               </DashRow>
             ))}
           </div>
-          <div className="mb-dc-sums">
-            <span>
-              <small>limit</small>
-              <b>{usd(cardLim)}</b>
-            </span>
-            <span>
-              <small>avail</small>
-              <b>{usd(sumOf(cards.map(c => c.avail)))}</b>
-            </span>
-            <span>
-              <small>util</small>
-              <b>{cardLim ? pct((cardBal / cardLim) * 100) : '—'}</b>
-            </span>
-          </div>
+          <DashSums
+            sums={[
+              ['limit', usd(cardLim)],
+              ['avail', usd(sumOf(cards.map(c => c.avail)))],
+              ['util', cardLim ? pct((cardBal / cardLim) * 100) : '—'],
+            ]}
+          />
         </DashCol>
-        <DashCol tone="save" go="savings" onGo={onGo}>
-          <h3>Savings</h3>
-          <div className="mb-dc-grid" style={{ gridTemplateColumns: `minmax(0, 1fr) repeat(${goalIdx.length + 1}, minmax(0, 1fr))` }}>
+        <DashCol tone="save" title="Savings" go="savings" onGo={onGo}>
+          <div className="skm-grid" style={{ gridTemplateColumns: `minmax(0, 1.2fr) repeat(${goalIdx.length + 1}, minmax(0, 1fr))` }}>
             <span />
             {goalIdx.map(gi => (
               <small key={gi} title={goals[gi]}>
@@ -857,7 +843,7 @@ export function MoneyDash({
             <small>sum</small>
             {acctList.map(a => (
               <Frag key={a.name}>
-                <span>{a.name}</span>
+                <span className="skm-gname">{a.name}</span>
                 {goalIdx.map(gi => (
                   <b key={gi}>{savCell(gi, a.col) !== undefined ? usd(savCell(gi, a.col)) : '·'}</b>
                 ))}
@@ -865,110 +851,80 @@ export function MoneyDash({
               </Frag>
             ))}
           </div>
-          {emptyGoals.length ? <small className="mb-dim">Empty: {emptyGoals.join(', ')}</small> : null}
-          <div className="mb-dc-sums">
-            {goalIdx.map(gi => (
-              <span key={gi}>
-                <small>{goals[gi].replace(/savings?/i, '').trim() || goals[gi]}</small>
-                <b>{usd(sumOf(savAccts.map(a => savCell(gi, a.col))))}</b>
-              </span>
-            ))}
-            <span>
-              <small>all</small>
-              <b>{usd(sumOf(goals.flatMap((_, gi) => savAccts.map(a => savCell(gi, a.col)))))}</b>
-            </span>
-          </div>
+          {emptyGoals.length ? <small className="skm-dim">Empty: {emptyGoals.join(', ')}</small> : null}
+          <DashSums
+            sums={[
+              ...goalIdx.map(gi => [goals[gi].replace(/savings?/i, '').trim() || goals[gi], usd(sumOf(savAccts.map(a => savCell(gi, a.col))))] as [string, ReactNode]),
+              ['all', usd(sumOf(goals.flatMap((_, gi) => savAccts.map(a => savCell(gi, a.col)))))],
+            ]}
+          />
         </DashCol>
-        <DashCol tone="due" go="week" onGo={onGo}>
-          <h3>Bills · routine</h3>
-          <div className="mb-dc-big">
+        <DashCol tone="due" title="Bills · routine" go="week" onGo={onGo}>
+          <div className="skm-big">
             <b>{paidPct !== undefined ? `${paidPct}%` : '—'}</b>
             <small>
-              of {new Date().toLocaleDateString([], { month: 'long' })} paid · {monthPaid} of {monthCount}
+              of {monthLabel} paid · {monthPaid} of {monthCount}
             </small>
-            <i className="mb-bar" aria-hidden="true">
+            <i className="skm-bar" aria-hidden="true">
               <i style={{ width: `${paidPct || 0}%` }} />
             </i>
           </div>
           {overdue.length ? (
-            <div className="mb-dc-sums is-late">
-              {lateBoxes.map(([k, label]) =>
-                lateBy(k).length ? (
-                  <span key={k}>
-                    <small>{label}</small>
-                    <b>{usd(sumOf(lateBy(k).map(d => d.bill.amount)))}</b>
-                    <small>{lateBy(k).length} late</small>
-                  </span>
-                ) : null,
-              )}
-            </div>
-          ) : null}
-          {overdue.length ? (
-            <div className="mb-dc-sums is-late mb-only-compact">
-              <span>
-                <small>overdue · {overdue.length}</small>
-                <b>{usd(sumOf(overdue.map(d => d.bill.amount)))}</b>
-              </span>
-            </div>
+            <DashSums
+              late
+              sums={lateBoxes
+                .filter(([k]) => lateBy(k).length)
+                .map(([k, label]) => [`Due ${label.toLowerCase()} · ${lateBy(k).length}`, usd(sumOf(lateBy(k).map(d => d.bill.amount)))] as [string, ReactNode])}
+            />
           ) : null}
         </DashCol>
-        <DashCol tone="plan" go="credit" onGo={onGo}>
-          <h3>Credit</h3>
-          <div className="mb-dc-scores">
+        <DashCol tone="credit" title="Credit" go="credit" onGo={onGo}>
+          <div className="skm-scores">
             {credit.scores.map(s => (
               <span key={s.bureau} className={`bu-${bureauKey(s.bureau)}`}>
+                <small className="skm-bu">{s.bureau}</small>
                 <b>{s.score ?? '—'}</b>
-                <small className="bu-name">{s.bureau}</small>
                 <small>{s.date ? md(s.date) : ''}</small>
               </span>
             ))}
           </div>
-          <div className="mb-dc-grid is-cs">
+          <div className="skm-grid is-cs">
             <span />
             <small>#</small>
             <small>sum</small>
-            <span>Active</span>
+            <span className="skm-gname">Active</span>
             <b>{credit.active.n}</b>
             <b>{usd(credit.active.sum)}</b>
-            <span>Collections</span>
-            <b className="mb-late">{credit.collections.n}</b>
-            <b className="mb-late">{usd(credit.collections.sum)}</b>
-            <span>Closed</span>
+            <span className="skm-gname">Collections</span>
+            <b className="is-late">{credit.collections.n}</b>
+            <b className="is-late">{usd(credit.collections.sum)}</b>
+            <span className="skm-gname">Closed</span>
             <b>{credit.closed.n}</b>
             <b>{usd(credit.closed.sum)}</b>
           </div>
-          <div className="mb-dc-sums">
-            <span>
-              <small>coll. + closed</small>
-              <b>{credit.collections.n + credit.closed.n}</b>
-            </span>
-            <span>
-              <small>amount</small>
-              <b>{usd(credit.collections.sum + credit.closed.sum)}</b>
-            </span>
-          </div>
+          <DashSums
+            sums={[
+              ['coll. + closed', credit.collections.n + credit.closed.n],
+              ['amount', usd(credit.collections.sum + credit.closed.sum)],
+            ]}
+          />
         </DashCol>
-        <DashCol tone="owed" go="owed" onGo={onGo}>
-          <h3>Outstanding</h3>
-          <div className="mb-dc-grid is-2">
+        <DashCol tone="owed" title="Outstanding" go="owed" onGo={onGo}>
+          <div className="skm-grid is-2">
             {owed.map(o => (
               <Frag key={o.label}>
-                <span title={o.note}>{o.label}</span>
+                <span className="skm-gname" title={o.note}>
+                  {o.label}
+                </span>
                 <b>{usd(o.sum)}</b>
               </Frag>
             ))}
           </div>
-          <div className="mb-dc-sums">
-            <span>
-              <small>total</small>
-              <b>{usd(owedSum)}</b>
-            </span>
-          </div>
+          <DashSums sums={[['total', usd(owedSum)]]} />
         </DashCol>
       </div>
       {tabs}
     </section>
-    </>
   );
 }
 
@@ -982,13 +938,13 @@ export function bureauKey(name: string): 'ex' | 'eq' | 'tu' | '' {
 function DashRow({ label, title, onOpen, children }: { label: string; title?: string; onOpen: () => void; children: ReactNode }) {
   return (
     <div
-      className="mb-dc-row"
+      className="skm-grow"
       onClick={e => {
         e.stopPropagation();
         onOpen();
       }}
     >
-      <button type="button" className="mb-dc-link" title={title || label}>
+      <button type="button" className="skm-glink" title={title || label}>
         {label}
       </button>
       {children}
@@ -996,21 +952,41 @@ function DashRow({ label, title, onOpen, children }: { label: string; title?: st
   );
 }
 
-function DashCol({ tone, go, onGo, children }: { tone: string; go: string; onGo: (where: string) => void; children: ReactNode }) {
+/** The sum boxes under a column (the drawing's squares). `late` paints them as overdue. */
+function DashSums({ sums, late }: { sums: Array<[string, ReactNode]>; late?: boolean }) {
+  return (
+    <div className={`skm-sums${late ? ' is-late' : ''}`}>
+      {sums.map(([label, value]) => (
+        <span key={label}>
+          <small>{label}</small>
+          <b>{value}</b>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** A dashboard column: a sticker Group in its money tone; the head (or any empty spot) opens its tab. */
+function DashCol({ tone, title, go, onGo, children }: { tone: string; title: string; go: string; onGo: (where: string) => void; children: ReactNode }) {
   return (
     <div
-      className={`mb-dc tone-${tone}`}
+      className={`sk-group tone-${tone} skm-dc`}
       role="button"
       tabIndex={0}
+      aria-label={`${title}: open its tab`}
       onClick={() => onGo(go)}
       onKeyDown={e => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
           onGo(go);
         }
       }}
     >
-      {children}
+      <div className="sk-ghead skm-dc-head">
+        <h3 className="sk-hl">{title}</h3>
+        <Icon name="chevron" className="skm-dc-go" />
+      </div>
+      <div className="sk-gbody skm-dc-body">{children}</div>
     </div>
   );
 }

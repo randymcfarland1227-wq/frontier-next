@@ -56,7 +56,7 @@ export function UpdateFiguresButton({ model, monthDues, onSave }: { model: Money
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="mny-btn" onClick={() => setOpen(true)} title="Type today’s balances once — they save to the sheet and every page follows">
+      <button type="button" className="sk-btn is-small" onClick={() => setOpen(true)} title="Type today’s balances once — they save to the sheet and every page follows">
         Update figures
       </button>
       {open ? <UpdateFigures model={model} monthDues={monthDues} onSave={onSave} onClose={() => setOpen(false)} /> : null}

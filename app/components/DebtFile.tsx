@@ -57,7 +57,7 @@ export function DebtFile({ scope, sheet, scores = [], model = null, monthDues = 
       <div className="dbt-empty">
         {status === 'loading' ? 'Loading your debt file…' : status === 'locked' ? 'This device isn’t linked to your backup key, so the private debt file can’t load.' : status === 'empty' ? 'No debt file saved yet.' : 'Couldn’t reach the Worker.'}
         {status !== 'loading' ? (
-          <button type="button" className="mny-btn" onClick={() => void refresh()}>
+          <button type="button" className="sk-btn is-small" onClick={() => void refresh()}>
             Try again
           </button>
         ) : null}
@@ -334,7 +334,7 @@ function Story({ item, file, mark, onMark, onClose, onLetter }: { item: DebtItem
 
         <div className="dbt-marks">
           {MARKS.map(([s, label]) => (
-            <button key={s} type="button" className={`mny-btn${mark?.status === s ? ' is-on' : ''}`} onClick={() => onMark(mark?.status === s ? null : { status: s, note })}>
+            <button key={s} type="button" className="sk-btn is-small" aria-pressed={mark?.status === s} onClick={() => onMark(mark?.status === s ? null : { status: s, note })}>
               {label}
             </button>
           ))}

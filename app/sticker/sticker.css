@@ -774,3 +774,124 @@
 .sk-app .day-menu-close { background: none; border-color: transparent; color: var(--sk-ink-2); }
 .frontier-shell:has(.preview-banner) .sk-app .sk-sheetside { padding-bottom: 64px; }
 .sk-app .sk-sidehead .sk-brand { font-size: 14px; white-space: nowrap; padding-inline: var(--sk-s2) 0; }
+
+/* ───────────── Money (drawings of 2026-10-22) ─────────────
+   Each money area has its own tone. The Money page renders through these sticker pieces (skm-*);
+   the old tables inside read the classic tokens, which are pointed at sticker paper/ink here and
+   re-declared inside every Group so they pick up that Group's shaded paper (never pure white). */
+.sk-app {
+  --sk-cash: #b4ecd6; --sk-card: #c9d3ff; --sk-save: #b9e3f5; --sk-due: #ffd98a; --sk-credit: #e2d2ff;
+  --sk-owed: #ffc4c9; --sk-plan: #d7dcf5; --sk-shop: #f4cdec; --sk-sub: #ffd7c4;
+}
+.sk-app .tone-cash { --skf: var(--sk-cash); } .sk-app .tone-card { --skf: var(--sk-card); }
+.sk-app .tone-save { --skf: var(--sk-save); } .sk-app .tone-due { --skf: var(--sk-due); }
+.sk-app .tone-credit { --skf: var(--sk-credit); } .sk-app .tone-owed { --skf: var(--sk-owed); }
+.sk-app .tone-plan { --skf: var(--sk-plan); } .sk-app .tone-shop { --skf: var(--sk-shop); }
+.sk-app .tone-sub { --skf: var(--sk-sub); }
+.sk-app[data-page="money"] .sk-main {
+  background-color: var(--sk-page);
+  background-image: linear-gradient(var(--sk-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sk-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.sk-app[data-page="money"] :is(.skm, .skm .sk-group > *) {
+  --bg: var(--sk-page); --surface: var(--sk-paper); --surface-2: color-mix(in srgb, var(--sk-ink) 5%, var(--sk-paper));
+  --ink: var(--sk-ink); --text: var(--sk-ink); --muted: var(--sk-ink-2); --page-muted: var(--sk-ink-2);
+  --line: var(--sk-line); --row-line: var(--sk-line); --accent: var(--sk-tint); --accent-ink: var(--sk-ink);
+  --accent-soft: color-mix(in srgb, var(--sk-tint) 14%, var(--sk-paper)); --glow: none; --glass: var(--sk-paper);
+}
+.sk-app .skm { color: var(--sk-ink); font: var(--sk-body); gap: var(--sk-s5, 20px); padding-top: var(--sk-s4); }
+.sk-app .skm :is(table, td, th, li, input, select, textarea) { font-size: 15px; }
+.sk-app .skm :is(input, select, textarea) { background: var(--sk-paper); color: var(--sk-ink); border: 1.5px solid var(--sk-edge); border-radius: 8px; }
+.sk-app .skm .sk-group + .sk-group { margin-top: 0; }
+.sk-app .skm .mny-empty { font: var(--sk-secondary); color: var(--sk-ink-2); }
+
+/* Section = Group with the area's figure on the right */
+.sk-app .skm-head { gap: var(--sk-s2) var(--sk-s4); align-items: center; }
+.sk-app .skm-titles { flex: 1 1 24ch; min-width: 0; display: grid; gap: 2px; }
+.sk-app .skm-titles .sk-hl { font: var(--sk-title); font-size: 19px; }
+.sk-app .skm-fig { display: grid; justify-items: end; gap: 2px; }
+.sk-app .skm-fig b { font: var(--sk-figure); font-size: 26px; }
+.sk-app .skm-body { display: grid; gap: var(--sk-s3); padding-top: var(--sk-s3); }
+
+/* Fold = a row that opens inside a Section */
+.sk-app .skm-fold { border: 2px solid var(--sk-edge); border-radius: 12px; background: var(--sk-paper); }
+.sk-app .skm-fold > summary { display: flex; align-items: center; gap: var(--sk-s2) var(--sk-s3); flex-wrap: wrap; padding: 10px var(--sk-s3); cursor: pointer; list-style: none; border-radius: 10px; }
+.sk-app .skm-fold > summary::-webkit-details-marker { display: none; }
+.sk-app .skm-fold > summary:hover { background: var(--sk-hover); }
+.sk-app .skm-fchev { width: 16px; height: 16px; transition: transform .15s; }
+.sk-app .skm-fold[open] > summary .skm-fchev { transform: rotate(90deg); }
+.sk-app .skm-ftitle { font: var(--sk-label); }
+.sk-app .skm-fmeta { flex: 1; min-width: 10ch; }
+.sk-app .skm-ftotal { margin-left: auto; font: var(--sk-headline); }
+.sk-app .skm-fold[open] > summary { border-bottom: 1.5px solid var(--sk-line); border-radius: 10px 10px 0 0; }
+.sk-app .skm-fbody { padding: var(--sk-s2) var(--sk-s3) var(--sk-s3); }
+
+/* Tabs: one sticker per Money area, filled with its tone when chosen */
+.sk-app .skm-tabs { display: flex; flex-wrap: wrap; gap: var(--sk-s2); margin-top: var(--sk-s4); }
+.sk-app .skm-tab {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0 8px; text-align: left;
+  padding: 8px 14px; border: 2px solid var(--sk-edge); border-radius: 12px; background: var(--sk-paper); color: var(--sk-ink); cursor: pointer;
+}
+.sk-app .skm-tab .sk-sw { grid-row: span 2; width: 12px; height: 12px; }
+.sk-app .skm-tab-l { font: var(--sk-label); }
+.sk-app .skm-tab-f { grid-column: 2; font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .skm-tab:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--sk-edge); }
+.sk-app .skm-tab.is-on { background: var(--skf); box-shadow: 3px 3px 0 var(--sk-edge); color: var(--sk-on-fill, #16141f); }
+.sk-app .skm-tab.is-on .skm-tab-f { color: inherit; opacity: .8; }
+.frontier-shell[data-color-mode="dark"] .sk-app .skm-tab.is-on { background: color-mix(in srgb, var(--skf) 30%, var(--sk-paper)); color: var(--sk-ink); }
+.sk-app .skm-subtabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px; border: 2px solid var(--sk-edge); border-radius: 12px; background: var(--sk-paper); width: fit-content; max-width: 100%; }
+.sk-app .skm-subtab { display: grid; gap: 0; text-align: left; padding: 5px 12px; border: 0; border-radius: 8px; background: none; color: var(--sk-ink); cursor: pointer; }
+.sk-app .skm-subtab:hover { background: var(--sk-hover); }
+.sk-app .skm-subtab.is-on { background: var(--sk-ink); color: var(--sk-paper); }
+.sk-app .skm-subtab-l { font: var(--sk-label); font-size: 14px; }
+.sk-app .skm-subtab-f { font: var(--sk-caption); opacity: .75; }
+
+/* Dialog (item panels) */
+.sk-app .skm-dlg-wrap { background: #16141f66; }
+.sk-app .bal-dlg.skm-dlg { background: var(--sk-side); color: var(--sk-ink); border: 2px solid var(--sk-edge); border-radius: 18px; box-shadow: 6px 6px 0 var(--sk-edge); font: var(--sk-body); }
+.sk-app .skm-dlg-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sk-s2); }
+.sk-app .skm-back { width: 14px; height: 14px; transform: rotate(180deg); }
+
+/* At-a-glance dashboard (drawing 1). Scrolls with the page; never sticky. */
+.sk-app .skm-dash { display: grid; gap: var(--sk-s3); }
+.sk-app .skm-dash-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sk-s2) var(--sk-s4); }
+.sk-app .skm-dash-top .mny-stand-meta { margin-left: auto; font: var(--sk-secondary); color: var(--sk-ink-2); display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sk-app .skm-dash-top .money-note { flex-basis: 100%; margin: 0; }
+.sk-app .skm-dash-cols { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--sk-s3); align-items: stretch; }
+.sk-app .skm-dc { display: flex; flex-direction: column; cursor: pointer; min-width: 0; }
+.sk-app .skm-dc:hover { box-shadow: 3px 3px 0 var(--sk-edge); }
+.sk-app .skm-dc-head { padding: 10px var(--sk-s3); }
+.sk-app .skm-dc-head .sk-hl { flex: 1; font-size: 16px; }
+.sk-app .skm-dc-go { width: 14px; height: 14px; opacity: .55; }
+.sk-app .skm-dc-body { flex: 1; display: flex; flex-direction: column; gap: var(--sk-s2); padding: var(--sk-s2) var(--sk-s3) var(--sk-s3); }
+.sk-app .skm-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) repeat(2, minmax(0, 1fr)); gap: 3px 6px; align-items: baseline; font-size: 14px; }
+.sk-app .skm-grid.is-2 { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.sk-app .skm-grid.is-4 { grid-template-columns: minmax(0, 1.1fr) repeat(3, minmax(0, 1fr)); }
+.sk-app .skm-grid.is-cs { grid-template-columns: minmax(0, 1.5fr) minmax(0, .6fr) minmax(0, 1fr); }
+.sk-app .skm-grid > small { font: var(--sk-caption); color: var(--sk-ink-2); text-align: right; }
+.sk-app .skm-grid > b, .sk-app .skm-grow > b { font-weight: 600; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sk-app .skm-grow { display: contents; }
+.sk-app :is(.skm-glink, .skm-gname) { font: var(--sk-label); font-size: 14px; text-align: left; padding: 0; border: 0; background: none; color: var(--sk-ink); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sk-app .skm-glink:hover { text-decoration: underline; text-underline-offset: 3px; }
+.sk-app .skm-grid .is-pend { color: var(--sk-ink-2); font-weight: 500; }
+.sk-app .skm-grid .is-late { color: var(--sk-alert-ink); }
+.sk-app .skm-dim { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .skm-sums { display: grid; grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 6px; margin-top: auto; padding-top: var(--sk-s2); }
+.sk-app .skm-sums > span { display: grid; gap: 1px; padding: 6px 8px; border: 2px solid var(--sk-edge); border-radius: 10px; background: var(--sk-paper); min-width: 0; }
+.sk-app .skm-sums small { font: var(--sk-caption); color: var(--sk-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sk-app .skm-sums b { font: 600 17px/1.15 "Unbounded", system-ui, sans-serif; white-space: nowrap; }
+.sk-app .skm-sums.is-late > span { background: color-mix(in srgb, var(--sk-alert) 22%, var(--sk-paper)); }
+.sk-app .skm-sums.is-late b { color: var(--sk-alert-ink); }
+.sk-app .skm-big { display: grid; gap: 4px; }
+.sk-app .skm-big > b { font: var(--sk-figure); font-size: 34px; }
+.sk-app .skm-big > small { font: var(--sk-secondary); color: var(--sk-ink-2); }
+.sk-app .skm-bar { display: block; height: 10px; border: 2px solid var(--sk-edge); border-radius: 99px; background: var(--sk-paper); overflow: hidden; }
+.sk-app .skm-bar > i { display: block; height: 100%; background: var(--sk-done); }
+.sk-app .skm-scores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.sk-app .skm-scores > span { display: grid; justify-items: center; padding: 6px 4px; border: 2px solid var(--sk-edge); border-radius: 10px; background: var(--sk-paper); }
+.sk-app .skm-scores b { font: 600 19px/1.1 "Unbounded", system-ui, sans-serif; }
+.sk-app .skm-scores small { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .skm-scores .skm-bu { color: var(--sk-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@media (max-width: 1600px) { .sk-app .skm-dash-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .sk-app .skm-dash-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .sk-app .skm-dash-cols { grid-template-columns: minmax(0, 1fr); } .sk-app .skm-tab { flex: 1 1 140px; } }

@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useState, type FormEvent } from 'react';
+import { Group, ListHead, Section } from '../sticker/kit';
+import { Icon } from '../sticker/Icon';
 import type { SourceId, SourceSnapshot, SpaceId } from '../../lib/types';
 import { readSaved, writeSaved } from '../../lib/storage';
 import { dayRecord, useDayKey } from '../../lib/dayKey';
@@ -25,8 +27,14 @@ function useDayState<T>(key: string, fallback: T) {
 
 type Entry = { id: string; title: string; note?: string; done?: boolean; push?: number };
 
-/** A typed list: a title plus an optional note (folds to two lines, tap to open), ✓ to mark off, ✕ to remove. */
-function FocusList({ storageKey, label, noteLabel = 'Details (optional)', empty, week, marks = true }: { storageKey: string; label: string; noteLabel?: string; empty?: string; week?: boolean; marks?: boolean }) {
+const mondayKey = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+};
+
+/** A saved typed list; `week` lists start empty every Monday. */
+function useFocusList(storageKey: string, week?: boolean) {
   const scope = week ? mondayKey() : '';
   const [state, setState] = useState(() => readSaved<{ scope: string; items: Entry[] }>(storageKey, { scope, items: [] }));
   const items = state.scope === scope ? state.items : [];
@@ -35,6 +43,11 @@ function FocusList({ storageKey, label, noteLabel = 'Details (optional)', empty,
     setState(v);
     writeSaved(storageKey, v);
   };
+  return [items, save] as const;
+}
+
+/** A typed list: a title plus an optional note (folds to two lines, tap to open), circle to mark off, ✕ to remove. */
+function FocusList({ list: [items, save], label, noteLabel = 'Details (optional)', empty, marks = true }: { list: ReturnType<typeof useFocusList>; label: string; noteLabel?: string; empty?: string; marks?: boolean }) {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [open, setOpen] = useState<string | null>(null);
@@ -48,42 +61,42 @@ function FocusList({ storageKey, label, noteLabel = 'Details (optional)', empty,
   const live = items.filter(i => !i.done);
   const finished = items.filter(i => i.done);
   const row = (i: Entry) => (
-    <li key={i.id} className={`fc-entry${i.done ? ' is-done' : ''}${open === i.id ? ' is-open' : ''}`}>
-      {marks ? (
-        <button type="button" className="fc-tick" aria-pressed={!!i.done} aria-label={i.done ? `Mark ${i.title} not done` : `Mark ${i.title} done`} onClick={() => save(items.map(x => (x.id === i.id ? { ...x, done: !x.done } : x)))}>
-          {i.done ? '✓' : ''}
-        </button>
-      ) : null}
-      <button type="button" className="fc-entry-text" onClick={() => setOpen(open === i.id ? null : i.id)}>
-        <strong>{i.title}</strong>
-        {i.note ? <span>{i.note}</span> : null}
+    <div key={i.id} className={`sk-row sk-fc-row${marks ? '' : ' is-plain'}${i.done ? ' is-done' : ''}${open === i.id ? ' is-open' : ''}`}>
+      <span className="sk-rlead">
+        {marks ? (
+          <button type="button" className={`sk-circle${i.done ? ' is-on' : ''}`} aria-pressed={!!i.done} aria-label={i.done ? `Mark ${i.title} not done` : `Mark ${i.title} done`} onClick={() => save(items.map(x => (x.id === i.id ? { ...x, done: !x.done } : x)))}>
+            <Icon name="check" size={12} />
+          </button>
+        ) : null}
+      </span>
+      <button type="button" className="sk-rmain" aria-expanded={i.note ? open === i.id : undefined} onClick={() => setOpen(open === i.id ? null : i.id)}>
+        <span className="sk-rt">{i.title}</span>
+        {i.note ? <span className="sk-rs">{i.note}</span> : null}
       </button>
-      <button type="button" className="fc-x" aria-label={`Remove ${i.title}`} onClick={() => save(items.filter(x => x.id !== i.id))}>✕</button>
-    </li>
+      <span className="sk-rv">
+        <button type="button" className="sk-btn is-small is-icon is-quiet" aria-label={`Remove ${i.title}`} title="Remove" onClick={() => save(items.filter(x => x.id !== i.id))}>
+          <Icon name="close" size={14} />
+        </button>
+      </span>
+      <span />
+    </div>
   );
   return (
-    <div className="fc-flist">
-      {items.length ? <ul className="fc-entries">{live.map(row)}{finished.map(row)}</ul> : empty ? <p className="fc-empty">{empty}</p> : null}
-      <form className="fc-compose" onSubmit={add}>
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder={`+ ${label}`} aria-label={label} maxLength={120} />
-        {title.trim() ? (
-          <>
-            <textarea value={note} onChange={e => setNote(e.target.value)} placeholder={noteLabel} aria-label={noteLabel} rows={2} maxLength={400} />
-            <button type="submit" className="fc-addbtn">Add</button>
-          </>
-        ) : null}
+    <>
+      {items.length ? <div className="sk-list">{live.map(row)}{finished.map(row)}</div> : empty ? <p className="sk-empty">{empty}</p> : null}
+      <form className="sk-fc-add" onSubmit={add}>
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder={label} aria-label={label} maxLength={120} />
+        <button type="submit" className="sk-btn is-small" disabled={!title.trim()}>
+          <Icon name="plus" size={14} />Add
+        </button>
+        {title.trim() ? <textarea value={note} onChange={e => setNote(e.target.value)} placeholder={noteLabel} aria-label={noteLabel} rows={2} maxLength={400} /> : null}
       </form>
-    </div>
+    </>
   );
 }
 
-const mondayKey = () => {
-  const d = new Date();
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-};
-
 const FIT_AREAS = ['Abs', 'Cardio', 'Movement', 'Strength', 'Mobility', 'Positioning', 'Posture', 'Legs', 'Back', 'Recovery'];
+const PUSH = ['', 'Steady', 'More', 'All in'];
 
 /** Fitness: tap an area to start pushing it, set how hard (1–3), add a note. */
 function FitnessFocus() {
@@ -95,46 +108,50 @@ function FitnessFocus() {
   const [custom, setCustom] = useState('');
   const has = (t: string) => state.some(i => i.title.toLowerCase() === t.toLowerCase());
   const add = (t: string) => t.trim() && !has(t) && save([...state, { id: `fit-${t.trim().toLowerCase()}`, title: t.trim(), push: 2 }]);
+  const extra = state.filter(i => !FIT_AREAS.includes(i.title));
   return (
-    <div className="fc-flist">
-      <div className="fc-areas">
-        {FIT_AREAS.map(a => (
-          <button key={a} type="button" className={`fc-area${has(a) ? ' is-on' : ''}`} onClick={() => (has(a) ? save(state.filter(i => i.title !== a)) : add(a))}>{a}</button>
+    <>
+      <div className="sk-chips" role="group" aria-label="Areas I’m pushing">
+        {[...FIT_AREAS, ...extra.map(i => i.title)].map(a => (
+          <button key={a} type="button" aria-pressed={has(a)} onClick={() => (has(a) ? save(state.filter(i => i.title !== a)) : add(a))}>{a}</button>
         ))}
         <form onSubmit={e => { e.preventDefault(); add(custom); setCustom(''); }}>
-          <input className="fc-area-in" value={custom} onChange={e => setCustom(e.target.value)} placeholder="+ other" aria-label="Other area" maxLength={40} />
+          <input value={custom} onChange={e => setCustom(e.target.value)} placeholder="+ Area" aria-label="Other area" maxLength={40} />
         </form>
       </div>
       {state.length ? (
-        <ul className="fc-entries">
+        <div className="sk-list sk-fit">
           {state.map(i => (
-            <li key={i.id} className="fc-entry fc-fitrow">
-              <strong>{i.title}</strong>
-              <span className="fc-push" role="group" aria-label={`${i.title} effort`}>
+            <div key={i.id} className="sk-row sk-fit-row">
+              <span className="sk-rlead" />
+              <span className="sk-rmain"><span className="sk-rt">{i.title}</span></span>
+              <span className="sk-rv sk-push" role="group" aria-label={`${i.title} effort`}>
                 {[1, 2, 3].map(n => (
-                  <button key={n} type="button" className={n <= (i.push || 0) ? 'is-on' : ''} aria-label={`Push level ${n}`} aria-pressed={n === i.push} onClick={() => save(state.map(x => (x.id === i.id ? { ...x, push: n } : x)))} />
+                  <button key={n} type="button" className={n <= (i.push || 0) ? 'is-on' : ''} aria-label={`Push level ${n}: ${PUSH[n]}`} aria-pressed={n === i.push} onClick={() => save(state.map(x => (x.id === i.id ? { ...x, push: n } : x)))} />
                 ))}
-                <small>{['', 'steady', 'more', 'all in'][i.push || 0]}</small>
+                <span className="sk-push-label">{PUSH[i.push || 0]}</span>
               </span>
-              <input className="fc-note" value={i.note || ''} placeholder="note…" aria-label={`${i.title} note`} maxLength={140} onChange={e => save(state.map(x => (x.id === i.id ? { ...x, note: e.target.value } : x)))} />
-              <button type="button" className="fc-x" aria-label={`Remove ${i.title}`} onClick={() => save(state.filter(x => x.id !== i.id))}>✕</button>
-            </li>
+              <span>
+                <button type="button" className="sk-btn is-small is-icon is-quiet" aria-label={`Remove ${i.title}`} title="Remove" onClick={() => save(state.filter(x => x.id !== i.id))}>
+                  <Icon name="close" size={14} />
+                </button>
+              </span>
+              <input className="sk-fit-note" value={i.note || ''} placeholder="Note" aria-label={`${i.title} note`} maxLength={140} onChange={e => save(state.map(x => (x.id === i.id ? { ...x, note: e.target.value } : x)))} />
+            </div>
           ))}
-        </ul>
+        </div>
       ) : null}
-    </div>
+    </>
   );
 }
 
 const BOTTLES = 5;
-function Water() {
-  const [water, setWater] = useDayState<number>('lifehub-focus-water', 0);
+function Water({ water, setWater }: { water: number; setWater: (n: number) => void }) {
   return (
-    <div className="fc-bottles" role="group" aria-label="Bottles of water today">
+    <div className="sk-bottles" role="group" aria-label="Bottles of water today">
       {Array.from({ length: BOTTLES }, (_, i) => (
         <button key={i} type="button" className={i < water ? 'is-on' : ''} aria-label={`Bottle ${i + 1}`} aria-pressed={i < water} onClick={() => setWater(i + 1 === water ? i : i + 1)} />
       ))}
-      <span>{water}/{BOTTLES} bottles today</span>
     </div>
   );
 }
@@ -154,74 +171,80 @@ const MARVEL_MENU: { id: string; label: string; options: { id: string; t: string
     { id: 'paycalm', t: 'Pay calm', d: 'Lies down quiet → toss kibble ×10' },
   ] },
 ];
+type MarvelPicks = Record<string, { pick?: string; done?: boolean }>;
 
-function MarvelMenu() {
-  const [st, setSt] = useDayState<Record<string, { pick?: string; done?: boolean }>>('lifehub-focus-marvel-pick', {});
+function MarvelMenu({ st, setSt }: { st: MarvelPicks; setSt: (v: MarvelPicks) => void }) {
   return (
-    <div className="fc-menu">
+    <>
       {MARVEL_MENU.map(g => {
         const cur = st[g.id] || {};
         return (
-          <div key={g.id} className={`fc-menu-group${cur.done ? ' is-done' : ''}`}>
-            <div className="fc-menu-head">
-              <b>{g.label}</b>
-              <span className="fc-menu-state">{cur.done ? '✓ done' : cur.pick ? 'picked' : 'pick one'}</span>
+          <div key={g.id} className={`sk-mv${cur.done ? ' is-done' : ''}`}>
+            <div className="sk-mv-head">
+              <span className="sk-hl">{g.label}</span>
+              <span className="sk-sec">{cur.done ? 'Done' : cur.pick ? 'Picked' : 'Pick one'}</span>
             </div>
-            <div className="fc-either">
+            <div className={`sk-either${cur.pick ? ' has-pick' : ''}`}>
               {g.options.map((o, idx) => (
-                <span key={o.id} className="fc-either-cell">
-                  {idx === 1 ? <i className="fc-or">or</i> : null}
-                  <button type="button" className={`fc-opt${cur.pick === o.id ? ' is-on' : cur.pick ? ' is-off' : ''}`} aria-pressed={cur.pick === o.id} onClick={() => setSt({ ...st, [g.id]: { pick: cur.pick === o.id ? undefined : o.id } })}>
-                    <span>{o.t}</span>
-                    <small>{o.d}</small>
+                <span key={o.id} className="sk-either-cell">
+                  {idx === 1 ? <span className="sk-sec sk-or">or</span> : null}
+                  <button type="button" className={`sk-opt${cur.pick === o.id ? ' is-on' : ''}`} aria-pressed={cur.pick === o.id} onClick={() => setSt({ ...st, [g.id]: { pick: cur.pick === o.id ? undefined : o.id } })}>
+                    <span className="sk-opt-t">{o.t}</span>
+                    <span className="sk-opt-d">{o.d}</span>
                   </button>
                 </span>
               ))}
             </div>
             {cur.pick ? (
-              <button type="button" className={`fc-donebtn${cur.done ? ' is-on' : ''}`} onClick={() => setSt({ ...st, [g.id]: { ...cur, done: !cur.done } })}>
-                {cur.done ? '✓ Done today' : 'Mark done'}
+              <button type="button" className="sk-link sk-mv-done" aria-pressed={!!cur.done} onClick={() => setSt({ ...st, [g.id]: { ...cur, done: !cur.done } })}>
+                {cur.done ? <><Icon name="check" size={14} />Done today</> : 'Mark done'}
               </button>
             ) : null}
           </div>
         );
       })}
-    </div>
+    </>
   );
 }
 
+const count = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+
 export function FocusSection({ enter }: { snapshots?: Snaps; enter: (id: SpaceId) => void }) {
   const day = useDayKey();
+  const now = useFocusList('lifehub-focus-now2');
+  const weeks = useFocusList('lifehub-focus-weeks2');
+  const nut = useFocusList('lifehub-focus-nut2');
+  const meals = useFocusList('lifehub-focus-meals2', true);
+  const [water, setWater] = useDayState<number>('lifehub-focus-water', 0);
+  const [picks, setPicks] = useDayState<MarvelPicks>('lifehub-focus-marvel-pick', {});
+  const open = [...now[0], ...weeks[0]].filter(i => !i.done).length;
+  const marvelDone = MARVEL_MENU.filter(g => picks[g.id]?.done).length;
+  const summary = `${open ? count(open, 'thing') + ' to focus on' : 'Nothing typed in yet'} · ${water} of ${BOTTLES} bottles · Marvel ${marvelDone} of ${MARVEL_MENU.length}`;
   return (
-    <section className="focus-row" aria-label="Focus" data-day={day}>
-      <div className="fc-col fc-short">
-        <p className="fc-kicker">Short-term focus · right now</p>
-        <FocusList storageKey="lifehub-focus-now2" label="What needs doing" noteLabel="The detail: what, why, next step" empty="Type what needs real attention right now." />
-        <hr className="fc-bar" />
-        <p className="fc-kicker is-soft">Next few weeks</p>
-        <FocusList storageKey="lifehub-focus-weeks2" label="A short-term goal" noteLabel="What it takes" />
-      </div>
+    <Section id="focus" title="Focus" summary={summary}>
+      <div className="sk-trio" data-day={day}>
+        <Group tone="paper" icon="target" title="Short-Term Focus" meta={open || undefined}>
+          <ListHead title="Right now" />
+          <FocusList list={now} label="What needs doing" noteLabel="The detail: what, why, next step" empty="Type what needs real attention right now." />
+          <ListHead title="Next few weeks" />
+          <FocusList list={weeks} label="A short-term goal" noteLabel="What it takes" />
+        </Group>
 
-      <div className="fc-col fc-mid">
-        <div className="fc-block fc-nut">
-          <p className="fc-kicker">Nutrition flow</p>
-          <Water />
-          <p className="fc-sub">Focus now</p>
-          <FocusList storageKey="lifehub-focus-nut2" label="e.g. more protein" noteLabel="How: 170 g, shake after the gym…" marks={false} />
-          <p className="fc-sub">Meals this week</p>
-          <FocusList storageKey="lifehub-focus-meals2" label="A meal I can make" noteLabel="What it uses" week />
-          <button type="button" className="fc-link" onClick={() => enter('logs')}>Log in the tracker →</button>
-        </div>
-        <div className="fc-block fc-fit">
-          <p className="fc-kicker">Fitness · where I’m pushing</p>
+        <Group tone="habit" icon="apple" title="Nutrition & Fitness" meta={`${water} of ${BOTTLES} bottles`}>
+          <Water water={water} setWater={setWater} />
+          <ListHead title="Nutrition focus" />
+          <FocusList list={nut} label="e.g. more protein" noteLabel="How: 170 g, shake after the gym…" marks={false} />
+          <ListHead title="Meals this week" />
+          <FocusList list={meals} label="A meal I can make" noteLabel="What it uses" />
+          <button type="button" className="sk-link sk-fc-log" onClick={() => enter('logs')}>Log in the tracker<Icon name="chevron" size={14} /></button>
+          <ListHead title="Pushing on" />
           <FitnessFocus />
-        </div>
-      </div>
+        </Group>
 
-      <div className="fc-col fc-marvel">
-        <p className="fc-kicker">Marvel · today, this or that</p>
-        <MarvelMenu />
+        <Group tone="marvel" icon="paw" title="Marvel · This or That" meta={`${marvelDone} of ${MARVEL_MENU.length}`}>
+          <MarvelMenu st={picks} setSt={setPicks} />
+        </Group>
       </div>
-    </section>
+    </Section>
   );
 }

@@ -283,13 +283,9 @@ export function HomeView({
         <ScheduleSection schedule={schedule} bills={bills} onBillPaid={onBillPaid} tasks={calTasks} onTaskDone={onTaskDone} onAddPrep={onAddPrep} />
       </Section>
 
-      <div className="sk-classic" aria-label="Not rebuilt yet">
+      <FocusSection snapshots={snapshots} enter={enter} />
 
-      <section className="source-row" aria-label="Focus">
-        <Collapsible id="focus" label="Focus" title="Focus now" labelHeader tone="self" icon="✧">
-          <FocusSection snapshots={snapshots} enter={enter} />
-        </Collapsible>
-      </section>
+      <div className="sk-classic" aria-label="Not rebuilt yet">
 
       <div id="sk-sites">
       <SourceRow

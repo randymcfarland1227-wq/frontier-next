@@ -521,7 +521,54 @@
 .sk-app .sk-mv-done { display: inline-flex; align-items: center; gap: 4px; margin: var(--sk-s2) -6px -7px; }
 .sk-app .sk-mv.is-done .sk-mv-head .sk-sec { color: var(--sk-ink); font-weight: 600; }
 
+/* ---------------- sites ---------------- */
+.sk-app button.sk-ghead { width: 100%; background: none; border: 0; border-bottom: 2px solid var(--sk-edge); border-radius: 14px 14px 0 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.sk-app button.sk-ghead:hover { background: var(--sk-hover); }
+.sk-app .sk-fold:not(.is-open) > .sk-ghead { border-bottom: 0; border-radius: 14px; }
+.sk-app .sk-fchev { width: 18px; height: 18px; flex: none; opacity: .7; transition: transform .2s; }
+.sk-app :is(.sk-fold.is-open > .sk-ghead, .sk-starh.is-open, .sk-shelf[open] > summary) .sk-fchev { transform: rotate(180deg); }
+.sk-app .sk-ops-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--sk-s5); }
+.sk-app .sk-src + .sk-src { margin-top: var(--sk-s4); padding-top: var(--sk-s2); border-top: 2px solid var(--sk-edge); }
+.sk-app .sk-src .sk-srch { padding-top: var(--sk-s3); }
+.sk-app .sk-src .sk-srch-name { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.sk-app .sk-src .sk-count { font-size: 15px; min-width: 2ch; text-align: right; }
+.sk-app .sk-count.is-zero { color: var(--sk-ink-2); font-weight: 400; }
+.sk-app .sk-src.is-placeholder .sk-srch-name { color: var(--sk-ink); }
+.sk-app .sk-srcsub { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--sk-s3); margin: 0 0 var(--sk-s1); }
+.sk-app .sk-srcsub .sk-link { margin: -7px -6px; }
+.sk-app .sk-ricon {
+  display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 7px;
+  background: none; color: var(--sk-ink-2); cursor: pointer; text-decoration: none;
+}
+.sk-app .sk-ricon:hover { background: var(--sk-hover); color: var(--sk-ink); }
+.sk-app .sk-ricon[aria-pressed="true"] { color: var(--sk-tint); }
+.sk-app .sk-ricon[aria-pressed="true"] .sk-icon { fill: currentColor; }
+.sk-app .sk-srcfold .sk-icon { transition: transform .2s; }
+.sk-app .sk-srcfold.is-open .sk-icon { transform: rotate(180deg); }
+.sk-app .sk-rvs { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--sk-s1); }
+.sk-app .sk-starred .sk-icon { fill: currentColor; color: var(--sk-ink-2); }
+.sk-app .sk-dot.is-none { background: transparent; border-style: dashed; }
+.sk-app .sk-tagbtn { min-height: 24px; border: 0; cursor: pointer; font: var(--sk-caption); }
+.sk-app .sk-row.is-done .sk-rt { text-decoration: line-through; color: var(--sk-ink-2); }
+.sk-app .sk-src-split { gap: var(--sk-s4); }
+.sk-app .sk-src-split .sk-listh { padding-top: var(--sk-s2); }
+.sk-app .sk-src-starred { margin-bottom: var(--sk-s2); }
+.sk-app button.sk-listh, .sk-app .sk-shelf > summary {
+  width: 100%; align-items: center; justify-content: flex-start; min-height: 40px; background: none; border: 0; border-bottom: 1.5px solid var(--sk-line);
+  color: inherit; font: inherit; text-align: left; cursor: pointer; list-style: none;
+}
+.sk-app .sk-shelf > summary::-webkit-details-marker { display: none; }
+.sk-app :is(button.sk-listh, .sk-shelf > summary) > .sk-hl { flex: 1; display: inline-flex; align-items: center; gap: 6px; }
+.sk-app .sk-shelf-link { color: var(--sk-ink); text-decoration: underline; text-decoration-color: var(--sk-line); text-underline-offset: 3px; }
+.sk-app .sk-shelf-link:hover { text-decoration-color: currentColor; }
+.sk-app .sk-srcbody > .sk-listh:first-child { padding-top: var(--sk-s2); }
+.sk-app .sk-src .sk-row > .sk-rmain { min-height: 28px; align-content: center; }
+/* Self's Captures tool keeps its classic body for now; its own "Self" heading repeats the block head. */
+.sk-app .sk-src .captures-head :is(.section-label, h2) { display: none; }
+
 @media (max-width: 1200px) {
+  .sk-app .sk-ops-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sk-app .sk-ops-grid > .sk-col:first-child { grid-column: 1 / -1; }
   .sk-app .sk-sched-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sk-app .sk-sched-grid > .sk-month { grid-column: 1 / -1; }
   .sk-app .sk-aff { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -553,7 +600,7 @@
   .sk-app :is(.sk-ract, .sk-prep) { padding-left: 0; }
   .sk-app .sk-form { grid-template-columns: 1fr; }
   .sk-app .sk-aff { grid-template-columns: 1fr; }
-  .sk-app .sk-cols, .sk-app .sk-deck-grid { grid-template-columns: 1fr; }
+  .sk-app .sk-cols, .sk-app .sk-deck-grid, .sk-app .sk-ops-grid { grid-template-columns: 1fr; }
   .sk-app .sk-top .sk-btn.is-prominent { width: 100%; justify-content: center; }
   .sk-app .sk-ghead-actions { width: 100%; }
   .sk-app .sk-large { font-size: 28px; }

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { countdown, fromDayKey, money, type BillDue } from '../../lib/schedule';
 import { BillChangeForm, BillPinButton, FlagBadges, billChangeText, useBillPin } from './BillControls';
 import { useRowMenu } from './RowMenu';
+import { Circle, Row } from '../sticker/kit';
 
 /** How loud the countdown is: overdue / within 3 days / later / skipped. */
 function urgency(d: BillDue) {
@@ -155,5 +156,48 @@ export function BillsList({
       })}
       {limit && dues.length > limit ? <li className="sched-more">+{dues.length - limit} more later</li> : null}
     </ul>
+  );
+}
+
+/**
+ * Sticker kit bill row (Home · Sites · Radall): circle = Paid, name, countdown · date · change,
+ * amount on the right. Pay / Pin / Skip-or-change stay on right-click (long-press), same as the
+ * compact rows.
+ */
+export function KitBillRow({ d, onPaid }: { d: BillDue; onPaid: (due: BillDue) => void }) {
+  const [changing, setChanging] = useState(false);
+  const pin = useBillPin(d);
+  const { bind, menu } = useRowMenu(
+    () => [
+      { label: 'Pay ↗', href: d.bill.payUrl, hidden: !d.bill.payUrl || d.skipped },
+      { label: 'Mark paid', onSelect: () => onPaid(d), hidden: d.skipped },
+      { label: pin.pinned ? 'Unpin from Doing now' : 'Pin to Doing now', onSelect: pin.toggle, on: pin.pinned, hidden: d.skipped },
+      { label: 'Skip, move or change amount…', onSelect: () => setChanging(true) },
+    ],
+    d.bill.name,
+  );
+  const date = fromDayKey(d.due).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  const when = d.skipped ? 'Skipped' : d.days < 0 ? `${-d.days} ${d.days === -1 ? 'day' : 'days'} late` : countdown(d.days);
+  return (
+    <>
+      <Row
+        bind={bind}
+        className={pin.pinned ? 'is-pinned' : undefined}
+        lead={d.skipped ? null : <Circle onDone={() => onPaid(d)} label={`Mark ${d.bill.name} paid for ${date}`} />}
+        title={d.bill.name}
+        sub={
+          <>
+            {[when, date, billChangeText(d)].filter(Boolean).join(' · ')}
+            <FlagBadges d={d} />
+          </>
+        }
+        value={money(d.bill.amount)}
+        valueTone={d.days < 0 && !d.skipped ? 'late' : 'amt'}
+        hint={[d.bill.name, money(d.bill.amount), date, d.bill.notes, 'Right-click or long-press for Pay, Pin, Skip or change'].filter(Boolean).join(' · ')}
+      >
+        {changing ? <BillChangeForm due={d} onDone={() => setChanging(false)} /> : null}
+      </Row>
+      {menu}
+    </>
   );
 }

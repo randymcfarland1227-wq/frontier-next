@@ -6,7 +6,6 @@ import { sourceById } from '../../lib/sources';
 import type { CompletionLedger, CompletionStats, CompletionEntry } from '../../lib/completions';
 import type { FocusAreaConfig } from '../../lib/focusAreas';
 import type { EnergyWindow } from '../../lib/energy';
-import { SourceCard } from './SourceCard';
 import { PriorityBoard } from './PriorityBoard';
 import { GroundingSummary } from './DailyGrounding';
 import { ReviewPanel } from './ReviewPanel';
@@ -20,38 +19,12 @@ import { addDays, billDues, eventStart, onDay, paidBillKeys, type BillDue, type 
 import { applyBillEdits, isOverdue, useBillEdits } from '../../lib/billEdits';
 import { usePlans } from '../../lib/plans';
 import { ScheduleSection } from './ScheduleSection';
-import { BillsList } from './BillsList';
+import { KitBillRow } from './BillsList';
 import { FocusSection } from './FocusSection';
 import { HomeTop } from '../sticker/HomeTop';
-import { Section } from '../sticker/kit';
-
-const ROW_1: SourceId[] = ['ticktick', 'radall', 'self', 'gmail', 'outlook', 'repair'];
-const ROW_2: SourceId[] = ['role', 'move'];
-const ROW_3: SourceId[] = ['income', 'resale', 'candle'];
-
-/**
- * Daily ops: TickTick (wide, its own fixed height, tasks | habits side by side) with Radall
- * Finances under it; Self over Gmail; Outlook over Repair. Every card sizes itself — opening
- * one never resizes another.
- */
-function DailyOps({ card }: { card: (id: SourceId) => ReactNode }) {
-  return (
-    <>
-      <div className="daily-col daily-main">
-        {card('ticktick')}
-        {card('radall')}
-      </div>
-      <div className="daily-col">
-        {card('self')}
-        {card('gmail')}
-      </div>
-      <div className="daily-col">
-        {card('outlook')}
-        {card('repair')}
-      </div>
-    </>
-  );
-}
+import { ListHead, Section } from '../sticker/kit';
+import { Icon } from '../sticker/Icon';
+import { SITE_ROWS, SitesSection } from '../sticker/Sites';
 
 /** "3 on your list · 13 on deck · 1 critical" for the Doing Now head. */
 function PrioritySummary() {
@@ -73,94 +46,6 @@ function ScheduleSummary({ schedule, bills }: { schedule: ScheduleSnapshot | nul
     events.filter(e => (e.myStatus === 'invited' || e.myStatus === 'maybe') && eventStart(e) >= addDays(today, -1)).length;
   const soon = bills.filter(b => b.days <= 3 && !(b.bill.kind && b.days < 0)).length;
   return <>{[`${todayCount} today`, maybes ? `${maybes} to confirm` : null, soon ? `${soon} ${soon === 1 ? 'payment' : 'payments'} due soon` : null].filter(Boolean).join(' · ')}</>;
-}
-
-/** "TickTick 17 · Gmail 5" — one chip per site in a row, for its section bar. */
-function SiteChips({ ids, snapshots }: { ids: SourceId[]; snapshots: Record<SourceId, SourceSnapshot> }) {
-  const { lanes } = usePriorityPins();
-  return (
-    <>
-      {ids.map(id => {
-        const n = shownMetric(id, snapshots[id], lanes).value || 0;
-        return (
-          <span key={id} className={`sum-chip site-chip src-${id}${n ? '' : ' is-zero'}`}>
-            {sourceById[id].shortName}{n ? <> <b>{n}</b></> : null}
-          </span>
-        );
-      })}
-    </>
-  );
-}
-
-function SourceRow({
-  ids,
-  label,
-  snapshots,
-  enter,
-  openSource,
-  onCompleteFeatured,
-  onCompleteTask,
-  onStarTask,
-  fullWidth,
-  extra,
-  gridClass,
-  tone,
-  icon,
-}: {
-  tone?: string;
-  icon?: string;
-  ids: SourceId[];
-  label: string;
-  snapshots: Record<SourceId, SourceSnapshot>;
-  enter: (id: SpaceId) => void;
-  openSource: (id: SourceId) => void;
-  onCompleteFeatured: (source: SourceId, item: FeaturedItem) => void;
-  onCompleteTask: (source: SourceId, task: TaskItem) => void;
-  onStarTask: (source: SourceId, task: TaskItem) => void;
-  fullWidth?: boolean;
-  extra?: Partial<Record<SourceId, ReactNode>>;
-  /** Custom grid (e.g. Daily ops: TickTick wide, Gmail + Outlook stacked) */
-  gridClass?: string;
-}) {
-  const { lanes } = usePriorityPins();
-  const card = (id: SourceId) => (
-    <SourceCard
-      key={id}
-      source={sourceById[id]}
-      snapshot={snapshots[id]}
-      onEnter={() => enter(id)}
-      onOpen={() => openSource(id)}
-      onCompleteFeatured={item => onCompleteFeatured(id, item)}
-      onCompleteTask={task => onCompleteTask(id, task)}
-      onStarTask={task => onStarTask(id, task)}
-      extra={extra?.[id]}
-    />
-  );
-
-  return (
-    <section className={`source-row ${fullWidth ? 'source-row-self' : ''}`} aria-label={label}>
-      <Collapsible
-        id={`row-${ids.join('-')}`}
-        label={label}
-        labelHeader
-        tone={tone}
-        icon={icon}
-        summary={<SiteChips ids={ids} snapshots={snapshots} />}
-        count={ids.reduce((sum, id) => sum + (shownMetric(id, snapshots[id], lanes).value || 0), 0)}
-        countLabel="to do"
-      >
-      <div
-        className={`space-grid ${gridClass || (fullWidth ? 'space-grid-self' : ids.length === 4 ? 'space-grid-4' : 'space-grid-3')}`}
-      >
-        {gridClass === 'space-grid-daily' ? (
-          <DailyOps card={card} />
-        ) : (
-          ids.map(card)
-        )}
-      </div>
-      </Collapsible>
-    </section>
-  );
 }
 
 export function HomeView({
@@ -213,7 +98,7 @@ export function HomeView({
 }) {
   const { lanes } = usePriorityPins();
   // Open to-dos per site — the same blue numbers each card shows.
-  const openBySite = [...ROW_1, ...ROW_2, ...ROW_3]
+  const openBySite = SITE_ROWS.flatMap(r => r.ids)
     .map(id => ({ id, name: sourceById[id].shortName, count: shownMetric(id, snapshots[id], lanes).value || 0 }))
     .filter(site => site.count > 0)
     .sort((a, b) => b.count - a.count);
@@ -233,22 +118,26 @@ export function HomeView({
     if (source === 'radall' && due) onBillPaid(due);
     else onCompleteFeatured(source, item);
   };
+  const soonBills = bills.filter(b => b.days >= 0 && b.days <= 21);
   const financeBills = (
-    <div className="card-bills">
-      <p className="card-bills-label">
-        Money due · next 3 weeks
-        <button type="button" className="card-bills-open" onClick={() => enter('money')}>
-          Money page →
+    <>
+      <ListHead title="Money Due" meta="Next 3 weeks">
+        <button type="button" className="sk-link" onClick={() => enter('money')}>
+          Money page
+          <Icon name="chevron" />
         </button>
-      </p>
-      <BillsList dues={bills.filter(b => b.days >= 0 && b.days <= 21)} onPaid={onBillPaid} limit={4} empty="Nothing due in the next 3 weeks." />
+      </ListHead>
+      {soonBills.length ? soonBills.slice(0, 4).map(d => <KitBillRow key={d.key} d={d} onPaid={onBillPaid} />) : <p className="sk-empty">Nothing due in the next 3 weeks.</p>}
+      {soonBills.length > 4 ? <p className="sk-sec sk-more">{soonBills.length - 4} more later</p> : null}
       {overdueBills.length ? (
-        <div className="card-bills-overdue">
-          <p className="card-bills-label">Overdue · not marked paid</p>
-          <BillsList dues={overdueBills} onPaid={onBillPaid} />
-        </div>
+        <>
+          <ListHead title="Overdue" meta="Not marked paid" />
+          {overdueBills.map(d => (
+            <KitBillRow key={d.key} d={d} onPaid={onBillPaid} />
+          ))}
+        </>
       ) : null}
-    </div>
+    </>
   );
   return (
     <>
@@ -285,49 +174,17 @@ export function HomeView({
 
       <FocusSection snapshots={snapshots} enter={enter} />
 
-      <div className="sk-classic" aria-label="Not rebuilt yet">
-
-      <div id="sk-sites">
-      <SourceRow
-        ids={ROW_1}
+      <SitesSection
+        snapshots={snapshots}
+        enter={enter}
+        openSource={openSource}
+        onCompleteFeatured={onCompleteFeatured}
+        onCompleteTask={onCompleteTask}
+        onStarTask={onStarTask}
         extra={{ self: capturesPanel, radall: bills.length ? financeBills : undefined }}
-        label="Daily ops"
-        tone="ops"
-        icon="◐"
-        gridClass="space-grid-daily"
-        snapshots={snapshots}
-        enter={enter}
-        openSource={openSource}
-        onCompleteFeatured={onCompleteFeatured}
-        onCompleteTask={onCompleteTask}
-        onStarTask={onStarTask}
       />
-      <SourceRow
-        ids={ROW_2}
-        label="Role · move"
-        tone="money"
-        icon="◆"
-        snapshots={snapshots}
-        enter={enter}
-        openSource={openSource}
-        onCompleteFeatured={onCompleteFeatured}
-        onCompleteTask={onCompleteTask}
-        onStarTask={onStarTask}
-      />
-      <SourceRow
-        ids={ROW_3}
-        label="Ventures"
-        tone="ventures"
-        icon="▲"
-        snapshots={snapshots}
-        enter={enter}
-        openSource={openSource}
-        onCompleteFeatured={onCompleteFeatured}
-        onCompleteTask={onCompleteTask}
-        onStarTask={onStarTask}
-      />
-      </div>
 
+      <div className="sk-classic" aria-label="Not rebuilt yet">
       <section className="source-row" aria-label="Review" id="sk-review">
         <Collapsible
           id="review"

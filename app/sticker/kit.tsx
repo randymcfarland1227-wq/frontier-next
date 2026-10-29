@@ -79,6 +79,41 @@ export function Group({
   );
 }
 
+/**
+ * A Group whose head folds it, remembered under the saved `section:<id>` key (the same key the
+ * classic Collapsible rows used, so a row folded before stays folded).
+ */
+export function FoldGroup({
+  id,
+  tone,
+  icon,
+  title,
+  meta,
+  className,
+  children,
+}: {
+  id: string;
+  tone: Tone;
+  icon?: IconName;
+  title: ReactNode;
+  meta?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  const [collapsed, toggle] = useFold(id);
+  return (
+    <div className={`sk-group tone-${tone} sk-fold${collapsed ? '' : ' is-open'}${className ? ` ${className}` : ''}`}>
+      <button type="button" className="sk-ghead" aria-expanded={!collapsed} onClick={toggle}>
+        {icon ? <Icon name={icon} /> : null}
+        <h3 className="sk-hl">{title}</h3>
+        {meta ? <span className="sk-sec sk-ghead-meta">{meta}</span> : null}
+        <Icon name="chevronDown" className="sk-fchev" />
+      </button>
+      {collapsed ? null : <div className="sk-gbody">{children}</div>}
+    </div>
+  );
+}
+
 /** Headline + secondary count above a list. */
 export function ListHead({ title, meta, children }: { title: ReactNode; meta?: ReactNode; children?: ReactNode }) {
   return (

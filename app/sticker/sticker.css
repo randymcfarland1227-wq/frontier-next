@@ -1458,3 +1458,8 @@
 .sk-app .sksite-metrics .room-metrics :is(.metric-actionable strong, .metric-actionable span) { color: var(--sk-ink); }
 .sk-app .sksite-metrics .room-metrics article { border-right: 0; }
 .sk-app .sksite-metrics .room-metrics > p { border: 0; background: none; padding: 0; margin-left: auto; }
+.sk-app .sksite .featured-list { gap: 4px; }
+.sk-app .sksite .featured-row, .sk-app .sksite .featured-row.one-line { padding: 3px 8px; border: 1.5px solid var(--sk-edge); border-radius: 8px; background: var(--sk-paper); color: var(--sk-ink); margin: 0 0 4px; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sksite .featured-row { background: color-mix(in srgb, var(--sk-ink) 6%, #1c1925); }
+.sk-app .sksite .featured-row .featured-meta { color: var(--sk-ink-2); font-size: 10px; }
+.sk-app .sksite .featured-heading { border-bottom: 1.5px solid var(--sk-line); }

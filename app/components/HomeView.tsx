@@ -307,7 +307,7 @@ export function HomeView({
         )}
       </Section>
 
-      <FocusSection snapshots={snapshots} enter={enter} />
+      <FocusSection snapshots={snapshots} ledger={ledger} enter={enter} />
 
       <Section id="priority" title="Doing Now" summary={<PrioritySummary />}>
         <PriorityBoard

@@ -5,7 +5,9 @@ import { Group, ListHead, Section } from "../sticker/kit";
 import { Icon } from "../sticker/Icon";
 import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import { readSaved, writeSaved } from "../../lib/storage";
-import { dayRecord, useDayKey } from "../../lib/dayKey";
+import { dayRecord, localDayKey, useDayKey } from "../../lib/dayKey";
+import type { CompletionLedger } from "../../lib/completions";
+import { tickTickToday } from "../../lib/tickTickToday";
 
 type Snaps = Record<SourceId, SourceSnapshot>;
 
@@ -34,6 +36,8 @@ type Entry = {
   note?: string;
   done?: boolean;
   push?: number;
+  /** Day (YYYY-MM-DD) it started — drives "Day 3 · started 2 days ago" */
+  since?: string;
 };
 
 const mondayKey = () => {
@@ -195,6 +199,20 @@ const FIT_AREAS = [
 ];
 const PUSH = ["", "Steady", "More", "All in"];
 
+const daysSince = (day: string) =>
+  Math.max(
+    0,
+    Math.round(
+      (new Date(`${localDayKey()}T00:00:00`).getTime() -
+        new Date(`${day}T00:00:00`).getTime()) /
+        86400000,
+    ),
+  );
+const startedText = (day: string) => {
+  const n = daysSince(day);
+  return n === 0 ? "today" : n === 1 ? "yesterday" : `${n} days ago`;
+};
+
 /** Fitness: tap an area to start pushing it, set how hard (1–3), add a note. */
 function FitnessFocus() {
   const [state, setState] = useState(() =>
@@ -212,7 +230,12 @@ function FitnessFocus() {
     !has(t) &&
     save([
       ...state,
-      { id: `fit-${t.trim().toLowerCase()}`, title: t.trim(), push: 2 },
+      {
+        id: `fit-${t.trim().toLowerCase()}`,
+        title: t.trim(),
+        push: 2,
+        since: localDayKey(),
+      },
     ]);
   const extra = state.filter((i) => !FIT_AREAS.includes(i.title));
   return (
@@ -230,22 +253,31 @@ function FitnessFocus() {
             {a}
           </button>
         ))}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            add(custom);
-            setCustom("");
-          }}
-        >
-          <input
-            value={custom}
-            onChange={(e) => setCustom(e.target.value)}
-            placeholder="+ Area"
-            aria-label="Other area"
-            maxLength={40}
-          />
-        </form>
       </div>
+      <form
+        className="sk-fc-add"
+        onSubmit={(e) => {
+          e.preventDefault();
+          add(custom);
+          setCustom("");
+        }}
+      >
+        <input
+          value={custom}
+          onChange={(e) => setCustom(e.target.value)}
+          placeholder="What are you pushing on? e.g. Learning new split"
+          aria-label="What are you pushing on"
+          maxLength={80}
+        />
+        <button
+          type="submit"
+          className="sk-btn is-small"
+          disabled={!custom.trim()}
+        >
+          <Icon name="plus" size={14} />
+          Add
+        </button>
+      </form>
       {state.length ? (
         <div className="sk-list sk-fit">
           {state.map((i) => (
@@ -253,6 +285,28 @@ function FitnessFocus() {
               <span className="sk-rlead" />
               <span className="sk-rmain">
                 <span className="sk-rt">{i.title}</span>
+                <span className="sk-fit-when">
+                  {i.since
+                    ? `Day ${daysSince(i.since) + 1} · started ${startedText(i.since)}`
+                    : "No start date yet"}
+                  <input
+                    type="date"
+                    className="sk-fit-since"
+                    value={i.since || ""}
+                    max={localDayKey()}
+                    aria-label={`${i.title} start date`}
+                    title="Day it started"
+                    onChange={(e) =>
+                      save(
+                        state.map((x) =>
+                          x.id === i.id
+                            ? { ...x, since: e.target.value || undefined }
+                            : x,
+                        ),
+                      )
+                    }
+                  />
+                </span>
               </span>
               <span
                 className="sk-rv sk-push"
@@ -319,22 +373,30 @@ function Water({
   setWater: (n: number) => void;
 }) {
   return (
-    <div
-      className="sk-bottles"
-      role="group"
-      aria-label="Bottles of water today"
-    >
-      {Array.from({ length: BOTTLES }, (_, i) => (
-        <button
-          key={i}
-          type="button"
-          className={i < water ? "is-on" : ""}
-          aria-label={`Bottle ${i + 1}`}
-          aria-pressed={i < water}
-          onClick={() => setWater(i + 1 === water ? i : i + 1)}
-        />
-      ))}
-    </div>
+    <>
+      <p className="sk-water-name">
+        Drink 5 bottles of water{" "}
+        <small>
+          {water} of {BOTTLES}
+        </small>
+      </p>
+      <div
+        className="sk-bottles"
+        role="group"
+        aria-label="Bottles of water today"
+      >
+        {Array.from({ length: BOTTLES }, (_, i) => (
+          <button
+            key={i}
+            type="button"
+            className={i < water ? "is-on" : ""}
+            aria-label={`Bottle ${i + 1}`}
+            aria-pressed={i < water}
+            onClick={() => setWater(i + 1 === water ? i : i + 1)}
+          />
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -375,6 +437,28 @@ const MARVEL_MENU: {
 ];
 type MarvelPicks = Record<string, { pick?: string; done?: boolean }>;
 
+/** Today's Marvel tasks and habits from TickTick, above the menu, each marked done or not. */
+function MarvelToday({ tasks }: { tasks: { title: string; done: boolean }[] }) {
+  if (!tasks.length) return null;
+  const done = tasks.filter((t) => t.done).length;
+  return (
+    <div className="sk-mv-today">
+      <p className="sk-cap">
+        Marvel today · {done} of {tasks.length} done
+      </p>
+      <ul>
+        {tasks.map((t) => (
+          <li key={t.title} className={t.done ? "is-done" : ""}>
+            <Icon name={t.done ? "check" : "minus"} size={13} />
+            <span>{t.title}</span>
+            <em>{t.done ? "done" : "not yet"}</em>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function MarvelMenu({
   st,
   setSt,
@@ -400,6 +484,7 @@ function MarvelMenu({
                   {idx === 1 ? <span className="sk-sec sk-or">or</span> : null}
                   <button
                     type="button"
+                    title={o.d}
                     className={`sk-opt${cur.pick === o.id ? " is-on" : ""}`}
                     aria-pressed={cur.pick === o.id}
                     onClick={() =>
@@ -485,9 +570,12 @@ export function ShortTermFocus({
 }
 
 export function FocusSection({
+  snapshots,
+  ledger,
   enter,
 }: {
   snapshots?: Snaps;
+  ledger?: CompletionLedger;
   enter: (id: SpaceId) => void;
 }) {
   const day = useDayKey();
@@ -541,6 +629,9 @@ export function FocusSection({
           title="Marvel · This or That"
           meta={`${marvelDone} of ${MARVEL_MENU.length}`}
         >
+          <MarvelToday
+            tasks={tickTickToday(/marvel/i, snapshots?.ticktick, ledger, day)}
+          />
           <MarvelMenu st={picks} setSt={setPicks} />
         </Group>
       </div>

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { Goal, GoalsData } from "../../lib/goals";
 import type { SourceSnapshot, SpaceId } from "../../lib/types";
 import type { CompletionLedger } from "../../lib/completions";
+import { tickTickToday, type TodayTask } from "../../lib/tickTickToday";
 import { ALIGNMENT, type AlignmentItem } from "../../lib/alignment";
 import { localDayKey, useDayKey } from "../../lib/dayKey";
 import { LOCAL_WRITE_EVENT, readSaved, writeSaved } from "../../lib/storage";
@@ -174,34 +175,13 @@ export function GroundingSummary() {
   );
 }
 
-type LinkedTask = { title: string; done: boolean };
-
-/** Today's TickTick items that carry one reminder out: still-open ones (habits, plus tasks due by today) and ones already ticked off today. */
-function linkedToday(
+type LinkedTask = TodayTask;
+const linkedToday = (
   item: AlignmentItem,
   ticktick: SourceSnapshot | undefined,
   ledger: CompletionLedger | undefined,
   day: string,
-): LinkedTask[] {
-  const seen = new Map<string, LinkedTask>();
-  const key = (t: string) => t.trim().toLowerCase();
-  for (const e of Object.values(ledger?.entries || {})) {
-    if (
-      e.source !== "ticktick" ||
-      !e.title ||
-      !item.linked.test(e.title) ||
-      localDayKey(new Date(e.completedAt)) !== day
-    )
-      continue;
-    seen.set(key(e.title), { title: e.title, done: true });
-  }
-  for (const t of ticktick?.tasks || []) {
-    if (!item.linked.test(t.title) || seen.has(key(t.title))) continue;
-    if (t.kind !== "habit" && t.due && t.due > day) continue;
-    seen.set(key(t.title), { title: t.title, done: false });
-  }
-  return [...seen.values()].sort((a, b) => Number(a.done) - Number(b.done));
-}
+) => tickTickToday(item.linked, ticktick, ledger, day);
 
 /** "How to" under a reminder's title: hover (or focus / tap) lists today's linked tasks and whether each is done. */
 function HowTo({ tasks }: { tasks: LinkedTask[] }) {

@@ -65,7 +65,7 @@ export const ALIGNMENT: AlignmentItem[] = [
   },
   {
     id: "align-lens",
-    linked: /healthy mind|smile|read \(even|marvel review|review/i,
+    linked: /healthy mind|smile|read \(even/i,
     ghost:
       "Today I practice patience, reconnect with my purpose, and act with self-assurance.",
     title: "What matters most today?",

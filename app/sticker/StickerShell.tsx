@@ -258,7 +258,13 @@ export function StickerShell({
     <div
       className="sk-app"
       data-page={
-        active === "home" ? "home" : active === "money" ? "money" : "classic"
+        active === "home"
+          ? "home"
+          : active === "money"
+            ? "money"
+            : sourceById[active as SourceId]
+              ? "site"
+              : "classic"
       }
       data-side={slim ? "slim" : "full"}
     >

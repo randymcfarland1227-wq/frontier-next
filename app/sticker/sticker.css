@@ -1390,3 +1390,71 @@
 .sk-app .dbt-bureaus i[class*="bu-"]:not(.on) { color: var(--sk-ink-2); border-color: var(--sk-edge); opacity: 1; }
 .sk-app .dbt-bureaus i.on[class*="bu-"], .sk-app .dbt-bureaus i.on { background: var(--sk-ink); border-color: var(--sk-edge); color: var(--sk-paper); }
 .sk-app .cc-used { color: var(--sk-ink-2); }
+
+/* ── Sites: a tint per site, a box around each site in Doing Now, and the site pages in the kit ─── */
+.sk-app {
+  --site-ticktick: #cfe6ff; --site-radall: #c8f0b8; --site-self: #e3daff; --site-gmail: #ffd3d3; --site-outlook: #bfe9f7;
+  --site-repair: #dde3ec; --site-resale: #ffe2a8; --site-role: #d7dcf5; --site-candle: #f2e0c3; --site-income: #d6f0b8; --site-move: #f9d3e8;
+}
+.sk-app [data-site="ticktick"] { --site: var(--site-ticktick); --site-b: #cdeedd; } .sk-app [data-site="radall"] { --site: var(--site-radall); --site-b: #e6f4c8; }
+.sk-app [data-site="self"] { --site: var(--site-self); --site-b: #f0e3f7; } .sk-app [data-site="gmail"] { --site: var(--site-gmail); --site-b: #ffe6d3; }
+.sk-app [data-site="outlook"] { --site: var(--site-outlook); --site-b: #d3e6fb; } .sk-app [data-site="repair"] { --site: var(--site-repair); --site-b: #e8e3dc; }
+.sk-app [data-site="resale"] { --site: var(--site-resale); --site-b: #fff0c4; } .sk-app [data-site="role"] { --site: var(--site-role); --site-b: #e4e6f7; }
+.sk-app [data-site="candle"] { --site: var(--site-candle); --site-b: #f7eadb; } .sk-app [data-site="income"] { --site: var(--site-income); --site-b: #e9f4c8; }
+.sk-app [data-site="move"] { --site: var(--site-move); --site-b: #f3dcef; }
+/* Doing Now: every site is its own outlined box in its own tint */
+.sk-app .sk-site { padding: 2px 10px 8px; border: 2px solid var(--sk-edge); border-radius: 14px; background: color-mix(in srgb, var(--site, var(--sk-paper)) 60%, var(--sk-paper)); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-site { background: color-mix(in srgb, var(--site, var(--sk-paper)) 11%, #1c1925); }
+.sk-app .sk-site .sk-srch { border-bottom: 1.5px solid var(--sk-line); margin-bottom: 4px; }
+.sk-app .sk-deck-grid { gap: var(--sk-s3); align-items: start; }
+/* Site pages */
+.sk-app[data-page="site"] .sk-main { background-color: var(--sk-page); background-image: linear-gradient(var(--sk-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sk-grid) 1px, transparent 1px); background-size: 24px 24px; }
+.sk-app[data-page="site"] :is(.sksite, .sksite .sk-group, .sksite .sk-group > *, .sksite-tasks) {
+  --bg: var(--sk-page); --surface: var(--sk-paper); --surface-2: color-mix(in srgb, var(--sk-ink) 5%, var(--sk-paper));
+  --ink: var(--sk-ink); --text: var(--sk-ink); --muted: var(--sk-ink-2); --line: var(--sk-line); --row-line: var(--sk-line);
+  --accent: var(--sk-tint); --accent-soft: color-mix(in srgb, var(--sk-tint) 14%, var(--sk-paper)); --glow: none; --glass: var(--sk-paper);
+}
+.sk-app .sksite { display: grid; gap: var(--sk-s3); padding-top: var(--sk-s2); color: var(--sk-ink); --skf: var(--site, var(--sk-paper)); }
+.sk-app .sksite-box { margin: 0; padding: var(--sk-s3) var(--sk-s4); }
+.sk-app .sksite-hero { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--sk-s4); align-items: center; }
+.sk-app .sksite-hero .room-icon { width: 52px; height: 52px; border: 2px solid var(--sk-edge); border-radius: 14px; background: var(--sk-paper); display: grid; place-items: center; overflow: hidden; }
+.sk-app .sksite-hero .room-icon img { width: 70%; height: 70%; object-fit: contain; }
+.sk-app .sksite-hero .related-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0; font: var(--sk-secondary); }
+.sk-app .sksite-hero .related-links a { color: var(--sk-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.sk-app .sksite-hero .related-hint { color: var(--sk-ink-2); }
+.sk-app .sksite-open { display: grid; gap: 4px; justify-items: end; max-width: 34ch; text-align: right; }
+@media (max-width: 760px) { .sk-app .sksite-hero { grid-template-columns: auto minmax(0, 1fr); } .sk-app .sksite-open { grid-column: 1 / -1; justify-items: start; text-align: left; } }
+.sk-app .sksite-metrics .room-metrics { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sk-s2) var(--sk-s4); border: 0; background: none; padding: 0; }
+.sk-app .sksite-metrics .room-metrics article { display: grid; gap: 0; padding: 0 var(--sk-s3) 0 0; border: 0; background: none; }
+.sk-app .sksite-metrics .room-metrics strong { font: var(--sk-figure); font-size: 22px; }
+.sk-app .sksite-metrics .room-metrics span, .sk-app .sksite-metrics .room-metrics p { font: var(--sk-caption); color: var(--sk-ink-2); margin: 0; }
+.sk-app .sksite-ledger { display: grid; gap: var(--sk-s3); padding: 0; border: 0; background: none; }
+/* TickTick: Tasks and Habits are two boxes in two slightly different tints, with small text */
+.sk-app .sksite .task-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sk-s3); align-items: start; }
+@media (max-width: 860px) { .sk-app .sksite .task-split { grid-template-columns: 1fr; } }
+.sk-app .sksite .task-split > div { padding: var(--sk-s2) var(--sk-s3) var(--sk-s3); border: 2px solid var(--sk-edge); border-radius: 14px; background: color-mix(in srgb, var(--site, var(--sk-paper)) 62%, var(--sk-paper)); }
+.sk-app .sksite .task-split > div + div { background: color-mix(in srgb, var(--site-b, var(--sk-paper)) 62%, var(--sk-paper)); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sksite .task-split > div { background: color-mix(in srgb, var(--site, var(--sk-paper)) 12%, #1c1925); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sksite .task-split > div + div { background: color-mix(in srgb, var(--site-b, var(--sk-paper)) 12%, #1c1925); }
+.sk-app .sksite .task-split-label { margin: 0 0 var(--sk-s2); font: var(--sk-label); display: flex; gap: 6px; align-items: baseline; }
+.sk-app .sksite .task-split-note { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .sksite .task-board { gap: 4px; }
+.sk-app .sksite .task-row { padding: 3px 8px; border: 1.5px solid var(--sk-edge); border-radius: 8px; background: var(--sk-paper); align-items: center; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sksite .task-row { background: color-mix(in srgb, var(--sk-ink) 6%, #1c1925); }
+.sk-app .sksite .task-row.habit { border-color: var(--sk-edge); }
+.sk-app .sksite .task-main { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sk-app .sksite .task-main strong { font: var(--sk-secondary); font-size: 12px; font-weight: 600; display: inline; }
+.sk-app .sksite .task-main .origin-link { color: var(--sk-ink); background: none; border: 0; padding: 0; text-align: left; }
+.sk-app .sksite .task-badge { margin: 0; font-size: 9px; padding: 0 6px; background: var(--sk-habit); color: var(--sk-on-fill, #16141f); border: 1.5px solid var(--sk-edge); }
+.sk-app .sksite .task-when { font: var(--sk-caption); font-size: 10px; color: var(--sk-ink-2); } .sk-app .sksite .task-when.is-overdue { color: var(--sk-alert-ink); }
+.sk-app .sksite .row-check { width: 22px; height: 22px; border: 1.5px solid var(--sk-edge); border-radius: 50%; background: var(--sk-paper); color: var(--sk-ink); cursor: pointer; }
+.sk-app .sksite .featured-row strong, .sk-app .sksite .shelf-name { font: var(--sk-secondary); font-size: 12.5px; font-weight: 600; }
+.sk-app .sksite .featured-row { padding: 6px 0; }
+.sk-app .sksite .featured-heading h3 { font: var(--sk-label); font-size: 12.5px; }
+.sk-app .sksite .row-action { border: 1.5px solid var(--sk-edge); border-radius: 8px; background: var(--sk-paper); color: var(--sk-ink); font-size: 10.5px; }
+.sk-app .sksite .shelves { border: 2px solid var(--sk-edge); border-radius: 14px; background: color-mix(in srgb, var(--site-b, var(--sk-paper)) 55%, var(--sk-paper)); padding: var(--sk-s2) var(--sk-s3); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sksite .shelves { background: color-mix(in srgb, var(--site-b, var(--sk-paper)) 10%, #1c1925); }
+.sk-app .sksite-metrics .room-metrics { max-width: none; margin: 0; }
+.sk-app .sksite-metrics .room-metrics :is(.metric-actionable strong, .metric-actionable span) { color: var(--sk-ink); }
+.sk-app .sksite-metrics .room-metrics article { border-right: 0; }
+.sk-app .sksite-metrics .room-metrics > p { border: 0; background: none; padding: 0; margin-left: auto; }

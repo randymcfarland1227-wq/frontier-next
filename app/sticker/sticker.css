@@ -945,3 +945,31 @@
   .sk-app .skw-day { grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-rows: auto; align-items: center; min-height: 0; }
   .sk-app .skw-line, .sk-app .skw-head { grid-template-columns: minmax(0, 1fr) 62px 46px 46px auto; gap: 4px; }
 }
+
+/* ── Money · Accounts & cards, Checking (drawing 3) ───────────────────────────────────────────
+   One sticker box per bank (balance + date updated), eBay/Poshmark boxes with Avail/Pend/Both
+   sums and a per-item list of what is pending vs available. */
+.sk-app .skm-acct-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--sk-s3); }
+.sk-app .skm-acct-row.is-two { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.sk-app .skm-acct { margin: 0; }
+.sk-app .skm-acct .skm-head { padding: 10px var(--sk-s3); }
+.sk-app .skm-acct .skm-head .sk-hl { flex: 1; font-size: 16px; }
+.sk-app .skm-now { font: var(--sk-figure); font-size: 22px; font-variant-numeric: tabular-nums; }
+.sk-app .skm-acct .skm-body { padding-top: var(--sk-s2); gap: var(--sk-s2); }
+.sk-app .skm-acct .skm-sums { margin-top: 0; padding-top: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sk-app .skm-sales { list-style: none; margin: 0; padding: 0 4px 0 0; display: grid; gap: 4px; max-height: 190px; overflow: auto; }
+.sk-app .skm-sales li {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto 64px 26px; gap: 6px; align-items: center; font-size: 13.5px;
+  padding: 3px 4px 3px 8px; border: 1.5px solid var(--sk-edge); border-radius: 8px; background: var(--sk-paper);
+}
+.sk-app .skm-sales li.mb-dim { display: block; border: 0; background: none; }
+.sk-app .skm-sales li small { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .skm-sales li b { text-align: right; font-variant-numeric: tabular-nums; }
+.sk-app .skm-sale-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-app .skm-pill { border: 1.5px solid var(--sk-edge); border-radius: 999px; padding: 0 8px; font: var(--sk-caption); color: var(--sk-ink); cursor: pointer; }
+.sk-app .skm-pill.is-pend { background: var(--sk-due); color: var(--sk-on-fill, #16141f); }
+.sk-app .skm-pill.is-avail { background: var(--sk-cash); color: var(--sk-on-fill, #16141f); }
+@media (max-width: 700px) {
+  .sk-app .skm-sales li { grid-template-columns: minmax(0, 1fr) auto 64px 26px; }
+  .sk-app .skm-sales li small { display: none; }
+}

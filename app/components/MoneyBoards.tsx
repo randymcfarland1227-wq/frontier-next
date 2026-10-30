@@ -389,73 +389,72 @@ function ResaleBox({ row, sales }: { row: BankRow; sales: Sale[] }) {
     mine.filter((s) => s.state === "avail").map((s) => s.amount),
   );
   return (
-    <div className={`mb-acct is-resale is-${row.resale}`}>
-      <div className="mb-acct-head">
-        <b>{row.label}</b>
-      </div>
-      <div className="mb-trio">
-        <span>
-          <small>Avail</small>
-          <b>{usd(row.now ?? 0)}</b>
-        </span>
-        <span>
-          <small>Pend</small>
-          <b className="mb-pend">{usd(row.pend ?? 0)}</b>
-        </span>
-        <span>
-          <small>Both</small>
-          <b>{usd((row.now || 0) + (row.pend || 0))}</b>
-        </span>
-      </div>
-      <ul className="mb-sales">
-        {mine.map((s) => (
-          <li key={s.id} className={`is-${s.state}`}>
-            <span className="mb-sale-name">{s.name}</span>
-            <button
-              type="button"
-              className={`mb-pill is-${s.state}`}
-              title="Switch pending / available"
-              onClick={() =>
-                setMeta(s.id, { state: s.state === "pend" ? "avail" : "pend" })
-              }
-            >
-              {s.state === "pend" ? "pending" : "available"}
-            </button>
-            <small>
-              {s.state === "pend"
-                ? s.availOn
-                  ? `est. avail ${md(s.availOn)}`
-                  : "no date"
-                : ""}
-            </small>
-            <b>{usd(s.amount)}</b>
-            <button
-              type="button"
-              className="mb-x"
-              aria-label={`Remove ${s.name}`}
-              onClick={() => removeMeta(s.id)}
-            >
-              ✕
-            </button>
-          </li>
-        ))}
-        {!mine.length ? (
-          <li className="mb-dim">
-            No sales listed yet — add each one to see what’s pending vs
-            available.
-          </li>
+    <section
+      className={`sk-group skm-acct tone-${row.resale === "ebay" ? "card" : "shop"}`}
+    >
+      <header className="sk-ghead skm-head">
+        <h3 className="sk-hl">{row.label}</h3>
+      </header>
+      <div className="sk-gbody skm-body">
+        <DashSums
+          sums={[
+            ["Avail", usd(row.now ?? 0)],
+            ["Pend", usd(row.pend ?? 0)],
+            ["Both", usd((row.now || 0) + (row.pend || 0))],
+          ]}
+        />
+        <ul className="skm-sales">
+          {mine.map((s) => (
+            <li key={s.id} className={`is-${s.state}`}>
+              <span className="skm-sale-name">{s.name}</span>
+              <button
+                type="button"
+                className={`skm-pill is-${s.state}`}
+                title="Switch pending / available"
+                onClick={() =>
+                  setMeta(s.id, {
+                    state: s.state === "pend" ? "avail" : "pend",
+                  })
+                }
+              >
+                {s.state === "pend" ? "pending" : "available"}
+              </button>
+              <small>
+                {s.state === "pend"
+                  ? s.availOn
+                    ? `est. avail ${md(s.availOn)}`
+                    : "no date"
+                  : ""}
+              </small>
+              <b>{usd(s.amount)}</b>
+              <button
+                type="button"
+                className="mb-x"
+                aria-label={`Remove ${s.name}`}
+                onClick={() => removeMeta(s.id)}
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+          {!mine.length ? (
+            <li className="mb-dim">
+              No sales listed yet — add each one to see what’s pending vs
+              available.
+            </li>
+          ) : null}
+        </ul>
+        {mine.length ? (
+          <p className="mb-dim mb-check">
+            Items: {usd(itemPend)} pending · {usd(itemAvail)} available
+            {row.pend !== undefined && Math.abs(itemPend - row.pend) > 0.5
+              ? ` · sheet says ${usd(row.pend)} pending`
+              : ""}
+          </p>
         ) : null}
-      </ul>
-      {mine.length ? (
-        <p className="mb-dim mb-check">
-          Items: {usd(itemPend)} pending · {usd(itemAvail)} available
-          {row.pend !== undefined && Math.abs(itemPend - row.pend) > 0.5
-            ? ` · sheet says ${usd(row.pend)} pending`
-            : ""}
-        </p>
-      ) : null}
-      <SaleAdd platform={row.resale as "ebay" | "posh"} />
-    </div>
+        <SaleAdd platform={row.resale as "ebay" | "posh"} />
+      </div>
+    </section>
   );
 }
 
@@ -482,22 +481,24 @@ export function AccountsBoard({
   const totPend = sumOf(rows.map((r) => r.pend));
   return (
     <div className="mny-stack">
-      <div className="mb-acct-row">
+      <div className="skm-acct-row">
         {banks.map((r) => (
-          <div key={r.name} className="mb-acct">
-            <div className="mb-acct-head">
-              <b>{r.label}</b>
-              <span className="mb-now">{cell(r.nowCell, "$0")}</span>
+          <section key={r.name} className="sk-group skm-acct tone-cash">
+            <header className="sk-ghead skm-head">
+              <h3 className="sk-hl">{r.label}</h3>
+              <span className="skm-now">{cell(r.nowCell, "$0")}</span>
+            </header>
+            <div className="sk-gbody skm-body">
+              <small className="sk-cap">
+                {seen(r) || `sheet ${synced}`}
+                {r.pend ? ` · ${usd(r.pend)} pending` : ""}
+                {r.sav !== undefined ? ` · savings ${usd(r.sav)}` : ""}
+              </small>
             </div>
-            <small className="mb-dim">
-              {seen(r) || `sheet ${synced}`}
-              {r.pend ? ` · ${usd(r.pend)} pending` : ""}
-              {r.sav !== undefined ? ` · savings ${usd(r.sav)}` : ""}
-            </small>
-          </div>
+          </section>
         ))}
       </div>
-      <div className="mb-acct-row is-two">
+      <div className="skm-acct-row is-two">
         {resale.map((r) => (
           <ResaleBox key={r.name} row={r} sales={sales} />
         ))}

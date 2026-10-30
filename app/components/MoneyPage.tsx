@@ -3034,11 +3034,11 @@ export function MoneyPage({
   if (!model) {
     return (
       <div className="settings-view money-view">
-        <section className="mny-sec tone-cash">
-          <header className="mny-sec-head">
-            <div className="mny-sec-titles">
-              <h2>Money</h2>
-              <p>Waiting for the Radall sheet. It arrives with Google’s next sync (every 10 minutes) — or press Refresh at the top.</p>
+        <section className="sk-group tone-cash skm-sec">
+          <header className="sk-ghead skm-head">
+            <div className="skm-titles">
+              <h2 className="sk-hl">Money</h2>
+              <p className="sk-sec">Waiting for the Radall sheet. It arrives with Google’s next sync (every 10 minutes) — or press Refresh at the top.</p>
             </div>
           </header>
         </section>

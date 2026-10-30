@@ -585,7 +585,7 @@ function Story({
         >
           ✕
         </button>
-        <header className="dbt-story-head">
+        <header className="dbt-story-head sk-group tone-owed">
           <div>
             <h3>{item.name}</h3>
             <p>{item.sub}</p>
@@ -854,9 +854,9 @@ function Story({
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="dbt-block">
-      <h4>{title}</h4>
-      {children}
+    <section className="dbt-block sk-group tone-paper">
+      <h4 className="sk-ghead sk-label">{title}</h4>
+      <div className="sk-gbody dbt-block-body">{children}</div>
     </section>
   );
 }
@@ -934,7 +934,7 @@ function LetterStory({
         >
           ✕
         </button>
-        <header className="dbt-story-head">
+        <header className="dbt-story-head sk-group tone-owed">
           <div>
             <h3>{letter.from}</h3>
             <p>

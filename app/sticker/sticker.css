@@ -1119,3 +1119,37 @@
 .sk-app .mny-card-bar i { background: var(--sk-cash); } .sk-app .mny-card-bar i.is-high { background: var(--sk-alert); }
 .sk-app .mny-chip { border: 1.5px solid var(--sk-edge); background: var(--sk-paper); color: var(--sk-ink); }
 .sk-app .mny-chip.is-on { background: var(--sk-ink); color: var(--sk-paper); }
+
+/* ── Debt pop-out (ticket / collection / letter stories) ─────────────────────────────────────
+   Header is a toned sticker Group with the amount; every Block is its own sticker panel. */
+.sk-app .dbt-story { width: min(780px, 94vw); }
+.sk-app .dbt-story-head { display: flex; justify-content: space-between; gap: var(--sk-s4); padding: 12px 40px 12px 14px; border: 2px solid var(--sk-edge); border-radius: 14px; box-shadow: 3px 3px 0 var(--sk-edge); color: var(--sk-on-fill, #16141f); }
+.frontier-shell[data-color-mode="dark"] .sk-app .dbt-story-head { background: color-mix(in srgb, var(--sk-owed) 30%, var(--sk-paper)); color: var(--sk-ink); }
+.sk-app .dbt-story-head h3 { font: var(--sk-title); font-size: 20px; margin: 0; }
+.sk-app .dbt-story-head p { color: inherit; opacity: .8; font: var(--sk-secondary); }
+.sk-app .dbt-story-amt b { font: var(--sk-figure); font-size: 26px; color: inherit; } .sk-app .dbt-story-amt span { color: inherit; opacity: .8; font: var(--sk-caption); }
+.sk-app .dbt-marks { margin: var(--sk-s3) 0; }
+.sk-app .dbt-marks .sk-btn.is-on, .sk-app .dbt-marks [aria-pressed="true"] { background: var(--sk-ink); color: var(--sk-paper); }
+.sk-app .dbt-note { border: 1.5px solid var(--sk-edge); border-radius: 8px; background: var(--sk-paper); color: var(--sk-ink); }
+.sk-app .dbt-block { margin-top: var(--sk-s3); }
+.sk-app .dbt-block > .sk-ghead { margin: 0; padding: 6px 12px; font: var(--sk-caption); text-transform: uppercase; letter-spacing: .06em; border-bottom: 1.5px solid var(--sk-line); }
+.sk-app .dbt-block-body { padding: var(--sk-s2) var(--sk-s3) var(--sk-s3); }
+.sk-app .dbt-block p { font: var(--sk-secondary); }
+.sk-app .dbt-dl dt, .sk-app .dbt-muted, .sk-app .dbt-src { color: var(--sk-ink-2); }
+.sk-app .dbt-rep div { border: 1.5px dashed var(--sk-edge); border-radius: 8px; color: var(--sk-ink-2); }
+.sk-app .dbt-rep div.on { border: 2px solid var(--sk-edge); background: var(--sk-owed); color: var(--sk-on-fill, #16141f); }
+.frontier-shell[data-color-mode="dark"] .sk-app .dbt-rep div.on { background: color-mix(in srgb, var(--sk-owed) 30%, var(--sk-paper)); color: var(--sk-ink); }
+.sk-app .dbt-chain li { border: 1.5px solid var(--sk-edge); border-left: 6px solid var(--sk-due); border-radius: 8px; background: var(--sk-paper); }
+.sk-app .dbt-chain li:last-child { border-left-color: var(--sk-alert); }
+.sk-app .dbt-chain small, .sk-app .dbt-chain span, .sk-app .dbt-offer-line small, .sk-app .dbt-offer-line em, .sk-app .dbt-time time, .sk-app .dbt-time i { color: var(--sk-ink-2); }
+.sk-app .dbt-offer-line { border-top: 1.5px solid var(--sk-line); } .sk-app .dbt-offer-line.is-active em { color: var(--sk-done-ink); }
+.sk-app .dbt-time { border-left: 2px solid var(--sk-edge); }
+.sk-app .dbt-time li::before { background: var(--sk-ink-2); border: 1.5px solid var(--sk-edge); }
+.sk-app .dbt-time li.is-letter::before { background: var(--sk-alert); } .sk-app .dbt-time li.is-email::before { background: var(--sk-card); } .sk-app .dbt-time li.is-report::before { background: var(--sk-credit); } .sk-app .dbt-time li.is-notice::before { background: var(--sk-due); }
+.sk-app .dbt-planline { border: 1.5px solid var(--sk-edge); border-left: 6px solid var(--sk-edge); border-radius: 8px; background: var(--sk-paper); }
+.sk-app .dbt-planline.is-yes { border-left-color: var(--sk-cash); } .sk-app .dbt-planline.is-ask { border-left-color: var(--sk-due); }
+.sk-app .dbt-tk { border: 2px solid var(--sk-edge); border-radius: 8px; background: var(--sk-paper); } .sk-app .dbt-tk:hover { background: var(--sk-hover); }
+.sk-app .dbt-seen, .sk-app .dbt-fall.is-latest { color: var(--sk-done-ink); } .sk-app .dbt-est, .sk-app .dbt-fall.is-est { color: var(--sk-ink); text-decoration: underline dotted; }
+.sk-app .dbt-lbtn:hover { background: var(--sk-hover); }
+.sk-app .dbt-years > div { border-top: 3px solid var(--sk-edge); }
+.sk-app .dbt-empty { color: var(--sk-ink-2); }

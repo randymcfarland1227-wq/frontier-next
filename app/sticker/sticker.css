@@ -900,3 +900,48 @@
 .frontier-shell[data-color-mode="dark"] .sk-app .skm :is(.skm-dc-head, .skm-head) { background: color-mix(in srgb, var(--skf) 38%, var(--sk-paper)); border-radius: 14px 14px 0 0; }
 .frontier-shell[data-color-mode="dark"] .sk-app .skm-tab .sk-sw { box-shadow: 0 0 0 2px color-mix(in srgb, var(--skf) 60%, transparent); }
 .sk-app .skm .brand-logo { background-color: #fbf8f1; }
+
+/* ── Money · Week view (drawing 2) ──────────────────────────────────────────────────────────
+   Mon→Sun strip of day tiles, two fixed-height scrolling boxes (Overdue, Upcoming) on the left,
+   the balancing sheet ledger on the right. Lists never grow with their item count. */
+.sk-app .skw-strip-wrap > .sk-gbody { padding: var(--sk-s3); }
+.sk-app .skw-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--sk-s2); }
+.sk-app .skw-day {
+  display: grid; grid-template-rows: auto 1fr auto; gap: 4px; min-width: 0; min-height: 104px; padding: 6px 7px 7px;
+  border: 2px solid var(--sk-edge); border-radius: 12px; background: var(--sk-paper);
+}
+.sk-app .skw-day.is-today { background: var(--sk-due); color: var(--sk-on-fill, #16141f); box-shadow: 3px 3px 0 var(--sk-edge); }
+.frontier-shell[data-color-mode="dark"] .sk-app .skw-day.is-today { background: color-mix(in srgb, var(--sk-due) 30%, var(--sk-paper)); color: var(--sk-ink); }
+.sk-app .skw-day.is-past:not(.is-today) { opacity: .7; }
+.sk-app .skw-dayhead { display: grid; justify-items: center; line-height: 1.05; }
+.sk-app .skw-dayhead small { font: var(--sk-caption); text-transform: uppercase; letter-spacing: .06em; opacity: .8; }
+.sk-app .skw-dayhead b { font: var(--sk-figure); font-size: 22px; }
+.sk-app .skw-day ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; align-content: start; }
+.sk-app .skw-day li { min-width: 0; }
+.sk-app .skw-day li button {
+  display: flex; width: 100%; gap: 4px; justify-content: space-between; padding: 2px 6px; min-width: 0;
+  border: 1.5px solid var(--sk-edge); border-left: 6px solid var(--k, var(--sk-edge)); border-radius: 6px;
+  background: var(--sk-paper); color: var(--sk-ink); font: var(--sk-caption); font-size: 12px; text-align: left; cursor: pointer;
+}
+.sk-app .skw-day li button:hover { background: var(--sk-hover); }
+.sk-app .skw-day li button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-app .skw-day li button b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.sk-app .skw-day li.is-paid button { opacity: .5; text-decoration: line-through; }
+.sk-app .skw-daysum { justify-self: end; font: var(--sk-caption); opacity: .8; }
+.sk-app .skw-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sk-s4); align-items: start; }
+@media (min-width: 1100px) { .sk-app .skw-grid { grid-template-columns: minmax(360px, .85fr) minmax(0, 1.6fr); } }
+.sk-app .skw-left { display: grid; gap: var(--sk-s3); }
+.sk-app .skw-list { list-style: none; margin: 0; padding: 0 4px 0 0; height: 196px; overflow-y: scroll; display: grid; align-content: start; gap: 4px; }
+.sk-app .skw-line, .sk-app .skw-head { display: grid; grid-template-columns: minmax(0, 1fr) 70px 56px 56px auto; gap: 6px; align-items: center; font-size: 13.5px; }
+.sk-app .skw-head { font: var(--sk-caption); text-transform: uppercase; letter-spacing: .05em; padding: 0 4px 3px 12px; border-bottom: 1.5px solid var(--sk-line); }
+.sk-app .skw-line { padding: 3px 4px 3px 8px; border: 1.5px solid var(--sk-edge); border-left: 6px solid var(--k, var(--sk-edge)); border-radius: 8px; background: var(--sk-paper); }
+.sk-app .skw-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 0; background: none; padding: 0; text-align: left; color: inherit; cursor: pointer; font: inherit; }
+.sk-app .skw-name:hover { text-decoration: underline; }
+.sk-app .skw-line b { font-weight: 600; }
+.sk-app .skw-line .sk-btn { min-height: 26px; padding: 1px 8px; font-size: 12px; }
+.sk-app .skw-div { margin-top: 4px; padding: 4px 0 0; font: var(--sk-caption); text-transform: uppercase; letter-spacing: .05em; border-top: 2px dashed var(--sk-line); }
+@media (max-width: 700px) {
+  .sk-app .skw-strip { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .sk-app .skw-day { grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-rows: auto; align-items: center; min-height: 0; }
+  .sk-app .skw-line, .sk-app .skw-head { grid-template-columns: minmax(0, 1fr) 62px 46px 46px auto; gap: 4px; }
+}

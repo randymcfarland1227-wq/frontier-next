@@ -1286,3 +1286,6 @@
 .sk-app #sk-brief .sk-aff-card .sk-hl { font-size: 14px; }
 .sk-app #sk-brief .sk-ghead { padding-block: var(--sk-s2); }
 .sk-app #sk-brief .sk-group + .sk-group { margin-top: var(--sk-s3); }
+.sk-app .sk-trio.is-duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 960px) { .sk-app .sk-trio.is-duo { grid-template-columns: 1fr; } }
+.sk-app .sk-today-tabs { flex-wrap: wrap; }

@@ -38,12 +38,25 @@ import { applyBillEdits, isOverdue, useBillEdits } from "../../lib/billEdits";
 import { usePlans } from "../../lib/plans";
 import { ScheduleSection } from "./ScheduleSection";
 import { KitBillRow } from "./BillsList";
-import { FocusSection } from "./FocusSection";
+import {
+  FocusSection,
+  ShortTermFocus,
+  shortTermSummary,
+  useShortTermFocus,
+} from "./FocusSection";
 import { HomeTop } from "../sticker/HomeTop";
 import { ListHead, REVEAL_EVENT, Section } from "../sticker/kit";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { Icon } from "../sticker/Icon";
 import { SITE_ROWS, SitesSection } from "../sticker/Sites";
+
+type TodayTab = "brief" | "grounding" | "calendar" | "focus";
+const TODAY_TABS: [TodayTab, string][] = [
+  ["brief", "Daily Brief"],
+  ["grounding", "Grounding"],
+  ["calendar", "Calendar"],
+  ["focus", "Short-term focus"],
+];
 
 /** "3 on your list · 13 on deck · 1 critical" for the Doing Now head. */
 function PrioritySummary() {
@@ -183,14 +196,30 @@ export function HomeView({
     if (source === "radall" && due) onBillPaid(due);
     else onCompleteFeatured(source, item);
   };
-  // Today is one section with two tabs (Daily Brief | Grounding); the last tab is remembered on this device.
-  const [todayTab, setTodayTab] = useState<"brief" | "grounding">(() =>
-    readSaved<string>("sk-today-tab", "brief") === "grounding" ? "grounding" : "brief",
-  );
-  const pickTodayTab = (t: "brief" | "grounding") => {
+  // Today is one section with tabs (Daily Brief | Grounding | Calendar | Short-term focus); the last tab is remembered on this device.
+  const [todayTab, setTodayTab] = useState<TodayTab>(() => {
+    const saved = readSaved<string>("sk-today-tab", "brief");
+    return TODAY_TABS.some(([id]) => id === saved)
+      ? (saved as TodayTab)
+      : "brief";
+  });
+  const tab: TodayTab =
+    todayTab === "grounding" && !grounding ? "brief" : todayTab;
+  const pickTodayTab = (t: TodayTab) => {
     setTodayTab(t);
     writeSaved("sk-today-tab", t);
   };
+  const shortTerm = useShortTermFocus();
+  const todaySummary =
+    tab === "grounding" ? (
+      <GroundingSummary />
+    ) : tab === "calendar" ? (
+      <ScheduleSummary schedule={schedule} bills={bills} />
+    ) : tab === "focus" ? (
+      shortTermSummary(shortTerm.open)
+    ) : (
+      <BriefSummary snapshots={snapshots} bills={bills} />
+    );
   useEffect(() => {
     const onReveal = (e: Event) =>
       (e as CustomEvent).detail === "brief" && setTodayTab("brief");
@@ -245,55 +274,37 @@ export function HomeView({
         enter={enter}
       />
 
-      <Section
-        id="brief"
-        title="Today"
-        summary={
-          todayTab === "grounding" && grounding ? (
-            <GroundingSummary />
-          ) : (
-            <BriefSummary snapshots={snapshots} bills={bills} />
-          )
-        }
-      >
-        {grounding ? (
-          <div className="sk-seg sk-today-tabs" role="group" aria-label="Today">
-            <button
-              type="button"
-              aria-pressed={todayTab === "brief"}
-              onClick={() => pickTodayTab("brief")}
-            >
-              Daily Brief
-            </button>
-            <button
-              type="button"
-              aria-pressed={todayTab === "grounding"}
-              onClick={() => pickTodayTab("grounding")}
-            >
-              Grounding
-            </button>
-          </div>
-        ) : null}
-        {todayTab === "grounding" && grounding ? (
+      <Section id="brief" title="Today" summary={todaySummary}>
+        <div className="sk-seg sk-today-tabs" role="group" aria-label="Today">
+          {TODAY_TABS.filter(([id]) => id !== "grounding" || grounding).map(
+            ([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={tab === id}
+                onClick={() => pickTodayTab(id)}
+              >
+                {label}
+              </button>
+            ),
+          )}
+        </div>
+        {tab === "grounding" ? (
           grounding
+        ) : tab === "calendar" ? (
+          <ScheduleSection
+            schedule={schedule}
+            bills={bills}
+            onBillPaid={onBillPaid}
+            tasks={calTasks}
+            onTaskDone={onTaskDone}
+            onAddPrep={onAddPrep}
+          />
+        ) : tab === "focus" ? (
+          <ShortTermFocus focus={shortTerm} />
         ) : (
           <DailyBrief snapshots={snapshots} bills={bills} enter={enter} />
         )}
-      </Section>
-
-      <Section
-        id="schedule"
-        title="Schedule"
-        summary={<ScheduleSummary schedule={schedule} bills={bills} />}
-      >
-        <ScheduleSection
-          schedule={schedule}
-          bills={bills}
-          onBillPaid={onBillPaid}
-          tasks={calTasks}
-          onTaskDone={onTaskDone}
-          onAddPrep={onAddPrep}
-        />
       </Section>
 
       <FocusSection snapshots={snapshots} enter={enter} />

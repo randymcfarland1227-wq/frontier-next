@@ -1382,3 +1382,6 @@
 .sk-app :is(#sk-brief, #sk-focus) .sk-listh + * { margin-top: 0; }
 .sk-app .sk-top > div:first-child { max-width: none; }
 .sk-app .sk-top .sk-status { max-width: 40ch; font-size: 13px; white-space: normal; }
+/* Credit score tiles: the number takes the tile's text colour (never the bureau hue on its own tint) */
+.sk-app .dbt-tile[class*="bu-"] :is(b, span, small, .bu-name), .sk-app .dbt-tile.bu-ex b, .sk-app .dbt-tile.bu-eq b, .sk-app .dbt-tile.bu-tu b { color: inherit; }
+.sk-app .dbt-tile[class*="bu-"] { border-top: 2px solid var(--sk-edge); }

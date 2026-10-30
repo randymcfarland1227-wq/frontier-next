@@ -1153,3 +1153,8 @@
 .sk-app .dbt-lbtn:hover { background: var(--sk-hover); }
 .sk-app .dbt-years > div { border-top: 3px solid var(--sk-edge); }
 .sk-app .dbt-empty { color: var(--sk-ink-2); }
+
+/* Phone: grid/flex children may shrink below their content so nothing pushes the page wider */
+.sk-app .skm-dash { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.sk-app .skm > *, .sk-app .skm .mny-stack > * { min-width: 0; }
+.sk-app .mny-stack { grid-template-columns: minmax(0, 1fr); }

@@ -35,7 +35,7 @@ import { Icon } from "../sticker/Icon";
 const FILLER_DETAIL = "Captured in Self inbox";
 
 /** Every open task and featured item across the hub, by pin key — plus bills that are still owed. */
-function buildCatalog(
+export function buildCatalog(
   snapshots: Record<SourceId, SourceSnapshot>,
   bills: BillDue[] = [],
 ) {

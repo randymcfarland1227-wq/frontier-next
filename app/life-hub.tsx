@@ -44,7 +44,7 @@ import './sticker/sticker.css';
 import { HomeView } from './components/HomeView';
 import { SourceCard } from './components/SourceCard';
 import { SourceView } from './components/SourceView';
-import { FocusDrawer } from './components/FocusDrawer';
+import { FocusDrawer, useTodayListCount } from './components/FocusDrawer';
 import { SourceBridges } from './components/SourceBridges';
 import {
   loadLedger,
@@ -744,7 +744,6 @@ export function LifeHub() {
     };
   }, []);
 
-  const unfinished = focus.filter(item => !item.done).length;
   // Money on the calendar: the sheet's items + planned payments, minus what's marked paid.
   const payPlans = usePayPlans();
   const paidKeys = useMemo(() => paidBillKeys(visibleLedger), [visibleLedger]);
@@ -755,6 +754,8 @@ export function LifeHub() {
     () => applyBillEdits([...moneyBillDues(moneyModel, paidKeys), ...payPlanDues(payPlans, paidKeys), ...lifeSubDues(lifeSubs, paidKeys)], billEdits),
     [moneyModel, payPlans, paidKeys, billEdits, lifeSubs],
   );
+  // Today's List badge: the Doing Now action list plus what you've added from Today / Focus / Sites.
+  const unfinished = useTodayListCount(focus, visibleSnapshots, moneyDues.filter(b => !b.skipped));
   // Money page "This month": every payment this month, paid ones too, and when each was paid.
   const paidAt = useMemo(() => {
     const out: Record<string, string> = {};
@@ -1160,7 +1161,21 @@ goalsData ? (
       {import.meta.env.VITE_LOCAL_PREVIEW === 'true' && <aside className="preview-banner" style={{position:'fixed',bottom:0,left:0,right:0,padding:'10px 20px',background:'#202824',color:'#fff',zIndex:9999}}>Local review · live writes disabled · <a href="/flow/#sync">Open Flow connections</a></aside>}
       <UpdateNotice />
       {import.meta.env.VITE_LOCAL_PREVIEW !== 'true' && <BackupGuard />}
-      <FocusDrawer open={focusOpen} close={() => setFocusOpen(false)} focus={focus} setFocus={setFocus} enter={enter} />
+      <FocusDrawer
+        open={focusOpen}
+        close={() => setFocusOpen(false)}
+        focus={focus}
+        setFocus={setFocus}
+        enter={enter}
+        snapshots={visibleSnapshots}
+        bills={moneyDues.filter(b => !b.skipped)}
+        schedule={schedule}
+        onCompleteItem={(source, item) => {
+          const due = moneyDues.find(b => b.key === item.id);
+          if (source === 'radall' && due) setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }));
+          else completeOnHub(source, item.id);
+        }}
+      />
       {import.meta.env.VITE_LOCAL_PREVIEW !== 'true' && <SourceBridges register={registerFrame} />}
       {pendingArea && focusConfig ? (
         <AreaPicker

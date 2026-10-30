@@ -1518,3 +1518,21 @@
 }
 .sk-app .sk-site, .sk-app .sk-src { background: color-mix(in srgb, var(--site, var(--sk-paper)) 78%, var(--sk-paper)); }
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-site, .frontier-shell[data-color-mode="dark"] .sk-app .sk-src { background: color-mix(in srgb, var(--site, var(--sk-paper)) 22%, #1c1925); }
+
+/* ── Section headings: one size everywhere (the size Focus uses) ──────────────────────────────── */
+.sk-app .sk-section > .sk-shead .sk-title { font: 600 18px/1.25 "Unbounded", system-ui, sans-serif; letter-spacing: -.02em; }
+
+/* ── Night page: nearly black, with a faint glowing grid ───────────────────────────────────────── */
+.frontier-shell[data-color-mode="dark"] .sk-app { --sk-page: #07060b; --sk-grid: #1b1730; }
+.frontier-shell[data-color-mode="dark"] .sk-app[data-page="home"],
+.frontier-shell[data-color-mode="dark"] .sk-app[data-page="money"] .sk-main,
+.frontier-shell[data-color-mode="dark"] .sk-app[data-page="site"] .sk-main {
+  background-color: #07060b;
+  background-image:
+    linear-gradient(rgba(150, 130, 255, .20) 1px, transparent 1px), linear-gradient(90deg, rgba(150, 130, 255, .20) 1px, transparent 1px),
+    linear-gradient(rgba(150, 130, 255, .07) 5px, transparent 5px), linear-gradient(90deg, rgba(150, 130, 255, .07) 5px, transparent 5px);
+  background-size: 24px 24px; background-position: 0 0, 0 0, 0 -2px, -2px 0;
+}
+.sk-app .sk-todaysearch { display: grid; gap: var(--sk-s2); margin: var(--sk-s2) 0 var(--sk-s3); }
+.sk-app .sk-todayresults { border: 2px solid var(--sk-edge); border-radius: 12px; padding: 0 var(--sk-s2); background: var(--sk-paper); max-height: 260px; overflow: auto; }
+.sk-app .sk-todayh { margin: var(--sk-s3) 0 var(--sk-s1); text-transform: uppercase; letter-spacing: .06em; }

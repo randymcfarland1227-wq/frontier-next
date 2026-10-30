@@ -74,6 +74,10 @@ export type FocusItem = {
   text: string;
   space: SourceId;
   done: boolean;
+  /** Where Today's List got it: a site task/bill ('site'), a Focus entry, or something from Today. Items without it are old placeholders and are not listed. */
+  from?: 'site' | 'focus' | 'today';
+  /** Stable key of the thing it points at (a pin key, a focus id, a brief row id) */
+  ref?: string;
 };
 
 export type WorkroomRequestMessage = { type: 'randys-workroom:request' };

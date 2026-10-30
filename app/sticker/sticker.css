@@ -1385,3 +1385,8 @@
 /* Credit score tiles: the number takes the tile's text colour (never the bureau hue on its own tint) */
 .sk-app .dbt-tile[class*="bu-"] :is(b, span, small, .bu-name), .sk-app .dbt-tile.bu-ex b, .sk-app .dbt-tile.bu-eq b, .sk-app .dbt-tile.bu-tu b { color: inherit; }
 .sk-app .dbt-tile[class*="bu-"] { border-top: 2px solid var(--sk-edge); }
+/* Sheet formula cells and bureau chips: readable on every tint, light or dark */
+.sk-app .mcell.is-formula { color: color-mix(in srgb, var(--sk-ink) 88%, var(--sk-ink-2)); }
+.sk-app .dbt-bureaus i[class*="bu-"]:not(.on) { color: var(--sk-ink-2); border-color: var(--sk-edge); opacity: 1; }
+.sk-app .dbt-bureaus i.on[class*="bu-"], .sk-app .dbt-bureaus i.on { background: var(--sk-ink); border-color: var(--sk-edge); color: var(--sk-paper); }
+.sk-app .cc-used { color: var(--sk-ink-2); }

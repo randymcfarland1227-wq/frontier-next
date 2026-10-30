@@ -1041,7 +1041,7 @@ goalsData ? (
           onAddPrep={(target, title, due) => syncSelf(addSelfItem(title, '', { due, forEvent: target }))}
           unfinished={unfinished}
           openFocus={() => setFocusOpen(true)}
-          grounding={<DailyGrounding move={visibleSnapshots.move} goals={goalsData} enter={enter} />}
+          grounding={<DailyGrounding move={visibleSnapshots.move} goals={goalsData} enter={enter} ticktick={visibleSnapshots.ticktick} ledger={visibleLedger} />}
           onBillPaid={(due: BillDue) =>
             setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }))
           }

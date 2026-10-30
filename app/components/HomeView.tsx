@@ -1,50 +1,104 @@
-'use client';
+"use client";
 
-import type { ReactNode } from 'react';
-import type { FeaturedItem, SourceId, SourceSnapshot, SpaceId, TaskItem } from '../../lib/types';
-import { sourceById } from '../../lib/sources';
-import type { CompletionLedger, CompletionStats, CompletionEntry } from '../../lib/completions';
-import type { FocusAreaConfig } from '../../lib/focusAreas';
-import type { EnergyWindow } from '../../lib/energy';
-import { PriorityBoard } from './PriorityBoard';
-import { GroundingSummary } from './DailyGrounding';
-import { ReviewPanel } from './ReviewPanel';
-import { DailyBrief, BriefSummary } from './DailyBrief';
-import { useBriefPush } from '../../lib/dailyBrief';
-import { shownMetric } from '../../lib/actionable';
-import { PLAN, usePriorityPins } from '../../lib/priorityPins';
-import { criticalKeys, useFeaturedLevels } from '../../lib/featuredLevels';
-import { addDays, billDues, eventStart, onDay, paidBillKeys, type BillDue, type CalTask, type ScheduleSnapshot } from '../../lib/schedule';
-import { applyBillEdits, isOverdue, useBillEdits } from '../../lib/billEdits';
-import { usePlans } from '../../lib/plans';
-import { ScheduleSection } from './ScheduleSection';
-import { KitBillRow } from './BillsList';
-import { FocusSection } from './FocusSection';
-import { HomeTop } from '../sticker/HomeTop';
-import { ListHead, Section } from '../sticker/kit';
-import { Icon } from '../sticker/Icon';
-import { SITE_ROWS, SitesSection } from '../sticker/Sites';
+import { useEffect, useState, type ReactNode } from "react";
+import type {
+  FeaturedItem,
+  SourceId,
+  SourceSnapshot,
+  SpaceId,
+  TaskItem,
+} from "../../lib/types";
+import { sourceById } from "../../lib/sources";
+import type {
+  CompletionLedger,
+  CompletionStats,
+  CompletionEntry,
+} from "../../lib/completions";
+import type { FocusAreaConfig } from "../../lib/focusAreas";
+import type { EnergyWindow } from "../../lib/energy";
+import { PriorityBoard } from "./PriorityBoard";
+import { GroundingSummary } from "./DailyGrounding";
+import { ReviewPanel } from "./ReviewPanel";
+import { DailyBrief, BriefSummary } from "./DailyBrief";
+import { useBriefPush } from "../../lib/dailyBrief";
+import { shownMetric } from "../../lib/actionable";
+import { PLAN, usePriorityPins } from "../../lib/priorityPins";
+import { criticalKeys, useFeaturedLevels } from "../../lib/featuredLevels";
+import {
+  addDays,
+  billDues,
+  eventStart,
+  onDay,
+  paidBillKeys,
+  type BillDue,
+  type CalTask,
+  type ScheduleSnapshot,
+} from "../../lib/schedule";
+import { applyBillEdits, isOverdue, useBillEdits } from "../../lib/billEdits";
+import { usePlans } from "../../lib/plans";
+import { ScheduleSection } from "./ScheduleSection";
+import { KitBillRow } from "./BillsList";
+import { FocusSection } from "./FocusSection";
+import { HomeTop } from "../sticker/HomeTop";
+import { ListHead, REVEAL_EVENT, Section } from "../sticker/kit";
+import { readSaved, writeSaved } from "../../lib/storage";
+import { Icon } from "../sticker/Icon";
+import { SITE_ROWS, SitesSection } from "../sticker/Sites";
 
 /** "3 on your list · 13 on deck · 1 critical" for the Doing Now head. */
 function PrioritySummary() {
   const { pins, lanes } = usePriorityPins();
   const { levels } = useFeaturedLevels();
   const critical = criticalKeys(levels).length;
-  const plan = pins.filter(k => lanes[k]?.lane === PLAN).length;
-  return <>{[`${plan} on your list`, `${pins.length - plan} pinned on deck`, critical ? `${critical} critical` : null].filter(Boolean).join(' · ')}</>;
+  const plan = pins.filter((k) => lanes[k]?.lane === PLAN).length;
+  return (
+    <>
+      {[
+        `${plan} on your list`,
+        `${pins.length - plan} pinned on deck`,
+        critical ? `${critical} critical` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")}
+    </>
+  );
 }
 
 /** Collapsed Schedule bar: today's events, maybes waiting on an answer, bills due within 3 days. */
-function ScheduleSummary({ schedule, bills }: { schedule: ScheduleSnapshot | null; bills: BillDue[] }) {
+function ScheduleSummary({
+  schedule,
+  bills,
+}: {
+  schedule: ScheduleSnapshot | null;
+  bills: BillDue[];
+}) {
   const { plans } = usePlans();
   const today = new Date();
   const events = schedule?.events || [];
-  const todayCount = events.filter(e => (e.myStatus === 'owner' || e.myStatus === 'yes') && onDay(e, today)).length;
+  const todayCount = events.filter(
+    (e) => (e.myStatus === "owner" || e.myStatus === "yes") && onDay(e, today),
+  ).length;
   const maybes =
-    plans.filter(p => p.status === 'open').length +
-    events.filter(e => (e.myStatus === 'invited' || e.myStatus === 'maybe') && eventStart(e) >= addDays(today, -1)).length;
-  const soon = bills.filter(b => b.days <= 3 && !(b.bill.kind && b.days < 0)).length;
-  return <>{[`${todayCount} today`, maybes ? `${maybes} to confirm` : null, soon ? `${soon} ${soon === 1 ? 'payment' : 'payments'} due soon` : null].filter(Boolean).join(' · ')}</>;
+    plans.filter((p) => p.status === "open").length +
+    events.filter(
+      (e) =>
+        (e.myStatus === "invited" || e.myStatus === "maybe") &&
+        eventStart(e) >= addDays(today, -1),
+    ).length;
+  const soon = bills.filter(
+    (b) => b.days <= 3 && !(b.bill.kind && b.days < 0),
+  ).length;
+  return (
+    <>
+      {[
+        `${todayCount} today`,
+        maybes ? `${maybes} to confirm` : null,
+        soon ? `${soon} ${soon === 1 ? "payment" : "payments"} due soon` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")}
+    </>
+  );
 }
 
 export function HomeView({
@@ -88,7 +142,11 @@ export function HomeView({
   onBillPaid: (due: BillDue) => void;
   calTasks: CalTask[];
   onTaskDone: (t: CalTask) => void;
-  onAddPrep: (target: { id: string; title: string; date: string }, title: string, due?: string) => void;
+  onAddPrep: (
+    target: { id: string; title: string; date: string },
+    title: string,
+    due?: string,
+  ) => void;
   /** Daily grounding: reminder guides + directions (rendered by the page) */
   grounding?: ReactNode;
   /** Today drawer: items not done yet, and how to open it (the one prominent button) */
@@ -97,9 +155,13 @@ export function HomeView({
 }) {
   const { lanes } = usePriorityPins();
   // Open to-dos per site — the same blue numbers each card shows.
-  const openBySite = SITE_ROWS.flatMap(r => r.ids)
-    .map(id => ({ id, name: sourceById[id].shortName, count: shownMetric(id, snapshots[id], lanes).value || 0 }))
-    .filter(site => site.count > 0)
+  const openBySite = SITE_ROWS.flatMap((r) => r.ids)
+    .map((id) => ({
+      id,
+      name: sourceById[id].shortName,
+      count: shownMetric(id, snapshots[id], lanes).value || 0,
+    }))
+    .filter((site) => site.count > 0)
     .sort((a, b) => b.count - a.count);
   const openTotal = openBySite.reduce((sum, site) => sum + site.count, 0);
   // Bills: next unpaid due date per bill (paid on Life Hub = a Radall completion in the ledger).
@@ -107,31 +169,61 @@ export function HomeView({
   const paidKeys = paidBillKeys(ledger);
   const billEdits = useBillEdits();
   // Bills tab: each bill's next due still owed (an unpaid past one first), after Life Hub changes.
-  const tabBills = (schedule?.bills || []).map(b => applyBillEdits(billDues(b, paidKeys), billEdits)[0]).filter((d): d is BillDue => Boolean(d));
-  const bills = [...tabBills, ...moneyDues].sort((a, b) => a.due.localeCompare(b.due));
+  const tabBills = (schedule?.bills || [])
+    .map((b) => applyBillEdits(billDues(b, paidKeys), billEdits)[0])
+    .filter((d): d is BillDue => Boolean(d));
+  const bills = [...tabBills, ...moneyDues].sort((a, b) =>
+    a.due.localeCompare(b.due),
+  );
   const overdueBills = bills.filter(isOverdue);
   useBriefPush(snapshots, bills);
   // Paid from anywhere a bill shows up as a Priority item ("Doing now").
   const payFromPriority = (source: SourceId, item: FeaturedItem) => {
-    const due = bills.find(b => b.key === item.id);
-    if (source === 'radall' && due) onBillPaid(due);
+    const due = bills.find((b) => b.key === item.id);
+    if (source === "radall" && due) onBillPaid(due);
     else onCompleteFeatured(source, item);
   };
-  const soonBills = bills.filter(b => b.days >= 0 && b.days <= 21);
+  // Today is one section with two tabs (Daily Brief | Grounding); the last tab is remembered on this device.
+  const [todayTab, setTodayTab] = useState<"brief" | "grounding">(() =>
+    readSaved<string>("sk-today-tab", "brief") === "grounding" ? "grounding" : "brief",
+  );
+  const pickTodayTab = (t: "brief" | "grounding") => {
+    setTodayTab(t);
+    writeSaved("sk-today-tab", t);
+  };
+  useEffect(() => {
+    const onReveal = (e: Event) =>
+      (e as CustomEvent).detail === "brief" && setTodayTab("brief");
+    window.addEventListener(REVEAL_EVENT, onReveal);
+    return () => window.removeEventListener(REVEAL_EVENT, onReveal);
+  }, []);
+  const soonBills = bills.filter((b) => b.days >= 0 && b.days <= 21);
   const financeBills = (
     <>
       <ListHead title="Money Due" meta="Next 3 weeks">
-        <button type="button" className="sk-link" onClick={() => enter('money')}>
+        <button
+          type="button"
+          className="sk-link"
+          onClick={() => enter("money")}
+        >
           Money page
           <Icon name="chevron" />
         </button>
       </ListHead>
-      {soonBills.length ? soonBills.slice(0, 4).map(d => <KitBillRow key={d.key} d={d} onPaid={onBillPaid} />) : <p className="sk-empty">Nothing due in the next 3 weeks.</p>}
-      {soonBills.length > 4 ? <p className="sk-sec sk-more">{soonBills.length - 4} more later</p> : null}
+      {soonBills.length ? (
+        soonBills
+          .slice(0, 4)
+          .map((d) => <KitBillRow key={d.key} d={d} onPaid={onBillPaid} />)
+      ) : (
+        <p className="sk-empty">Nothing due in the next 3 weeks.</p>
+      )}
+      {soonBills.length > 4 ? (
+        <p className="sk-sec sk-more">{soonBills.length - 4} more later</p>
+      ) : null}
       {overdueBills.length ? (
         <>
           <ListHead title="Overdue" meta="Not marked paid" />
-          {overdueBills.map(d => (
+          {overdueBills.map((d) => (
             <KitBillRow key={d.key} d={d} onPaid={onBillPaid} />
           ))}
         </>
@@ -153,24 +245,66 @@ export function HomeView({
         enter={enter}
       />
 
-      <Section id="brief" title="Today" summary={<BriefSummary snapshots={snapshots} bills={bills} />}>
-        <DailyBrief snapshots={snapshots} bills={bills} enter={enter} />
+      <Section
+        id="brief"
+        title="Today"
+        summary={
+          todayTab === "grounding" && grounding ? (
+            <GroundingSummary />
+          ) : (
+            <BriefSummary snapshots={snapshots} bills={bills} />
+          )
+        }
+      >
+        {grounding ? (
+          <div className="sk-seg sk-today-tabs" role="group" aria-label="Today">
+            <button
+              type="button"
+              aria-pressed={todayTab === "brief"}
+              onClick={() => pickTodayTab("brief")}
+            >
+              Daily Brief
+            </button>
+            <button
+              type="button"
+              aria-pressed={todayTab === "grounding"}
+              onClick={() => pickTodayTab("grounding")}
+            >
+              Grounding
+            </button>
+          </div>
+        ) : null}
+        {todayTab === "grounding" && grounding ? (
+          grounding
+        ) : (
+          <DailyBrief snapshots={snapshots} bills={bills} enter={enter} />
+        )}
       </Section>
 
-      {grounding ? (
-        <Section id="grounding" title="Grounding" summary={<GroundingSummary />}>
-          {grounding}
-        </Section>
-      ) : null}
-
-      <Section id="schedule" title="Schedule" summary={<ScheduleSummary schedule={schedule} bills={bills} />}>
-        <ScheduleSection schedule={schedule} bills={bills} onBillPaid={onBillPaid} tasks={calTasks} onTaskDone={onTaskDone} onAddPrep={onAddPrep} />
+      <Section
+        id="schedule"
+        title="Schedule"
+        summary={<ScheduleSummary schedule={schedule} bills={bills} />}
+      >
+        <ScheduleSection
+          schedule={schedule}
+          bills={bills}
+          onBillPaid={onBillPaid}
+          tasks={calTasks}
+          onTaskDone={onTaskDone}
+          onAddPrep={onAddPrep}
+        />
       </Section>
 
       <FocusSection snapshots={snapshots} enter={enter} />
 
       <Section id="priority" title="Doing Now" summary={<PrioritySummary />}>
-        <PriorityBoard snapshots={snapshots} enter={id => enter(id)} onComplete={payFromPriority} bills={bills.filter(b => !b.skipped)} />
+        <PriorityBoard
+          snapshots={snapshots}
+          enter={(id) => enter(id)}
+          onComplete={payFromPriority}
+          bills={bills.filter((b) => !b.skipped)}
+        />
       </Section>
 
       <SitesSection
@@ -180,7 +314,10 @@ export function HomeView({
         onCompleteFeatured={onCompleteFeatured}
         onCompleteTask={onCompleteTask}
         onStarTask={onStarTask}
-        extra={{ self: capturesPanel, radall: bills.length ? financeBills : undefined }}
+        extra={{
+          self: capturesPanel,
+          radall: bills.length ? financeBills : undefined,
+        }}
       />
 
       <Section
@@ -188,7 +325,8 @@ export function HomeView({
         title="Review"
         summary={
           <>
-            {completionStats.today} done today · {completionStats.allTime} total · {completionStats.openAcrossSources} open
+            {completionStats.today} done today · {completionStats.allTime} total
+            · {completionStats.openAcrossSources} open
           </>
         }
       >

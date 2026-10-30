@@ -1255,3 +1255,18 @@
 .sk-app[data-side="slim"] .sk-siteico { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; overflow: hidden; }
 .sk-app[data-side="slim"] .sk-siteico img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .sk-app[data-side="slim"] .sk-siteico .sk-icon { width: 18px; height: 18px; }
+
+/* Home · Today: one section, two tabs (Daily Brief | Grounding) */
+.sk-app .sk-today-tabs { margin-bottom: var(--sk-s3); }
+/* Grounding · "How to" under each reminder: hover / focus lists today's linked tasks and their state */
+.sk-app .sk-how { position: relative; align-self: flex-start; }
+.sk-app .sk-how-btn { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border: 2px solid var(--sk-edge); border-radius: 999px; background: var(--sk-paper); color: var(--sk-ink); font: var(--sk-label); font-size: 13px; cursor: help; box-shadow: 2px 2px 0 var(--sk-edge); }
+.sk-app .sk-how-btn small { font: var(--sk-caption); background: var(--sk-ground); color: var(--sk-on-fill, #16141f); border-radius: 99px; padding: 0 7px; }
+.sk-app .sk-how-pop { display: none; position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; width: min(320px, 78vw); padding: var(--sk-s3); border: 2px solid var(--sk-edge); border-radius: 12px; background: var(--sk-paper); color: var(--sk-ink); box-shadow: 4px 4px 0 var(--sk-edge); }
+.sk-app .sk-how:hover .sk-how-pop, .sk-app .sk-how:focus-within .sk-how-pop { display: block; }
+.sk-app .sk-how-pop ul { list-style: none; margin: var(--sk-s2) 0 0; padding: 0; display: grid; gap: 4px; max-height: 260px; overflow: auto; }
+.sk-app .sk-how-pop li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 8px; align-items: center; font: var(--sk-secondary); }
+.sk-app .sk-how-pop li em { font: var(--sk-caption); font-style: normal; color: var(--sk-ink-2); }
+.sk-app .sk-how-pop li.is-done { color: var(--sk-ink-2); } .sk-app .sk-how-pop li.is-done span { text-decoration: line-through; }
+.sk-app .sk-how-pop li.is-done em, .sk-app .sk-how-pop li.is-done .sk-icon { color: var(--sk-done-ink, #0a6b4f); }
+.sk-app .sk-aff-card { overflow: visible; }

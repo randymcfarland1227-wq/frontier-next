@@ -1375,3 +1375,7 @@
 .sk-app #sk-focus .sk-fit-row { padding-bottom: 4px; }
 .sk-app #sk-focus .sk-mv-today { margin-bottom: 4px; padding: 4px 8px; }
 .sk-app #sk-focus .sk-group > .sk-gbody { padding-bottom: var(--sk-s2); }
+.sk-app .sk-top .sk-greet, .sk-app .sk-top .sk-large { white-space: nowrap; }
+@media (max-width: 760px) { .sk-app .sk-top .sk-greet, .sk-app .sk-top .sk-large { white-space: normal; } }
+.sk-app :is(#sk-brief, #sk-focus) .sk-listh { padding-top: 6px; margin-top: 0; }
+.sk-app :is(#sk-brief, #sk-focus) .sk-listh + * { margin-top: 0; }

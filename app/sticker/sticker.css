@@ -1185,3 +1185,40 @@
 .sk-app .sk-sun .sk-icon { background: var(--sk-needs); color: var(--sk-on-fill, #16141f); }
 .sk-app .sk-moon .sk-icon { background: var(--sk-sched); color: var(--sk-on-fill, #16141f); }
 .sk-app .sk-sun small, .sk-app .sk-moon small { font: var(--sk-caption); color: var(--sk-ink-2); }
+
+/* Home · bigger greeting, slightly smaller date; the day ribbon is tinted, never white */
+.sk-app .sk-greet { margin: 0 0 4px; font: var(--sk-large); font-size: 44px; letter-spacing: -.03em; color: var(--sk-ink); }
+.sk-app .sk-top .sk-large { font-size: 28px; }
+.sk-app .sk-ribbon { background: var(--sk-sched); color: var(--sk-on-fill, #16141f); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-ribbon { background: color-mix(in srgb, var(--sk-sched) 30%, var(--sk-paper)); color: var(--sk-ink); }
+.sk-app .sk-ribbon :is(.sk-sec, .sk-cap, .sk-sun small, .sk-moon small) { color: inherit; opacity: .8; }
+@media (max-width: 760px) { .sk-app .sk-greet { font-size: 32px; } .sk-app .sk-top .sk-large { font-size: 22px; } }
+
+/* Sidebar: every item is a rounded, button-like tile with a slow chromatic shimmer; groups fold */
+@keyframes sk-shimmer { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
+@keyframes sk-sheen { 0% { transform: translateX(-140%) skewX(-20deg); } 60%, 100% { transform: translateX(260%) skewX(-20deg); } }
+.sk-app .sk-nav, .sk-app .sk-navgroup { gap: 6px; }
+.sk-app .sk-navi {
+  position: relative; overflow: hidden; border: 2px solid var(--sk-edge); border-radius: 14px; box-shadow: 2px 2px 0 var(--sk-edge);
+  background: linear-gradient(105deg, #ffd9ea, #fff0b8, #d3f5df, #cfe6ff, #e4d6ff, #ffd9ea) 0% 50% / 300% 100%;
+  color: var(--sk-on-fill, #16141f); animation: sk-shimmer 9s linear infinite;
+}
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-navi {
+  background: linear-gradient(105deg, #4a2a3d, #4a4222, #254636, #25405a, #3d3060, #4a2a3d) 0% 50% / 300% 100%; color: var(--sk-ink);
+}
+.sk-app .sk-navi::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; background: linear-gradient(90deg, transparent, #ffffff99, transparent); transform: translateX(-140%) skewX(-20deg); pointer-events: none; animation: sk-sheen 5.5s ease-in-out infinite; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-navi::after { background: linear-gradient(90deg, transparent, #ffffff33, transparent); }
+.sk-app .sk-navi:hover { background: linear-gradient(105deg, #ffd9ea, #fff0b8, #d3f5df, #cfe6ff, #e4d6ff, #ffd9ea) 0% 50% / 300% 100%; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--sk-edge); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-navi:hover { background: linear-gradient(105deg, #4a2a3d, #4a4222, #254636, #25405a, #3d3060, #4a2a3d) 0% 50% / 300% 100%; }
+.sk-app .sk-navi[aria-current="page"] {
+  background: linear-gradient(105deg, #16141f, #3b2f6b, #16141f, #1f4f6b, #16141f) 0% 50% / 300% 100%; color: #fff; box-shadow: 3px 3px 0 var(--sk-needs), 3px 3px 0 2px var(--sk-edge);
+}
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-navi[aria-current="page"] { background: linear-gradient(105deg, #f4efe6, #cdbdff, #f4efe6, #a8d8ff, #f4efe6) 0% 50% / 300% 100%; color: #16141f; }
+.sk-app .sk-navi > * { position: relative; z-index: 1; }
+.sk-app .sk-navh { margin: var(--sk-s3) 0 0; }
+.sk-app .sk-navh-btn { display: flex; align-items: center; gap: 6px; width: 100%; padding: 4px var(--sk-s2); border: 0; background: none; color: var(--sk-ink-2); font: var(--sk-caption); cursor: pointer; text-align: left; }
+.sk-app .sk-navh-btn:hover { color: var(--sk-ink); }
+.sk-app .sk-navh-chev { width: 12px; height: 12px; transition: transform .15s; transform: rotate(90deg); }
+.sk-app .sk-navgroup.is-folded .sk-navh-chev { transform: none; }
+.sk-app[data-side="slim"] .sk-navh { display: none; }
+@media (prefers-reduced-motion: reduce) { .sk-app .sk-navi, .sk-app .sk-navi::after { animation: none; } }

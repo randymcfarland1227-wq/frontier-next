@@ -6,6 +6,7 @@ import { sourceById } from "../../lib/sources";
 import { ZoomControl } from "../components/ZoomControl";
 import { Icon, type IconName } from "./Icon";
 import { readSaved, writeSaved } from "../../lib/storage";
+import { useSiteIcons } from "../../lib/siteIcons";
 
 /** Sites in the sidebar, in the same three groups as the Home site rows. */
 export const SITE_GROUPS: {
@@ -34,6 +35,12 @@ const SIDE_TINTS: { id: string; name: string; swatch: string }[] = [
   { id: "slate", name: "Slate", swatch: "#4a4f5e" },
   { id: "cream", name: "Cream", swatch: "#efe4d0" },
 ];
+
+/** Sites with no logo of their own (yet) show a symbol, not an initial; an uploaded picture still wins. */
+const SITE_FALLBACK: Partial<Record<SourceId, IconName>> = {
+  role: "briefcase",
+  self: "sparkles",
+};
 
 const PAGES: { id: SpaceId; label: string; icon: IconName; hint: string }[] = [
   { id: "home", label: "Home", icon: "home", hint: "Everything at a glance" },
@@ -87,6 +94,7 @@ export function StickerShell({
   children: ReactNode;
 }) {
   const [more, setMore] = useState(false);
+  const { iconFor } = useSiteIcons();
   // Sidebar colour: brown to start, changeable at the bottom of the sidebar, remembered per device.
   const [tint, setTint] = useState<string>(() =>
     readSaved("sk-side-tint", "brown"),
@@ -169,6 +177,17 @@ export function StickerShell({
                   aria-hidden="true"
                   data-initial={sourceById[id].name.slice(0, 1)}
                 />
+                <span className="sk-siteico" aria-hidden="true">
+                  {iconFor(id) ? (
+                    <>
+                      {/* Plain <img>: Vite site, tiny bundled logos */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={iconFor(id)} alt="" />
+                    </>
+                  ) : (
+                    <Icon name={SITE_FALLBACK[id] || "star"} />
+                  )}
+                </span>
                 <span className="sk-navl">{sourceById[id].name}</span>
               </button>
             ))}

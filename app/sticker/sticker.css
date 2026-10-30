@@ -170,7 +170,7 @@
 .sk-app[data-side="slim"] .sk-tools .sk-btn:not(.is-icon) { font-size: 0; gap: 0; }
 .sk-app .sk-main { min-width: 0; }
 .sk-app[data-page="classic"] .sk-main { background: var(--bg); }
-.sk-app .sk-content { max-width: 1280px; margin: 0 auto; padding: var(--sk-s6) var(--sk-s6) 96px; }
+.sk-app .sk-content { max-width: none; margin: 0; padding: var(--sk-s5) clamp(12px, 1.6vw, 28px) 96px; }
 .sk-app .sk-tabbar { display: none; }
 
 /* ---------------- title + the one prominent action ---------------- */
@@ -1248,3 +1248,10 @@
 .sk-app .sk-tint:hover { transform: translate(-1px, -1px); box-shadow: 2px 2px 0 var(--sk-edge); }
 .sk-app .sk-tint[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--sk-sidebg), 0 0 0 4px var(--sk-sidetx); }
 .sk-app[data-side="slim"] .sk-tints { display: none; }
+
+/* Collapsed sidebar: each site shows its own logo (the swatch dot is for the full sidebar) */
+.sk-app .sk-siteico { display: none; }
+.sk-app[data-side="slim"] .sk-navgroup .sk-sw { display: none; }
+.sk-app[data-side="slim"] .sk-siteico { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; overflow: hidden; }
+.sk-app[data-side="slim"] .sk-siteico img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.sk-app[data-side="slim"] .sk-siteico .sk-icon { width: 18px; height: 18px; }

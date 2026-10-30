@@ -21,6 +21,8 @@ import { useBrief } from "./DailyBrief";
 
 const toneOf = (id: SourceId) =>
   SITE_GROUPS.find((g) => g.ids.includes(id))?.tone || "ops";
+/** A fresh id for an added item (called from a click, never during render). */
+const newId = () => Date.now();
 type Scope = "all" | "today" | "focus" | "site";
 type Pick = {
   ref: string;
@@ -176,11 +178,11 @@ export function FocusDrawer({
         .slice(0, 8)
     : [];
 
-  const add = (p: Pick) => {
+  function add(p: Pick) {
     setFocus([
       ...focus,
       {
-        id: Date.now(),
+        id: newId(),
         text: p.text,
         space: p.space,
         done: false,
@@ -189,7 +191,7 @@ export function FocusDrawer({
       },
     ]);
     setQuery("");
-  };
+  }
   const remove = (id: number) => setFocus(focus.filter((f) => f.id !== id));
   const toggle = (f: FocusItem) => {
     const item = f.from === "site" && f.ref ? catalog.get(f.ref) : undefined;

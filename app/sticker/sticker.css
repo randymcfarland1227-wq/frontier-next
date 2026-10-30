@@ -1463,3 +1463,5 @@
 .frontier-shell[data-color-mode="dark"] .sk-app .sksite .featured-row { background: color-mix(in srgb, var(--sk-ink) 6%, #1c1925); }
 .sk-app .sksite .featured-row .featured-meta { color: var(--sk-ink-2); font-size: 10px; }
 .sk-app .sksite .featured-heading { border-bottom: 1.5px solid var(--sk-line); }
+.sk-app .sksite .featured-actions .row-action, .sk-app .sksite .featured-row.one-line .row-action { background: var(--sk-paper); color: var(--sk-ink); border: 1.5px solid var(--sk-edge); border-radius: 8px; }
+.sk-app .sksite .featured-actions .row-action:hover { background: var(--sk-hover); }

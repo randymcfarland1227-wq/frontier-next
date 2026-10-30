@@ -333,7 +333,7 @@ export function HomeTop({
           icon="repeat"
           label="Habits"
           figure={habitsLogged}
-          of={`of ${habitsTotal}`}
+          of={`of ${habitsTotal}${habitsTotal ? ` · ${Math.round((habitsLogged / habitsTotal) * 100)}%` : ""}`}
           meter={habitsTotal ? habitsLogged / habitsTotal : 0}
           onPress={() => enter("ticktick")}
           hint={`TickTick habits today: ${day.habitsDone} done · ${day.skippedHabits} skipped · ${openHabits} still open — opens TickTick`}

@@ -47,6 +47,7 @@ import {
 import { HomeTop } from "../sticker/HomeTop";
 import { ListHead, REVEAL_EVENT, Section } from "../sticker/kit";
 import { readSaved, writeSaved } from "../../lib/storage";
+import { TickTickRings } from "./TickTickRings";
 import { Icon } from "../sticker/Icon";
 import { SITE_ROWS, SitesSection } from "../sticker/Sites";
 
@@ -226,6 +227,21 @@ export function HomeView({
     window.addEventListener(REVEAL_EVENT, onReveal);
     return () => window.removeEventListener(REVEAL_EVENT, onReveal);
   }, []);
+  // TickTick's "how much of today is logged" rings (done or won't-do vs still open) — tasks and habits.
+  const ttTasks = snapshots.ticktick?.tasks || [];
+  const isHabitTask = (t: TaskItem) =>
+    t.kind === "habit" || t.id.startsWith("habit-");
+  const ticktickRings = (
+    <div className="sk-rings">
+      <TickTickRings
+        ledger={ledger}
+        openTasks={
+          ttTasks.filter((t) => t.status !== "done" && !isHabitTask(t)).length
+        }
+        openHabits={Number(snapshots.ticktick?.metrics?.habits) || 0}
+      />
+    </div>
+  );
   const soonBills = bills.filter((b) => b.days >= 0 && b.days <= 21);
   const financeBills = (
     <>
@@ -328,6 +344,7 @@ export function HomeView({
         extra={{
           self: capturesPanel,
           radall: bills.length ? financeBills : undefined,
+          ticktick: ticktickRings,
         }}
       />
 

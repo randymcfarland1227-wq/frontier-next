@@ -1489,3 +1489,32 @@
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-src-split > .sk-col { background: color-mix(in srgb, var(--site) 17%, #1c1925); }
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-src-split > .sk-col + .sk-col { background: color-mix(in srgb, var(--site-b, var(--site)) 17%, #1c1925); }
 .sk-app .sk-src-split .sk-listh { padding-top: 6px; padding-bottom: 4px; }
+
+/* ── Top stats: smaller, and dark in dark mode ─────────────────────────────────────────────────── */
+.sk-app .sk-readouts { margin-top: var(--sk-s3); gap: var(--sk-s2); }
+.sk-app .sk-ro { padding: 6px 10px 8px; gap: 2px; border-radius: 12px; box-shadow: 2px 2px 0 var(--sk-edge); }
+.sk-app .sk-ro-top > span { font-size: 12px; }
+.sk-app .sk-ro-top .sk-icon { width: 15px; height: 15px; }
+.sk-app .sk-ro .sk-figure { font-size: 20px; }
+.sk-app .sk-ro .sk-figure small { font-size: 11px; }
+.sk-app .sk-ro-note { font-size: 11px; }
+.sk-app .sk-meter { height: 6px; margin-top: 3px; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-ro { --sk-on-fill: var(--sk-ink); background: color-mix(in srgb, var(--skf) 20%, #1c1925); color: var(--sk-ink); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-ro .sk-meter { background: #ffffff1f; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-ro .sk-meter i { background: var(--skf); }
+/* TickTick's tasks / habits percent rings (back from the original hub) */
+.sk-app .sk-rings { display: flex; flex-wrap: wrap; gap: var(--sk-s2) var(--sk-s4); padding: var(--sk-s1) 0 var(--sk-s2); }
+.sk-app .tt-ring-track { stroke: color-mix(in srgb, var(--sk-ink) 18%, transparent); }
+.sk-app .tt-ring-done { stroke: #2f9e63; } .frontier-shell[data-color-mode="dark"] .sk-app .tt-ring-done { stroke: #5fe39a; }
+.sk-app .tt-ring-skip { stroke: #e0932a; }
+.sk-app .tt-ring-pct { fill: var(--sk-ink); }
+.sk-app .tt-ring-text b { color: var(--sk-ink); font: var(--sk-label); } .sk-app .tt-ring-text span { color: var(--sk-ink-2); font: var(--sk-caption); }
+.sk-app .sk-rings .tt-ring svg { width: 34px; height: 34px; }
+
+/* ── Sites: a completely different colour for each ─────────────────────────────────────────────── */
+.sk-app {
+  --site-ticktick: #8fc4ff; --site-radall: #8fe39a; --site-self: #bfa2ff; --site-gmail: #ff9a9a; --site-outlook: #6fdcd2;
+  --site-repair: #ffb878; --site-resale: #ffe066; --site-role: #ff9ec9; --site-candle: #d9ae82; --site-income: #c6ee63; --site-move: #e8a0f5;
+}
+.sk-app .sk-site, .sk-app .sk-src { background: color-mix(in srgb, var(--site, var(--sk-paper)) 78%, var(--sk-paper)); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-site, .frontier-shell[data-color-mode="dark"] .sk-app .sk-src { background: color-mix(in srgb, var(--site, var(--sk-paper)) 22%, #1c1925); }

@@ -1529,8 +1529,8 @@
 .frontier-shell[data-color-mode="dark"] .sk-app[data-page="site"] .sk-main {
   background-color: #07060b;
   background-image:
-    linear-gradient(rgba(150, 130, 255, .20) 1px, transparent 1px), linear-gradient(90deg, rgba(150, 130, 255, .20) 1px, transparent 1px),
-    linear-gradient(rgba(150, 130, 255, .07) 5px, transparent 5px), linear-gradient(90deg, rgba(150, 130, 255, .07) 5px, transparent 5px);
+    linear-gradient(rgba(150, 130, 255, .11) 1px, transparent 1px), linear-gradient(90deg, rgba(150, 130, 255, .11) 1px, transparent 1px),
+    linear-gradient(rgba(150, 130, 255, .04) 5px, transparent 5px), linear-gradient(90deg, rgba(150, 130, 255, .04) 5px, transparent 5px);
   background-size: 24px 24px; background-position: 0 0, 0 0, 0 -2px, -2px 0;
 }
 .sk-app .sk-todaysearch { display: grid; gap: var(--sk-s2); margin: var(--sk-s2) 0 var(--sk-s3); }

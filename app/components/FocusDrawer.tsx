@@ -127,7 +127,7 @@ export function FocusDrawer({
         });
     }
     for (const s of brief)
-      for (const r of s.rows)
+      for (const r of s.rows.filter((r) => !r.id.startsWith("bill:")))
         out.push({
           ref: `brief:${r.id}`,
           text: r.title,

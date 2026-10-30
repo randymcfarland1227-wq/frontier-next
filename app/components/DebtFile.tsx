@@ -257,8 +257,8 @@ function CreditView({
               className={`dbt-tile tone-card bu-${b.toLowerCase()}`}
               aria-label={`${label} score`}
             >
-              <b>{now ? now.score : "—"}</b>
               <span className="bu-name">{label}</span>
+              <b>{now ? now.score : "—"}</b>
               <small
                 title={
                   now && prev

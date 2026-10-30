@@ -1025,3 +1025,97 @@
 .sk-app .dbt-letter { border: 1.5px solid var(--sk-edge); background: var(--sk-paper); color: inherit; font: var(--sk-secondary); padding: 3px 10px; border-radius: 999px; cursor: pointer; }
 .sk-app .dbt-letter em { font-style: normal; color: var(--sk-ink-2); }
 .sk-app .dbt-letter:hover { background: var(--sk-hover); }
+
+/* ── Money · Credit, Bills & spending, Pay from, Plan ────────────────────────────────────────
+   Tables, due rows, week folds, score tiles and plan chips drawn as sticker pieces: 2px edge,
+   paper fills, status in tone fills (never hard-coded greens/reds on white). */
+.sk-app { --skb-ex: #c9d3ff; --skb-eq: #e2d2ff; --skb-tu: #b4ecd6; --sk-done-ink: #0a6b4f; }
+.frontier-shell[data-color-mode="dark"] .sk-app { --sk-done-ink: #7be0b8; }
+/* Credit: scores — bureau name above, score, date below */
+.sk-app .dbt-sum { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)); gap: var(--sk-s3); }
+.sk-app .dbt-sum-total { display: grid; gap: 2px; padding: 12px 14px; border: 2px solid var(--sk-edge); border-radius: 14px; background: var(--sk-owed); color: var(--sk-on-fill, #16141f); box-shadow: 3px 3px 0 var(--sk-edge); }
+.frontier-shell[data-color-mode="dark"] .sk-app .dbt-sum-total { background: color-mix(in srgb, var(--sk-owed) 30%, var(--sk-paper)); color: var(--sk-ink); }
+.sk-app .dbt-sum-total span { font: var(--sk-caption); text-transform: uppercase; letter-spacing: .06em; }
+.sk-app .dbt-sum-total b { font: var(--sk-figure); font-size: 28px; }
+.sk-app .dbt-sum-total small { font: var(--sk-caption); }
+.sk-app .dbt-tile { display: grid; justify-items: center; align-content: center; gap: 2px; text-align: center; padding: 10px 12px; border: 2px solid var(--sk-edge); border-top-width: 2px; border-radius: 14px; background: var(--skb, var(--sk-card)); color: var(--sk-on-fill, #16141f); box-shadow: 3px 3px 0 var(--sk-edge); }
+.sk-app .dbt-tile.bu-ex { --skb: var(--skb-ex); } .sk-app .dbt-tile.bu-eq { --skb: var(--skb-eq); } .sk-app .dbt-tile.bu-tu { --skb: var(--skb-tu); }
+.frontier-shell[data-color-mode="dark"] .sk-app .dbt-tile { background: color-mix(in srgb, var(--skb) 28%, var(--sk-paper)); color: var(--sk-ink); }
+.sk-app .dbt-tile .bu-name, .sk-app .dbt-tile span { font: var(--sk-label); font-size: 13px; color: inherit; }
+.sk-app .dbt-tile b { font: var(--sk-figure); font-size: 30px; color: inherit; }
+.sk-app .dbt-tile small { font: var(--sk-caption); color: inherit; opacity: .85; }
+.sk-app .dbt-up { color: var(--sk-done-ink); } .sk-app .dbt-down { color: var(--sk-alert-ink); }
+@media (max-width: 700px) { .sk-app .dbt-sum { grid-template-columns: 1fr 1fr; } .sk-app .dbt-sum-total { grid-column: 1 / -1; } }
+/* Tables (loans, cards, quick look, collections) */
+.sk-app .mb-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+.sk-app .mb-table th { font: var(--sk-caption); text-transform: uppercase; letter-spacing: .05em; padding: 4px 8px; border-bottom: 2px solid var(--sk-edge); color: var(--sk-ink-2); text-align: left; }
+.sk-app .mb-table th.num { text-align: right; }
+.sk-app .mb-table td { padding: 5px 8px; border-bottom: 1.5px solid var(--sk-line); white-space: nowrap; }
+.sk-app .mb-table tbody tr:hover td { background: var(--sk-hover); }
+.sk-app .mb-table tfoot td { font-weight: 700; border-top: 2px solid var(--sk-edge); border-bottom: 0; }
+.sk-app .mb-table tr.mb-grp td { font: var(--sk-caption); text-transform: uppercase; letter-spacing: .05em; color: var(--sk-ink-2); background: color-mix(in srgb, var(--sk-ink) 5%, var(--sk-paper)); }
+.sk-app .mb-late { color: var(--sk-alert-ink); font-weight: 600; } .sk-app .mb-ok { color: var(--sk-done-ink); font-weight: 600; }
+.sk-app .mb-meta { border-bottom: 2px dotted var(--sk-ink-2); } .sk-app .mb-meta.is-empty { color: var(--sk-ink-2); }
+.sk-app .dbt-ct-head { font: var(--sk-caption); text-transform: uppercase; letter-spacing: .05em; color: var(--sk-ink-2); border-bottom: 2px solid var(--sk-edge); }
+.sk-app .dbt-ct .dbt-row { border: 0; border-bottom: 1.5px solid var(--sk-line); padding: 4px 10px; }
+.sk-app .dbt-ct .dbt-row:hover { background: var(--sk-hover); }
+.sk-app .dbt-ct-total { border-top: 2px solid var(--sk-edge); }
+/* Due rows (Bills, Pay later, Cash advances, Subscriptions) */
+.sk-app .mny-due-group li {
+  border: 2px solid var(--sk-edge); border-left: 6px solid var(--ev, var(--sk-edge)); border-radius: 10px; background: var(--sk-paper); color: var(--sk-ink);
+}
+.sk-app .mny-due-group h3 { font: var(--sk-label); } .sk-app .mny-due-group h3 b { color: var(--sk-ink); font-weight: 700; }
+.sk-app .mny-due-group li.is-overdue { border-left-color: var(--sk-alert-ink); }
+.sk-app .mny-due-group.is-overdue-group h3 { color: var(--sk-alert-ink); }
+.sk-app .mny-due-day, .sk-app .mny-due-name small { color: var(--sk-ink-2); }
+.sk-app .mny-due-kind { border: 1.5px solid var(--sk-edge); background: color-mix(in srgb, var(--ev, var(--sk-edge)) 35%, var(--sk-paper)); color: var(--sk-ink); }
+.sk-app .mny-due-amt.is-in { color: var(--sk-done-ink); }
+.sk-app .mny-flag { border: 1.5px solid var(--sk-edge); background: var(--sk-due); color: var(--sk-on-fill, #16141f); }
+.sk-app .mny-flag.is-payby.is-urgent { background: var(--sk-alert); color: var(--sk-on-fill, #16141f); }
+/* Month ledger: progress + week folds */
+.sk-app .mm-bar { background: var(--sk-paper); border: 2px solid var(--sk-edge); height: 14px; }
+.sk-app .mm-bar em { background: var(--sk-cash); }
+.sk-app .mm-bar i { opacity: .5; }
+.sk-app .mm-progress-figs, .sk-app .mm-legend, .sk-app .mm-counts { color: var(--sk-ink-2); }
+.sk-app .mm-progress-figs b, .sk-app .mm-counts b { color: var(--sk-ink); }
+.sk-app .mm-counts .is-paid b { color: var(--sk-done-ink); } .sk-app .mm-counts .is-late b { color: var(--sk-alert-ink); }
+.sk-app .mm-week { border: 2px solid var(--sk-edge); border-radius: 12px; background: var(--sk-paper); }
+.sk-app .mm-week.is-now { box-shadow: 3px 3px 0 var(--sk-edge); }
+.sk-app .mm-week > summary:hover { background: var(--sk-hover); }
+.sk-app .mm-week-name { font: var(--sk-label); }
+.sk-app .mm-now { background: var(--sk-due); color: var(--sk-on-fill, #16141f); border: 1.5px solid var(--sk-edge); }
+.sk-app .mm-donechip { background: var(--sk-cash); color: var(--sk-on-fill, #16141f); border: 1.5px solid var(--sk-edge); }
+.sk-app .mm-row { border-radius: 8px; border-bottom: 1.5px solid var(--sk-line); }
+.sk-app .mm-row:hover { background: var(--sk-hover); }
+.sk-app .mm-kind { border: 1.5px solid var(--sk-edge); }
+.sk-app .mm-row.is-paid, .sk-app .mm-row.is-charged, .sk-app .mm-row.is-crossed { background: color-mix(in srgb, var(--sk-cash) 35%, var(--sk-paper)); }
+.sk-app .mm-row.is-late { background: color-mix(in srgb, var(--sk-owed) 45%, var(--sk-paper)); }
+.sk-app .mm-row.is-paid .mm-state, .sk-app .mm-row.is-charged .mm-state, .sk-app .mm-row.is-crossed .mm-state { color: var(--sk-done-ink); }
+.sk-app .mm-row.is-late .mm-state, .sk-app .mm-row.is-late.is-noncritical .mm-state { color: var(--sk-alert-ink); }
+.sk-app .mm-row.is-late.is-noncritical { background: color-mix(in srgb, var(--sk-sub) 45%, var(--sk-paper)); }
+.sk-app .mm-day small, .sk-app .mm-name small, .sk-app .mm-state { color: var(--sk-ink-2); }
+/* Pay from: a tile per account with what it must cover */
+.sk-app .mb-src-sum { display: flex; flex-wrap: wrap; gap: var(--sk-s3); }
+.sk-app .mb-src-chip { display: grid; min-width: 140px; padding: 7px 12px; border: 2px solid var(--sk-edge); border-radius: 12px; background: var(--sk-cash); color: var(--sk-on-fill, #16141f); box-shadow: 3px 3px 0 var(--sk-edge); }
+.sk-app .mb-src-chip.is-none { background: var(--sk-paper); color: var(--sk-ink); }
+.sk-app .mb-src-chip.is-short { background: var(--sk-owed); }
+.frontier-shell[data-color-mode="dark"] .sk-app .mb-src-chip:not(.is-none) { background: color-mix(in srgb, var(--sk-cash) 30%, var(--sk-paper)); color: var(--sk-ink); }
+.frontier-shell[data-color-mode="dark"] .sk-app .mb-src-chip.is-short { background: color-mix(in srgb, var(--sk-owed) 30%, var(--sk-paper)); }
+.sk-app .mb-src-chip b { font: var(--sk-figure); font-size: 18px; } .sk-app .mb-src-chip small { font: var(--sk-caption); color: inherit; opacity: .85; }
+.sk-app .mb-src-cols { gap: var(--sk-s3); }
+.sk-app .mb-src-list li { padding: 3px 4px 3px 8px; border: 1.5px solid var(--sk-edge); border-radius: 8px; background: var(--sk-paper); }
+.sk-app .mb-src-list { gap: 4px; }
+.sk-app .mb-src-list li.is-late small { color: var(--sk-alert-ink); } .sk-app .mb-src-list small { color: var(--sk-ink-2); }
+/* Plan */
+.sk-app .mb-cp-figs > span { border: 2px solid var(--sk-edge); border-radius: 10px; background: var(--sk-paper); }
+.sk-app .mb-cp-figs small, .sk-app .mb-cp-h, .sk-app .mb-cp-edit label { color: var(--sk-ink-2); font: var(--sk-caption); }
+.sk-app .mb-cp-list li { border-bottom: 1.5px solid var(--sk-line); }
+.sk-app .mb-cp-sel { border: 1.5px solid var(--sk-edge); border-radius: 8px; background: var(--sk-paper); color: var(--sk-ink); }
+/* Money cards (loans / card detail) */
+.sk-app .mny-card { border: 2px solid var(--sk-edge); border-radius: 12px; background: var(--sk-paper); }
+.sk-app .mny-card.is-open { box-shadow: 3px 3px 0 var(--sk-edge); }
+.sk-app .mny-card-row:hover { background: var(--sk-hover); }
+.sk-app .mny-card-bar { background: var(--sk-line); border: 1.5px solid var(--sk-edge); }
+.sk-app .mny-card-bar i { background: var(--sk-cash); } .sk-app .mny-card-bar i.is-high { background: var(--sk-alert); }
+.sk-app .mny-chip { border: 1.5px solid var(--sk-edge); background: var(--sk-paper); color: var(--sk-ink); }
+.sk-app .mny-chip.is-on { background: var(--sk-ink); color: var(--sk-paper); }

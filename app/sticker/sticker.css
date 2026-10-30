@@ -1175,3 +1175,13 @@
   .sk-app .dbt-note { flex-basis: 100%; }
   .sk-app .dbt-dl { grid-template-columns: 92px 1fr; }
 }
+
+/* Home · day ribbon: live Towson sunrise (sun) and sunset (moon) with the time under each */
+.sk-app .sk-greet { margin: 0 0 2px; font: var(--sk-label); font-size: 17px; color: var(--sk-ink-2); }
+.sk-app .sk-track-day { position: absolute; top: 4px; height: 24px; border-radius: 12px; background: color-mix(in srgb, var(--sk-needs) 40%, transparent); }
+.sk-app .sk-sky { position: relative; height: 46px; margin-top: 2px; }
+.sk-app .sk-sun, .sk-app .sk-moon { position: absolute; top: 0; transform: translateX(-50%); display: grid; justify-items: center; gap: 1px; white-space: nowrap; }
+.sk-app .sk-sun .sk-icon, .sk-app .sk-moon .sk-icon { width: 24px; height: 24px; padding: 3px; border: 2px solid var(--sk-edge); border-radius: 50%; }
+.sk-app .sk-sun .sk-icon { background: var(--sk-needs); color: var(--sk-on-fill, #16141f); }
+.sk-app .sk-moon .sk-icon { background: var(--sk-sched); color: var(--sk-on-fill, #16141f); }
+.sk-app .sk-sun small, .sk-app .sk-moon small { font: var(--sk-caption); color: var(--sk-ink-2); }

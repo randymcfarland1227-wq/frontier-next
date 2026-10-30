@@ -1,19 +1,45 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import type { SourceId, SourceSnapshot, SpaceId } from '../../lib/types';
-import type { CompletionLedger, CompletionStats } from '../../lib/completions';
-import { eventEnd, eventStart, onDay, type BillDue, type CalEvent, type ScheduleSnapshot } from '../../lib/schedule';
-import { briefParts, useBrief } from '../components/DailyBrief';
-import { useTickTickDay } from '../components/TickTickRings';
-import { reveal } from './kit';
-import { Icon, type IconName } from './Icon';
+import { useEffect, useState } from "react";
+import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
+import type { CompletionLedger, CompletionStats } from "../../lib/completions";
+import {
+  eventEnd,
+  eventStart,
+  onDay,
+  type BillDue,
+  type CalEvent,
+  type ScheduleSnapshot,
+} from "../../lib/schedule";
+import { briefParts, useBrief } from "../components/DailyBrief";
+import { useTickTickDay } from "../components/TickTickRings";
+import { reveal } from "./kit";
+import { Icon, type IconName } from "./Icon";
+import { sunTimes, towsonHours, towsonTime } from "../../lib/sun";
 
 const DAY_START = 6;
 const DAY_HOURS = 18;
-const time = (d: Date) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-const pct = (d: Date) => Math.min(100, Math.max(0, ((d.getHours() + d.getMinutes() / 60 - DAY_START) / DAY_HOURS) * 100));
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const time = (d: Date) =>
+  d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const pct = (d: Date) =>
+  Math.min(
+    100,
+    Math.max(
+      0,
+      ((d.getHours() + d.getMinutes() / 60 - DAY_START) / DAY_HOURS) * 100,
+    ),
+  );
+/** 6 AM–noon morning, noon–6:30 PM afternoon, the rest night. */
+const greeting = (d: Date) => {
+  const h = d.getHours() + d.getMinutes() / 60;
+  return h >= 6 && h < 12
+    ? "Good Morning"
+    : h >= 12 && h < 18.5
+      ? "Good Afternoon"
+      : "Goodnight";
+};
+const plural = (n: number, one: string, many: string) =>
+  `${n} ${n === 1 ? one : many}`;
 
 /** Re-render each minute so "now" and "in 18 min" stay true. */
 function useNow() {
@@ -47,7 +73,12 @@ function Readout({
   hint: string;
 }) {
   return (
-    <button type="button" className={`sk-ro tone-${tone}`} onClick={onPress} title={hint}>
+    <button
+      type="button"
+      className={`sk-ro tone-${tone}`}
+      onClick={onPress}
+      title={hint}
+    >
       <span className="sk-ro-top">
         <span>
           <Icon name={icon} />
@@ -72,39 +103,101 @@ function Readout({
 
 /** The day as a strip from 6 AM to midnight: what's past, where now is, and today's events. */
 function DayRibbon({ events, now }: { events: CalEvent[]; now: Date }) {
-  const timed = events.filter(e => !e.allDay && e.start.length > 10).sort((a, b) => a.start.localeCompare(b.start));
-  const allDay = events.filter(e => e.allDay || e.start.length <= 10);
-  const next = timed.find(e => eventStart(e) > now);
-  const mins = next ? Math.round((eventStart(next).getTime() - now.getTime()) / 60000) : 0;
-  const lastEnd = timed.length ? timed.map(eventEnd).sort((a, b) => a.getTime() - b.getTime()).at(-1)! : null;
-  const headline = next ? `Next: ${next.title} ${mins <= 60 ? `in ${mins} min` : `at ${time(eventStart(next))}`}` : 'Nothing else on the calendar today';
+  const timed = events
+    .filter((e) => !e.allDay && e.start.length > 10)
+    .sort((a, b) => a.start.localeCompare(b.start));
+  const allDay = events.filter((e) => e.allDay || e.start.length <= 10);
+  const next = timed.find((e) => eventStart(e) > now);
+  const mins = next
+    ? Math.round((eventStart(next).getTime() - now.getTime()) / 60000)
+    : 0;
+  const lastEnd = timed.length
+    ? timed
+        .map(eventEnd)
+        .sort((a, b) => a.getTime() - b.getTime())
+        .at(-1)!
+    : null;
+  const headline = next
+    ? `Next: ${next.title} ${mins <= 60 ? `in ${mins} min` : `at ${time(eventStart(next))}`}`
+    : "Nothing else on the calendar today";
   const side = [
-    timed.length ? plural(timed.length, 'event', 'events') : 'No timed events',
+    timed.length ? plural(timed.length, "event", "events") : "No timed events",
     lastEnd && lastEnd > now ? `free after ${time(lastEnd)}` : null,
-    allDay.length ? `all day: ${allDay.map(e => e.title).join(', ')}` : null,
+    allDay.length ? `all day: ${allDay.map((e) => e.title).join(", ")}` : null,
   ].filter(Boolean);
   const nowPct = pct(now);
+  const sun = sunTimes(now);
+  const riseAt = Math.min(
+    100,
+    Math.max(0, ((towsonHours(sun.rise) - DAY_START) / DAY_HOURS) * 100),
+  );
+  const setAt = Math.min(
+    100,
+    Math.max(0, ((towsonHours(sun.set) - DAY_START) / DAY_HOURS) * 100),
+  );
   return (
     <section className="sk-ribbon" aria-label="Today's timeline">
       <div className="sk-rib-top">
         <span className="sk-hl">{headline}</span>
-        <span className="sk-sec">{side.join(' · ')}</span>
+        <span className="sk-sec">{side.join(" · ")}</span>
       </div>
       <div className="sk-track">
+        <div
+          className="sk-track-day"
+          style={{
+            left: `${riseAt}%`,
+            width: `${Math.max(0, setAt - riseAt)}%`,
+          }}
+          aria-hidden="true"
+        />
         <div className="sk-track-line" />
         <div className="sk-track-past" style={{ width: `${nowPct}%` }} />
-        {timed.map(e => (
-          <div key={e.id} className={`sk-ev${eventEnd(e) < now ? ' is-past' : ''}`} style={{ left: `${pct(eventStart(e))}%`, '--sk-ev': e.color || 'var(--sk-sched)' } as React.CSSProperties} title={`${time(eventStart(e))} ${e.title}`}>
+        {timed.map((e) => (
+          <div
+            key={e.id}
+            className={`sk-ev${eventEnd(e) < now ? " is-past" : ""}`}
+            style={
+              {
+                left: `${pct(eventStart(e))}%`,
+                "--sk-ev": e.color || "var(--sk-sched)",
+              } as React.CSSProperties
+            }
+            title={`${time(eventStart(e))} ${e.title}`}
+          >
             <i />
             <span>
-              <time>{time(eventStart(e)).replace(/:00(?= )/, '')}</time>
+              <time>{time(eventStart(e)).replace(/:00(?= )/, "")}</time>
               <span className="sk-ev-name">{e.title}</span>
             </span>
           </div>
         ))}
-        <div className={`sk-now${nowPct < 8 ? ' is-start' : nowPct > 92 ? ' is-end' : ''}`} style={{ left: `${nowPct}%` }}>
+        <div
+          className={`sk-now${nowPct < 8 ? " is-start" : nowPct > 92 ? " is-end" : ""}`}
+          style={{ left: `${nowPct}%` }}
+        >
           <span>Now {time(now)}</span>
         </div>
+      </div>
+      <div
+        className="sk-sky"
+        aria-label={`Towson sunrise ${towsonTime(sun.rise)}, sunset ${towsonTime(sun.set)}`}
+      >
+        <span
+          className="sk-sun"
+          style={{ left: `${riseAt}%` }}
+          title="Sunrise in Towson, MD"
+        >
+          <Icon name="sun" />
+          <small>{towsonTime(sun.rise)}</small>
+        </span>
+        <span
+          className="sk-moon"
+          style={{ left: `${setAt}%` }}
+          title="Sunset in Towson, MD"
+        >
+          <Icon name="moon" />
+          <small>{towsonTime(sun.set)}</small>
+        </span>
       </div>
       <div className="sk-hours sk-cap" aria-hidden="true">
         <span>6 AM</span>
@@ -155,31 +248,45 @@ export function HomeTop({
   const habitsLogged = day.habitsDone + day.skippedHabits;
   const habitsTotal = habitsLogged + openHabits;
   const overdue = Number(tt?.metrics?.overdue) || 0;
-  const events = (schedule?.events || []).filter(e => (e.myStatus === 'owner' || e.myStatus === 'yes') && onDay(e, now));
-  const next = events.filter(e => !e.allDay && e.start.length > 10 && eventStart(e) > now).sort((a, b) => a.start.localeCompare(b.start))[0];
+  const events = (schedule?.events || []).filter(
+    (e) => (e.myStatus === "owner" || e.myStatus === "yes") && onDay(e, now),
+  );
+  const next = events
+    .filter((e) => !e.allDay && e.start.length > 10 && eventStart(e) > now)
+    .sort((a, b) => a.start.localeCompare(b.start))[0];
 
-  const weekday = now.toLocaleDateString([], { weekday: 'long' });
-  const date = now.toLocaleDateString([], { month: 'long', day: 'numeric' });
+  const weekday = now.toLocaleDateString([], { weekday: "long" });
+  const date = now.toLocaleDateString([], { month: "long", day: "numeric" });
   const status = [
-    needs ? `${plural(needs, 'thing needs', 'things need')} you.` : 'Nothing needs a reply from you right now.',
+    needs
+      ? `${plural(needs, "thing needs", "things need")} you.`
+      : "Nothing needs a reply from you right now.",
     next ? `Next up: ${next.title} at ${time(eventStart(next))}.` : null,
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 
   return (
     <>
       <header className="sk-top">
         <div>
+          <p className="sk-greet">{greeting(now)} Randy</p>
           <h1 className="sk-large">
             <span>{weekday}</span>, {date}
           </h1>
           <p className="sk-status">{status}</p>
         </div>
-        <button type="button" className="sk-btn is-prominent" onClick={openFocus} title="Today: what you said you'd do today">
+        <button
+          type="button"
+          className="sk-btn is-prominent"
+          onClick={openFocus}
+          title="Today: what you said you'd do today"
+        >
           <Icon name="sparkles" />
           Update Today
-          {unfinished ? <span className="sk-btn-count">{unfinished}</span> : null}
+          {unfinished ? (
+            <span className="sk-btn-count">{unfinished}</span>
+          ) : null}
         </button>
       </header>
 
@@ -189,8 +296,8 @@ export function HomeTop({
           icon="bell"
           label="Needs You"
           figure={needs}
-          note={briefParts(brief).slice(0, 2).join(' · ') || 'All clear'}
-          onPress={() => reveal('brief')}
+          note={briefParts(brief).slice(0, 2).join(" · ") || "All clear"}
+          onPress={() => reveal("brief")}
           hint="Mail, role replies, sales and money waiting on you — opens the Daily Brief"
         />
         <Readout
@@ -199,7 +306,7 @@ export function HomeTop({
           label="Done Today"
           figure={stats.today}
           note={`${stats.last7} in 7 days · about ${Math.round(stats.last7 / 7)} a day`}
-          onPress={() => reveal('review')}
+          onPress={() => reveal("review")}
           hint="Real completions recorded today, across every site — opens Review"
         />
         <Readout
@@ -207,9 +314,14 @@ export function HomeTop({
           icon="todo"
           label="Open"
           figure={openTotal}
-          note={[`across ${plural(openSites, 'site', 'sites')}`, overdue ? `${overdue} overdue` : null].filter(Boolean).join(' · ')}
-          onPress={() => reveal('sites')}
-          hint={`Open to-dos across every site (each card's number)${overdue ? `; ${overdue} of them overdue in TickTick` : ''} — opens the site rows`}
+          note={[
+            `across ${plural(openSites, "site", "sites")}`,
+            overdue ? `${overdue} overdue` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+          onPress={() => reveal("sites")}
+          hint={`Open to-dos across every site (each card's number)${overdue ? `; ${overdue} of them overdue in TickTick` : ""} — opens the site rows`}
         />
         <Readout
           tone="habit"
@@ -218,7 +330,7 @@ export function HomeTop({
           figure={habitsLogged}
           of={`of ${habitsTotal}`}
           meter={habitsTotal ? habitsLogged / habitsTotal : 0}
-          onPress={() => enter('ticktick')}
+          onPress={() => enter("ticktick")}
           hint={`TickTick habits today: ${day.habitsDone} done · ${day.skippedHabits} skipped · ${openHabits} still open — opens TickTick`}
         />
       </section>

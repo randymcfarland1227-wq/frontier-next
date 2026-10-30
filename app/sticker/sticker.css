@@ -1164,3 +1164,14 @@
 .sk-app .payplan-row .payplan-name { min-width: 0; flex: 1 1 8ch; overflow: hidden; text-overflow: ellipsis; }
 .sk-app .payplan-row input[type="checkbox"] { accent-color: var(--sk-ink); }
 .sk-app .payplan-row.is-done .payplan-name, .sk-app .payplan-row.is-done .payplan-label { color: var(--sk-ink-2); }
+/* Phone: folds scroll their tables; pop-outs never exceed the screen */
+.sk-app .skm-fold { min-width: 0; max-width: 100%; }
+.sk-app .mtable-wrap { overflow-x: auto; max-width: 100%; }
+.sk-app .bal-dlg.skm-dlg { box-sizing: border-box; max-width: calc(100vw - 16px); overflow-x: hidden; }
+.sk-app .dbt-story { box-sizing: border-box; max-width: 100%; }
+@media (max-width: 560px) {
+  .sk-app .dbt-story-head { flex-wrap: wrap; gap: var(--sk-s2); padding-right: 44px; }
+  .sk-app .dbt-story-amt { text-align: left; }
+  .sk-app .dbt-note { flex-basis: 100%; }
+  .sk-app .dbt-dl { grid-template-columns: 92px 1fr; }
+}

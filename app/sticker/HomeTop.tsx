@@ -136,7 +136,11 @@ function DayRibbon({ events, now }: { events: CalEvent[]; now: Date }) {
     Math.max(0, ((towsonHours(sun.set) - DAY_START) / DAY_HOURS) * 100),
   );
   return (
-    <section className="sk-ribbon" aria-label="Today's timeline">
+    <section
+      className="sk-ribbon is-compact"
+      aria-label="Today's timeline"
+      title={side.join(" · ")}
+    >
       <div className="sk-rib-top">
         <span className="sk-hl">{headline}</span>
         <span className="sk-sec">{side.join(" · ")}</span>
@@ -276,6 +280,7 @@ export function HomeTop({
           </h1>
           <p className="sk-status">{status}</p>
         </div>
+        <DayRibbon events={events} now={now} />
         <button
           type="button"
           className="sk-btn is-prominent"
@@ -334,8 +339,6 @@ export function HomeTop({
           hint={`TickTick habits today: ${day.habitsDone} done · ${day.skippedHabits} skipped · ${openHabits} still open — opens TickTick`}
         />
       </section>
-
-      <DayRibbon events={events} now={now} />
     </>
   );
 }

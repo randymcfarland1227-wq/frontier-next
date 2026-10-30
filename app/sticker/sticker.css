@@ -1327,3 +1327,51 @@
 .sk-app #sk-focus .sk-opt-d { display: none; }
 .sk-app #sk-focus .sk-or { font-size: 10px; }
 .sk-app #sk-focus .sk-mv-done { margin: 2px -6px -4px; font-size: 11px; }
+
+/* ── Sizing pass: compact timeline beside the date; tighter gaps in Today and Focus ───────────── */
+.sk-app .sk-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sk-s4); }
+.sk-app .sk-top > div:first-child { min-width: 0; max-width: 52ch; }
+.sk-app .sk-top .sk-status { font-size: 14px; margin-top: 2px; }
+@media (max-width: 1180px) { .sk-app .sk-top { grid-template-columns: minmax(0, 1fr) auto; } .sk-app .sk-top .sk-ribbon { grid-column: 1 / -1; grid-row: 2; } }
+@media (max-width: 760px) { .sk-app .sk-top { grid-template-columns: minmax(0, 1fr); } .sk-app .sk-top .sk-ribbon { grid-row: auto; } }
+.sk-app .sk-ribbon.is-compact { margin: 0; padding: 5px 12px 3px; border-radius: 12px; min-width: 0; align-self: stretch; display: flex; flex-direction: column; justify-content: center; }
+.sk-app .sk-ribbon.is-compact .sk-rib-top { flex-wrap: nowrap; }
+.sk-app .sk-ribbon.is-compact .sk-rib-top .sk-hl { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sk-app .sk-ribbon.is-compact .sk-rib-top .sk-sec { display: none; }
+.sk-app .sk-ribbon.is-compact .sk-track { height: 22px; margin-top: 14px; }
+.sk-app .sk-ribbon.is-compact .sk-track-line { top: 9px; }
+.sk-app .sk-ribbon.is-compact .sk-track-past { top: 8px; }
+.sk-app .sk-ribbon.is-compact .sk-track-day { top: 3px; height: 14px; }
+.sk-app .sk-ribbon.is-compact .sk-now { top: 0; height: 18px; width: 3px; }
+.sk-app .sk-ribbon.is-compact .sk-now span { font-size: 10px; }
+.sk-app .sk-ribbon.is-compact .sk-ev { top: 3px; gap: 2px; }
+.sk-app .sk-ribbon.is-compact .sk-ev i { width: 10px; height: 10px; border-width: 1.5px; border-radius: 3px; }
+.sk-app .sk-ribbon.is-compact .sk-ev span { display: none; }
+.sk-app .sk-ribbon.is-compact .sk-sky { height: 24px; margin-top: 0; }
+.sk-app .sk-ribbon.is-compact .sk-sun .sk-icon, .sk-app .sk-ribbon.is-compact .sk-moon .sk-icon { width: 15px; height: 15px; padding: 2px; border-width: 1.5px; }
+.sk-app .sk-ribbon.is-compact .sk-sun small, .sk-app .sk-ribbon.is-compact .sk-moon small { font-size: 9.5px; line-height: 1; }
+.sk-app .sk-ribbon.is-compact .sk-hours { font-size: 9.5px; line-height: 1.1; }
+.sk-app .sk-readouts { margin-top: var(--sk-s3); }
+/* Today: title → tabs → content → next section */
+.sk-app .sk-section { margin-top: var(--sk-s3); }
+.sk-app #sk-brief { padding-bottom: var(--sk-s2); }
+.sk-app #sk-brief .sk-shead { margin-bottom: 2px; padding-block: 4px; }
+.sk-app #sk-brief .sk-sbody { padding-top: 0; }
+.sk-app #sk-brief .sk-today-tabs { margin-bottom: var(--sk-s2); }
+.sk-app #sk-brief .sk-group > .sk-gbody { padding-top: var(--sk-s1); }
+/* Focus: bottle counter right after the name; tighter parts */
+.sk-app .sk-water-name { justify-content: flex-start; align-items: baseline; gap: 6px; margin-top: 2px; }
+.sk-app .sk-water-name small { font-size: 10px; font-weight: 600; padding: 0 6px; border-radius: 99px; background: color-mix(in srgb, var(--sk-ink) 12%, transparent); color: var(--sk-ink); }
+.sk-app #sk-focus .sk-shead { margin-bottom: 2px; padding-block: 4px; }
+.sk-app #sk-focus .sk-sbody { padding-top: 0; }
+.sk-app #sk-focus .sk-listh { margin: var(--sk-s2) 0 2px; }
+.sk-app #sk-focus .sk-fc-add { margin: var(--sk-s1) 0; gap: 6px; }
+.sk-app #sk-focus .sk-fc-add .sk-btn { min-height: 28px; }
+.sk-app #sk-focus .sk-fc-add input { min-height: 28px; padding-block: 3px; }
+.sk-app #sk-focus .sk-bottles { padding: 4px 0 0; }
+.sk-app #sk-focus .sk-fc-log { margin-top: 0; }
+.sk-app #sk-focus .sk-chips { padding-top: 4px; }
+.sk-app #sk-focus .sk-fit { margin-top: 4px; }
+.sk-app #sk-focus .sk-fit-row { padding-bottom: 4px; }
+.sk-app #sk-focus .sk-mv-today { margin-bottom: 4px; padding: 4px 8px; }
+.sk-app #sk-focus .sk-group > .sk-gbody { padding-bottom: var(--sk-s2); }

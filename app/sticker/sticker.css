@@ -1201,12 +1201,12 @@
 .sk-app .sk-navi {
   position: relative; overflow: hidden; border: 2px solid var(--sk-edge); border-radius: 14px; box-shadow: 2px 2px 0 var(--sk-edge);
   background: linear-gradient(105deg, #ffd9ea, #fff0b8, #d3f5df, #cfe6ff, #e4d6ff, #ffd9ea) 0% 50% / 300% 100%;
-  color: var(--sk-on-fill, #16141f); animation: sk-shimmer 9s linear infinite;
+  color: var(--sk-on-fill, #16141f); animation: sk-shimmer 28s linear infinite;
 }
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-navi {
   background: linear-gradient(105deg, #4a2a3d, #4a4222, #254636, #25405a, #3d3060, #4a2a3d) 0% 50% / 300% 100%; color: var(--sk-ink);
 }
-.sk-app .sk-navi::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; background: linear-gradient(90deg, transparent, #ffffff99, transparent); transform: translateX(-140%) skewX(-20deg); pointer-events: none; animation: sk-sheen 5.5s ease-in-out infinite; }
+.sk-app .sk-navi::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; background: linear-gradient(90deg, transparent, #ffffff99, transparent); transform: translateX(-140%) skewX(-20deg); pointer-events: none; animation: sk-sheen 16s ease-in-out infinite; }
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-navi::after { background: linear-gradient(90deg, transparent, #ffffff33, transparent); }
 .sk-app .sk-navi:hover { background: linear-gradient(105deg, #ffd9ea, #fff0b8, #d3f5df, #cfe6ff, #e4d6ff, #ffd9ea) 0% 50% / 300% 100%; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--sk-edge); }
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-navi:hover { background: linear-gradient(105deg, #4a2a3d, #4a4222, #254636, #25405a, #3d3060, #4a2a3d) 0% 50% / 300% 100%; }
@@ -1222,3 +1222,29 @@
 .sk-app .sk-navgroup.is-folded .sk-navh-chev { transform: none; }
 .sk-app[data-side="slim"] .sk-navh { display: none; }
 @media (prefers-reduced-motion: reduce) { .sk-app .sk-navi, .sk-app .sk-navi::after { animation: none; } }
+
+/* Sidebar colour: brown by default, picked from the swatches at the bottom (--sk-sidebg / --sk-sidetx) */
+.sk-app .sk-side { --sk-sidebg: #7a5238; --sk-sidetx: #fff3e4; background: var(--sk-sidebg); color: var(--sk-sidetx); }
+.sk-app .sk-side[data-tint="brown"] { --sk-sidebg: #7a5238; --sk-sidetx: #fff3e4; }
+.sk-app .sk-side[data-tint="chocolate"] { --sk-sidebg: #3f2b22; --sk-sidetx: #fbeadb; }
+.sk-app .sk-side[data-tint="tan"] { --sk-sidebg: #d8b999; --sk-sidetx: #2b1c12; }
+.sk-app .sk-side[data-tint="rose"] { --sk-sidebg: #b5586e; --sk-sidetx: #fff0f3; }
+.sk-app .sk-side[data-tint="forest"] { --sk-sidebg: #2f5a45; --sk-sidetx: #e9fbf1; }
+.sk-app .sk-side[data-tint="ocean"] { --sk-sidebg: #2f5b7e; --sk-sidetx: #eaf5ff; }
+.sk-app .sk-side[data-tint="plum"] { --sk-sidebg: #5d3d7a; --sk-sidetx: #f5ecff; }
+.sk-app .sk-side[data-tint="slate"] { --sk-sidebg: #4a4f5e; --sk-sidetx: #eef0f6; }
+.sk-app .sk-side[data-tint="cream"] { --sk-sidebg: #efe4d0; --sk-sidetx: #2b1c12; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-side[data-tint="brown"] { --sk-sidebg: #4a3226; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-side[data-tint="tan"] { --sk-sidebg: #8f735a; --sk-sidetx: #fff4e6; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-side[data-tint="cream"] { --sk-sidebg: #5a5144; --sk-sidetx: #fbf3e4; }
+.sk-app .sk-side :is(.sk-brand, .sk-navh-btn, .sk-sidefoot .sk-sec, .sk-sidefoot .sk-cap, .sk-zoom) { color: var(--sk-sidetx); }
+.sk-app .sk-side .sk-navh-btn:hover { color: var(--sk-sidetx); opacity: .8; }
+.sk-app .sk-side { border-right-color: var(--sk-edge); }
+.sk-app .sk-sidefoot { border-top-color: color-mix(in srgb, var(--sk-sidetx) 30%, transparent); }
+.sk-app[data-side="slim"] .sk-navgroup { border-top-color: color-mix(in srgb, var(--sk-sidetx) 30%, transparent); }
+.sk-app .sk-tints { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sk-app .sk-tints .sk-cap { flex-basis: 100%; }
+.sk-app .sk-tint { width: 22px; height: 22px; padding: 0; border: 2px solid var(--sk-edge); border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 0 transparent; }
+.sk-app .sk-tint:hover { transform: translate(-1px, -1px); box-shadow: 2px 2px 0 var(--sk-edge); }
+.sk-app .sk-tint[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--sk-sidebg), 0 0 0 4px var(--sk-sidetx); }
+.sk-app[data-side="slim"] .sk-tints { display: none; }

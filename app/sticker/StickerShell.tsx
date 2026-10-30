@@ -22,6 +22,19 @@ export const SITE_GROUPS: {
   { label: "Ventures", tone: "vent", ids: ["income", "resale", "candle"] },
 ];
 
+/** Sidebar colours Randy can pick from; the paint lives in sticker.css under [data-tint]. */
+const SIDE_TINTS: { id: string; name: string; swatch: string }[] = [
+  { id: "brown", name: "Brown", swatch: "#7a5238" },
+  { id: "chocolate", name: "Chocolate", swatch: "#3f2b22" },
+  { id: "tan", name: "Tan", swatch: "#d8b999" },
+  { id: "rose", name: "Rose", swatch: "#b5586e" },
+  { id: "forest", name: "Forest", swatch: "#2f5a45" },
+  { id: "ocean", name: "Ocean", swatch: "#2f5b7e" },
+  { id: "plum", name: "Plum", swatch: "#5d3d7a" },
+  { id: "slate", name: "Slate", swatch: "#4a4f5e" },
+  { id: "cream", name: "Cream", swatch: "#efe4d0" },
+];
+
 const PAGES: { id: SpaceId; label: string; icon: IconName; hint: string }[] = [
   { id: "home", label: "Home", icon: "home", hint: "Everything at a glance" },
   {
@@ -74,6 +87,14 @@ export function StickerShell({
   children: ReactNode;
 }) {
   const [more, setMore] = useState(false);
+  // Sidebar colour: brown to start, changeable at the bottom of the sidebar, remembered per device.
+  const [tint, setTint] = useState<string>(() =>
+    readSaved("sk-side-tint", "brown"),
+  );
+  const pickTint = (id: string) => {
+    setTint(id);
+    writeSaved("sk-side-tint", id);
+  };
   // Sidebar groups fold; which ones are folded is remembered per device.
   const [folded, setFolded] = useState<Record<string, boolean>>(() =>
     readSaved("sk-side-folded", {}),
@@ -222,7 +243,7 @@ export function StickerShell({
       }
       data-side={slim ? "slim" : "full"}
     >
-      <aside className="sk-side" aria-label="Life Hub">
+      <aside className="sk-side" data-tint={tint} aria-label="Life Hub">
         <div className="sk-sidehead">
           <button type="button" className="sk-brand" onClick={() => go("home")}>
             Randy&apos;s Life Hub
@@ -257,7 +278,24 @@ export function StickerShell({
         <nav className="sk-nav" aria-label="Sites">
           {sites}
         </nav>
-        <div className="sk-sidefoot">{tools}</div>
+        <div className="sk-sidefoot">
+          <div className="sk-tints" role="group" aria-label="Sidebar colour">
+            <span className="sk-cap">Sidebar</span>
+            {SIDE_TINTS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className="sk-tint"
+                style={{ background: t.swatch }}
+                aria-pressed={tint === t.id}
+                aria-label={`${t.name} sidebar`}
+                title={t.name}
+                onClick={() => pickTint(t.id)}
+              />
+            ))}
+          </div>
+          {tools}
+        </div>
       </aside>
 
       <div className="sk-main">

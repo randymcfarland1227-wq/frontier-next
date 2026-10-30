@@ -1379,3 +1379,5 @@
 @media (max-width: 760px) { .sk-app .sk-top .sk-greet, .sk-app .sk-top .sk-large { white-space: normal; } }
 .sk-app :is(#sk-brief, #sk-focus) .sk-listh { padding-top: 6px; margin-top: 0; }
 .sk-app :is(#sk-brief, #sk-focus) .sk-listh + * { margin-top: 0; }
+.sk-app .sk-top > div:first-child { max-width: none; }
+.sk-app .sk-top .sk-status { max-width: 40ch; font-size: 13px; white-space: normal; }

@@ -1158,3 +1158,9 @@
 .sk-app .skm-dash { grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .sk-app .skm > *, .sk-app .skm .mny-stack > * { min-width: 0; }
 .sk-app .mny-stack { grid-template-columns: minmax(0, 1fr); }
+/* Plan: payment rows as sticker rows that wrap on a phone */
+.sk-app .payplan { min-width: 0; }
+.sk-app .payplan-row { flex-wrap: wrap; min-width: 0; padding: 4px 6px 4px 8px; border: 1.5px solid var(--sk-edge); border-left: 6px solid var(--ev, var(--sk-edge)); border-radius: 8px; background: var(--sk-paper); color: var(--sk-ink); }
+.sk-app .payplan-row .payplan-name { min-width: 0; flex: 1 1 8ch; overflow: hidden; text-overflow: ellipsis; }
+.sk-app .payplan-row input[type="checkbox"] { accent-color: var(--sk-ink); }
+.sk-app .payplan-row.is-done .payplan-name, .sk-app .payplan-row.is-done .payplan-label { color: var(--sk-ink-2); }

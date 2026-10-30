@@ -38,7 +38,7 @@
   -webkit-font-smoothing: antialiased;
 }
 .frontier-shell[data-color-mode="dark"] .sk-app {
-  --sk-ink: #f1eef8; --sk-ink-2: #c4bed3; --sk-edge: #e9e5f3; --sk-line: #ffffff1f; --sk-tint: #93a6ff;
+  --sk-ink: #fbf9ff; --sk-ink-2: #dcd7e8; --sk-edge: #050409; --sk-line: #0000007a; --sk-tint: #93a6ff;
   --sk-page: #14121b; --sk-grid: #1c1a26; --sk-paper: #211e2b; --sk-side: #1a1823; --sk-wash: #0000002e; --sk-hover: #ffffff12;
   --sk-alert-ink: #ffaaaa; --sk-needs-soft: #3a3313;
 }
@@ -231,11 +231,11 @@
 
 /* content group: flat, outlined, tinted. No shadow — it is not a button. */
 .sk-app .sk-group { border: 2px solid var(--sk-edge); border-radius: 16px; background: var(--tbg, var(--skf)); color: var(--sk-ink); }
-.frontier-shell[data-color-mode="dark"] .sk-app .sk-group { background: color-mix(in srgb, var(--skf) 13%, var(--sk-paper)); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-group { background: color-mix(in srgb, var(--skf) 6%, #1c1925); }
 .sk-app .sk-group + .sk-group { margin-top: var(--sk-s4); }
 /* Nothing pure white: inputs, option cards and forms inside a group are a light shade of the group's own colour */
 .sk-app .sk-group > * { --sk-paper: color-mix(in srgb, var(--skf) 32%, #fdfbf6); }
-.frontier-shell[data-color-mode="dark"] .sk-app .sk-group > * { --sk-paper: color-mix(in srgb, var(--skf) 16%, #26222f); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-group > * { --sk-paper: color-mix(in srgb, var(--skf) 8%, #221f2c); }
 .sk-app .sk-ghead { display: flex; align-items: center; gap: var(--sk-s2) var(--sk-s3); padding: 14px var(--sk-s4); border-bottom: 2px solid var(--sk-edge); flex-wrap: wrap; }
 .sk-app .sk-ghead-meta { flex: 1; min-width: 12ch; }
 .sk-app .sk-ghead-actions { display: flex; gap: var(--sk-s4); align-items: center; }
@@ -898,7 +898,7 @@
 @media (max-width: 560px) { .sk-app .skm-dash-cols { grid-template-columns: minmax(0, 1fr); } .sk-app .skm-tab { flex: 1 1 140px; } }
 /* Dark: Money areas keep their colour (a stronger tint than Home, the head band stronger still) */
 .frontier-shell[data-color-mode="dark"] .sk-app .skm :is(.skm-dc, .skm-sec) { background: color-mix(in srgb, var(--skf) 18%, var(--sk-paper)); }
-.frontier-shell[data-color-mode="dark"] .sk-app .skm :is(.skm-dc-head, .skm-head) { background: color-mix(in srgb, var(--skf) 38%, var(--sk-paper)); border-radius: 14px 14px 0 0; }
+.frontier-shell[data-color-mode="dark"] .sk-app .skm :is(.skm-dc-head, .skm-head) { background: color-mix(in srgb, var(--skf) 22%, #1c1925); border-radius: 14px 14px 0 0; }
 .frontier-shell[data-color-mode="dark"] .sk-app .skm-tab .sk-sw { box-shadow: 0 0 0 2px color-mix(in srgb, var(--skf) 60%, transparent); }
 .sk-app .skm .brand-logo { background-color: #fbf8f1; }
 
@@ -1191,7 +1191,8 @@
 .sk-app .sk-greet { margin: 0 0 4px; font: var(--sk-large); font-size: 44px; letter-spacing: -.03em; color: var(--sk-ink); }
 .sk-app .sk-top .sk-large { font-size: 28px; }
 .sk-app .sk-ribbon { background: var(--sk-sched); color: var(--sk-on-fill, #16141f); }
-.frontier-shell[data-color-mode="dark"] .sk-app .sk-ribbon { background: color-mix(in srgb, var(--sk-sched) 30%, var(--sk-paper)); color: var(--sk-ink); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-ribbon { background: color-mix(in srgb, var(--sk-sched) 12%, #1c1925); color: var(--sk-ink); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-ribbon .sk-now span { color: #ffb4b4; }
 .sk-app .sk-ribbon :is(.sk-sec, .sk-cap, .sk-sun small, .sk-moon small) { color: inherit; opacity: .8; }
 @media (max-width: 760px) { .sk-app .sk-greet { font-size: 32px; } .sk-app .sk-top .sk-large { font-size: 22px; } }
 

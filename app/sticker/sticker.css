@@ -1465,3 +1465,27 @@
 .sk-app .sksite .featured-heading { border-bottom: 1.5px solid var(--sk-line); }
 .sk-app .sksite .featured-actions .row-action, .sk-app .sksite .featured-row.one-line .row-action { background: var(--sk-paper); color: var(--sk-ink); border: 1.5px solid var(--sk-edge); border-radius: 8px; }
 .sk-app .sksite .featured-actions .row-action:hover { background: var(--sk-hover); }
+
+/* ── Home · Sites: every site card is its own outlined box in its tint; TickTick's Tasks | Habits are two tints ── */
+.sk-app .sk-src {
+  --sk-title: 600 18px/1.25 "Unbounded", system-ui, sans-serif; --sk-headline: 600 13.5px/1.3 "DM Sans", system-ui, sans-serif;
+  --sk-body: 400 12.5px/1.4 "DM Sans", system-ui, sans-serif; --sk-label: 600 12px/1.3 "DM Sans", system-ui, sans-serif;
+  --sk-secondary: 400 11.5px/1.4 "DM Sans", system-ui, sans-serif; --sk-caption: 600 10.5px/1.3 "DM Sans", system-ui, sans-serif;
+  margin: 0 0 var(--sk-s3); padding: 0 var(--sk-s3) var(--sk-s2); border: 2px solid var(--sk-edge); border-radius: 14px;
+  background: color-mix(in srgb, var(--site, var(--sk-paper)) 60%, var(--sk-paper)); color: var(--sk-ink);
+}
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-src { background: color-mix(in srgb, var(--site, var(--sk-paper)) 11%, #1c1925); }
+.sk-app .sk-src + .sk-src { margin-top: 0; padding-top: 0; border-top: 2px solid var(--sk-edge); }
+.sk-app .sk-src .sk-srch { padding-top: var(--sk-s2); }
+.sk-app .sk-src .sk-srch-name { color: var(--sk-ink); }
+.sk-app .sk-src .sk-link { color: var(--sk-ink); }
+.sk-app .sk-src .sk-rt { font: var(--sk-body); font-weight: 600; }
+.sk-app .sk-src .sk-rs { font: var(--sk-secondary); }
+.sk-app .sk-src .sk-row { padding-block: 3px; min-height: 0; }
+.sk-app .sk-src .sk-circle { width: 18px; height: 18px; }
+.sk-app .sk-src-split { gap: var(--sk-s2); align-items: start; }
+.sk-app .sk-src-split > .sk-col { padding: 0 var(--sk-s2) var(--sk-s2); border: 2px solid var(--sk-edge); border-radius: 12px; background: color-mix(in srgb, var(--site) 78%, var(--sk-paper)); }
+.sk-app .sk-src-split > .sk-col + .sk-col { background: color-mix(in srgb, var(--site-b, var(--site)) 78%, var(--sk-paper)); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-src-split > .sk-col { background: color-mix(in srgb, var(--site) 17%, #1c1925); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-src-split > .sk-col + .sk-col { background: color-mix(in srgb, var(--site-b, var(--site)) 17%, #1c1925); }
+.sk-app .sk-src-split .sk-listh { padding-top: 6px; padding-bottom: 4px; }

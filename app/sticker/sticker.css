@@ -857,7 +857,7 @@
 .sk-app .skm-dash-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sk-s2) var(--sk-s4); }
 .sk-app .skm-dash-top .mny-stand-meta { margin-left: auto; font: var(--sk-secondary); color: var(--sk-ink-2); display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .sk-app .skm-dash-top .money-note { flex-basis: 100%; margin: 0; }
-.sk-app .skm-dash-cols { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--sk-s3); align-items: stretch; }
+.sk-app .skm-dash-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, .9fr) minmax(0, .9fr) minmax(0, 1.15fr) minmax(0, 1fr); gap: var(--sk-s3); align-items: stretch; }
 .sk-app .skm-dc { display: flex; flex-direction: column; cursor: pointer; min-width: 0; }
 .sk-app .skm-dc:hover { box-shadow: 3px 3px 0 var(--sk-edge); }
 .sk-app .skm-dc-head { padding: 10px var(--sk-s3); }
@@ -876,10 +876,10 @@
 .sk-app .skm-grid .is-pend { color: var(--sk-ink-2); font-weight: 500; }
 .sk-app .skm-grid .is-late { color: var(--sk-alert-ink); }
 .sk-app .skm-dim { font: var(--sk-caption); color: var(--sk-ink-2); }
-.sk-app .skm-sums { display: grid; grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 6px; margin-top: auto; padding-top: var(--sk-s2); }
+.sk-app .skm-sums { display: grid; grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 6px; margin-top: auto; padding-top: var(--sk-s2); }
 .sk-app .skm-sums > span { display: grid; gap: 1px; padding: 6px 8px; border: 2px solid var(--sk-edge); border-radius: 10px; background: var(--sk-paper); min-width: 0; }
 .sk-app .skm-sums small { font: var(--sk-caption); color: var(--sk-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sk-app .skm-sums b { font: 600 17px/1.15 "Unbounded", system-ui, sans-serif; white-space: nowrap; }
+.sk-app .skm-sums b { font: 600 15px/1.15 "Unbounded", system-ui, sans-serif; white-space: nowrap; }
 .sk-app .skm-sums.is-late > span { background: color-mix(in srgb, var(--sk-alert) 22%, var(--sk-paper)); }
 .sk-app .skm-sums.is-late b { color: var(--sk-alert-ink); }
 .sk-app .skm-big { display: grid; gap: 4px; }
@@ -895,3 +895,8 @@
 @media (max-width: 1600px) { .sk-app .skm-dash-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 860px) { .sk-app .skm-dash-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .sk-app .skm-dash-cols { grid-template-columns: minmax(0, 1fr); } .sk-app .skm-tab { flex: 1 1 140px; } }
+/* Dark: Money areas keep their colour (a stronger tint than Home, the head band stronger still) */
+.frontier-shell[data-color-mode="dark"] .sk-app .skm :is(.skm-dc, .skm-sec) { background: color-mix(in srgb, var(--skf) 18%, var(--sk-paper)); }
+.frontier-shell[data-color-mode="dark"] .sk-app .skm :is(.skm-dc-head, .skm-head) { background: color-mix(in srgb, var(--skf) 38%, var(--sk-paper)); border-radius: 14px 14px 0 0; }
+.frontier-shell[data-color-mode="dark"] .sk-app .skm-tab .sk-sw { box-shadow: 0 0 0 2px color-mix(in srgb, var(--skf) 60%, transparent); }
+.sk-app .skm .brand-logo { background-color: #fbf8f1; }

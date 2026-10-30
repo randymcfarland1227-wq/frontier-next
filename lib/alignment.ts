@@ -30,12 +30,6 @@ export const ALIGNMENT: AlignmentItem[] = [
       "Sleep protects healing, regulation, and the ability to act. It is the outcome, not a checkbox.",
       "Rest while awake when recovery is the real need; do not fill every open moment.",
     ],
-    via: [
-      "Night Time Routine",
-      "Daytime Rest / Quiet Reset",
-      "Medicine and Vitamins",
-      "Recovery options",
-    ],
   },
   {
     id: "align-why",

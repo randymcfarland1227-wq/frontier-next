@@ -64,7 +64,8 @@
 }
 /* Icons: three sizes only — 20 heads, 16 inline, 14 row chevrons/facts */
 .sk-app :is(.sk-ghead, .sk-shead, .sk-ro-top) > .sk-icon, .sk-app .sk-ro-top > span > .sk-icon { width: 20px; height: 20px; }
-.sk-app :is(.sk-btn, .sk-link, .sk-navi, .sk-search) .sk-icon { width: 16px; height: 16px; }
+.sk-app :is(.sk-btn, .sk-link, .sk-search) .sk-icon { width: 16px; height: 16px; }
+.sk-app .sk-navi .sk-icon { width: 14px; height: 14px; }
 .sk-app .sk-rchev { width: 14px; height: 14px; }
 
 /* ---------------- tone fills (one colour = one meaning) ---------------- */
@@ -218,7 +219,7 @@
 .sk-app .sk-hours { display: flex; justify-content: space-between; font-weight: 500; }
 
 /* ---------------- sections ---------------- */
-.sk-app .sk-section { margin-top: var(--sk-s6); }
+.sk-app .sk-section { margin-top: var(--sk-s4); }
 .sk-app .sk-shead {
   width: calc(100% + var(--sk-s2) * 2); display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sk-s1) var(--sk-s3); padding: var(--sk-s2);
   margin: 0 calc(var(--sk-s2) * -1) var(--sk-s3); border-radius: 10px; border: 0; background: none; color: var(--sk-ink); text-align: left; cursor: pointer;
@@ -1252,9 +1253,9 @@
 /* Collapsed sidebar: each site shows its own logo (the swatch dot is for the full sidebar) */
 .sk-app .sk-siteico { display: none; }
 .sk-app[data-side="slim"] .sk-navgroup .sk-sw { display: none; }
-.sk-app[data-side="slim"] .sk-siteico { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; overflow: hidden; }
+.sk-app[data-side="slim"] .sk-siteico { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; overflow: hidden; }
 .sk-app[data-side="slim"] .sk-siteico img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.sk-app[data-side="slim"] .sk-siteico .sk-icon { width: 18px; height: 18px; }
+.sk-app[data-side="slim"] .sk-siteico .sk-icon { width: 15px; height: 15px; }
 
 /* Home · Today: one section, two tabs (Daily Brief | Grounding) */
 .sk-app .sk-today-tabs { margin-bottom: var(--sk-s3); }
@@ -1270,3 +1271,18 @@
 .sk-app .sk-how-pop li.is-done { color: var(--sk-ink-2); } .sk-app .sk-how-pop li.is-done span { text-decoration: line-through; }
 .sk-app .sk-how-pop li.is-done em, .sk-app .sk-how-pop li.is-done .sk-icon { color: var(--sk-done-ink, #0a6b4f); }
 .sk-app .sk-aff-card { overflow: visible; }
+
+/* Home · Today is boxed so you can see where it starts and ends, and everything in it is a size down */
+.sk-app #sk-brief {
+  --sk-title: 600 18px/1.25 "Unbounded", system-ui, sans-serif; --sk-headline: 600 14px/1.3 "DM Sans", system-ui, sans-serif;
+  --sk-body: 400 13.5px/1.4 "DM Sans", system-ui, sans-serif; --sk-label: 600 13px/1.3 "DM Sans", system-ui, sans-serif;
+  --sk-secondary: 400 12.5px/1.4 "DM Sans", system-ui, sans-serif; --sk-caption: 600 11px/1.3 "DM Sans", system-ui, sans-serif;
+  border: 2px solid var(--sk-edge); border-radius: 16px; padding: var(--sk-s1) var(--sk-s3) var(--sk-s3); background: color-mix(in srgb, var(--sk-paper) 45%, transparent);
+}
+.sk-app #sk-brief .sk-shead { padding-block: var(--sk-s2); }
+.sk-app #sk-brief .sk-shead .sk-sec { font-size: 13px; }
+.sk-app #sk-brief .sk-sbody { padding-top: var(--sk-s1); }
+.sk-app #sk-brief .sk-aff-card, .sk-app #sk-brief .sk-group { padding: var(--sk-s2) var(--sk-s3); }
+.sk-app #sk-brief .sk-aff-card .sk-hl { font-size: 14px; }
+.sk-app #sk-brief .sk-ghead { padding-block: var(--sk-s2); }
+.sk-app #sk-brief .sk-group + .sk-group { margin-top: var(--sk-s3); }

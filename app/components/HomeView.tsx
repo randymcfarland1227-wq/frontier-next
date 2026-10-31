@@ -306,7 +306,21 @@ export function HomeView({
           )}
         </div>
         {tab === "grounding" ? (
-          grounding
+          <div className="sk-mountain">
+            <svg
+              className="sk-mtn-art"
+              viewBox="0 0 800 240"
+              preserveAspectRatio="xMidYMax slice"
+              aria-hidden="true"
+            >
+              <circle className="sk-mtn-sun" cx="610" cy="70" r="26" />
+              <path className="sk-mtn-far" d="M0 240V150l90-60 70 45 110-85 120 100 80-50 100 80 90-70 140 90v40z" />
+              <path className="sk-mtn-mid" d="M0 240V175l120-80 90 60 130-100 140 120 90-60 110 90 120-70v105z" />
+              <path className="sk-mtn-snow" d="M340 55l-26 21 14-6 12 10 10-9 16 8z" />
+              <path className="sk-mtn-near" d="M0 240V205l140-70 100 70 160-90 150 100 110-60 140 80v35z" />
+            </svg>
+            <div className="sk-mtn-body">{grounding}</div>
+          </div>
         ) : tab === "calendar" ? (
           <ScheduleSection
             schedule={schedule}

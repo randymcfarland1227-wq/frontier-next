@@ -1545,3 +1545,5 @@
 .sk-app .sk-mtn-far { fill: var(--sk-mtn-far); } .sk-app .sk-mtn-mid { fill: var(--sk-mtn-mid); } .sk-app .sk-mtn-near { fill: var(--sk-mtn-near); }
 .sk-app .sk-mtn-snow { fill: var(--sk-mtn-snow); } .sk-app .sk-mtn-sun { fill: var(--sk-mtn-sun); opacity: .9; }
 .sk-app .sk-mtn-body { position: relative; }
+.sk-app .sk-mountain { padding-bottom: 150px; }
+.sk-app .sk-mtn-art { inset: auto 0 0 0; height: 260px; }

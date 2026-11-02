@@ -81,7 +81,7 @@ const OOS_SOURCES: Array<[string, string]> = [
   ["de-", "Delaware"],
 ];
 
-function mdSources(file: DebtFile): Source[] {
+export function mdSources(file: DebtFile): Source[] {
   const md = file.items.filter((i) => i.group === "md");
   const steps = file.registration?.steps || [];
   const out: Source[] = MD_SOURCES.map(([id, label]) => {
@@ -110,7 +110,7 @@ function mdSources(file: DebtFile): Source[] {
   return out.filter((s) => s.items.length);
 }
 
-function oosSources(file: DebtFile): Source[] {
+export function oosSources(file: DebtFile): Source[] {
   const oos = file.items.filter((i) => i.group === "oos");
   return OOS_SOURCES.map(([p, label]) => ({
     id: p,

@@ -2127,3 +2127,17 @@
 .sk-app .sk-fcard-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .sk-app .sk-fcard-when { display: inline-flex; align-items: baseline; gap: 3px; margin-right: auto; }
 .sk-app .sk-fcard-when b { font-size: 12px; }
+
+/* ── Finance lists linked into a focus ── */
+.sk-app .sk-fcard-lists > .is-fin b { display: inline-flex; align-items: center; gap: 3px; }
+.sk-app .sk-fcard-lists > .is-fin li::before { content: none; }
+.sk-app .sk-fd-fin { border-color: color-mix(in srgb, var(--sk-ink) 35%, transparent); background: color-mix(in srgb, var(--sk-paper) 50%, #ffffff55); }
+.sk-app .sk-fd-fin > header b { display: inline-flex; align-items: center; gap: 5px; flex: 1; font: var(--sk-label); }
+.sk-app .sk-fd-fin > ul > li { grid-template-columns: auto minmax(0, 1fr) auto; }
+.sk-app .sk-fin-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--sk-ink); background: transparent; }
+.sk-app .sk-fin-dot.is-on { background: var(--sk-done-ink, #0a8a5f); border-color: var(--sk-done-ink, #0a8a5f); }
+.sk-app .sk-fin-name { background: none; border: 0; padding: 0; text-align: left; font: inherit; color: var(--sk-ink); cursor: pointer; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--sk-ink) 30%, transparent); text-underline-offset: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-app .sk-fin-name:hover { text-decoration-color: currentColor; }
+.sk-app .sk-fd-fin li.is-done .sk-fin-name { text-decoration: line-through; color: var(--sk-ink-2); }
+.sk-app .sk-fd-fin li small { font: var(--sk-caption); color: var(--sk-ink-2); white-space: nowrap; }
+.sk-app .sk-fd-fin { grid-column: 1 / -1; }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Cell, MoneyModel } from "../../lib/money";
 import type { BillDue } from "../../lib/schedule";
 import { OutstandingView } from "./OutstandingView";
+import { clearPendingDebt, pendingDebt } from "../../lib/finLinks";
 import {
   isSettled,
   owedOf,
@@ -104,7 +105,12 @@ export function DebtFile({
   cell?: (c: Cell | undefined, placeholder?: string) => ReactNode;
 }) {
   const { file, marks, status, refresh, setMark } = useDebtFile();
-  const [dlg, setDlg] = useState<Dlg | null>(null);
+  // Opened from a short-term focus card: its item's pop-out is waiting.
+  const [dlg, setDlg] = useState<Dlg | null>(() => {
+    const id = pendingDebt();
+    return id ? { kind: "item", id } : null;
+  });
+  useEffect(() => clearPendingDebt(), []);
 
   if (!file) {
     return (

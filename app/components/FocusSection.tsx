@@ -71,6 +71,8 @@ export type Entry = {
   site?: SourceId;
   /** An ongoing goal: a direction, not a one-time task (made from Self) */
   ongoing?: boolean;
+  /** Finance lists linked in as sub-task lists (key says which debt-file items: see lib/finLinks) */
+  fin?: Array<{ key: string; label: string }>;
 };
 
 const mondayKey = () => {
@@ -629,9 +631,11 @@ export const shortTermSummary = (open: number) =>
 export function ShortTermFocus({
   focus,
   events = [],
+  openFinance,
 }: {
   focus: ReturnType<typeof useShortTermFocus>;
   events?: LinkItem[];
+  openFinance?: (itemId?: string) => void;
 }) {
   return (
     <Group
@@ -644,6 +648,7 @@ export function ShortTermFocus({
         list={focus.now}
         extra={[focus.weeks, focus.ongoing]}
         events={events}
+        openFinance={openFinance}
         label="What needs real attention — type it, then fill in the rest"
         empty="Type what needs real attention. Ongoing goals made in Self show here too."
       />

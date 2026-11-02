@@ -36,6 +36,7 @@ import {
 } from "../../lib/schedule";
 import { applyBillEdits, isOverdue, useBillEdits } from "../../lib/billEdits";
 import { usePlans } from "../../lib/plans";
+import { requestOpenDebt } from "../../lib/finLinks";
 import { ScheduleSection } from "./ScheduleSection";
 import { KitBillRow } from "./BillsList";
 import {
@@ -361,7 +362,14 @@ export function HomeView({
             onAddPrep={onAddPrep}
           />
         ) : tab === "focus" ? (
-          <ShortTermFocus focus={shortTerm} events={linkItems} />
+          <ShortTermFocus
+            focus={shortTerm}
+            events={linkItems}
+            openFinance={(id) => {
+              requestOpenDebt(id);
+              enter("money");
+            }}
+          />
         ) : (
           <DailyBrief
             snapshots={snapshots}

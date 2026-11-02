@@ -326,7 +326,7 @@ export function HomeTop({
     .join(" ");
 
   return (
-    <>
+    <div className="sk-hero">
       <header className="sk-top">
         <div>
           <p className="sk-greet">{greeting(now)} Randy</p>
@@ -393,6 +393,6 @@ export function HomeTop({
           ]}
         />
       </section>
-    </>
+    </div>
   );
 }

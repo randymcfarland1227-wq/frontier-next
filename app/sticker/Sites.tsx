@@ -1,6 +1,12 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useMemo,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+  type ReactNode,
+} from "react";
 import type {
   FeaturedItem,
   SourceDefinition,
@@ -13,7 +19,12 @@ import { sourceById, isMusicTask, MUSIC_HUB_URL } from "../../lib/sources";
 import { isConnectorSource } from "../../lib/connectors";
 import { shownMetric } from "../../lib/actionable";
 import { metricValue } from "../../lib/protocol";
-import { openTaskPanel, pinKey, usePriorityPins } from "../../lib/priorityPins";
+import {
+  openTaskPanel,
+  pinKey,
+  PIN_DRAG_TYPE,
+  usePriorityPins,
+} from "../../lib/priorityPins";
 import { byLevel, useFeaturedLevels } from "../../lib/featuredLevels";
 import { readSaved, writeSaved, STORAGE_KEYS } from "../../lib/storage";
 import { tagTone } from "../../lib/tagTone";
@@ -121,6 +132,16 @@ function MusicLink() {
   );
 }
 
+
+/** Drag a row into Doing Now (mouse; touch uses the row menu's pin). */
+const dragFrom = (key: string) => ({
+  draggable: true,
+  onDragStart: (e: DragEvent) => {
+    e.dataTransfer.setData(PIN_DRAG_TYPE, key);
+    e.dataTransfer.effectAllowed = "copyMove";
+  },
+});
+
 /** One open task: circle = done, title opens the task panel, right-click / long-press opens the day menu. */
 function TaskRow({
   sourceId,
@@ -158,6 +179,7 @@ function TaskRow({
     <div
       className={`sk-row${task.status === "done" ? " is-done" : ""}`}
       {...bind}
+      {...(task.status === "done" ? {} : dragFrom(key))}
     >
       <span className="sk-rlead">
         {onComplete && task.status !== "done" ? (
@@ -441,7 +463,11 @@ function StarredRow({
       : item.meta
     : "";
   return (
-    <div className={`sk-row${critical ? " is-critical" : ""}`} {...bind}>
+    <div
+      className={`sk-row${critical ? " is-critical" : ""}`}
+      {...bind}
+      {...dragFrom(key)}
+    >
       <span className="sk-rlead">
         {onComplete ? (
           <Circle
@@ -1001,5 +1027,69 @@ export function SitesSection({
         </FoldGroup>
       ))}
     </Section>
+  );
+}
+
+/**
+ * Sites as tabs under Doing Now: the tab you pick stays put while Doing Now stays on top, so a
+ * task (or TickTick habit) can be dragged straight up into it. Same site order as the rows.
+ */
+export function SitesTabs({
+  snapshots,
+  enter,
+  openSource,
+  onCompleteFeatured,
+  onCompleteTask,
+  onStarTask,
+  extra,
+}: {
+  snapshots: Record<SourceId, SourceSnapshot>;
+  enter: (id: SpaceId) => void;
+  openSource: (id: SourceId) => void;
+  onCompleteFeatured: (source: SourceId, item: FeaturedItem) => void;
+  onCompleteTask: (source: SourceId, task: TaskItem) => void;
+  onStarTask: (source: SourceId, task: TaskItem) => void;
+  extra?: Partial<Record<SourceId, ReactNode>>;
+}) {
+  const { lanes } = usePriorityPins();
+  const all = SITE_ROWS.flatMap((r) => r.ids);
+  const [saved, setSaved] = useState(() =>
+    readSaved<string>("sk-sites-tab", all[0]),
+  );
+  const id = (all as string[]).includes(saved) ? (saved as SourceId) : all[0];
+  const pick = (next: SourceId) => {
+    setSaved(next);
+    writeSaved("sk-sites-tab", next);
+  };
+  return (
+    <div className="sk-sitetabs">
+      <div className="sk-seg sk-today-tabs" role="group" aria-label="Sites">
+        {all.map((sid) => {
+          const n = shownMetric(sid, snapshots[sid], lanes).value || 0;
+          return (
+            <button
+              key={sid}
+              type="button"
+              aria-pressed={id === sid}
+              onClick={() => pick(sid)}
+            >
+              {sourceById[sid].shortName}
+              {n ? <span className="sk-tabn">{n}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+      <SiteBlock
+        key={id}
+        source={sourceById[id]}
+        snapshot={snapshots[id]}
+        onEnter={() => enter(id)}
+        onOpen={() => openSource(id)}
+        onCompleteFeatured={(item) => onCompleteFeatured(id, item)}
+        onCompleteTask={(task) => onCompleteTask(id, task)}
+        onStarTask={(task) => onStarTask(id, task)}
+        extra={extra?.[id]}
+      />
+    </div>
   );
 }

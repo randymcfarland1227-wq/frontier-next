@@ -380,7 +380,7 @@ export function HomeTop({
           ]
             .filter(Boolean)
             .join(" · ")}
-          onPress={() => reveal("sites")}
+          onPress={() => reveal("priority")}
           hint={`Open to-dos across every site (each card's number)${overdue ? `; ${overdue} of them overdue in TickTick` : ""} — opens the site rows`}
         />
         <SplitReadout

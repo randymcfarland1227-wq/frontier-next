@@ -22,6 +22,9 @@ export const openTaskPanel = (key: string) => {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(OPEN_TASK_EVENT, { detail: key }));
 };
 
+/** Drag payload: a row on any site carries its pin key; Doing Now takes it. */
+export const PIN_DRAG_TYPE = 'text/lifehub-pin';
+
 export type Lane = 'now' | 'next' | 'later';
 export const LANES: Array<{ id: Lane; name: string; hint: string }> = [
   { id: 'now', name: 'Now', hint: 'Doing today' },

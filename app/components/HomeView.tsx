@@ -49,7 +49,7 @@ import { ListHead, REVEAL_EVENT, Section } from "../sticker/kit";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { TickTickRings } from "./TickTickRings";
 import { Icon } from "../sticker/Icon";
-import { SITE_ROWS, SitesSection } from "../sticker/Sites";
+import { SITE_ROWS, SitesTabs } from "../sticker/Sites";
 
 type TodayTab = "brief" | "grounding" | "calendar" | "focus" | "money";
 const TODAY_TABS: [TodayTab, string][] = [
@@ -355,28 +355,31 @@ export function HomeView({
 
       <FocusSection snapshots={snapshots} ledger={ledger} enter={enter} />
 
-      <Section id="priority" title="Doing Now" summary={<PrioritySummary />}>
+      <Section
+        id="priority"
+        title="Doing Now & Sites"
+        summary={<PrioritySummary />}
+      >
         <PriorityBoard
           snapshots={snapshots}
           enter={(id) => enter(id)}
           onComplete={payFromPriority}
           bills={bills.filter((b) => !b.skipped)}
         />
+        <SitesTabs
+          snapshots={snapshots}
+          enter={enter}
+          openSource={openSource}
+          onCompleteFeatured={onCompleteFeatured}
+          onCompleteTask={onCompleteTask}
+          onStarTask={onStarTask}
+          extra={{
+            self: capturesPanel,
+            radall: bills.length ? financeBills : undefined,
+            ticktick: ticktickRings,
+          }}
+        />
       </Section>
-
-      <SitesSection
-        snapshots={snapshots}
-        enter={enter}
-        openSource={openSource}
-        onCompleteFeatured={onCompleteFeatured}
-        onCompleteTask={onCompleteTask}
-        onStarTask={onStarTask}
-        extra={{
-          self: capturesPanel,
-          radall: bills.length ? financeBills : undefined,
-          ticktick: ticktickRings,
-        }}
-      />
 
       <Section
         id="review"

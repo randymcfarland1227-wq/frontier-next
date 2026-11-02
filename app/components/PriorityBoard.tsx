@@ -17,6 +17,7 @@ import {
   unpin,
   usePriorityPins,
   type Lane,
+  PIN_DRAG_TYPE,
 } from "../../lib/priorityPins";
 import {
   byLevel,
@@ -100,7 +101,8 @@ export function buildCatalog(
   return catalog;
 }
 
-const DRAG_TYPE = "text/lifehub-pin";
+const DRAG_TYPE = PIN_DRAG_TYPE;
+const hasPin = (e: DragEvent) => Array.from(e.dataTransfer.types).includes(DRAG_TYPE);
 
 /** "Sat, Oct 10" / "Today" / "Tomorrow" for a Priority day. */
 function dueChip(day: string) {
@@ -144,6 +146,17 @@ export function PriorityBoard({
   const [query, setQuery] = useState("");
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
+  // A row dragged in from a site tab hovers the whole box until it drops or is let go.
+  const [outside, setOutside] = useState(false);
+  useEffect(() => {
+    const clear = () => setOutside(false);
+    window.addEventListener("dragend", clear);
+    window.addEventListener("drop", clear);
+    return () => {
+      window.removeEventListener("dragend", clear);
+      window.removeEventListener("drop", clear);
+    };
+  }, []);
   const [openKey, setOpenKey] = useState<string | null>(null);
   useEffect(() => {
     const open = (e: Event) =>
@@ -391,7 +404,23 @@ export function PriorityBoard({
     : null;
 
   return (
-    <div className="sk-group tone-open sk-doing" aria-label="Doing now">
+    <div
+      className={`sk-group tone-open sk-doing${outside ? " is-outside" : ""}`}
+      aria-label="Doing now"
+      onDragOver={(e) => {
+        if (!dragging && hasPin(e)) {
+          e.preventDefault();
+          setOutside(true);
+        }
+      }}
+      onDrop={(e) => {
+        const key = e.dataTransfer.getData(DRAG_TYPE);
+        setOutside(false);
+        if (!key) return;
+        e.preventDefault();
+        placePin(key, PLAN);
+      }}
+    >
       <div className="sk-gbody">
         <div className="sk-search">
           <Icon name="search" />
@@ -445,7 +474,7 @@ export function PriorityBoard({
           <div
             className={`sk-col sk-plan${dragging && !plan.some((i) => i.key === dragging) ? " is-target" : ""}`}
             onDragOver={(e) => {
-              if (dragging) e.preventDefault();
+              if (dragging || hasPin(e)) e.preventDefault();
             }}
             onDrop={onDrop(PLAN)}
           >

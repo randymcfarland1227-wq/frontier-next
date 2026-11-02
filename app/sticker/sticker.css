@@ -1697,3 +1697,11 @@
 .sk-app .sk-daysplit .sk-daytasks { margin: 0; }
 .sk-app .sk-daysplit .sk-empty { margin: 0; font: var(--sk-secondary); color: var(--sk-ink-2); }
 @media (max-width: 560px) { .sk-app .sk-daysplit { grid-template-columns: 1fr; } }
+
+/* Doing Now + Sites: the site tabs sit under Doing Now; a row dragged in from a tab lights the box. */
+.sk-app .sk-sitetabs { margin-top: var(--sk-s4); }
+.sk-app .sk-sitetabs .sk-seg { flex-wrap: wrap; max-width: 100%; }
+.sk-app .sk-tabn { margin-left: 6px; font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 999px; background: var(--sk-ink); color: var(--sk-paper); }
+.sk-app .sk-seg button[aria-pressed="true"] .sk-tabn { background: var(--sk-paper); color: var(--sk-ink); }
+.sk-app .sk-doing.is-outside { outline: 3px dashed var(--sk-ink); outline-offset: 3px; }
+.sk-app .sk-sitetabs .sk-row[draggable="true"] { cursor: grab; }

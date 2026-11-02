@@ -1085,8 +1085,8 @@ export function SitesTabs({
           );
         })}
       </div>
+      <div className="sk-pane" key={id}>
       <SiteBlock
-        key={id}
         tabbed
         source={sourceById[id]}
         snapshot={snapshots[id]}
@@ -1097,6 +1097,7 @@ export function SitesTabs({
         onStarTask={(task) => onStarTask(id, task)}
         extra={extra?.[id]}
       />
+      </div>
     </div>
   );
 }

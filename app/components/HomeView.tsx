@@ -319,6 +319,7 @@ export function HomeView({
             ),
           )}
         </div>
+        <div className="sk-pane" key={tab}>
         {tab === "money" ? (
           <div className="sk-money-tab">{money}</div>
         ) : tab === "grounding" ? (
@@ -356,6 +357,7 @@ export function HomeView({
             enter={enter}
           />
         )}
+        </div>
       </Section>
 
       <FocusSection snapshots={snapshots} ledger={ledger} enter={enter} />

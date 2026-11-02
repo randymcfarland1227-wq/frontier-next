@@ -71,13 +71,17 @@ function FocusList({
   noteLabel = "Details (optional)",
   empty,
   marks = true,
+  limit,
 }: {
   list: ReturnType<typeof useFocusList>;
   label: string;
   noteLabel?: string;
   empty?: string;
   marks?: boolean;
+  /** Show only this many (open ones first); the rest sit behind "N more". */
+  limit?: number;
 }) {
+  const [showAll, setShowAll] = useState(false);
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
   const [open, setOpen] = useState<string | null>(null);
@@ -148,8 +152,19 @@ function FocusList({
     <>
       {items.length ? (
         <div className="sk-list">
-          {live.map(row)}
-          {finished.map(row)}
+          {(limit && !showAll
+            ? [...live, ...finished].slice(0, limit)
+            : [...live, ...finished]
+          ).map(row)}
+          {limit && items.length > limit ? (
+            <button
+              type="button"
+              className="sk-link sk-more"
+              onClick={() => setShowAll(!showAll)}
+            >
+              {showAll ? "Show Fewer" : `${items.length - limit} more`}
+            </button>
+          ) : null}
         </div>
       ) : empty ? (
         <p className="sk-empty">{empty}</p>
@@ -437,6 +452,26 @@ const MARVEL_MENU: {
 ];
 type MarvelPicks = Record<string, { pick?: string; done?: boolean }>;
 
+/** Today's tasks and habits for an area (from TickTick), struck through once done. */
+function DayTasks({ tasks }: { tasks: { title: string; done: boolean }[] }) {
+  if (!tasks.length) return null;
+  return (
+    <ul className="sk-daytasks" aria-label="Today's tasks and habits">
+      {tasks.map((t) => (
+        <li key={t.title} className={t.done ? "is-done" : ""}>
+          <Icon name={t.done ? "check" : "minus"} size={13} />
+          <span>{t.title}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+const NUTRITION_RE =
+  /nutri|protein|meal|eat\b|food|calorie|vitamin|supplement|creatine|breakfast|lunch|dinner|water|bottle|drink|fiber|veg/i;
+const FITNESS_RE =
+  /workout|gym|lift|run\b|walk|stretch|fitness|exercise|cardio|steps|mobility|posture|abs\b|strength|squat|push.?up|yoga|recovery|physical therapy|\bpt\b/i;
+const notMarvel = (t: { title: string }) => !/marvel/i.test(t.title);
+
 /** Today's Marvel tasks and habits from TickTick, above the menu, each marked done or not. */
 function MarvelToday({ tasks }: { tasks: { title: string; done: boolean }[] }) {
   if (!tasks.length) return null;
@@ -580,7 +615,7 @@ export function FocusSection({
 }) {
   const day = useDayKey();
   const nut = useFocusList("lifehub-focus-nut2");
-  const meals = useFocusList("lifehub-focus-meals2", true);
+  const mvGoals = useFocusList("lifehub-focus-marvel-goals");
   const [water, setWater] = useDayState<number>("lifehub-focus-water", 0);
   const [picks, setPicks] = useDayState<MarvelPicks>(
     "lifehub-focus-marvel-pick",
@@ -597,19 +632,22 @@ export function FocusSection({
           title="Nutrition & Fitness"
           meta={`${water} of ${BOTTLES} bottles`}
         >
-          <Water water={water} setWater={setWater} />
+          <ListHead title="Nutrition" />
+          <DayTasks
+            tasks={tickTickToday(
+              NUTRITION_RE,
+              snapshots?.ticktick,
+              ledger,
+              day,
+            ).filter(notMarvel)}
+          />
           <ListHead title="Nutrition focus" />
           <FocusList
             list={nut}
             label="e.g. more protein"
             noteLabel="How: 170 g, shake after the gym…"
             marks={false}
-          />
-          <ListHead title="Meals this week" />
-          <FocusList
-            list={meals}
-            label="A meal I can make"
-            noteLabel="What it uses"
+            limit={2}
           />
           <button
             type="button"
@@ -619,8 +657,19 @@ export function FocusSection({
             Log in the tracker
             <Icon name="chevron" size={14} />
           </button>
+          <ListHead title="Fitness" />
+          <DayTasks
+            tasks={tickTickToday(
+              FITNESS_RE,
+              snapshots?.ticktick,
+              ledger,
+              day,
+            ).filter(notMarvel)}
+          />
           <ListHead title="Pushing on" />
           <FitnessFocus />
+          <ListHead title="Drink tracker" />
+          <Water water={water} setWater={setWater} />
         </Group>
 
         <Group
@@ -632,6 +681,14 @@ export function FocusSection({
           <MarvelToday
             tasks={tickTickToday(/marvel/i, snapshots?.ticktick, ledger, day)}
           />
+          <ListHead title="Short-term goals" />
+          <FocusList
+            list={mvGoals}
+            label="e.g. desensitize him to the toothbrush"
+            noteLabel="Why, and the next step (toothbrush → DNA test)"
+            empty="Add what you’re working on with Marvel right now."
+          />
+          <ListHead title="This or that" />
           <MarvelMenu st={picks} setSt={setPicks} />
         </Group>
       </div>

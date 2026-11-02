@@ -33,7 +33,7 @@ type Pick = {
 };
 
 /** The Doing Now action list, in your order — live, so what's finished elsewhere drops out. */
-function usePlan(
+export function usePlan(
   snapshots: Record<SourceId, SourceSnapshot>,
   bills: BillDue[],
 ) {

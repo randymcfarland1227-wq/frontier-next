@@ -5,7 +5,8 @@ import { buildBrief, type BriefSection } from '../../lib/dailyBrief';
 import { REFRESH_EVENT } from '../../lib/syncNow';
 import { openTaskPanel } from '../../lib/priorityPins';
 import { readSaved, writeSaved } from '../../lib/storage';
-import type { BillDue } from '../../lib/schedule';
+import { eventEnd, eventStart, type BillDue, type ScheduleSnapshot } from '../../lib/schedule';
+import { usePlan } from './FocusDrawer';
 import type { SourceId, SourceSnapshot, SpaceId } from '../../lib/types';
 import { Dot, Group, ListHead, Row } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
@@ -87,8 +88,24 @@ export function BriefSummary({ snapshots, bills }: { snapshots: Record<SourceId,
   return <>{parts.length ? parts.join(' · ') : 'All clear: nothing waiting on you'}</>;
 }
 
-export function DailyBrief({ snapshots, bills, enter }: { snapshots: Record<SourceId, SourceSnapshot>; bills: BillDue[]; enter: (id: SpaceId) => void }) {
+const WEEKS_AHEAD = 3;
+type BRow = { id: string; title: string; note: string; tone?: string; pin?: string; go?: SpaceId };
+type BCol = { id: string; title: string; rows: BRow[] };
+
+export function DailyBrief({
+  snapshots,
+  bills,
+  schedule,
+  enter,
+}: {
+  snapshots: Record<SourceId, SourceSnapshot>;
+  bills: BillDue[];
+  schedule: ScheduleSnapshot | null;
+  enter: (id: SpaceId) => void;
+}) {
   const sections = useBrief(snapshots, bills);
+  const gone = useDismissed();
+  const { plan } = usePlan(snapshots, bills);
   const hidden = Object.keys(useDismissed()).length;
   const stamp = Math.max(
     0,
@@ -101,20 +118,40 @@ export function DailyBrief({ snapshots, bills, enter }: { snapshots: Record<Sour
     : null;
   const [seen, setSeen] = useState<string[]>(() => readSaved<string[]>(SEEN_KEY, []));
   const [more, setMore] = useState<string | null>(null);
+  const [nowMs] = useState(() => Date.now());
+  const soon = (schedule?.events || [])
+    .filter(e => (e.myStatus === 'owner' || e.myStatus === 'yes') && eventEnd(e).getTime() > nowMs && eventStart(e).getTime() < nowMs + WEEKS_AHEAD * 7 * 86400000)
+    .sort((a, b) => eventStart(a).getTime() - eventStart(b).getTime());
+  const extra = (id: string, title: string, rows: BRow[]): BCol => ({ id, title, rows: rows.filter(r => !gone[r.id]) });
+  const cols: BCol[] = [
+    extra('doing', 'Doing Now', plan.map(i => ({ id: `plan:${i.key}`, title: i.title, note: i.source, go: i.source as SpaceId }))),
+    ...sections.map(s => ({ id: s.id, title: HEADS[s.id], rows: s.rows as BRow[] })),
+    extra(
+      'soon',
+      `Coming Up · ${WEEKS_AHEAD} Weeks`,
+      soon.map(e => ({
+        id: `ev:${e.id}`,
+        title: e.title,
+        note: e.allDay
+          ? eventStart(e).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+          : `${eventStart(e).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} · ${eventStart(e).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
+      })),
+    ),
+  ];
   const all = sections.flatMap(s => s.rows.map(r => r.id));
   const fresh = all.filter(id => !seen.includes(id)).length;
   const markSeen = () => {
     writeSaved(SEEN_KEY, all);
     setSeen(all);
   };
-  const live = sections.filter(s => s.rows.length);
+  const live = cols.filter(c => c.rows.length);
   return (
     <Group
       tone="needs"
       icon="sun"
       title="Daily Brief"
       className="sk-brief"
-      meta={fresh ? `${fresh} new since you last looked` : 'Mail, roles, sales and money that need a reply or a step'}
+      meta={fresh ? `${fresh} new since you last looked` : 'Doing Now, bills, replies and what’s coming in three weeks'}
       actions={
         <>
           <span className="sk-updated" title="Newest pull across mail, roles, sales, money and TickTick">
@@ -146,7 +183,7 @@ export function DailyBrief({ snapshots, bills, enter }: { snapshots: Record<Sour
             const rows = more === s.id ? s.rows : s.rows.slice(0, SHOWN);
             return (
               <div key={s.id} className="sk-col">
-                <ListHead title={HEADS[s.id]} meta={s.rows.length} />
+                <ListHead title={s.title} meta={s.rows.length} />
                 {rows.map(r => {
                   const isNew = !seen.includes(r.id);
                   return (
@@ -159,7 +196,7 @@ export function DailyBrief({ snapshots, bills, enter }: { snapshots: Record<Sour
                       value={r.tone === 'late' ? 'Overdue' : r.tone === 'today' ? 'Today' : undefined}
                       valueTone={r.tone === 'late' ? 'late' : undefined}
                       hint={`${r.title} — ${r.note}`}
-                      onOpen={() => (r.pin ? openTaskPanel(r.pin) : enter(r.go))}
+                      onOpen={r.pin || r.go ? () => (r.pin ? openTaskPanel(r.pin) : enter(r.go as SpaceId)) : undefined}
                     >
                       <button
                         type="button"
@@ -184,7 +221,7 @@ export function DailyBrief({ snapshots, bills, enter }: { snapshots: Record<Sour
           })}
         </div>
       ) : (
-        <p className="sk-empty">No replies, messages or sales waiting on you.</p>
+        <p className="sk-empty">Nothing in Doing Now, no bills, replies or events in the next three weeks.</p>
       )}
     </Group>
   );

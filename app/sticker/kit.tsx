@@ -117,10 +117,30 @@ export function FoldGroup({
 }
 
 /** Headline + secondary count above a list. */
-export function ListHead({ title, meta, children }: { title: ReactNode; meta?: ReactNode; children?: ReactNode }) {
+export function ListHead({
+  title,
+  meta,
+  children,
+  shut,
+  onToggle,
+}: {
+  title: ReactNode;
+  meta?: ReactNode;
+  children?: ReactNode;
+  /** With onToggle, the title is a button that folds the list below it. */
+  shut?: boolean;
+  onToggle?: () => void;
+}) {
   return (
     <div className="sk-listh">
-      <span className="sk-hl">{title}</span>
+      {onToggle ? (
+        <button type="button" className={`sk-foldbtn${shut ? ' is-shut' : ''}`} aria-expanded={!shut} onClick={onToggle}>
+          <Icon name="chevronDown" size={14} />
+          <span className="sk-hl">{title}</span>
+        </button>
+      ) : (
+        <span className="sk-hl">{title}</span>
+      )}
       {meta !== undefined ? <span className="sk-sec">{meta}</span> : null}
       {children}
     </div>

@@ -344,7 +344,12 @@ export function HomeView({
         ) : tab === "focus" ? (
           <ShortTermFocus focus={shortTerm} />
         ) : (
-          <DailyBrief snapshots={snapshots} bills={bills} enter={enter} />
+          <DailyBrief
+            snapshots={snapshots}
+            bills={bills}
+            schedule={schedule}
+            enter={enter}
+          />
         )}
       </Section>
 

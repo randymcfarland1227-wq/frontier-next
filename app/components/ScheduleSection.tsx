@@ -401,6 +401,18 @@ function EventForm({ onDone, appt }: { onDone: () => void; appt?: boolean }) {
  */
 type EvRow = { id: string; title: string; slot: Slot; note?: string; url?: string; plan?: Plan };
 
+/** A list that can be folded away; the choice is remembered on this device. */
+function useFold(key: string) {
+  const [shut, setShut] = useState(() => readSaved<boolean>(`sk-fold-${key}`, false));
+  return [
+    shut,
+    () => {
+      writeSaved(`sk-fold-${key}`, !shut);
+      setShut(!shut);
+    },
+  ] as const;
+}
+
 function EventsList({
   list = 'event',
   title,
@@ -418,6 +430,7 @@ function EventsList({
 }) {
   const marks = useEventMarks();
   const appt = list === 'appt';
+  const [shut, toggle] = useFold(list);
   const [adding, setAdding] = useState(false);
   const now = new Date();
   const horizon = addDays(startOfDay(now), EVENTS_AHEAD_DAYS);
@@ -433,18 +446,20 @@ function EventsList({
 
   return (
     <>
-      <ListHead title={title} meta={rows.length || undefined}>
-        <button type="button" className="sk-link" onClick={() => setAdding(true)} aria-expanded={adding}>
+      <ListHead title={title} meta={rows.length || undefined} shut={shut} onToggle={toggle}>
+        <button type="button" className="sk-link" onClick={() => { setAdding(true); if (shut) toggle(); }} aria-expanded={adding}>
           <Icon name="plus" size={14} />
           {appt ? 'Add Appointment' : 'Add Event'}
         </button>
       </ListHead>
+      {shut ? null : <>
       {adding ? <EventForm appt={appt} onDone={() => setAdding(false)} /> : null}
       {rows.length
         ? rows.map(r => <EventRow key={r.id} r={r} appt={appt} now={now} onShow={onShow} onDropPlan={onDropPlan} />)
         : adding
           ? null
           : <p className="sk-empty">{appt ? 'No appointments coming up.' : 'No trips or events coming up. Add one, or press ☆ on anything in a day\'s pop-out.'}</p>}
+      </>}
     </>
   );
 }
@@ -565,16 +580,18 @@ function MaybeList({
   onShow: (date: string, id?: string) => void;
   onAnswer: (p: Plan, yes: boolean) => void;
 }) {
+  const [shut, toggle] = useFold('maybe');
   const [adding, setAdding] = useState(false);
   const today = startOfDay(new Date());
   return (
     <>
-      <ListHead title={title} meta={invites.length + plans.length}>
-        <button type="button" className="sk-link" onClick={() => setAdding(true)} aria-expanded={adding}>
+      <ListHead title={title} meta={invites.length + plans.length} shut={shut} onToggle={toggle}>
+        <button type="button" className="sk-link" onClick={() => { setAdding(true); if (shut) toggle(); }} aria-expanded={adding}>
           <Icon name="plus" size={14} />
           Add Maybe
         </button>
       </ListHead>
+      {shut ? null : <>
       {adding ? <PlanForm onDone={() => setAdding(false)} /> : null}
       {invites.map(e => {
         const fit = fitText(e, events, e.id);
@@ -626,6 +643,7 @@ function MaybeList({
         );
       })}
       {!invites.length && !plans.length && !adding ? <p className="sk-empty">Nothing waiting on an answer. Add something you&apos;ve been asked to, to see how it fits.</p> : null}
+      </>}
     </>
   );
 }
@@ -635,8 +653,6 @@ const thisMonth = () => {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 };
 
-/** A small mark after the month's name, like v5's 🎃🦇. */
-const MONTH_MARK = ['❄️', '💘', '🍀', '🌷', '🌼', '☀️', '🎆', '🌻', '🍎', '🎃', '🍂', '🎄'];
 
 /** ‹ Today › beside the month name. */
 function MonthNav({ setMonth }: { setMonth: (fn: (m: Date) => Date) => void }) {
@@ -710,13 +726,13 @@ function MonthMini({ month, items, picked, onPick }: { month: Date; items: CalIt
           >
             <span className="sk-dnum">{d.getDate()}</span>
             {/* Two lines per day: two titles, or one title and "+N". */}
-            {dayItems.slice(0, dayItems.length > 2 ? 1 : 2).map(it => (
+            {dayItems.slice(0, dayItems.length > 3 ? 2 : 3).map(it => (
               <span key={it.id} className={`sk-ditem kind-${it.kind}`} style={it.color ? ({ '--ev': it.color } as React.CSSProperties) : undefined}>
                 {it.kind === 'bill' ? '$ ' : it.kind === 'task' ? (it.task?.done ? '✓ ' : '☐ ') : ''}
                 {it.title}
               </span>
             ))}
-            {dayItems.length > 2 ? <span className="sk-ditem is-more">+{dayItems.length - 1} more</span> : null}
+            {dayItems.length > 3 ? <span className="sk-ditem is-more">+{dayItems.length - 2} more</span> : null}
             <span className="sk-ddots" aria-hidden="true">
               {dayItems.slice(0, 4).map(it => (
                 <i key={it.id} style={it.color ? ({ '--ev': it.color } as React.CSSProperties) : undefined} />
@@ -1087,7 +1103,6 @@ export function ScheduleSection({
               <h3 className="sk-mtitle" aria-live="polite">
                 {month.toLocaleDateString([], { month: 'long' })}
                 <small>{month.getFullYear()}</small>
-                <span className="sk-mmark" aria-hidden="true">{MONTH_MARK[month.getMonth()]}</span>
               </h3>
               <MonthNav
                 setMonth={fn => {

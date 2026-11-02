@@ -1631,3 +1631,36 @@
   --sk-secondary: 400 14px/1.45 "DM Sans", system-ui, sans-serif; --sk-caption: 600 12px/1.3 "DM Sans", system-ui, sans-serif;
   margin-inline: calc(var(--sk-s3) * -1);
 }
+
+/* Focus: today's tasks/habits per area, struck through when done */
+.sk-app .sk-daytasks { list-style: none; margin: 0 0 var(--sk-s2); padding: 0; display: grid; gap: 3px; }
+.sk-app .sk-daytasks li { display: flex; align-items: center; gap: 7px; font: var(--sk-secondary); }
+.sk-app .sk-daytasks li.is-done { color: var(--sk-ink-2); }
+.sk-app .sk-daytasks li.is-done span { text-decoration: line-through; text-decoration-thickness: 2px; }
+.sk-app .sk-daytasks li.is-done .sk-icon { color: var(--sk-done-ink, #0a6b4f); }
+
+/* ── Calendar, calmer: one lilac theme, small headings, items you can read ───────────────────── */
+.sk-app .sk-month[data-month] { --m-ink: #2d1b69; --m-cell: #fbf9ff; --m-a: #e6deff; --m-b: #d3c7ff; }
+.sk-app .sk-month { padding: var(--sk-s3); border-radius: 14px; box-shadow: 3px 3px 0 var(--sk-edge); }
+.sk-app .sk-month::before { display: none; }
+.sk-app .sk-mtitle { font: 600 18px/1.1 "Unbounded", system-ui, sans-serif; }
+.sk-app .sk-mtitle small { font-size: 12px; }
+.sk-app .sk-month .sk-layers { transform-origin: left; }
+.sk-app .sk-month .sk-layers button { font-size: 12px; padding: 3px 10px; min-height: 0; }
+.sk-app .sk-month .sk-seg { margin-bottom: var(--sk-s2); }
+.sk-app .sk-mbtn { min-width: 26px; min-height: 26px; font-size: 12px; }
+.sk-app .sk-mgrid { gap: 4px; }
+.sk-app .sk-dow { font-size: 11px; }
+.sk-app .sk-day { min-height: 96px; padding: 4px 5px; gap: 2px; }
+.sk-app .sk-dnum { font: 700 12px/1 "DM Sans", system-ui, sans-serif; }
+.sk-app .sk-ditem { font-size: 12px; line-height: 1.2; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sk-app .sk-ditem.is-more { font-size: 11px; }
+@media (max-width: 640px) {
+  .sk-app .sk-day { min-height: 46px; padding: 3px; }
+  .sk-app .sk-ditem { display: none; }
+  .sk-app .sk-ddots { display: flex; }
+  .sk-app .sk-mtitle { font-size: 16px; }
+}
+.sk-app .sk-foldbtn { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; font: inherit; text-align: left; }
+.sk-app .sk-foldbtn .sk-icon { transition: transform .15s; flex: none; }
+.sk-app .sk-foldbtn.is-shut .sk-icon { transform: rotate(-90deg); }

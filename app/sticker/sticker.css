@@ -1895,3 +1895,57 @@
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-weather { background: #ffffff1f; border-color: #ffffff40; color: #fbf9ff; }
 .sk-app .sk-top .sk-large { white-space: normal; }
 @media (max-width: 760px) { .sk-app .sk-weather small { display: none; } }
+
+/* ── Today as real frosted glass: vivid colour behind, blurred through a bright translucent pane ── */
+.sk-app[data-page="home"] {
+  background-image:
+    radial-gradient(520px 380px at 5% 520px, #ff8fb8b3, transparent 70%),
+    radial-gradient(560px 400px at 38% 430px, #ffd36eaa, transparent 70%),
+    radial-gradient(620px 430px at 78% 660px, #6fd6ffb3, transparent 70%),
+    radial-gradient(500px 360px at 97% 420px, #a58bffb3, transparent 70%),
+    radial-gradient(540px 380px at 28% 860px, #7be8c0b3, transparent 70%),
+    radial-gradient(700px 520px at 92% 1500px, #b9d4ff77, transparent 70%),
+    radial-gradient(640px 480px at 10% 2000px, #ffe9a577, transparent 70%),
+    radial-gradient(720px 520px at 90% 2600px, #d3c4ff77, transparent 70%),
+    radial-gradient(640px 480px at 12% 3200px, #b6f0d677, transparent 70%),
+    linear-gradient(var(--sk-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sk-grid) 1px, transparent 1px);
+  background-size: auto, auto, auto, auto, auto, auto, auto, auto, auto, 24px 24px, 24px 24px;
+}
+.frontier-shell[data-color-mode="dark"] .sk-app[data-page="home"] {
+  background-image:
+    radial-gradient(520px 380px at 5% 520px, #b3367d99, transparent 70%),
+    radial-gradient(560px 400px at 38% 430px, #b8862a77, transparent 70%),
+    radial-gradient(620px 430px at 78% 660px, #2b7fb899, transparent 70%),
+    radial-gradient(500px 360px at 97% 420px, #6a4fd199, transparent 70%),
+    radial-gradient(540px 380px at 28% 860px, #1f9a7499, transparent 70%),
+    radial-gradient(700px 520px at 92% 1500px, #2d4f9a55, transparent 70%),
+    radial-gradient(640px 480px at 10% 2000px, #8a6a1e44, transparent 70%),
+    radial-gradient(720px 520px at 90% 2600px, #5a3fa855, transparent 70%),
+    radial-gradient(640px 480px at 12% 3200px, #1f7a5a44, transparent 70%),
+    linear-gradient(var(--sk-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sk-grid) 1px, transparent 1px);
+}
+.sk-app #sk-brief {
+  padding: var(--sk-s3) var(--sk-s4) var(--sk-s4); border-radius: 26px; border: 1px solid #ffffffa6;
+  background: linear-gradient(140deg, #ffffff8c, #ffffff38);
+  -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%);
+  box-shadow: 0 24px 60px #4a3a9a33, 0 2px 0 #ffffffd9 inset, 0 0 0 1px #ffffff2e inset;
+}
+.frontier-shell[data-color-mode="dark"] .sk-app #sk-brief {
+  border-color: #ffffff2e; background: linear-gradient(140deg, #ffffff24, #ffffff0a); box-shadow: 0 24px 60px #00000066, 0 1px 0 #ffffff2e inset;
+}
+.sk-app #sk-brief .sk-group {
+  border: 1px solid #ffffffb8; border-radius: 20px; box-shadow: 0 8px 26px #4a3a9a24, 0 1px 0 #fff inset;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--skf) 14%, #ffffffa6), color-mix(in srgb, var(--skf) 8%, #ffffff4d));
+}
+.frontier-shell[data-color-mode="dark"] .sk-app #sk-brief .sk-group {
+  border-color: #ffffff26; box-shadow: 0 8px 26px #00000047;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--skf) 22%, #ffffff12), color-mix(in srgb, var(--skf) 10%, #ffffff08));
+}
+.sk-app #sk-brief .sk-group .sk-row {
+  background: linear-gradient(145deg, #ffffffc4, #ffffff70); border: 1px solid #ffffffe0; border-radius: 14px;
+  box-shadow: 0 4px 14px #4a3a9a1f, 0 1px 0 #fff inset;
+}
+.frontier-shell[data-color-mode="dark"] .sk-app #sk-brief .sk-group .sk-row {
+  background: linear-gradient(145deg, #ffffff1f, #ffffff0d); border-color: #ffffff29; box-shadow: 0 4px 14px #0000003d;
+}
+.sk-app #sk-brief .sk-today-tabs { box-shadow: 0 4px 14px #4a3a9a24; }

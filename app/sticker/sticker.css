@@ -2057,3 +2057,32 @@
 .sk-app .sk-fd-list, .sk-app .sk-fd-list > * { min-width: 0; }
 .sk-app .sk-fdetail :is(input, textarea, select) { box-sizing: border-box; }
 .sk-app .sk-fd-list .sk-fc-add .sk-btn { padding-inline: 10px; white-space: nowrap; }
+
+/* ── Focus cards: compact; a site colours its card ── */
+.sk-app .sk-fcards { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: var(--sk-s2); margin: var(--sk-s1) 0 var(--sk-s2); }
+.sk-app .sk-fcard { min-height: 0; gap: 3px; padding: 9px 11px 8px; border-radius: 14px; }
+.sk-app .sk-fcard-t { font-size: 13px; line-height: 1.25; }
+.sk-app .sk-fcard-scope { -webkit-line-clamp: 2; font-size: 12px; line-height: 1.35; }
+.sk-app .sk-fcard-why { -webkit-line-clamp: 1; font-size: 11px; }
+.sk-app .sk-fcard-lists { margin-top: 1px; }
+.sk-app .sk-fcard-lists li { font-size: 11px; }
+.sk-app .sk-fcard-foot { gap: var(--sk-s2); padding-top: 6px; }
+.sk-app .sk-ring { --d: 28px; }
+.sk-app .sk-ring::before { inset: 4px; }
+.sk-app .sk-ring b { font-size: 8.5px; }
+.sk-app .sk-fcard-when b { font-size: 14px; }
+.sk-app .sk-fcard-when small, .sk-app .sk-fcard-pct small, .sk-app .sk-fcard-date { font-size: 10px; }
+.sk-app .sk-fcard-date { padding: 2px 7px; }
+.sk-app .sk-fcard-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.sk-app .sk-fcard-site, .sk-app .sk-fcard-ongoing { font: 700 9.5px/1 "DM Sans", system-ui, sans-serif; letter-spacing: .05em; text-transform: uppercase; padding: 3px 7px; border-radius: 99px; }
+.sk-app .sk-fcard-site { background: var(--site, #16141f); color: #fff; }
+.sk-app .sk-fcard-ongoing { background: #16141f14; color: var(--sk-ink); }
+.sk-app .sk-fcard.has-site {
+  border-left: 5px solid var(--site);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--site-b) 90%, #fff), color-mix(in srgb, var(--site-b) 55%, #ffffff99));
+}
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-fcard.has-site { background: linear-gradient(145deg, color-mix(in srgb, var(--site) 32%, #ffffff10), color-mix(in srgb, var(--site) 16%, #ffffff08)); }
+.sk-app .sk-fdetail[data-site] { border-top: 6px solid var(--site); }
+.sk-app .sk-sitechip { background: var(--site-b, #eee); color: #16141f; border: 1px solid color-mix(in srgb, var(--site, #999) 60%, transparent); }
+.sk-app .sk-rv.is-late { color: var(--sk-alert-ink, #b3261e); font-weight: 700; }
+@media (max-width: 640px) { .sk-app .sk-fcards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

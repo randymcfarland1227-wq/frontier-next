@@ -9,6 +9,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../sticker/Icon";
+import { sourceById } from "../../lib/sources";
+import type { SourceId } from "../../lib/types";
 import { dayKey, eventStart, fromDayKey } from "../../lib/schedule";
 import type { Entry, SubList } from "./FocusSection";
 
@@ -108,13 +110,22 @@ function Card({
   };
   return (
     <div
-      className={`sk-fcard${item.done ? " is-done" : ""}`}
+      className={`sk-fcard${item.done ? " is-done" : ""}${item.site ? " has-site" : ""}`}
+      data-site={item.site || undefined}
       role="button"
       tabIndex={0}
       onClick={open}
       onKeyDown={onKey}
       aria-label={`${item.title} — open details`}
     >
+      {item.site || item.ongoing ? (
+        <span className="sk-fcard-tags">
+          {item.site ? (
+            <span className="sk-fcard-site">{sourceById[item.site]?.shortName}</span>
+          ) : null}
+          {item.ongoing ? <span className="sk-fcard-ongoing">Ongoing</span> : null}
+        </span>
+      ) : null}
       <h4 className="sk-fcard-t">{item.title}</h4>
       {item.note ? <p className="sk-fcard-scope">{item.note}</p> : null}
       {item.why ? (
@@ -133,7 +144,7 @@ function Card({
               <ul>
                 {l.tasks
                   .filter((t) => !t.done)
-                  .slice(0, 3)
+                  .slice(0, 2)
                   .map((t) => (
                     <li key={t.id}>{t.text}</li>
                   ))}
@@ -231,6 +242,7 @@ function Detail({
     >
       <div
         className="sk-dialog sk-fdetail"
+        data-site={item.site || undefined}
         role="dialog"
         aria-modal="true"
         aria-label={item.title}
@@ -290,6 +302,24 @@ function Detail({
             placeholder="e.g. So we can do his dog DNA test"
             maxLength={400}
           />
+        </label>
+
+        <label className="sk-fd-field">
+          <span className="sk-cap">Site — colours the card</span>
+          <select
+            value={item.site || ""}
+            aria-label="Site this belongs to"
+            onChange={(e) =>
+              update({ site: (e.target.value || undefined) as SourceId | undefined })
+            }
+          >
+            <option value="">No site</option>
+            {(Object.keys(sourceById) as SourceId[]).map((sid) => (
+              <option key={sid} value={sid}>
+                {sourceById[sid].name}
+              </option>
+            ))}
+          </select>
         </label>
 
         <div className="sk-fd-field">

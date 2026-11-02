@@ -11,7 +11,7 @@
  * The old flat pin list (`lifehub-priority-pins`) is folded into On deck once.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type DragEvent } from 'react';
 import type { SourceId } from './types';
 import { readSaved, writeSaved, STORAGE_KEYS } from './storage';
 
@@ -24,6 +24,15 @@ export const openTaskPanel = (key: string) => {
 
 /** Drag payload: a row on any site carries its pin key; Doing Now takes it. */
 export const PIN_DRAG_TYPE = 'text/lifehub-pin';
+
+/** Spread onto any row to make it draggable into Doing Now. */
+export const pinDragProps = (key: string) => ({
+  draggable: true as const,
+  onDragStart: (e: DragEvent) => {
+    e.dataTransfer.setData(PIN_DRAG_TYPE, key);
+    e.dataTransfer.effectAllowed = 'copyMove';
+  },
+});
 
 export type Lane = 'now' | 'next' | 'later';
 export const LANES: Array<{ id: Lane; name: string; hint: string }> = [

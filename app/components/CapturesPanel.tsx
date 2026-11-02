@@ -12,7 +12,8 @@ import type { SelfItem } from '../../lib/adapters/self';
 import { useRowMenu, type RowMenuItem } from './RowMenu';
 import { Circle, ListHead, Row, Tag } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
-import { usePriorityPins } from '../../lib/priorityPins';
+import { pinDragProps, pinKey, usePriorityPins } from '../../lib/priorityPins';
+import { addOngoingGoal } from '../../lib/ongoingGoals';
 
 /** Where a Self task can be moved (it then shows in that site's card). */
 const MOVE_TO: Array<[string, string]> = [
@@ -26,11 +27,12 @@ const MOVE_TO: Array<[string, string]> = [
 ];
 
 type Tab = CaptureStatus | 'tasks';
-type Kind = 'task' | 'log' | CaptureKind;
+type Kind = 'task' | 'log' | 'ongoing' | CaptureKind;
 
 const KINDS: Array<{ id: Kind; label: string }> = [
   { id: 'task', label: 'Task' },
   { id: 'log', label: 'Log done' },
+  { id: 'ongoing', label: 'Ongoing goal' },
   ...CAPTURE_KINDS,
 ];
 
@@ -136,6 +138,8 @@ export function CapturesPanel({
   const [url, setUrl] = useState('');
   const [notes, setNotes] = useState('');
   const [area, setArea] = useState('');
+  const [goalSite, setGoalSite] = useState('');
+  const [why, setWhy] = useState('');
   // Open on the inbox only when it has something in it; otherwise on your tasks.
   const [tab, setTab] = useState<Tab>(() => (captures.some(c => c.status === 'inbox') ? 'inbox' : 'tasks'));
   const [doneDay, setDoneDay] = useState(() => localDay());
@@ -220,6 +224,9 @@ export function CapturesPanel({
       setLogged(`Logged “${title.trim()}” · ${areaName(area)}${doneDay < localDay() ? ` · ${shortDay(loggedAt(doneDay))}` : ''}`);
       setDoneDay(localDay());
       setTab('tasks');
+    } else if (kind === 'ongoing') {
+      addOngoingGoal({ title, note: notes, why, site: goalSite });
+      showToast(`Ongoing goal · ${title.trim()} → Today · Short-term focus`);
     } else if (kind === 'task') {
       onAddTask(title, [notes, url].filter(Boolean).join('\n'), area, taskDay || undefined);
       showToast(`Added to Self · ${title.trim()}`);
@@ -234,6 +241,8 @@ export function CapturesPanel({
     setUrl('');
     setNotes('');
     setArea('');
+    setWhy('');
+    setGoalSite('');
   }
 
   return (
@@ -250,13 +259,15 @@ export function CapturesPanel({
                   ? 'What needs doing?'
                   : kind === 'log'
                     ? 'What did you get done?'
+                    : kind === 'ongoing'
+                      ? 'The direction — e.g. Sourcing income'
                     : "What's the thought, idea, or question?"
             }
             aria-label="Capture title"
           />
           <button type="submit" className="sk-btn is-small" disabled={!title.trim() || (kind === 'log' && !area)}>
             <Icon name="plus" size={14} />
-            {!formOpen ? 'Add' : kind === 'task' ? 'Add Task' : kind === 'log' ? 'Log as Done' : 'Capture'}
+            {!formOpen ? 'Add' : kind === 'task' ? 'Add Task' : kind === 'log' ? 'Log as Done' : kind === 'ongoing' ? 'Add Goal' : 'Capture'}
           </button>
         </div>
         <div className={`sk-unfold${formOpen ? ' is-open' : ''}`} inert={!formOpen}>
@@ -281,10 +292,24 @@ export function CapturesPanel({
                 ? 'Tasks count toward Review when done.'
                 : kind === 'log'
                   ? 'Log done records something you already finished off-site.'
+                  : kind === 'ongoing'
+                    ? 'Ongoing goals are directions, not one-time tasks. They show up in Today → Short-term focus, in their site’s colour.'
                   : 'Thoughts, ideas and research stay off task boards and Balance. Promote one when it becomes a task.'}
             </p>
             <div className="sk-capfields">
-              <input value={url} onChange={e => setUrl(e.target.value)} placeholder="Link (optional)" aria-label="Link" inputMode="url" />
+              {kind === 'ongoing' ? (
+                <select value={goalSite} onChange={e => setGoalSite(e.target.value)} aria-label="Site this belongs to">
+                  <option value="">No site (plain)</option>
+                  {[['self', 'Self'], ...MOVE_TO].map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  ))}
+                  <option value="ticktick">TickTick</option>
+                </select>
+              ) : (
+                <input value={url} onChange={e => setUrl(e.target.value)} placeholder="Link (optional)" aria-label="Link" inputMode="url" />
+              )}
               {kind === 'log' ? (
                 <input
                   type="date"
@@ -304,7 +329,10 @@ export function CapturesPanel({
                   title="Day for it (optional) — shows on the calendar"
                 />
               ) : null}
-              <select value={area} onChange={e => setArea(e.target.value)} aria-label="Focus area" required={kind === 'log'}>
+              {kind === 'ongoing' ? (
+                <input value={why} onChange={e => setWhy(e.target.value)} placeholder="Why it matters (optional)" aria-label="Why" />
+              ) : null}
+              <select hidden={kind === 'ongoing'} value={area} onChange={e => setArea(e.target.value)} aria-label="Focus area" required={kind === 'log'}>
                 <option value="">{kind === 'log' ? 'Pick an area…' : 'No area'}</option>
                 {areas.map(a => (
                   <option key={a.id} value={a.id}>
@@ -494,7 +522,7 @@ function SelfTaskRow({
   return (
     <>
       <Row
-        bind={bind}
+        bind={t.done ? bind : { ...bind, ...pinDragProps(pinKey('self', t.id)) }}
         className={t.done ? 'is-done' : undefined}
         lead={t.done ? null : <Circle onDone={onDone} label={`Done: ${t.title}`} />}
         title={t.title}

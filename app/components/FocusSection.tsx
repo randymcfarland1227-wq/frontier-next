@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Group, ListHead, Section } from "../sticker/kit";
 import { FocusCards, type LinkItem } from "./FocusCards";
 import { Icon } from "../sticker/Icon";
 import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import { readSaved, writeSaved } from "../../lib/storage";
+import { FOCUS_LIST_EVENT, ONGOING_KEY } from "../../lib/ongoingGoals";
 import { dayRecord, localDayKey, useDayKey } from "../../lib/dayKey";
 import type { CompletionLedger } from "../../lib/completions";
 import { tickTickToday } from "../../lib/tickTickToday";
@@ -53,6 +54,10 @@ export type Entry = {
   eventTitle?: string;
   /** Day (YYYY-MM-DD) it was added */
   added?: string;
+  /** The site it belongs to — colours its card */
+  site?: SourceId;
+  /** An ongoing goal: a direction, not a one-time task (made from Self) */
+  ongoing?: boolean;
 };
 
 const mondayKey = () => {
@@ -70,6 +75,15 @@ function useFocusList(storageKey: string, week?: boolean) {
       items: [],
     }),
   );
+  // Something else (Self's capture box) can add to a list; pick it up when it says so.
+  useEffect(() => {
+    const reload = (e: Event) => {
+      if ((e as CustomEvent).detail !== storageKey) return;
+      setState(readSaved(storageKey, { scope, items: [] as Entry[] }));
+    };
+    window.addEventListener(FOCUS_LIST_EVENT, reload);
+    return () => window.removeEventListener(FOCUS_LIST_EVENT, reload);
+  }, [storageKey, scope]);
   const items = state.scope === scope ? state.items : [];
   const save = (next: Entry[]) => {
     const v = { scope, items: next };
@@ -582,8 +596,11 @@ const count = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 export function useShortTermFocus() {
   const now = useFocusList("lifehub-focus-now2");
   const weeks = useFocusList("lifehub-focus-weeks2");
-  const open = [...now[0], ...weeks[0]].filter((i) => !i.done).length;
-  return { now, weeks, open };
+  const ongoing = useFocusList(ONGOING_KEY);
+  const open = [...now[0], ...weeks[0], ...ongoing[0]].filter(
+    (i) => !i.done,
+  ).length;
+  return { now, weeks, ongoing, open };
 }
 
 export const shortTermSummary = (open: number) =>
@@ -616,6 +633,13 @@ export function ShortTermFocus({
         list={focus.weeks}
         events={events}
         label="A short-term goal"
+      />
+      <ListHead title="Ongoing goals" meta="directions, not one-time tasks · add them from Self" />
+      <FocusCards
+        list={focus.ongoing}
+        events={events}
+        label="An ongoing direction — or add one from Self"
+        empty="Nothing ongoing yet. In Self, pick “Ongoing goal” when you capture."
       />
     </Group>
   );

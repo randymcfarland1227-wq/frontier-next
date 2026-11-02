@@ -4,7 +4,6 @@ import {
   useMemo,
   useState,
   type CSSProperties,
-  type DragEvent,
   type ReactNode,
 } from "react";
 import type {
@@ -22,7 +21,7 @@ import { metricValue } from "../../lib/protocol";
 import {
   openTaskPanel,
   pinKey,
-  PIN_DRAG_TYPE,
+  pinDragProps,
   usePriorityPins,
 } from "../../lib/priorityPins";
 import { byLevel, useFeaturedLevels } from "../../lib/featuredLevels";
@@ -35,7 +34,7 @@ import { setRoleActive, shelfOf } from "../../lib/roleShelves";
 import { DayMenu, shortDue } from "../components/DayMenu";
 import { useRowGesture } from "../components/RowMenu";
 import { SiteIcon } from "../components/SiteIcon";
-import { Circle, FoldGroup, ListHead, Section, type Tone } from "./kit";
+import { Circle, FoldGroup, Group, ListHead, Section, type Tone } from "./kit";
 import { Icon, type IconName } from "./Icon";
 
 /** The three site rows. Their fold keys (`section:row-…`) are the ones the classic rows saved. */
@@ -133,14 +132,7 @@ function MusicLink() {
 }
 
 
-/** Drag a row into Doing Now (mouse; touch uses the row menu's pin). */
-const dragFrom = (key: string) => ({
-  draggable: true,
-  onDragStart: (e: DragEvent) => {
-    e.dataTransfer.setData(PIN_DRAG_TYPE, key);
-    e.dataTransfer.effectAllowed = "copyMove";
-  },
-});
+const dragFrom = pinDragProps;
 
 /** One open task: circle = done, title opens the task panel, right-click / long-press opens the day menu. */
 function TaskRow({
@@ -1036,6 +1028,90 @@ export function SitesSection({
   );
 }
 
+/** The "All" tab: every open task from every site in one list, soonest first; drag any row into Doing Now. */
+function AllTasks({
+  snapshots,
+  onCompleteTask,
+}: {
+  snapshots: Record<SourceId, SourceSnapshot>;
+  onCompleteTask: (source: SourceId, task: TaskItem) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const ids = SITE_ROWS.flatMap((r) => r.ids);
+  const rows = ids
+    .flatMap((sid, order) =>
+      (snapshots[sid]?.tasks || [])
+        .filter((t) => t.status !== "done" && !isHabit(t))
+        .map((t) => ({ sid, t, order })),
+    )
+    .sort((a, b) => {
+      const da = a.t.due ? a.t.due.slice(0, 10) : "9999";
+      const db = b.t.due ? b.t.due.slice(0, 10) : "9999";
+      return da.localeCompare(db) || a.order - b.order;
+    });
+  const sites = new Set(rows.map((r) => r.sid)).size;
+  const LIMIT = 40;
+  const shown = showAll ? rows : rows.slice(0, LIMIT);
+  return (
+    <Group
+      tone="open"
+      icon="todo"
+      title="All tasks"
+      meta={`${rows.length} open across ${plural(sites, "site")} · habits stay in TickTick`}
+    >
+      {rows.length ? (
+        <div className="sk-list">
+          {shown.map(({ sid, t }) => {
+            const key = pinKey(sid, t.id);
+            const when = whenOf(t);
+            return (
+              <div key={key} className="sk-row" {...dragFrom(key)}>
+                <span className="sk-rlead">
+                  <Circle
+                    onDone={() => onCompleteTask(sid, t)}
+                    label={`Done: ${t.title}`}
+                  />
+                </span>
+                <button
+                  type="button"
+                  className="sk-rmain"
+                  onClick={() => openTaskPanel(key)}
+                  title={[t.title, when.text, "Open details, subtasks and plan"]
+                    .filter(Boolean)
+                    .join(" — ")}
+                >
+                  <span className="sk-rt">{t.title}</span>
+                  <span className="sk-rs sk-facts">
+                    <span className="sk-fact sk-sitechip" data-site={sid}>
+                      {sourceById[sid].shortName}
+                    </span>
+                    {t.tag ? <span className="sk-fact">{t.tag}</span> : null}
+                  </span>
+                </button>
+                <span className={`sk-rv${when.late ? " is-late" : ""}`}>
+                  {when.text}
+                </span>
+                <Icon name="chevron" className="sk-rchev" size={14} />
+              </div>
+            );
+          })}
+          {rows.length > LIMIT ? (
+            <button
+              type="button"
+              className="sk-link sk-more"
+              onClick={() => setShowAll(!showAll)}
+            >
+              {showAll ? "Show Fewer" : `${rows.length - LIMIT} more`}
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <p className="sk-empty">Nothing open on any site.</p>
+      )}
+    </Group>
+  );
+}
+
 /**
  * Sites as tabs under Doing Now: the tab you pick stays put while Doing Now stays on top, so a
  * task (or TickTick habit) can be dragged straight up into it. Same site order as the rows.
@@ -1060,16 +1136,29 @@ export function SitesTabs({
   const { lanes } = usePriorityPins();
   const all = SITE_ROWS.flatMap((r) => r.ids);
   const [saved, setSaved] = useState(() =>
-    readSaved<string>("sk-sites-tab", all[0]),
+    readSaved<string>("sk-sites-tab", "all"),
   );
-  const id = (all as string[]).includes(saved) ? (saved as SourceId) : all[0];
-  const pick = (next: SourceId) => {
+  const id: SourceId | "all" = (all as string[]).includes(saved)
+    ? (saved as SourceId)
+    : "all";
+  const allCount = all
+    .flatMap((sid) => snapshots[sid]?.tasks || [])
+    .filter((t) => t.status !== "done" && !isHabit(t)).length;
+  const pick = (next: SourceId | "all") => {
     setSaved(next);
     writeSaved("sk-sites-tab", next);
   };
   return (
     <div className="sk-sitetabs">
       <div className="sk-seg sk-today-tabs" role="group" aria-label="Sites">
+        <button
+          type="button"
+          aria-pressed={id === "all"}
+          onClick={() => pick("all")}
+        >
+          All
+          {allCount ? <span className="sk-tabn">{allCount}</span> : null}
+        </button>
         {all.map((sid) => {
           const n = shownMetric(sid, snapshots[sid], lanes).value || 0;
           return (
@@ -1086,17 +1175,21 @@ export function SitesTabs({
         })}
       </div>
       <div className="sk-pane" key={id}>
-      <SiteBlock
-        tabbed
-        source={sourceById[id]}
-        snapshot={snapshots[id]}
-        onEnter={() => enter(id)}
-        onOpen={() => openSource(id)}
-        onCompleteFeatured={(item) => onCompleteFeatured(id, item)}
-        onCompleteTask={(task) => onCompleteTask(id, task)}
-        onStarTask={(task) => onStarTask(id, task)}
-        extra={extra?.[id]}
-      />
+        {id === "all" ? (
+          <AllTasks snapshots={snapshots} onCompleteTask={onCompleteTask} />
+        ) : (
+          <SiteBlock
+            tabbed
+            source={sourceById[id]}
+            snapshot={snapshots[id]}
+            onEnter={() => enter(id)}
+            onOpen={() => openSource(id)}
+            onCompleteFeatured={(item) => onCompleteFeatured(id, item)}
+            onCompleteTask={(task) => onCompleteTask(id, task)}
+            onStarTask={(task) => onStarTask(id, task)}
+            extra={extra?.[id]}
+          />
+        )}
       </div>
     </div>
   );

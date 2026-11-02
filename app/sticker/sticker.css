@@ -1717,12 +1717,12 @@
 }
 .sk-app .sk-capform.is-open { padding: var(--sk-s3); box-shadow: var(--pop-shadow); border-color: transparent; }
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-capform { --pop-shadow: 0 0 0 1px #ffffff14, 0 18px 44px #0000008c; }
-.sk-app .sk-pop { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .15s var(--pop-ease); }
-.sk-app .sk-pop.is-open { grid-template-rows: 1fr; transition-duration: .25s; }
-.sk-app .sk-pop-in { min-height: 0; overflow: hidden; display: grid; gap: var(--sk-s2); transform-origin: 0 0; transform: scale(.97); opacity: 0; filter: blur(2px); transition: transform .15s var(--pop-ease), opacity .15s var(--pop-ease), filter .15s var(--pop-ease); }
-.sk-app .sk-pop.is-open .sk-pop-in { transform: scale(1); opacity: 1; filter: none; transition-duration: .25s; }
-.sk-app .sk-poptoast { display: flex; align-items: center; gap: 6px; margin: 0; font: var(--sk-secondary); color: var(--sk-ink); opacity: 0; transform: translateY(16px) scale(.97); filter: blur(2px); transition: opacity .25s cubic-bezier(.32,.72,0,1), transform .25s cubic-bezier(.32,.72,0,1), filter .25s cubic-bezier(.32,.72,0,1); }
-.sk-app .sk-poptoast.is-open { opacity: 1; transform: none; filter: none; transition-duration: .35s; }
-@media (prefers-reduced-motion: reduce) { .sk-app :is(.sk-capform, .sk-pop, .sk-pop-in, .sk-poptoast) { transition: none !important; } }
+.sk-app .sk-unfold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .15s var(--pop-ease); }
+.sk-app .sk-unfold.is-open { grid-template-rows: 1fr; transition-duration: .25s; }
+.sk-app .sk-unfold-in { min-height: 0; overflow: hidden; display: grid; gap: var(--sk-s2); transform-origin: 0 0; transform: scale(.97); opacity: 0; filter: blur(2px); transition: transform .15s var(--pop-ease), opacity .15s var(--pop-ease), filter .15s var(--pop-ease); }
+.sk-app .sk-unfold.is-open .sk-unfold-in { transform: scale(1); opacity: 1; filter: none; transition-duration: .25s; }
+.sk-app .sk-unfoldtoast { display: flex; align-items: center; gap: 6px; margin: 0; font: var(--sk-secondary); color: var(--sk-ink); opacity: 0; transform: translateY(16px) scale(.97); filter: blur(2px); transition: opacity .25s cubic-bezier(.32,.72,0,1), transform .25s cubic-bezier(.32,.72,0,1), filter .25s cubic-bezier(.32,.72,0,1); }
+.sk-app .sk-unfoldtoast.is-open { opacity: 1; transform: none; filter: none; transition-duration: .35s; }
+@media (prefers-reduced-motion: reduce) { .sk-app :is(.sk-capform, .sk-unfold, .sk-unfold-in, .sk-unfoldtoast) { transition: none !important; } }
 .sk-app .sk-capform:not(.is-open) { row-gap: 0; }
 .sk-app .sk-capform { transition-property: padding, background-color, border-color, box-shadow, row-gap; }

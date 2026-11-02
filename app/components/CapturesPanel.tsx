@@ -259,8 +259,8 @@ export function CapturesPanel({
             {!formOpen ? 'Add' : kind === 'task' ? 'Add Task' : kind === 'log' ? 'Log as Done' : 'Capture'}
           </button>
         </div>
-        <div className={`sk-pop${formOpen ? ' is-open' : ''}`} inert={!formOpen}>
-          <div className="sk-pop-in">
+        <div className={`sk-unfold${formOpen ? ' is-open' : ''}`} inert={!formOpen}>
+          <div className="sk-unfold-in">
             <div className="sk-chips" role="group" aria-label="Capture kind">
               {KINDS.map(k => (
                 <button
@@ -317,7 +317,7 @@ export function CapturesPanel({
           </div>
         </div>
         {toast ? (
-          <p className={`sk-poptoast${toast.open ? ' is-open' : ''}`} role="status">
+          <p className={`sk-unfoldtoast${toast.open ? ' is-open' : ''}`} role="status">
             <Icon name="check" size={14} />
             {toast.text}
           </p>

@@ -1664,3 +1664,23 @@
 .sk-app .sk-foldbtn { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; font: inherit; text-align: left; }
 .sk-app .sk-foldbtn .sk-icon { transition: transform .15s; flex: none; }
 .sk-app .sk-foldbtn.is-shut .sk-icon { transform: rotate(-90deg); }
+
+/* Money at a glance: the six boxes always sit in one line, compact; on narrow screens the line scrolls sideways */
+.sk-app .skm-dash-cols { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--sk-s2); overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 4px; }
+.sk-app .skm-dash-cols > * { scroll-snap-align: start; min-width: 0; }
+.sk-app .skm-dc-head { padding: 6px var(--sk-s2); }
+.sk-app .skm-dc-head .sk-hl { font-size: 13px; }
+.sk-app .skm-dc-body { padding: 4px var(--sk-s2) var(--sk-s2); gap: 4px; }
+.sk-app .skm-dash .skm-grid { font-size: 12px; gap: 2px 4px; }
+.sk-app .skm-dash :is(.skm-glink, .skm-gname) { font-size: 12px; }
+.sk-app .skm-dash .skm-grid > small { font-size: 10.5px; }
+.sk-app .skm-dash .skm-sums { grid-template-columns: repeat(auto-fit, minmax(54px, 1fr)); gap: 4px; padding-top: 4px; }
+.sk-app .skm-dash .skm-sums > span { padding: 3px 5px; border-radius: 8px; }
+.sk-app .skm-dash .skm-sums small { font-size: 10px; }
+.sk-app .skm-dash .skm-sums b { font-size: 12px; }
+.sk-app .skm-dash .skm-big > b { font-size: 22px; }
+.sk-app .skm-dash .skm-big > small { font-size: 11px; }
+.sk-app .skm-dash .skm-scores b { font-size: 14px; }
+.sk-app .skm-dash .skm-scores small { font-size: 10px; }
+.sk-app .skm-dash .skm-dim { font-size: 10.5px; }
+@media (max-width: 1100px) { .sk-app .skm-dash-cols { grid-template-columns: repeat(6, minmax(168px, 1fr)); } }

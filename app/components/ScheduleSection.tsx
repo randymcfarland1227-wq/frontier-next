@@ -2,7 +2,7 @@
 
 import { createPortal } from 'react-dom';
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   addDays,
   clashes,
@@ -696,15 +696,24 @@ function MonthMini({ month, items, picked, onPick }: { month: Date; items: CalIt
   const start = startOfWeek(month);
   const weeks = Math.ceil((month.getDay() + new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()) / 7);
   const cells = Array.from({ length: weeks * 7 }, (_, i) => addDays(start, i));
-  const names = cells.slice(0, 7).map(d => d.toLocaleDateString([], { weekday: 'narrow' }));
+  const names = cells.slice(0, 7).map(d => d.toLocaleDateString([], { weekday: 'short' }));
+  // ISO week number of each row (taken from its Wednesday).
+  const weekNo = (d: Date) => {
+    const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+    return Math.ceil(((t.getTime() - Date.UTC(t.getUTCFullYear(), 0, 1)) / 86400000 + 1) / 7);
+  };
   return (
     <div className="sk-mgrid">
+      <span className="sk-dow sk-wkh" aria-hidden="true">
+        Wk
+      </span>
       {names.map((n, i) => (
         <span key={i} className="sk-dow" aria-hidden="true">
           {n}
         </span>
       ))}
-      {cells.map(d => {
+      {cells.map((d, ci) => {
         const k = dayKey(d);
         const dayItems = items
           .filter(it => onDay(it, d))
@@ -713,8 +722,13 @@ function MonthMini({ month, items, picked, onPick }: { month: Date; items: CalIt
           dayItems.length ? `${dayItems.length} thing${dayItems.length === 1 ? '' : 's'}` : 'nothing'
         }`;
         return (
+          <Fragment key={k}>
+            {ci % 7 === 0 ? (
+              <span className="sk-wk" aria-hidden="true">
+                {weekNo(cells[ci + 3])}
+              </span>
+            ) : null}
           <button
-            key={k}
             type="button"
             className={`sk-day${d.getMonth() !== month.getMonth() ? ' is-other' : ''}${k < today ? ' is-past' : ''}${k === today ? ' is-today' : ''}${k === picked ? ' is-picked' : ''}${
               dayItems.some(i => i.kind === 'plan' || i.kind === 'invite') ? ' has-maybe' : ''
@@ -739,6 +753,7 @@ function MonthMini({ month, items, picked, onPick }: { month: Date; items: CalIt
               ))}
             </span>
           </button>
+          </Fragment>
         );
       })}
     </div>

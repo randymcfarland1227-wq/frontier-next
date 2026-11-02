@@ -175,7 +175,7 @@ export function StickerShell({
               <button
                 key={id}
                 type="button"
-                className="sk-navi"
+                className="sk-navi is-site"
                 aria-current={current(id)}
                 onClick={() => go(id)}
                 title={sourceById[id].label}
@@ -197,6 +197,9 @@ export function StickerShell({
                   )}
                 </span>
                 <span className="sk-navl">{sourceById[id].name}</span>
+                <span className="sk-navs" aria-hidden="true">
+                  {sourceById[id].shortName}
+                </span>
                 {openOf(id) > 0 ? (
                   <span
                     className="sk-navbadge"

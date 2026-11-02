@@ -36,7 +36,8 @@ import { BillChangeForm, FlagBadges, billChangeText } from './BillControls';
 import { Circle, Dot, Group, ListHead, Row } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
 import { isOverdue } from '../../lib/billEdits';
-import { CalendarView, type CalItem } from './CalendarView';
+import { type CalItem } from './CalendarView';
+import { WeekStrip } from './WeekStrip';
 
 const PLAN_COLOR = '#7b4a68';
 const EVENT_COLOR = '#b4532a';
@@ -1242,7 +1243,7 @@ export function ScheduleSection({
                 </div>
               </div>
             ) : null}
-            <CalendarView items={items} focus={focus} connected={Boolean(schedule)} onSelect={setSelected} selectedId={selected?.id} />
+            <WeekStrip items={items} focus={focus} onSelect={setSelected} selectedId={selected?.id} />
           </div>
         </div>
       )}

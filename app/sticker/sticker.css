@@ -2241,3 +2241,6 @@
   .sk-wday { min-height: 220px !important; padding: 6px !important; }
   .sk-wit { font-size: 10.5px !important; }
 }
+/* The Google / Money / Tasks switch sits outside the month's scene (week view): ordinary segmented colours */
+.sk-app .sk-layers button { background: var(--sk-paper); color: var(--sk-ink); }
+.sk-app .sk-layers button[aria-pressed="true"] { background: var(--sk-ink); color: var(--sk-paper); }

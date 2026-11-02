@@ -2054,3 +2054,6 @@
 @media (max-width: 640px) { .sk-app .sk-fcards { grid-template-columns: 1fr; } .sk-app .sk-fcard-foot, .sk-app .sk-fd-stats { gap: var(--sk-s2); } }
 .sk-app .sk-fd-list .sk-fc-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sk-s2); align-items: center; }
 .sk-app .sk-fd-list .sk-fc-add input { width: 100%; min-width: 0; }
+.sk-app .sk-fd-list, .sk-app .sk-fd-list > * { min-width: 0; }
+.sk-app .sk-fdetail :is(input, textarea, select) { box-sizing: border-box; }
+.sk-app .sk-fd-list .sk-fc-add .sk-btn { padding-inline: 10px; white-space: nowrap; }

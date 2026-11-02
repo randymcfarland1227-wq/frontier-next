@@ -1705,3 +1705,5 @@
 .sk-app .sk-seg button[aria-pressed="true"] .sk-tabn { background: var(--sk-paper); color: var(--sk-ink); }
 .sk-app .sk-doing.is-outside { outline: 3px dashed var(--sk-ink); outline-offset: 3px; }
 .sk-app .sk-sitetabs .sk-row[draggable="true"] { cursor: grab; }
+/* Site tabs live inside the Doing Now box, under a rule. */
+.sk-app .sk-doing .sk-sitetabs { margin-top: var(--sk-s5); padding-top: var(--sk-s4); border-top: 2px solid var(--sk-edge); }

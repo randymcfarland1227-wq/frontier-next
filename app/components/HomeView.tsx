@@ -365,7 +365,7 @@ export function HomeView({
           enter={(id) => enter(id)}
           onComplete={payFromPriority}
           bills={bills.filter((b) => !b.skipped)}
-        />
+        >
         <SitesTabs
           snapshots={snapshots}
           enter={enter}
@@ -379,6 +379,7 @@ export function HomeView({
             ticktick: ticktickRings,
           }}
         />
+        </PriorityBoard>
       </Section>
 
       <Section

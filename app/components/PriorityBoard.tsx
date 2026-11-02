@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from "react";
 import { tagTone } from "../../lib/tagTone";
 import type { FeaturedItem, SourceId, SourceSnapshot } from "../../lib/types";
 import { SOURCE_IDS, sourceById } from "../../lib/sources";
@@ -133,7 +133,10 @@ export function PriorityBoard({
   enter,
   onComplete,
   bills,
+  children,
 }: {
+  /** Rendered at the foot of the box (the site tabs). */
+  children?: ReactNode;
   snapshots: Record<SourceId, SourceSnapshot>;
   enter: (id: SourceId) => void;
   onComplete?: (source: SourceId, item: FeaturedItem) => void;
@@ -662,6 +665,7 @@ export function PriorityBoard({
             )}
           </div>
         </div>
+        {children}
       </div>
 
       {openItem ? (

@@ -1082,11 +1082,12 @@ export function ScheduleSection({
             <EventsList title="Events" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
             <EventsList list="appt" title="Appointments" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
           </div>
-          <div className="sk-month" ref={monthBox}>
+          <div className="sk-month" ref={monthBox} data-month={month.getMonth()}>
             <div className="sk-mtop">
               <h3 className="sk-mtitle" aria-live="polite">
-                {month.toLocaleDateString([], { month: 'long', year: 'numeric' })}
-                <span aria-hidden="true"> {MONTH_MARK[month.getMonth()]}</span>
+                {month.toLocaleDateString([], { month: 'long' })}
+                <small>{month.getFullYear()}</small>
+                <span className="sk-mmark" aria-hidden="true">{MONTH_MARK[month.getMonth()]}</span>
               </h3>
               <MonthNav
                 setMonth={fn => {
@@ -1097,7 +1098,7 @@ export function ScheduleSection({
             </div>
             <LayerSeg layers={layers} toggle={toggleLayer} />
             {!schedule ? <p className="sk-mnote">Google Calendar isn&apos;t connected yet — maybes and bills still show.</p> : null}
-            <MonthMini month={month} items={items} picked={pop?.day} onPick={openDay} />
+            <MonthMini key={month.getFullYear() * 12 + month.getMonth()} month={month} items={items} picked={pop?.day} onPick={openDay} />
             {pop ? (
               <DayPopover
                 key={pop.day}

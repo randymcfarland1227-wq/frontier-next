@@ -54,9 +54,9 @@ import { SITE_ROWS, SitesSection } from "../sticker/Sites";
 type TodayTab = "brief" | "grounding" | "calendar" | "focus";
 const TODAY_TABS: [TodayTab, string][] = [
   ["brief", "Daily Brief"],
-  ["grounding", "Grounding"],
-  ["calendar", "Calendar"],
   ["focus", "Short-term focus"],
+  ["calendar", "Calendar"],
+  ["grounding", "Grounding"],
 ];
 
 /** "3 on your list · 13 on deck · 1 critical" for the Doing Now head. */

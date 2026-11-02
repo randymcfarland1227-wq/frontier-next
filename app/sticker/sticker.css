@@ -1547,3 +1547,73 @@
 .sk-app .sk-mtn-body { position: relative; }
 .sk-app .sk-mountain { padding-bottom: 150px; }
 .sk-app .sk-mtn-art { inset: auto 0 0 0; height: 260px; }
+
+/* Habits & Tasks readout: two halves */
+.sk-app .sk-ro-halves { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sk-s3); }
+.sk-app .sk-ro-half { display: grid; gap: 2px; min-width: 0; }
+.sk-app .sk-ro-half > small { font: var(--sk-caption); opacity: .85; }
+.sk-app .sk-ro-half + .sk-ro-half { border-left: 2px solid #16141f33; padding-left: var(--sk-s3); }
+.sk-app .sk-ro-halves .sk-figure small { display: block; font: var(--sk-caption); letter-spacing: 0; opacity: .85; white-space: nowrap; }
+
+/* Brief: clear an item for the day */
+.sk-app .sk-dismiss { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--sk-ink-2); cursor: pointer; opacity: 0; transition: opacity .12s, background .12s; z-index: 2; }
+.sk-app .sk-row:hover .sk-dismiss, .sk-app .sk-dismiss:focus-visible { opacity: 1; }
+.sk-app .sk-dismiss:hover { background: var(--sk-line); color: var(--sk-ink); }
+@media (hover: none) { .sk-app .sk-dismiss { opacity: .7; } }
+.sk-app .sk-row:has(.sk-dismiss) .sk-rv { margin-right: 22px; }
+
+/* Timeline: one slim strip, about as tall as the date */
+.sk-app .sk-top .sk-ribbon.is-compact { align-self: center; padding: 3px 12px 2px; }
+.sk-app .sk-top .sk-ribbon.is-compact .sk-rib-top { display: none; }
+.sk-app .sk-top .sk-ribbon.is-compact .sk-track { height: 14px; margin-top: 12px; }
+.sk-app .sk-top .sk-ribbon.is-compact .sk-track-line { top: 6px; }
+.sk-app .sk-top .sk-ribbon.is-compact .sk-track-past { top: 5px; }
+.sk-app .sk-top .sk-ribbon.is-compact .sk-track-day { top: 1px; height: 11px; }
+.sk-app .sk-top .sk-ribbon.is-compact .sk-now { height: 14px; }
+.sk-app .sk-top .sk-ribbon.is-compact .sk-ev { top: 1px; }
+.sk-app .sk-top .sk-ribbon.is-compact .sk-sky { height: 14px; }
+.sk-app .sk-top .sk-ribbon.is-compact :is(.sk-sun, .sk-moon) { grid-auto-flow: column; align-items: center; gap: 3px; }
+.sk-app .sk-top .sk-ribbon.is-compact :is(.sk-sun, .sk-moon) .sk-icon { width: 13px; height: 13px; padding: 1px; }
+.sk-app .sk-top .sk-ribbon.is-compact .sk-hours { font-size: 9px; line-height: 1; }
+
+/* ── Calendar: month-themed, month first and big, lists beside it ───────────────────────────── */
+.sk-app .sk-month[data-month="0"] { --m-ink: #12335e; --m-cell: #eef6ff; --m-a: #cfe8ff; --m-b: #8ec5f5; }
+.sk-app .sk-month[data-month="1"] { --m-ink: #6b0f3a; --m-cell: #fff0f5; --m-a: #ffd0e0; --m-b: #ff93b8; }
+.sk-app .sk-month[data-month="2"] { --m-ink: #0f4d2a; --m-cell: #f1fff3; --m-a: #c9f3cd; --m-b: #7fd68b; }
+.sk-app .sk-month[data-month="3"] { --m-ink: #4b2278; --m-cell: #faf3ff; --m-a: #ecd5ff; --m-b: #c99cf5; }
+.sk-app .sk-month[data-month="4"] { --m-ink: #6b3300; --m-cell: #fffbea; --m-a: #ffeaa0; --m-b: #ffc247; }
+.sk-app .sk-month[data-month="5"] { --m-ink: #00506b; --m-cell: #effcff; --m-a: #b4efff; --m-b: #5cd0ef; }
+.sk-app .sk-month[data-month="6"] { --m-ink: #7a1020; --m-cell: #fff3f1; --m-a: #ffb3a6; --m-b: #ff6a5a; }
+.sk-app .sk-month[data-month="7"] { --m-ink: #5e3a00; --m-cell: #fff9e0; --m-a: #ffe27a; --m-b: #ffb800; }
+.sk-app .sk-month[data-month="8"] { --m-ink: #5a2a0a; --m-cell: #fff4e6; --m-a: #f9d3a6; --m-b: #e9954a; }
+.sk-app .sk-month[data-month="9"] { --m-ink: #3b0f80; --m-cell: #fff6e8; --m-a: #ffb347; --m-b: #f97316; }
+.sk-app .sk-month[data-month="10"] { --m-ink: #4a2312; --m-cell: #fbf1e6; --m-a: #e6b88a; --m-b: #b8683a; }
+.sk-app .sk-month[data-month="11"] { --m-ink: #0d3b2a; --m-cell: #f4fff8; --m-a: #b4ecc8; --m-b: #ff9a9a; }
+.sk-app .sk-sched-grid { grid-template-columns: minmax(0, 1.85fr) minmax(280px, 1fr); grid-template-rows: auto 1fr; gap: var(--sk-s4) var(--sk-s5); }
+.sk-app .sk-sched-grid > .sk-month { grid-column: 1; grid-row: 1 / span 2; margin-top: 0; }
+.sk-app .sk-sched-grid > .sk-col:nth-child(1) { grid-column: 2; grid-row: 1; }
+.sk-app .sk-sched-grid > .sk-col:nth-child(2) { grid-column: 2; grid-row: 2; }
+.sk-app .sk-month { padding: var(--sk-s4); border-radius: 18px; background: linear-gradient(150deg, var(--m-a), var(--m-b)); box-shadow: 4px 4px 0 var(--sk-edge); position: relative; overflow: hidden; }
+.sk-app .sk-month::before { content: attr(data-month); }
+.sk-app .sk-month::before { content: ""; position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle, #ffffff66, transparent 70%); pointer-events: none; }
+.sk-app .sk-mtitle { font: 600 30px/1.05 "Unbounded", system-ui, sans-serif; letter-spacing: -.03em; display: flex; align-items: baseline; gap: 10px; }
+.sk-app .sk-mtitle small { font: 600 14px/1 "DM Sans", system-ui, sans-serif; opacity: .7; letter-spacing: 0; }
+.sk-app .sk-mtitle .sk-mmark { font-size: 24px; display: inline-block; animation: sk-bob 3.2s ease-in-out infinite; }
+@keyframes sk-bob { 50% { transform: translateY(-3px) rotate(6deg); } }
+.sk-app .sk-mgrid { gap: 5px; animation: sk-monthin .28s ease-out; }
+@keyframes sk-monthin { from { opacity: 0; transform: translateY(6px); } }
+.sk-app .sk-dow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; padding-bottom: 4px; }
+.sk-app .sk-day { min-height: 92px; padding: 6px 7px; gap: 3px; border-radius: 10px; box-shadow: 0 1px 0 #00000022; transition: transform .12s, box-shadow .12s; }
+.sk-app .sk-day:hover { transform: translateY(-2px); box-shadow: 0 4px 0 var(--m-ink), inset 0 0 0 2px var(--m-ink); }
+.sk-app .sk-dnum { font: 700 15px/1 "Unbounded", system-ui, sans-serif; }
+.sk-app .sk-day.is-past { background: color-mix(in srgb, var(--m-cell) 55%, var(--m-b)); }
+.sk-app .sk-day.is-today { box-shadow: 0 0 0 3px var(--m-cell), 0 0 0 5px var(--m-ink); animation: sk-todaypulse 2.6s ease-in-out infinite; }
+@keyframes sk-todaypulse { 50% { box-shadow: 0 0 0 3px var(--m-cell), 0 0 0 7px color-mix(in srgb, var(--m-ink) 55%, transparent); } }
+.sk-app .sk-ditem { font-size: 12.5px; padding: 1px 4px; border-radius: 4px; background: color-mix(in srgb, var(--ev, var(--m-ink)) 16%, transparent); border-left-width: 3px; }
+.sk-app .sk-day.is-today .sk-ditem { background: #ffffff26; }
+@media (prefers-reduced-motion: reduce) { .sk-app .sk-mtitle .sk-mmark, .sk-app .sk-day.is-today, .sk-app .sk-mgrid { animation: none; } }
+@media (max-width: 1200px) {
+  .sk-app .sk-sched-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  .sk-app .sk-sched-grid > .sk-month, .sk-app .sk-sched-grid > .sk-col:nth-child(n) { grid-column: 1; grid-row: auto; }
+}
+@media (max-width: 640px) { .sk-app .sk-day { min-height: 56px; padding: 3px 4px; } .sk-app .sk-mtitle { font-size: 22px; } .sk-app .sk-dnum { font-size: 12px; } .sk-app .sk-ditem { font-size: 11px; } }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { buildBrief, type BriefSection } from '../../lib/dailyBrief';
 import { REFRESH_EVENT } from '../../lib/syncNow';
 import { openTaskPanel } from '../../lib/priorityPins';
@@ -11,6 +11,41 @@ import { Dot, Group, ListHead, Row } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
 
 const SEEN_KEY = 'lifehub-brief-seen';
+const DISMISS_KEY = 'lifehub-brief-dismissed';
+const DISMISS_EVENT = 'lifehub-brief-dismissed-changed';
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+};
+/** Items Randy cleared from today's brief: id → the day it was cleared. They return on a later day. */
+function readDismissed(): Record<string, string> {
+  const all = readSaved<Record<string, string>>(DISMISS_KEY, {});
+  const day = todayKey();
+  return Object.fromEntries(Object.entries(all).filter(([, d]) => d === day));
+}
+function useDismissed() {
+  const [map, setMap] = useState(readDismissed);
+  useEffect(() => {
+    const sync = () => setMap(readDismissed());
+    window.addEventListener(DISMISS_EVENT, sync);
+    const t = window.setInterval(sync, 60_000);
+    return () => {
+      window.removeEventListener(DISMISS_EVENT, sync);
+      window.clearInterval(t);
+    };
+  }, []);
+  return map;
+}
+function dismissIds(ids: string[]) {
+  const next = { ...readDismissed() };
+  for (const id of ids) next[id] = todayKey();
+  writeSaved(DISMISS_KEY, next);
+  window.dispatchEvent(new Event(DISMISS_EVENT));
+}
+function restoreAll() {
+  writeSaved(DISMISS_KEY, {});
+  window.dispatchEvent(new Event(DISMISS_EVENT));
+}
 const SHOWN = typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches ? 4 : 6;
 
 /** Column names (Title Case) for the brief's sections. */
@@ -31,7 +66,14 @@ const SHORT: Record<BriefSection['id'], [string, string]> = {
 
 /** The brief's sections that can need you (tasks due today live in Doing now and the site cards). */
 export function useBrief(snapshots: Record<SourceId, SourceSnapshot>, bills: BillDue[]) {
-  return useMemo(() => buildBrief(snapshots, bills).filter(s => s.id !== 'tasks'), [snapshots, bills]);
+  const gone = useDismissed();
+  return useMemo(
+    () =>
+      buildBrief(snapshots, bills)
+        .filter(s => s.id !== 'tasks')
+        .map(s => ({ ...s, rows: s.rows.filter(r => !gone[r.id]) })),
+    [snapshots, bills, gone],
+  );
 }
 
 /** "2 mail · 1 role reply · 1 bill due" — only sections that have something. */
@@ -47,6 +89,7 @@ export function BriefSummary({ snapshots, bills }: { snapshots: Record<SourceId,
 
 export function DailyBrief({ snapshots, bills, enter }: { snapshots: Record<SourceId, SourceSnapshot>; bills: BillDue[]; enter: (id: SpaceId) => void }) {
   const sections = useBrief(snapshots, bills);
+  const hidden = Object.keys(useDismissed()).length;
   const [seen, setSeen] = useState<string[]>(() => readSaved<string[]>(SEEN_KEY, []));
   const [more, setMore] = useState<string | null>(null);
   const all = sections.flatMap(s => s.rows.map(r => r.id));
@@ -65,6 +108,12 @@ export function DailyBrief({ snapshots, bills, enter }: { snapshots: Record<Sour
       meta={fresh ? `${fresh} new since you last looked` : 'Mail, roles, sales and money that need a reply or a step'}
       actions={
         <>
+          {hidden ? (
+            <button type="button" className="sk-link" onClick={restoreAll} title="Bring back what you cleared today">
+              <Icon name="eye" size={14} />
+              Show {hidden} Cleared
+            </button>
+          ) : null}
           {fresh ? (
             <button type="button" className="sk-link" onClick={markSeen} title="Clears the new marks; items stay until they’re dealt with">
               <Icon name="eye" size={14} />
@@ -98,7 +147,17 @@ export function DailyBrief({ snapshots, bills, enter }: { snapshots: Record<Sour
                       valueTone={r.tone === 'late' ? 'late' : undefined}
                       hint={`${r.title} — ${r.note}`}
                       onOpen={() => (r.pin ? openTaskPanel(r.pin) : enter(r.go))}
-                    />
+                    >
+                      <button
+                        type="button"
+                        className="sk-dismiss"
+                        aria-label={`Clear ${r.title} from today’s brief`}
+                        title="Clear from today’s brief (it can come back tomorrow)"
+                        onClick={() => dismissIds([r.id])}
+                      >
+                        <Icon name="close" size={13} />
+                      </button>
+                    </Row>
                   );
                 })}
                 {s.rows.length > SHOWN ? (

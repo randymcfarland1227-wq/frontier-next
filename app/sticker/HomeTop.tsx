@@ -51,6 +51,55 @@ function useNow() {
   return now;
 }
 
+/** One sticker, two halves: habits and tasks, each with how much of today is marked or done. */
+function SplitReadout({
+  icon,
+  parts,
+  onPress,
+  hint,
+}: {
+  icon: IconName;
+  parts: { label: string; done: number; total: number }[];
+  onPress: () => void;
+  hint: string;
+}) {
+  return (
+    <button
+      type="button"
+      className="sk-ro sk-ro-split tone-habit"
+      onClick={onPress}
+      title={hint}
+    >
+      <span className="sk-ro-top">
+        <span>
+          <Icon name={icon} />
+          Habits &amp; Tasks
+        </span>
+        <Icon name="chevron" className="sk-ro-chev" />
+      </span>
+      <span className="sk-ro-halves">
+        {parts.map((p) => {
+          const pc = p.total ? Math.round((p.done / p.total) * 100) : 0;
+          return (
+            <span key={p.label} className="sk-ro-half">
+              <small>{p.label}</small>
+              <b className="sk-figure">
+                {p.done}
+                <small>
+                  of {p.total} · {pc}%
+                </small>
+              </b>
+              <span className="sk-meter" aria-hidden="true">
+                <i style={{ width: `${pc}%` }} />
+              </span>
+            </span>
+          );
+        })}
+      </span>
+    </button>
+  );
+}
+
 function Readout({
   tone,
   icon,
@@ -251,6 +300,12 @@ export function HomeTop({
   const openHabits = Number(tt?.metrics?.habits) || 0;
   const habitsLogged = day.habitsDone + day.skippedHabits;
   const habitsTotal = habitsLogged + openHabits;
+  const openTasks = (tt?.tasks || []).filter(
+    (t) =>
+      t.status !== "done" && t.kind !== "habit" && !t.id.startsWith("habit-"),
+  ).length;
+  const tasksLogged = day.tasksDone + day.wontDoTasks;
+  const tasksTotal = tasksLogged + openTasks;
   const overdue = Number(tt?.metrics?.overdue) || 0;
   const events = (schedule?.events || []).filter(
     (e) => (e.myStatus === "owner" || e.myStatus === "yes") && onDay(e, now),
@@ -328,15 +383,14 @@ export function HomeTop({
           onPress={() => reveal("sites")}
           hint={`Open to-dos across every site (each card's number)${overdue ? `; ${overdue} of them overdue in TickTick` : ""} — opens the site rows`}
         />
-        <Readout
-          tone="habit"
+        <SplitReadout
           icon="repeat"
-          label="Habits"
-          figure={habitsLogged}
-          of={`of ${habitsTotal}${habitsTotal ? ` · ${Math.round((habitsLogged / habitsTotal) * 100)}%` : ""}`}
-          meter={habitsTotal ? habitsLogged / habitsTotal : 0}
           onPress={() => enter("ticktick")}
-          hint={`TickTick habits today: ${day.habitsDone} done · ${day.skippedHabits} skipped · ${openHabits} still open — opens TickTick`}
+          hint={`TickTick today — habits: ${day.habitsDone} done · ${day.skippedHabits} skipped · ${openHabits} open. Tasks: ${day.tasksDone} done · ${day.wontDoTasks} won't do · ${openTasks} open — opens TickTick`}
+          parts={[
+            { label: "Habits", done: habitsLogged, total: habitsTotal },
+            { label: "Tasks", done: tasksLogged, total: tasksTotal },
+          ]}
         />
       </section>
     </>

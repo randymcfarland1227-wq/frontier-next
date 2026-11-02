@@ -1,5 +1,6 @@
 "use client";
 
+import { describe, useWeather } from "../../lib/weather";
 import { useEffect, useState } from "react";
 import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import type { CompletionLedger, CompletionStats } from "../../lib/completions";
@@ -269,6 +270,43 @@ function DayRibbon({ events, now }: { events: CalEvent[]; now: Date }) {
  * Home's top: the day as a Large Title with a one-sentence status, the one prominent action
  * (Update Today), four readout stickers that jump to where each number lives, and the day ribbon.
  */
+/** "☀️ 62° · H 66 L 48" after the date; asks for your location once. */
+function WeatherChip() {
+  const { reading, state, retry } = useWeather();
+  if (!reading) {
+    if (state === "loading" || state === "idle") return null;
+    return (
+      <button
+        type="button"
+        className="sk-weather is-ask"
+        onClick={retry}
+        title={
+          state === "denied"
+            ? "Location is blocked for this site — allow it in the browser, then tap"
+            : "Couldn't reach the weather — tap to retry"
+        }
+      >
+        {state === "denied" ? "Allow location for weather" : "Weather unavailable · retry"}
+      </button>
+    );
+  }
+  const d = describe(reading.code, reading.day);
+  return (
+    <button
+      type="button"
+      className="sk-weather"
+      onClick={retry}
+      title={`${d.label} where you are now · tap to refresh`}
+    >
+      <span aria-hidden="true">{d.icon}</span>
+      <b>{reading.temp}°</b>
+      <small>
+        {d.label} · H {reading.high} L {reading.low}
+      </small>
+    </button>
+  );
+}
+
 export function HomeTop({
   snapshots,
   bills,
@@ -280,6 +318,8 @@ export function HomeTop({
   unfinished,
   openFocus,
   enter,
+  focusCount,
+  onFocusPress,
 }: {
   snapshots: Record<SourceId, SourceSnapshot>;
   bills: BillDue[];
@@ -291,6 +331,9 @@ export function HomeTop({
   unfinished: number;
   openFocus: () => void;
   enter: (id: SpaceId) => void;
+  /** Open items in Today's Short-term focus tab */
+  focusCount: number;
+  onFocusPress: () => void;
 }) {
   const now = useNow();
   const brief = useBrief(snapshots, bills);
@@ -330,9 +373,12 @@ export function HomeTop({
       <header className="sk-top">
         <div>
           <p className="sk-greet">{greeting(now)} Randy</p>
-          <h1 className="sk-large">
-            <span>{weekday}</span>, {date}
-          </h1>
+          <div className="sk-dateline">
+            <h1 className="sk-large">
+              <span>{weekday}</span>, {date}
+            </h1>
+            <WeatherChip />
+          </div>
           <p className="sk-status">{status}</p>
         </div>
         <DayRibbon events={events} now={now} />
@@ -382,6 +428,15 @@ export function HomeTop({
             .join(" · ")}
           onPress={() => reveal("priority")}
           hint={`Open to-dos across every site (each card's number)${overdue ? `; ${overdue} of them overdue in TickTick` : ""} — opens the site rows`}
+        />
+        <Readout
+          tone="focus"
+          icon="target"
+          label="Short-term Focus"
+          figure={focusCount}
+          note={focusCount ? "things to focus on now" : "nothing typed in yet"}
+          onPress={onFocusPress}
+          hint="What needs real attention now and in the next few weeks — opens the Short-term focus tab"
         />
         <SplitReadout
           icon="repeat"

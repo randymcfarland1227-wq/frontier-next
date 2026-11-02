@@ -45,7 +45,7 @@ import {
   useShortTermFocus,
 } from "./FocusSection";
 import { HomeTop } from "../sticker/HomeTop";
-import { ListHead, REVEAL_EVENT, Section } from "../sticker/kit";
+import { ListHead, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { TickTickRings } from "./TickTickRings";
 import { Icon } from "../sticker/Icon";
@@ -294,6 +294,11 @@ export function HomeView({
         unfinished={unfinished}
         openFocus={openFocus}
         enter={enter}
+        focusCount={shortTerm.open}
+        onFocusPress={() => {
+          pickTodayTab("focus");
+          reveal("brief");
+        }}
       />
 
       <Section id="brief" title="Today" summary={todaySummary}>

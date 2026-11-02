@@ -1841,3 +1841,57 @@
 .sk-app #sk-brief .sk-month .sk-btn { font-size: 11px; min-height: 26px; padding: 2px 8px; }
 .sk-app #sk-brief .sk-month .sk-seg button { font-size: 11px; min-height: 24px; padding: 2px 9px; }
 .sk-app #sk-brief .sk-sched-grid { gap: var(--sk-s3) var(--sk-s4); grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); }
+
+/* ── Glass: soft colour behind, frosted translucent panels in front ── */
+.sk-app[data-page="home"] {
+  background-image:
+    radial-gradient(620px 460px at 8% 260px, #ffc9e266, transparent 70%),
+    radial-gradient(700px 520px at 92% 820px, #b9d4ff77, transparent 70%),
+    radial-gradient(640px 480px at 10% 1500px, #ffe9a577, transparent 70%),
+    radial-gradient(720px 520px at 90% 2200px, #d3c4ff77, transparent 70%),
+    radial-gradient(640px 480px at 12% 2900px, #b6f0d677, transparent 70%),
+    linear-gradient(var(--sk-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sk-grid) 1px, transparent 1px);
+  background-size: auto, auto, auto, auto, auto, 24px 24px, 24px 24px;
+}
+.frontier-shell[data-color-mode="dark"] .sk-app[data-page="home"] {
+  background-image:
+    radial-gradient(620px 460px at 8% 260px, #7a2d6a55, transparent 70%),
+    radial-gradient(700px 520px at 92% 820px, #2d4f9a55, transparent 70%),
+    radial-gradient(640px 480px at 10% 1500px, #8a6a1e44, transparent 70%),
+    radial-gradient(720px 520px at 90% 2200px, #5a3fa855, transparent 70%),
+    radial-gradient(640px 480px at 12% 2900px, #1f7a5a44, transparent 70%),
+    linear-gradient(var(--sk-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sk-grid) 1px, transparent 1px);
+}
+.sk-app #sk-brief {
+  background: linear-gradient(140deg, #ffffffb8, #ffffff5c);
+  border: 1.5px solid #ffffffcc;
+  box-shadow: 0 10px 34px #5a4ba62e, inset 0 1px 0 #ffffffe6, inset 0 0 0 1px #ffffff40;
+}
+.frontier-shell[data-color-mode="dark"] .sk-app #sk-brief {
+  background: linear-gradient(140deg, #ffffff1c, #ffffff08); border-color: #ffffff2e; box-shadow: 0 10px 34px #00000059, inset 0 1px 0 #ffffff26;
+}
+/* the white inner panels of the groups become glass tinted by their group's colour */
+.sk-app :is(#sk-brief, #sk-focus) .sk-group > * { --sk-paper: color-mix(in srgb, var(--skf) 16%, #ffffff70); }
+.frontier-shell[data-color-mode="dark"] .sk-app :is(#sk-brief, #sk-focus) .sk-group > * { --sk-paper: color-mix(in srgb, var(--skf) 10%, #ffffff12); }
+.sk-app :is(#sk-brief, #sk-focus) :is(.sk-daysplit > *, .sk-capform.is-open, .sk-daytasks) { box-shadow: inset 0 1px 0 #ffffffcc; }
+
+/* ── Header: richer colour, orb highlights, weather chip ── */
+.sk-app[data-page="home"] .sk-hero {
+  background:
+    radial-gradient(260px 180px at 12% 0%, #fff8, transparent 70%),
+    radial-gradient(320px 220px at 88% 100%, #7fd8ff99, transparent 70%),
+    radial-gradient(240px 200px at 55% 110%, #ffffff66, transparent 70%),
+    linear-gradient(115deg, #ffd24d, #ff8fc4 50%, #9b87ff);
+}
+.sk-app .sk-dateline { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sk-s2) var(--sk-s3); }
+.sk-app .sk-weather {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border: 1.5px solid #ffffffcc; border-radius: 99px; cursor: pointer;
+  background: #ffffff59; color: var(--sk-ink); font: 600 14px/1 "DM Sans", system-ui, sans-serif; box-shadow: inset 0 1px 0 #fff, 0 2px 10px #5a4ba633;
+}
+.sk-app .sk-weather b { font: 700 16px/1 "Unbounded", system-ui, sans-serif; }
+.sk-app .sk-weather small { font: 500 12px/1 "DM Sans", system-ui, sans-serif; opacity: .8; }
+.sk-app .sk-weather.is-ask { font-size: 12px; font-weight: 600; opacity: .85; }
+.sk-app .sk-weather:hover { background: #ffffff80; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-weather { background: #ffffff1f; border-color: #ffffff40; color: #fbf9ff; }
+.sk-app .sk-top .sk-large { white-space: normal; }
+@media (max-width: 760px) { .sk-app .sk-weather small { display: none; } }

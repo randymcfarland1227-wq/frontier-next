@@ -452,8 +452,8 @@ export function HomeView({
         {split ? (
           <div className="sk-split">
             {([
-              [tab2, pickTodayTab2],
               [tab, pickTodayTab],
+              [tab2, pickTodayTab2],
             ] as const).map(([t, pick], i) => (
               <div key={i} className="sk-splitcol">
                 {tabBar(t, pick)}

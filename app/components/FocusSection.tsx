@@ -2,6 +2,8 @@
 
 import { useCallback, useState, type FormEvent } from "react";
 import { Group, ListHead, Section } from "../sticker/kit";
+import { FocusCards } from "./FocusCards";
+import type { CalEvent } from "../../lib/schedule";
 import { Icon } from "../sticker/Icon";
 import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import { readSaved, writeSaved } from "../../lib/storage";
@@ -30,14 +32,28 @@ function useDayState<T>(key: string, fallback: T) {
   return [value, set] as const;
 }
 
-type Entry = {
+export type SubTask = { id: string; text: string; done: boolean };
+export type SubList = { id: string; name: string; tasks: SubTask[] };
+
+export type Entry = {
   id: string;
   title: string;
+  /** Scope (what it is) — the old "detail" note */
   note?: string;
   done?: boolean;
   push?: number;
   /** Day (YYYY-MM-DD) it started — drives "Day 3 · started 2 days ago" */
   since?: string;
+  /** Short-term focus cards: why it matters */
+  why?: string;
+  /** Named sub-task lists, layered under the card */
+  lists?: SubList[];
+  /** Day (YYYY-MM-DD) it counts down to, and the calendar item it's linked to (if any) */
+  date?: string;
+  eventId?: string;
+  eventTitle?: string;
+  /** Day (YYYY-MM-DD) it was added */
+  added?: string;
 };
 
 const mondayKey = () => {
@@ -577,8 +593,10 @@ export const shortTermSummary = (open: number) =>
 /** Today tab: what needs real attention right now and in the next few weeks (MD tickets paid, Marvel's DNA test…). */
 export function ShortTermFocus({
   focus,
+  events = [],
 }: {
   focus: ReturnType<typeof useShortTermFocus>;
+  events?: CalEvent[];
 }) {
   return (
     <Group
@@ -588,17 +606,17 @@ export function ShortTermFocus({
       meta={focus.open || undefined}
     >
       <ListHead title="Right now" />
-      <FocusList
+      <FocusCards
         list={focus.now}
-        label="What needs doing"
-        noteLabel="The detail: what, why, next step"
+        events={events}
+        label="What needs real attention — type it, then fill in the rest"
         empty="Type what needs real attention right now."
       />
       <ListHead title="Next few weeks" />
-      <FocusList
+      <FocusCards
         list={focus.weeks}
+        events={events}
         label="A short-term goal"
-        noteLabel="What it takes"
       />
     </Group>
   );

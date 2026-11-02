@@ -348,7 +348,7 @@ export function HomeView({
             onAddPrep={onAddPrep}
           />
         ) : tab === "focus" ? (
-          <ShortTermFocus focus={shortTerm} />
+          <ShortTermFocus focus={shortTerm} events={schedule?.events || []} />
         ) : (
           <DailyBrief
             snapshots={snapshots}

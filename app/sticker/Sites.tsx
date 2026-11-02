@@ -746,6 +746,7 @@ function SiteBlock({
   onCompleteTask,
   onStarTask,
   extra,
+  tabbed,
 }: {
   source: SourceDefinition;
   snapshot: SourceSnapshot;
@@ -755,6 +756,8 @@ function SiteBlock({
   onCompleteTask?: (task: TaskItem) => void;
   onStarTask?: (task: TaskItem) => void;
   extra?: ReactNode;
+  /** In the site tabs the card always opens (the tab is the choice); folding it isn't remembered. */
+  tabbed?: boolean;
 }) {
   const showSync =
     isConnectorSource(source.id) && Boolean(snapshot.refreshedAt);
@@ -767,11 +770,14 @@ function SiteBlock({
           !snapshot.tasks.some((t) => t.id === f.id && t.status !== "done"),
       )
     : snapshot.featured;
-  const [collapsed, setCollapsed] = useState(() =>
-    readSaved<string[]>(STORAGE_KEYS.collapsedCards, []).includes(source.id),
+  const [collapsed, setCollapsed] = useState(
+    () =>
+      !tabbed &&
+      readSaved<string[]>(STORAGE_KEYS.collapsedCards, []).includes(source.id),
   );
   const toggleCollapsed = () => {
     const next = !collapsed;
+    if (tabbed) return setCollapsed(next);
     const saved = readSaved<string[]>(STORAGE_KEYS.collapsedCards, []).filter(
       (id) => id !== source.id,
     );
@@ -1081,6 +1087,7 @@ export function SitesTabs({
       </div>
       <SiteBlock
         key={id}
+        tabbed
         source={sourceById[id]}
         snapshot={snapshots[id]}
         onEnter={() => enter(id)}

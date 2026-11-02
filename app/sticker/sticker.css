@@ -2122,3 +2122,8 @@
 .sk-app .sk-fcard-date { padding: 1px 6px; }
 .sk-app .sk-fcard-site, .sk-app .sk-fcard-ongoing { font-size: 8.5px; padding: 2px 6px; }
 .sk-app .sk-mv-today .sk-listh { padding-top: 0; }
+
+.sk-app .sk-fcards { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.sk-app .sk-fcard-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.sk-app .sk-fcard-when { display: inline-flex; align-items: baseline; gap: 3px; margin-right: auto; }
+.sk-app .sk-fcard-when b { font-size: 12px; }

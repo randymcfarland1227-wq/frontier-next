@@ -157,10 +157,11 @@ function Card({
         </div>
       ) : null}
       <div className="sk-fcard-foot">
-        <span className="sk-fcard-pct">
-          <Ring pct={p.pct} />
-          <small>{p.total ? `${p.done}/${p.total}` : "done"}</small>
-        </span>
+        {p.pct !== null ? (
+          <span className="sk-fcard-pct">
+            <Ring pct={p.pct} />
+          </span>
+        ) : null}
         <span className="sk-fcard-when">
           <b>{w.big}</b>
           {w.cap ? <small>{w.cap}</small> : null}

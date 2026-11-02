@@ -141,6 +141,19 @@ export function CapturesPanel({
   const [doneDay, setDoneDay] = useState(() => localDay());
   const [taskDay, setTaskDay] = useState('');
   const [logged, setLogged] = useState('');
+  // "Added" confirmation that rises in and fades out (skeu.app-style motion; CSS does the easing).
+  const [toast, setToast] = useState<{ text: string; open: boolean } | null>(null);
+  const toastTimers = useRef<number[]>([]);
+  useEffect(() => () => toastTimers.current.forEach(window.clearTimeout), []);
+  const showToast = (text: string) => {
+    toastTimers.current.forEach(window.clearTimeout);
+    setToast({ text, open: false });
+    toastTimers.current = [
+      window.setTimeout(() => setToast({ text, open: true }), 30),
+      window.setTimeout(() => setToast({ text, open: false }), 2600),
+      window.setTimeout(() => setToast(null), 2950),
+    ];
+  };
   // The form starts as one line; the kind buttons, link, area and notes open when you click in.
   const [expanded, setExpanded] = useState(false);
   const formOpen = expanded || Boolean(title || url || notes);
@@ -209,10 +222,12 @@ export function CapturesPanel({
       setTab('tasks');
     } else if (kind === 'task') {
       onAddTask(title, [notes, url].filter(Boolean).join('\n'), area, taskDay || undefined);
+      showToast(`Added to Self · ${title.trim()}`);
       setTaskDay('');
       setTab('tasks');
     } else {
       onAdd({ kind, title, notes, url, focusAreaId: area });
+      showToast(`Captured · ${title.trim()}`);
       setTab('inbox');
     }
     setTitle('');
@@ -244,8 +259,8 @@ export function CapturesPanel({
             {!formOpen ? 'Add' : kind === 'task' ? 'Add Task' : kind === 'log' ? 'Log as Done' : 'Capture'}
           </button>
         </div>
-        {formOpen ? (
-          <>
+        <div className={`sk-pop${formOpen ? ' is-open' : ''}`} inert={!formOpen}>
+          <div className="sk-pop-in">
             <div className="sk-chips" role="group" aria-label="Capture kind">
               {KINDS.map(k => (
                 <button
@@ -299,7 +314,13 @@ export function CapturesPanel({
               </select>
             </div>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Notes (optional)" aria-label="Notes" />
-          </>
+          </div>
+        </div>
+        {toast ? (
+          <p className={`sk-poptoast${toast.open ? ' is-open' : ''}`} role="status">
+            <Icon name="check" size={14} />
+            {toast.text}
+          </p>
         ) : null}
         {kind === 'log' && logged ? (
           <p className="sk-caplogged" role="status">

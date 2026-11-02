@@ -13,6 +13,19 @@ import { tickTickToday } from "../../lib/tickTickToday";
 
 type Snaps = Record<SourceId, SourceSnapshot>;
 
+/** A remembered open/shut for a small list on this device. */
+function useShut(key: string): [boolean, () => void] {
+  const k = `sk-fold-${key}`;
+  const [shut, setShut] = useState(() => readSaved<boolean>(k, false));
+  return [
+    shut,
+    () => {
+      writeSaved(k, !shut);
+      setShut(!shut);
+    },
+  ];
+}
+
 /** A tiny per-day record on this device (starts empty every new day). */
 function useDayState<T>(key: string, fallback: T) {
   const day = useDayKey();
@@ -503,22 +516,28 @@ const notMarvel = (t: { title: string }) => !/marvel/i.test(t.title);
 
 /** Today's Marvel tasks and habits from TickTick, above the menu, each marked done or not. */
 function MarvelToday({ tasks }: { tasks: { title: string; done: boolean }[] }) {
+  const [shut, toggle] = useShut("focus-marvel-today");
   if (!tasks.length) return null;
   const done = tasks.filter((t) => t.done).length;
   return (
     <div className="sk-mv-today">
-      <p className="sk-cap">
-        Marvel today · {done} of {tasks.length} done
-      </p>
-      <ul>
-        {tasks.map((t) => (
-          <li key={t.title} className={t.done ? "is-done" : ""}>
-            <Icon name={t.done ? "check" : "minus"} size={13} />
-            <span>{t.title}</span>
-            <em>{t.done ? "done" : "not yet"}</em>
-          </li>
-        ))}
-      </ul>
+      <ListHead
+        title="Marvel today"
+        meta={`${done} of ${tasks.length} done`}
+        shut={shut}
+        onToggle={toggle}
+      />
+      {shut ? null : (
+        <ul>
+          {tasks.map((t) => (
+            <li key={t.title} className={t.done ? "is-done" : ""}>
+              <Icon name={t.done ? "check" : "minus"} size={13} />
+              <span>{t.title}</span>
+              <em>{t.done ? "done" : "not yet"}</em>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -621,25 +640,12 @@ export function ShortTermFocus({
       title="Short-Term Focus"
       meta={focus.open || undefined}
     >
-      <ListHead title="Right now" />
       <FocusCards
         list={focus.now}
+        extra={[focus.weeks, focus.ongoing]}
         events={events}
         label="What needs real attention — type it, then fill in the rest"
-        empty="Type what needs real attention right now."
-      />
-      <ListHead title="Next few weeks" />
-      <FocusCards
-        list={focus.weeks}
-        events={events}
-        label="A short-term goal"
-      />
-      <ListHead title="Ongoing goals" meta="directions, not one-time tasks · add them from Self" />
-      <FocusCards
-        list={focus.ongoing}
-        events={events}
-        label="An ongoing direction — or add one from Self"
-        empty="Nothing ongoing yet. In Self, pick “Ongoing goal” when you capture."
+        empty="Type what needs real attention. Ongoing goals made in Self show here too."
       />
     </Group>
   );
@@ -662,6 +668,19 @@ export function FocusSection({
     "lifehub-focus-marvel-pick",
     {},
   );
+  const [daysShut, toggleDays] = useShut("focus-fit-today");
+  const fitToday = tickTickToday(
+    FITNESS_RE,
+    snapshots?.ticktick,
+    ledger,
+    day,
+  ).filter(notMarvel);
+  const nutToday = tickTickToday(
+    NUTRITION_RE,
+    snapshots?.ticktick,
+    ledger,
+    day,
+  ).filter(notMarvel);
   const marvelDone = MARVEL_MENU.filter((g) => picks[g.id]?.done).length;
   const summary = `${water} of ${BOTTLES} bottles · Marvel ${marvelDone} of ${MARVEL_MENU.length}`;
   return (
@@ -673,30 +692,24 @@ export function FocusSection({
           title="Nutrition & Fitness"
           meta={`${water} of ${BOTTLES} bottles`}
         >
-          <div className="sk-daysplit" aria-label="Today's tasks and habits">
-            <div>
-              <p className="sk-cap">Fitness today</p>
-              <DayTasks
-                tasks={tickTickToday(
-                  FITNESS_RE,
-                  snapshots?.ticktick,
-                  ledger,
-                  day,
-                ).filter(notMarvel)}
-              />
+          <ListHead
+            title="Today’s tasks & habits"
+            meta={`${fitToday.filter((t) => t.done).length + nutToday.filter((t) => t.done).length} of ${fitToday.length + nutToday.length} done`}
+            shut={daysShut}
+            onToggle={toggleDays}
+          />
+          {daysShut ? null : (
+            <div className="sk-daysplit" aria-label="Today's tasks and habits">
+              <div>
+                <p className="sk-cap">Fitness today</p>
+                <DayTasks tasks={fitToday} />
+              </div>
+              <div>
+                <p className="sk-cap">Nutrition today</p>
+                <DayTasks tasks={nutToday} />
+              </div>
             </div>
-            <div>
-              <p className="sk-cap">Nutrition today</p>
-              <DayTasks
-                tasks={tickTickToday(
-                  NUTRITION_RE,
-                  snapshots?.ticktick,
-                  ledger,
-                  day,
-                ).filter(notMarvel)}
-              />
-            </div>
-          </div>
+          )}
           <ListHead title="Nutrition focus" />
           <FocusList
             list={nut}

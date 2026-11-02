@@ -144,7 +144,7 @@ function Card({
               <ul>
                 {l.tasks
                   .filter((t) => !t.done)
-                  .slice(0, 2)
+                  .slice(0, 1)
                   .map((t) => (
                     <li key={t.id}>{t.text}</li>
                   ))}
@@ -509,33 +509,47 @@ function Detail({
 
 /** Short-term focus as cards: the square shows focus, scope, why and the lists; tap it for the full pop-out. */
 export function FocusCards({
-  list: [items, save],
+  list,
+  extra = [],
   events,
   label,
   empty,
 }: {
+  /** Where new entries go */
   list: CardList;
+  /** More lists shown in the same grid (their entries are edited in place) */
+  extra?: CardList[];
   events: LinkItem[];
   label: string;
   empty?: string;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
-  const update = (id: string, patch: Partial<Entry>) =>
-    save(items.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  const lists = [list, ...extra];
+  const all = lists.flatMap(([items], li) => items.map((item) => ({ item, li })));
+  const patchIn = (id: string, fn: (x: Entry) => Entry | null) => {
+    const hit = all.find((a) => a.item.id === id);
+    if (!hit) return;
+    const [items, save] = lists[hit.li];
+    save(
+      items
+        .map((x) => (x.id === id ? fn(x) : x))
+        .filter((x): x is Entry => x !== null),
+    );
+  };
   const add = (e: FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
     const id = `${Date.now()}`;
-    save([...items, { id, title: title.trim(), added: dayKey(new Date()) }]);
+    list[1]([...list[0], { id, title: title.trim(), added: dayKey(new Date()) }]);
     setTitle("");
     setOpenId(id);
   };
   const ordered = [
-    ...items.filter((i) => !i.done),
-    ...items.filter((i) => i.done),
-  ];
-  const openItem = items.find((i) => i.id === openId);
+    ...all.filter((a) => !a.item.done),
+    ...all.filter((a) => a.item.done),
+  ].map((a) => a.item);
+  const openItem = all.find((a) => a.item.id === openId)?.item;
   return (
     <>
       {ordered.length ? (
@@ -573,8 +587,8 @@ export function FocusCards({
         <Detail
           item={openItem}
           events={events}
-          update={(patch) => update(openItem.id, patch)}
-          remove={() => save(items.filter((x) => x.id !== openItem.id))}
+          update={(patch) => patchIn(openItem.id, (x) => ({ ...x, ...patch }))}
+          remove={() => patchIn(openItem.id, () => null)}
           close={() => setOpenId(null)}
         />
       ) : null}

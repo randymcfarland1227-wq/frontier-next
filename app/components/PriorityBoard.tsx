@@ -473,7 +473,7 @@ export function PriorityBoard({
           ) : null}
         </div>
 
-        <div className="sk-doing-cols">
+        <div className="sk-doing-cols sk-dense">
           <div
             className={`sk-col sk-plan${dragging && !plan.some((i) => i.key === dragging) ? " is-target" : ""}`}
             onDragOver={(e) => {

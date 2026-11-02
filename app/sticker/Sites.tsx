@@ -1056,6 +1056,7 @@ function AllTasks({
     <Group
       tone="open"
       icon="todo"
+      className="sk-dense"
       title="All tasks"
       meta={`${rows.length} open across ${plural(sites, "site")} · habits stay in TickTick`}
     >

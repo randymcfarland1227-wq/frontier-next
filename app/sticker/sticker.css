@@ -2268,3 +2268,8 @@
 .sk-app .sk-fd-finrow small { font: var(--sk-caption); color: var(--sk-ink-2); white-space: nowrap; }
 .sk-app .sk-fd-finrow.is-done .sk-fin-name { text-decoration: line-through; color: var(--sk-ink-2); }
 .sk-app .sk-fd-list .sk-fd-search input { width: 100%; min-width: 0; box-sizing: border-box; }
+
+@container today-pane (max-width: 760px) {
+  .sk-app .sk-splitcol .sched-grid { grid-template-columns: minmax(0, 1fr); }
+  .sk-app .sk-splitcol .sched-cal { min-width: 0; }
+}

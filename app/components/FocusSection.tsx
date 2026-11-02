@@ -454,7 +454,7 @@ type MarvelPicks = Record<string, { pick?: string; done?: boolean }>;
 
 /** Today's tasks and habits for an area (from TickTick), struck through once done. */
 function DayTasks({ tasks }: { tasks: { title: string; done: boolean }[] }) {
-  if (!tasks.length) return null;
+  if (!tasks.length) return <p className="sk-empty">Nothing today</p>;
   return (
     <ul className="sk-daytasks" aria-label="Today's tasks and habits">
       {tasks.map((t) => (
@@ -632,15 +632,30 @@ export function FocusSection({
           title="Nutrition & Fitness"
           meta={`${water} of ${BOTTLES} bottles`}
         >
-          <ListHead title="Nutrition" />
-          <DayTasks
-            tasks={tickTickToday(
-              NUTRITION_RE,
-              snapshots?.ticktick,
-              ledger,
-              day,
-            ).filter(notMarvel)}
-          />
+          <div className="sk-daysplit" aria-label="Today's tasks and habits">
+            <div>
+              <p className="sk-cap">Fitness today</p>
+              <DayTasks
+                tasks={tickTickToday(
+                  FITNESS_RE,
+                  snapshots?.ticktick,
+                  ledger,
+                  day,
+                ).filter(notMarvel)}
+              />
+            </div>
+            <div>
+              <p className="sk-cap">Nutrition today</p>
+              <DayTasks
+                tasks={tickTickToday(
+                  NUTRITION_RE,
+                  snapshots?.ticktick,
+                  ledger,
+                  day,
+                ).filter(notMarvel)}
+              />
+            </div>
+          </div>
           <ListHead title="Nutrition focus" />
           <FocusList
             list={nut}
@@ -657,15 +672,6 @@ export function FocusSection({
             Log in the tracker
             <Icon name="chevron" size={14} />
           </button>
-          <ListHead title="Fitness" />
-          <DayTasks
-            tasks={tickTickToday(
-              FITNESS_RE,
-              snapshots?.ticktick,
-              ledger,
-              day,
-            ).filter(notMarvel)}
-          />
           <ListHead title="Pushing on" />
           <FitnessFocus />
           <ListHead title="Drink tracker" />

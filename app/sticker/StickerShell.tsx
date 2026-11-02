@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import type { SourceId, SpaceId } from "../../lib/types";
+import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import { sourceById } from "../../lib/sources";
 import { ZoomControl } from "../components/ZoomControl";
 import { Icon, type IconName } from "./Icon";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { useSiteIcons } from "../../lib/siteIcons";
+import { shownMetric } from "../../lib/actionable";
+import { usePriorityPins } from "../../lib/priorityPins";
 
 /** Sites in the sidebar, in the same three groups as the Home site rows. */
 export const SITE_GROUPS: {
@@ -78,6 +80,7 @@ export function StickerShell({
   onRefresh,
   syncing,
   syncLabel,
+  snapshots,
   theme,
   onToggleTheme,
   children,
@@ -89,12 +92,17 @@ export function StickerShell({
   onRefresh?: () => void;
   syncing?: boolean;
   syncLabel: string;
+  /** For the per-site open-task numbers shown on the slim sidebar */
+  snapshots: Record<SourceId, SourceSnapshot>;
   theme: "light" | "dark";
   onToggleTheme: () => void;
   children: ReactNode;
 }) {
   const [more, setMore] = useState(false);
   const { iconFor } = useSiteIcons();
+  const { lanes } = usePriorityPins();
+  const openOf = (id: SourceId) =>
+    shownMetric(id, snapshots[id], lanes).value || 0;
   // Sidebar colour: brown to start, changeable at the bottom of the sidebar, remembered per device.
   const [tint, setTint] = useState<string>(() =>
     readSaved("sk-side-tint", "brown"),
@@ -189,6 +197,14 @@ export function StickerShell({
                   )}
                 </span>
                 <span className="sk-navl">{sourceById[id].name}</span>
+                {openOf(id) > 0 ? (
+                  <span
+                    className="sk-navbadge"
+                    title={`${openOf(id)} open on ${sourceById[id].name}`}
+                  >
+                    {openOf(id) > 99 ? "99+" : openOf(id)}
+                  </span>
+                ) : null}
               </button>
             ))}
       </div>

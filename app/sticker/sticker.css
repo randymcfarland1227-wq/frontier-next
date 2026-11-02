@@ -1684,3 +1684,16 @@
 .sk-app .skm-dash .skm-scores small { font-size: 10px; }
 .sk-app .skm-dash .skm-dim { font-size: 10.5px; }
 @media (max-width: 1100px) { .sk-app .skm-dash-cols { grid-template-columns: repeat(6, minmax(168px, 1fr)); } }
+
+/* Slim sidebar: open-task count in each site's top-right corner (hidden when the sidebar is open) */
+.sk-app .sk-navbadge { display: none; }
+.sk-app[data-side="slim"] .sk-navbadge { display: grid; place-items: center; position: absolute; top: -2px; right: -2px; z-index: 3; min-width: 16px; height: 16px; padding: 0 4px; border: 1.5px solid var(--sk-edge); border-radius: 99px; background: var(--sk-alert); color: #fff; font: 700 10px/1 "DM Sans", system-ui, sans-serif; }
+.sk-app[data-side="slim"] .sk-navi { overflow: visible; }
+
+/* Focus: today's nutrition (right) and fitness (left) tasks side by side */
+.sk-app .sk-daysplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sk-s3); margin-bottom: var(--sk-s2); }
+.sk-app .sk-daysplit > div { min-width: 0; padding: var(--sk-s2); border: 1.5px solid var(--sk-line); border-radius: 10px; }
+.sk-app .sk-daysplit .sk-cap { margin: 0 0 4px; }
+.sk-app .sk-daysplit .sk-daytasks { margin: 0; }
+.sk-app .sk-daysplit .sk-empty { margin: 0; font: var(--sk-secondary); color: var(--sk-ink-2); }
+@media (max-width: 560px) { .sk-app .sk-daysplit { grid-template-columns: 1fr; } }

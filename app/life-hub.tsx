@@ -1039,6 +1039,7 @@ goalsData ? (
         openFocus={() => setFocusOpen(true)}
         onRefresh={() => void refreshEverything()}
         syncing={connectorSyncing}
+        snapshots={visibleSnapshots}
         syncLabel={updatedLabel(
           Object.values(visibleSnapshots)
             .map(item => item.refreshedAt)

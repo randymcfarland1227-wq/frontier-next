@@ -25,7 +25,7 @@ import {
   type DebtMarks,
 } from "../../lib/debtFile";
 import { mdSources, oosSources } from "./OutstandingView";
-import type { Entry, SubList } from "./FocusSection";
+import type { Entry, SubList, SubTask } from "./FocusSection";
 
 /** Something on the calendar a focus can count down to: a Google event, a Life Hub plan, a bill, a task with a day. */
 export type LinkItem = {
@@ -189,11 +189,17 @@ function financeOptions(ctx: FinCtx): Opt[] {
   return out;
 }
 
+function taskDone(task: SubTask, ctx: FinCtx) {
+  if (!task.fin) return task.done;
+  const rows = finRows(task.fin, ctx);
+  return rows.length > 0 && rows.every((r) => r.settled && !r.unverified);
+}
+
 /** % done across the hand-made sub-tasks and every linked finance item. */
 function progressOf(i: Entry, ctx: FinCtx) {
   const all = (i.lists || []).flatMap((l) => l.tasks);
   let total = all.length;
-  let done = all.filter((t) => t.done).length;
+  let done = all.filter((t) => taskDone(t, ctx)).length;
   for (const l of i.fin || []) {
     const s = finStats(finRows(l, ctx));
     total += s.total;
@@ -408,12 +414,12 @@ function Card({
               <b>{l.name}</b>
               <ul>
                 {l.tasks
-                  .filter((t) => !t.done)
+                  .filter((t) => !taskDone(t, ctx))
                   .slice(0, 1)
                   .map((t) => (
                     <li key={t.id}>{t.text}</li>
                   ))}
-                {l.tasks.every((t) => t.done) && l.tasks.length ? (
+                {l.tasks.every((t) => taskDone(t, ctx)) && l.tasks.length ? (
                   <li className="is-all">All done</li>
                 ) : null}
               </ul>
@@ -462,6 +468,7 @@ function Detail({
   close: () => void;
 }) {
   const [listName, setListName] = useState("");
+  const [financeListId, setFinanceListId] = useState("");
   const [taskText, setTaskText] = useState<Record<string, string>>({});
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -492,6 +499,13 @@ function Detail({
     setTaskText({ ...taskText, [l.id]: "" });
   };
 
+  const addFinance = (list: SubList, link: { key: string; label: string }) => {
+    if (list.tasks.some((t) => t.fin?.key === link.key)) return;
+    patchList(list.id, {
+      tasks: [...list.tasks, { id: uid(), text: link.label, done: false, fin: link }],
+    });
+  };
+  const financeList = lists.find((l) => l.id === financeListId) || lists[0];
   const target = targetOf(item, events);
   const w = whenOf(item, events);
   const p = progressOf(item, ctx);
@@ -602,8 +616,10 @@ function Detail({
               </header>
               <ul>
                 {l.tasks.map((t) => (
-                  <li key={t.id} className={t.done ? "is-done" : ""}>
-                    <button
+                  <li key={t.id} className={`${taskDone(t, ctx) ? "is-done" : ""}${t.fin ? " sk-fd-finrow" : ""}`}>
+                    {t.fin ? (
+                      <span className={`sk-fin-dot${taskDone(t, ctx) ? " is-on" : ""}`} aria-label={taskDone(t, ctx) ? "Cleared in Finance" : "Linked to Finance"} />
+                    ) : <button
                       type="button"
                       className={`sk-circle${t.done ? " is-on" : ""}`}
                       aria-pressed={t.done}
@@ -617,8 +633,28 @@ function Detail({
                       }
                     >
                       <Icon name="check" size={12} />
-                    </button>
-                    <span>{t.text}</span>
+                    </button>}
+                    {t.fin ? (
+                      <button
+                        type="button"
+                        className="sk-fin-name"
+                        title={`${t.text} · Open in Finance`}
+                        onClick={() => openFinance?.(
+                          t.fin!.key.startsWith("item:") ? t.fin!.key.slice(5) : undefined,
+                          t.fin!.key.startsWith("bill:") ? "flow" : "owed",
+                        )}
+                      >
+                        {t.text}
+                      </button>
+                    ) : <span>{t.text}</span>}
+                    {t.fin ? <small>{(() => {
+                      const rows = finRows(t.fin, ctx);
+                      if (!rows.length) return "Not loaded";
+                      if (rows.some((r) => r.unverified)) return "Unverified";
+                      if (taskDone(t, ctx)) return "Cleared";
+                      if (rows.some((r) => !r.settled && r.amount == null)) return "Amount unknown";
+                      return usd(finStats(rows).owed);
+                    })()}</small> : null}
                     <button
                       type="button"
                       className="sk-btn is-small is-icon is-quiet"
@@ -652,6 +688,13 @@ function Detail({
                   <Icon name="plus" size={14} />
                 </button>
               </form>
+              <SearchPick
+                options={finOpts}
+                label={`Add Finance to ${l.name}`}
+                placeholder="+ Add Finance item to this list"
+                disabled={!finOpts.length}
+                onPick={(o) => addFinance(l, { key: o.key, label: o.label })}
+              />
             </section>
           ))}
 
@@ -758,15 +801,23 @@ function Detail({
             </select>
           </label>
           <div>
-            <span className="sk-cap">Link a payment or debt from Finance</span>
+            <span className="sk-cap">Link Finance to a list</span>
+            <select
+              aria-label="List for Finance item"
+              value={financeList?.id || ""}
+              onChange={(e) => setFinanceListId(e.target.value)}
+              disabled={!lists.length}
+            >
+              {!lists.length ? <option value="">Create a list first</option> : null}
+              {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
             <SearchPick
               options={finOpts}
               label="Search Finance"
               placeholder="Search every bill, ticket, card, loan…"
-              disabled={!finOpts.length}
+              disabled={!finOpts.length || !financeList}
               onPick={(o) => {
-                if ((item.fin || []).some((x) => x.key === o.key)) return;
-                update({ fin: [...(item.fin || []), { key: o.key, label: o.label }] });
+                if (financeList) addFinance(financeList, { key: o.key, label: o.label });
               }}
             />
           </div>

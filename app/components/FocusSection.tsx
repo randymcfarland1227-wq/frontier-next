@@ -46,7 +46,13 @@ function useDayState<T>(key: string, fallback: T) {
   return [value, set] as const;
 }
 
-export type SubTask = { id: string; text: string; done: boolean };
+export type SubTask = {
+  id: string;
+  text: string;
+  done: boolean;
+  /** A read-only Finance reference, rendered as one row in this list. */
+  fin?: { key: string; label: string };
+};
 export type SubList = { id: string; name: string; tasks: SubTask[] };
 
 export type Entry = {

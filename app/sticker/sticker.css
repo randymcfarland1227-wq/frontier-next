@@ -2262,3 +2262,9 @@
   .sk-app .sk-splitcol :is(.sk-aff, .skm-dash-cols) { grid-template-columns: minmax(0, 1fr) !important; }
   .sk-app .sk-splitcol :is(.sk-ghead, .sk-goal-head) { flex-wrap: wrap; }
 }
+
+/* A Finance reference occupies one ordinary list row, never an expanded ledger. */
+.sk-app .sk-fd-list > ul > .sk-fd-finrow { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.sk-app .sk-fd-finrow small { font: var(--sk-caption); color: var(--sk-ink-2); white-space: nowrap; }
+.sk-app .sk-fd-finrow.is-done .sk-fin-name { text-decoration: line-through; color: var(--sk-ink-2); }
+.sk-app .sk-fd-list .sk-fd-search input { width: 100%; min-width: 0; box-sizing: border-box; }

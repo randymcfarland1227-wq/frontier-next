@@ -9,13 +9,11 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../sticker/Icon";
-import {
-  dayKey,
-  eventStart,
-  fromDayKey,
-  type CalEvent,
-} from "../../lib/schedule";
+import { dayKey, eventStart, fromDayKey } from "../../lib/schedule";
 import type { Entry, SubList } from "./FocusSection";
+
+/** Something on the calendar a focus can count down to: a Google event or a plan/event added on Life Hub. */
+export type LinkItem = { id: string; title: string; start: string; allDay?: boolean };
 
 type CardList = readonly [Entry[], (next: Entry[]) => void];
 
@@ -37,7 +35,7 @@ function addedOf(i: Entry): Date | null {
 }
 
 /** The date it's counting to: the linked calendar item (live, so it follows if the event moves), else a typed date. */
-function targetOf(i: Entry, events: CalEvent[]) {
+function targetOf(i: Entry, events: LinkItem[]) {
   const ev = i.eventId ? events.find((e) => e.id === i.eventId) : undefined;
   if (ev) return { date: eventStart(ev), title: ev.title };
   if (i.date) return { date: fromDayKey(i.date), title: i.eventTitle };
@@ -53,7 +51,7 @@ function progressOf(i: Entry) {
 }
 
 /** The middle of the footer: days until the linked date, or days since it was added. */
-function whenOf(i: Entry, events: CalEvent[]) {
+function whenOf(i: Entry, events: LinkItem[]) {
   const target = targetOf(i, events);
   if (target) {
     const n = daysBetween(new Date(), target.date);
@@ -96,7 +94,7 @@ function Card({
   open,
 }: {
   item: Entry;
-  events: CalEvent[];
+  events: LinkItem[];
   open: () => void;
 }) {
   const p = progressOf(item);
@@ -174,7 +172,7 @@ function Detail({
   close,
 }: {
   item: Entry;
-  events: CalEvent[];
+  events: LinkItem[];
   update: (patch: Partial<Entry>) => void;
   remove: () => void;
   close: () => void;
@@ -487,7 +485,7 @@ export function FocusCards({
   empty,
 }: {
   list: CardList;
-  events: CalEvent[];
+  events: LinkItem[];
   label: string;
   empty?: string;
 }) {

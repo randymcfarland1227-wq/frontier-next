@@ -217,6 +217,19 @@ export function HomeView({
     writeSaved("sk-today-tab", t);
   };
   const shortTerm = useShortTermFocus();
+  // Everything on the calendar a short-term focus can count down to.
+  const { plans: hubPlans } = usePlans();
+  const linkItems = [
+    ...(schedule?.events || []).map((e) => ({
+      id: e.id,
+      title: e.title,
+      start: e.start,
+      allDay: e.allDay,
+    })),
+    ...hubPlans
+      .filter((p) => p.status === "open" || p.status === "yes")
+      .map((p) => ({ id: p.id, title: p.title, start: p.date, allDay: true })),
+  ];
   const todaySummary =
     tab === "grounding" ? (
       <GroundingSummary />
@@ -348,7 +361,7 @@ export function HomeView({
             onAddPrep={onAddPrep}
           />
         ) : tab === "focus" ? (
-          <ShortTermFocus focus={shortTerm} events={schedule?.events || []} />
+          <ShortTermFocus focus={shortTerm} events={linkItems} />
         ) : (
           <DailyBrief
             snapshots={snapshots}

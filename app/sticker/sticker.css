@@ -2052,3 +2052,5 @@
 .sk-app .sk-fd-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--sk-s2); padding-top: var(--sk-s2); border-top: 1.5px dashed #16141f2e; }
 @media (prefers-reduced-motion: reduce) { .sk-app :is(.sk-fdetail, .sk-fdetail-back, .sk-fcard) { animation: none; transition: none; } }
 @media (max-width: 640px) { .sk-app .sk-fcards { grid-template-columns: 1fr; } .sk-app .sk-fcard-foot, .sk-app .sk-fd-stats { gap: var(--sk-s2); } }
+.sk-app .sk-fd-list .sk-fc-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sk-s2); align-items: center; }
+.sk-app .sk-fd-list .sk-fc-add input { width: 100%; min-width: 0; }

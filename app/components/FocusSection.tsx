@@ -2,8 +2,7 @@
 
 import { useCallback, useState, type FormEvent } from "react";
 import { Group, ListHead, Section } from "../sticker/kit";
-import { FocusCards } from "./FocusCards";
-import type { CalEvent } from "../../lib/schedule";
+import { FocusCards, type LinkItem } from "./FocusCards";
 import { Icon } from "../sticker/Icon";
 import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import { readSaved, writeSaved } from "../../lib/storage";
@@ -596,7 +595,7 @@ export function ShortTermFocus({
   events = [],
 }: {
   focus: ReturnType<typeof useShortTermFocus>;
-  events?: CalEvent[];
+  events?: LinkItem[];
 }) {
   return (
     <Group

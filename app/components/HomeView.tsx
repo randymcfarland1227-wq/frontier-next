@@ -51,12 +51,13 @@ import { TickTickRings } from "./TickTickRings";
 import { Icon } from "../sticker/Icon";
 import { SITE_ROWS, SitesSection } from "../sticker/Sites";
 
-type TodayTab = "brief" | "grounding" | "calendar" | "focus";
+type TodayTab = "brief" | "grounding" | "calendar" | "focus" | "money";
 const TODAY_TABS: [TodayTab, string][] = [
   ["brief", "Daily Brief"],
   ["focus", "Short-term focus"],
   ["calendar", "Calendar"],
   ["grounding", "Grounding"],
+  ["money", "Money"],
 ];
 
 /** "3 on your list · 13 on deck · 1 critical" for the Doing Now head. */
@@ -135,6 +136,7 @@ export function HomeView({
   onTaskDone,
   onAddPrep,
   grounding,
+  money,
   unfinished,
   openFocus,
 }: {
@@ -163,6 +165,8 @@ export function HomeView({
   ) => void;
   /** Daily grounding: reminder guides + directions (rendered by the page) */
   grounding?: ReactNode;
+  /** The Money page, shown unchanged as the last Today tab */
+  money?: ReactNode;
   /** Today drawer: items not done yet, and how to open it (the one prominent button) */
   unfinished: number;
   openFocus: () => void;
@@ -205,7 +209,9 @@ export function HomeView({
       : "brief";
   });
   const tab: TodayTab =
-    todayTab === "grounding" && !grounding ? "brief" : todayTab;
+    (todayTab === "grounding" && !grounding) || (todayTab === "money" && !money)
+      ? "brief"
+      : todayTab;
   const pickTodayTab = (t: TodayTab) => {
     setTodayTab(t);
     writeSaved("sk-today-tab", t);
@@ -292,7 +298,10 @@ export function HomeView({
 
       <Section id="brief" title="Today" summary={todaySummary}>
         <div className="sk-seg sk-today-tabs" role="group" aria-label="Today">
-          {TODAY_TABS.filter(([id]) => id !== "grounding" || grounding).map(
+          {TODAY_TABS.filter(
+            ([id]) =>
+              (id !== "grounding" || grounding) && (id !== "money" || money),
+          ).map(
             ([id, label]) => (
               <button
                 key={id}
@@ -305,7 +314,9 @@ export function HomeView({
             ),
           )}
         </div>
-        {tab === "grounding" ? (
+        {tab === "money" ? (
+          <div className="sk-money-tab">{money}</div>
+        ) : tab === "grounding" ? (
           <div className="sk-mountain">
             <svg
               className="sk-mtn-art"

@@ -90,6 +90,15 @@ export function BriefSummary({ snapshots, bills }: { snapshots: Record<SourceId,
 export function DailyBrief({ snapshots, bills, enter }: { snapshots: Record<SourceId, SourceSnapshot>; bills: BillDue[]; enter: (id: SpaceId) => void }) {
   const sections = useBrief(snapshots, bills);
   const hidden = Object.keys(useDismissed()).length;
+  const stamp = Math.max(
+    0,
+    ...(['gmail', 'outlook', 'role', 'radall', 'resale', 'ticktick'] as SourceId[]).map(id => Date.parse(snapshots[id]?.refreshedAt || '') || 0),
+  );
+  const updated = stamp
+    ? `${new Date(stamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${
+        new Date(stamp).toDateString() === new Date().toDateString() ? '' : ` · ${new Date(stamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}`
+      }`
+    : null;
   const [seen, setSeen] = useState<string[]>(() => readSaved<string[]>(SEEN_KEY, []));
   const [more, setMore] = useState<string | null>(null);
   const all = sections.flatMap(s => s.rows.map(r => r.id));
@@ -108,6 +117,10 @@ export function DailyBrief({ snapshots, bills, enter }: { snapshots: Record<Sour
       meta={fresh ? `${fresh} new since you last looked` : 'Mail, roles, sales and money that need a reply or a step'}
       actions={
         <>
+          <span className="sk-updated" title="Newest pull across mail, roles, sales, money and TickTick">
+            <Icon name="refresh" size={12} />
+            {updated ? `Updated ${updated}` : 'Not updated yet'}
+          </span>
           {hidden ? (
             <button type="button" className="sk-link" onClick={restoreAll} title="Bring back what you cleared today">
               <Icon name="eye" size={14} />

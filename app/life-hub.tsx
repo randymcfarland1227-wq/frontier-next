@@ -1001,6 +1001,35 @@ goalsData ? (
             ) : null
   );
 
+  const moneyPage = (
+        <MoneyPage
+          model={moneyModel}
+          dues={moneyDues}
+          monthDues={monthDues}
+          paidAt={paidAt}
+          lifeSubs={lifeSubs}
+          onPaid={(due: BillDue) => setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }))}
+          onSave={async (edits: CellEdit[]) => {
+            const res = await saveMoneyEdits(edits);
+            if (res.snapshot) setMoneySnap(res.snapshot);
+            return res;
+          }}
+          onRefresh={() => void refreshEverything()}
+          syncing={connectorSyncing}
+          financeTasks={
+            <SourceCard
+              source={sourceById.radall}
+              snapshot={visibleSnapshots.radall}
+              onEnter={() => enter('radall')}
+              onOpen={() => openSource('radall')}
+              onCompleteFeatured={item => completeOnHub('radall', item.id)}
+              onCompleteTask={task => completeOnHub('radall', task.id)}
+              onStarTask={task => starOnHub('radall', task)}
+            />
+          }
+        />
+  );
+
   return (
     <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' ? 'home' : active}`} data-color-mode={theme}>
       <StickerShell
@@ -1042,6 +1071,7 @@ goalsData ? (
           onAddPrep={(target, title, due) => syncSelf(addSelfItem(title, '', { due, forEvent: target }))}
           unfinished={unfinished}
           openFocus={() => setFocusOpen(true)}
+          money={moneyPage}
           grounding={<DailyGrounding move={visibleSnapshots.move} goals={goalsData} enter={enter} ticktick={visibleSnapshots.ticktick} ledger={visibleLedger} />}
           onBillPaid={(due: BillDue) =>
             setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }))
@@ -1100,32 +1130,7 @@ goalsData ? (
           }
         />
       ) : active === 'money' ? (
-        <MoneyPage
-          model={moneyModel}
-          dues={moneyDues}
-          monthDues={monthDues}
-          paidAt={paidAt}
-          lifeSubs={lifeSubs}
-          onPaid={(due: BillDue) => setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }))}
-          onSave={async (edits: CellEdit[]) => {
-            const res = await saveMoneyEdits(edits);
-            if (res.snapshot) setMoneySnap(res.snapshot);
-            return res;
-          }}
-          onRefresh={() => void refreshEverything()}
-          syncing={connectorSyncing}
-          financeTasks={
-            <SourceCard
-              source={sourceById.radall}
-              snapshot={visibleSnapshots.radall}
-              onEnter={() => enter('radall')}
-              onOpen={() => openSource('radall')}
-              onCompleteFeatured={item => completeOnHub('radall', item.id)}
-              onCompleteTask={task => completeOnHub('radall', task.id)}
-              onStarTask={task => starOnHub('radall', task)}
-            />
-          }
-        />
+        moneyPage
       ) : active === 'logs' ? (
         <LogsView />
       ) : active === 'why' ? (

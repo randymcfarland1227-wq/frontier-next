@@ -794,7 +794,7 @@
   background-image: linear-gradient(var(--sk-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sk-grid) 1px, transparent 1px);
   background-size: 24px 24px;
 }
-.sk-app[data-page="money"] :is(.skm, .skm .sk-group > *) {
+.sk-app[data-page="money"] :is(.skm, .skm .sk-group > *), .sk-app .sk-money-tab :is(.skm, .skm .sk-group > *) {
   --bg: var(--sk-page); --surface: var(--sk-paper); --surface-2: color-mix(in srgb, var(--sk-ink) 5%, var(--sk-paper));
   --ink: var(--sk-ink); --text: var(--sk-ink); --muted: var(--sk-ink-2); --page-muted: var(--sk-ink-2);
   --line: var(--sk-line); --row-line: var(--sk-line); --accent: var(--sk-tint); --accent-ink: var(--sk-ink);
@@ -1617,3 +1617,17 @@
   .sk-app .sk-sched-grid > .sk-month, .sk-app .sk-sched-grid > .sk-col:nth-child(n) { grid-column: 1; grid-row: auto; }
 }
 @media (max-width: 640px) { .sk-app .sk-day { min-height: 56px; padding: 3px 4px; } .sk-app .sk-mtitle { font-size: 22px; } .sk-app .sk-dnum { font-size: 12px; } .sk-app .sk-ditem { font-size: 11px; } }
+
+/* Night: section headings are yellow */
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-section > .sk-shead .sk-title { color: #ffd84a; }
+
+/* Daily Brief: when it was last pulled */
+.sk-app .sk-updated { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 1.5px dashed var(--sk-edge); border-radius: 99px; font: var(--sk-caption); color: var(--sk-ink-2); white-space: nowrap; }
+
+/* Money, shown as the last Today tab: same design as the Money page (own type sizes, not Today's smaller ones) */
+.sk-app .sk-money-tab {
+  --sk-title: 600 22px/1.25 "Unbounded", system-ui, sans-serif; --sk-headline: 600 17px/1.3 "DM Sans", system-ui, sans-serif;
+  --sk-body: 400 16px/1.45 "DM Sans", system-ui, sans-serif; --sk-label: 600 15px/1.3 "DM Sans", system-ui, sans-serif;
+  --sk-secondary: 400 14px/1.45 "DM Sans", system-ui, sans-serif; --sk-caption: 600 12px/1.3 "DM Sans", system-ui, sans-serif;
+  margin-inline: calc(var(--sk-s3) * -1);
+}

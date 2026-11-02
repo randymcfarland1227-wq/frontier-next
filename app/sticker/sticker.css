@@ -2244,3 +2244,21 @@
 /* The Google / Money / Tasks switch sits outside the month's scene (week view): ordinary segmented colours */
 .sk-app .sk-layers button { background: #ffffff26; color: var(--sk-ink); }
 .sk-app .sk-layers button[aria-pressed="true"] { background: var(--sk-ink); color: var(--sk-page); }
+
+/* Split panes reflow at their own width; keep the existing compact type scale. */
+.sk-app .sk-splitcol { container-name: today-pane; }
+@container today-pane (max-width: 760px) {
+  .sk-app .sk-splitcol :is(.sk-aff, .skm-dash-cols) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sk-app .sk-splitcol .skm-acct-row.is-two { grid-template-columns: minmax(0, 1fr); }
+  .sk-app .sk-splitcol .sk-fcards { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
+  .sk-app .sk-splitcol .sk-wgrid { grid-template-columns: minmax(0, 1fr); }
+  .sk-app .sk-splitcol .sk-wday { min-height: 0 !important; flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+  .sk-app .sk-splitcol .sk-wday > header { border-bottom: 0; min-width: 64px; flex-direction: column; gap: 2px; }
+  .sk-app .sk-splitcol .sk-wday ul { flex: 1 1 200px; }
+  .sk-app .sk-splitcol .sk-wit { font-size: 11.5px !important; }
+}
+@container today-pane (max-width: 600px) {
+  .sk-app .sk-splitcol .sk-brief .sk-cols,
+  .sk-app .sk-splitcol :is(.sk-aff, .skm-dash-cols) { grid-template-columns: minmax(0, 1fr) !important; }
+  .sk-app .sk-splitcol :is(.sk-ghead, .sk-goal-head) { flex-wrap: wrap; }
+}

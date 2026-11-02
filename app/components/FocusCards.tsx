@@ -11,7 +11,12 @@ import { createPortal } from "react-dom";
 import { Icon } from "../sticker/Icon";
 import { sourceById } from "../../lib/sources";
 import type { SourceId } from "../../lib/types";
-import { dayKey, eventStart, fromDayKey } from "../../lib/schedule";
+import {
+  dayKey,
+  eventStart,
+  fromDayKey,
+  type BillDue,
+} from "../../lib/schedule";
 import {
   isSettled,
   useDebtFile,
@@ -22,10 +27,20 @@ import {
 import { mdSources, oosSources } from "./OutstandingView";
 import type { Entry, SubList } from "./FocusSection";
 
-/** Something on the calendar a focus can count down to: a Google event or a plan/event added on Life Hub. */
-export type LinkItem = { id: string; title: string; start: string; allDay?: boolean };
+/** Something on the calendar a focus can count down to: a Google event, a Life Hub plan, a bill, a task with a day. */
+export type LinkItem = {
+  id: string;
+  title: string;
+  start: string;
+  allDay?: boolean;
+  /** "Calendar", "Plan", "Bill"… shown next to its date in the search */
+  kind?: string;
+};
 
 type CardList = readonly [Entry[], (next: Entry[]) => void];
+/** What a finance link needs to be read live. */
+type FinCtx = { file: DebtFile | null; marks: DebtMarks; bills: BillDue[] };
+export type OpenFinance = (itemId?: string, tab?: "owed" | "flow") => void;
 
 const DAY = 86400000;
 const midnight = (d: Date) =>
@@ -34,6 +49,8 @@ const daysBetween = (a: Date, b: Date) =>
   Math.round((midnight(b) - midnight(a)) / DAY);
 const shortDate = (d: Date) =>
   d.toLocaleDateString([], { month: "short", day: "numeric" });
+const numDate = (d: Date) =>
+  `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
 const usd = (n: number | null | undefined) =>
   n === null || n === undefined
     ? "?"
@@ -42,9 +59,21 @@ const usd = (n: number | null | undefined) =>
         currency: "USD",
         minimumFractionDigits: n % 1 ? 2 : 0,
       });
+const uid = () => `${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
 
-/** Which debt-file items a finance link means (live, so Finance stays the one source of truth). */
-function finItems(file: DebtFile | null, key: string): DebtItem[] {
+/* ── Finance links: each resolves to rows, read live from Finance (never copied) ── */
+
+type FinRow = {
+  id: string;
+  name: string;
+  amount: number | null;
+  status: string;
+  settled: boolean;
+  unverified?: boolean;
+  kind: "debt" | "bill";
+};
+
+function debtItems(file: DebtFile | null, key: string): DebtItem[] {
   if (!file) return [];
   if (key === "tix:md") return mdSources(file).flatMap((s) => s.items);
   if (key === "tix:oos") return oosSources(file).flatMap((s) => s.items);
@@ -60,16 +89,121 @@ function finItems(file: DebtFile | null, key: string): DebtItem[] {
   }
   return [];
 }
-/** Open / cleared counts and what's still owed for one link (unverified items stay out, like Finance's own totals). */
-function finStats(items: DebtItem[], marks: DebtMarks) {
-  const live = items.filter((i) => !i.unverified);
-  const done = live.filter((i) => isSettled(marks[i.id])).length;
+
+function finRows(
+  link: { key: string; label: string },
+  ctx: FinCtx,
+): FinRow[] {
+  if (link.key.startsWith("bill:")) {
+    const b = ctx.bills.find((x) => x.key === link.key.slice(5));
+    if (b)
+      return [
+        {
+          id: link.key,
+          kind: "bill",
+          name: b.bill.name,
+          amount: b.bill.amount ?? null,
+          status:
+            b.days < 0
+              ? `${-b.days}d overdue`
+              : `due ${shortDate(fromDayKey(b.due))}`,
+          settled: false,
+        },
+      ];
+    // No longer owed: it was paid (or skipped) on Life Hub.
+    return [
+      {
+        id: link.key,
+        kind: "bill",
+        name: link.label,
+        amount: null,
+        status: "paid",
+        settled: true,
+      },
+    ];
+  }
+  return debtItems(ctx.file, link.key).map((i) => ({
+    id: i.id,
+    kind: "debt" as const,
+    name: i.name,
+    amount: i.amount,
+    status: i.unverified ? "unverified" : ctx.marks[i.id]?.status || "open",
+    settled: isSettled(ctx.marks[i.id]),
+    unverified: i.unverified,
+  }));
+}
+
+/** Open / cleared counts and what's still owed (unverified items stay out, like Finance's own totals). */
+function finStats(rows: FinRow[]) {
+  const live = rows.filter((r) => !r.unverified);
+  const done = live.filter((r) => r.settled).length;
   const owed = live
-    .filter((i) => !isSettled(marks[i.id]))
-    .reduce((s, i) => s + (i.amount || 0), 0);
+    .filter((r) => !r.settled)
+    .reduce((s, r) => s + (r.amount || 0), 0);
   return { total: live.length, done, open: live.length - done, owed };
 }
-const uid = () => `${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+
+type Opt = { key: string; label: string; sub?: string; group?: string };
+
+/** Everything in Finance a focus can be linked to, across tabs: ticket lists, bills due, every logged debt/account. */
+function financeOptions(ctx: FinCtx): Opt[] {
+  const out: Opt[] = [];
+  const { file } = ctx;
+  if (file) {
+    out.push({ key: "tix:md", label: "MD tickets", sub: "whole list", group: "Lists" });
+    for (const s of mdSources(file))
+      out.push({
+        key: `src:${s.id}`,
+        label: `MD tickets · ${s.label}`,
+        sub: "list",
+        group: "Lists",
+      });
+    out.push({
+      key: "tix:oos",
+      label: "Out-of-state tickets",
+      sub: "whole list",
+      group: "Lists",
+    });
+    for (const s of oosSources(file))
+      out.push({
+        key: `src:${s.id}`,
+        label: `Out-of-state · ${s.label}`,
+        sub: "list",
+        group: "Lists",
+      });
+  }
+  for (const b of ctx.bills.filter((x) => !x.skipped))
+    out.push({
+      key: `bill:${b.key}`,
+      label: b.bill.name,
+      sub: `${usd(b.bill.amount)} · due ${shortDate(fromDayKey(b.due))}`,
+      group: "Bills & payments due",
+    });
+  for (const i of file?.items || [])
+    out.push({
+      key: `item:${i.id}`,
+      label: i.name,
+      sub: `${i.group} · ${usd(i.amount)}`,
+      group: "Debts, tickets & accounts",
+    });
+  return out;
+}
+
+/** % done across the hand-made sub-tasks and every linked finance item. */
+function progressOf(i: Entry, ctx: FinCtx) {
+  const all = (i.lists || []).flatMap((l) => l.tasks);
+  let total = all.length;
+  let done = all.filter((t) => t.done).length;
+  for (const l of i.fin || []) {
+    const s = finStats(finRows(l, ctx));
+    total += s.total;
+    done += s.done;
+  }
+  if (!total) return { pct: i.done ? 100 : null, done: 0, total: 0 } as const;
+  return { pct: Math.round((done / total) * 100), done, total };
+}
+
+/* ── Dates ── */
 
 /** When it was added: the saved day, else the timestamp every id starts with. */
 function addedOf(i: Entry): Date | null {
@@ -79,7 +213,7 @@ function addedOf(i: Entry): Date | null {
   return i.since ? fromDayKey(i.since) : null;
 }
 
-/** The date it's counting to: the linked calendar item (live, so it follows if the event moves), else a typed date. */
+/** The date it's counting to: the linked calendar item (live, so it follows if it moves), else a typed date. */
 function targetOf(i: Entry, events: LinkItem[]) {
   const ev = i.eventId ? events.find((e) => e.id === i.eventId) : undefined;
   if (ev) return { date: eventStart(ev), title: ev.title };
@@ -87,25 +221,7 @@ function targetOf(i: Entry, events: LinkItem[]) {
   return null;
 }
 
-/** % done across the hand-made sub-tasks and every linked finance item. */
-function progressOf(
-  i: Entry,
-  file: DebtFile | null = null,
-  marks: DebtMarks = {},
-) {
-  const all = (i.lists || []).flatMap((l) => l.tasks);
-  let total = all.length;
-  let done = all.filter((t) => t.done).length;
-  for (const l of i.fin || []) {
-    const s = finStats(finItems(file, l.key), marks);
-    total += s.total;
-    done += s.done;
-  }
-  if (!total) return { pct: i.done ? 100 : null, done: 0, total: 0 } as const;
-  return { pct: Math.round((done / total) * 100), done, total };
-}
-
-/** The middle of the footer: days until the linked date, or days since it was added. */
+/** The count and the date chip: days until the linked date, or days since it was added. */
 function whenOf(i: Entry, events: LinkItem[]) {
   const target = targetOf(i, events);
   if (target) {
@@ -114,6 +230,7 @@ function whenOf(i: Entry, events: LinkItem[]) {
       big: n === 0 ? "Today" : n === 1 ? "Tomorrow" : String(Math.abs(n)),
       cap: n > 1 ? "days till" : n < 0 ? (n === -1 ? "day ago" : "days ago") : "",
       date: shortDate(target.date),
+      num: numDate(target.date),
       linked: true,
     };
   }
@@ -124,10 +241,11 @@ function whenOf(i: Entry, events: LinkItem[]) {
       big: n === 0 ? "Today" : String(n),
       cap: n === 0 ? "added" : n === 1 ? "day in focus" : "days in focus",
       date: `Added ${shortDate(added)}`,
+      num: `Added ${numDate(added)}`,
       linked: false,
     };
   }
-  return { big: "—", cap: "", date: "", linked: false };
+  return { big: "—", cap: "", date: "", num: "", linked: false };
 }
 
 function Ring({ pct }: { pct: number | null }) {
@@ -143,25 +261,96 @@ function Ring({ pct }: { pct: number | null }) {
   );
 }
 
+/** A search box with a pop-up of matches: type to filter, pick one. */
+function SearchPick({
+  options,
+  onPick,
+  placeholder,
+  label,
+  disabled,
+}: {
+  options: Opt[];
+  onPick: (o: Opt) => void;
+  placeholder: string;
+  label: string;
+  disabled?: boolean;
+}) {
+  const [q, setQ] = useState("");
+  const [focus, setFocus] = useState(false);
+  const needle = q.trim().toLowerCase();
+  const matches = options
+    .filter(
+      (o) =>
+        !needle || `${o.label} ${o.sub || ""} ${o.group || ""}`.toLowerCase().includes(needle),
+    )
+    .slice(0, 40);
+  const groups = [...new Set(matches.map((m) => m.group || ""))];
+  return (
+    <div className="sk-fd-search">
+      <input
+        type="search"
+        value={q}
+        disabled={disabled}
+        onChange={(e) => setQ(e.target.value)}
+        onFocus={() => setFocus(true)}
+        onBlur={() => window.setTimeout(() => setFocus(false), 150)}
+        onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setFocus(false))}
+        placeholder={placeholder}
+        aria-label={label}
+      />
+      {focus && !disabled ? (
+        <div className="sk-fd-pop" role="listbox">
+          {matches.length ? (
+            groups.map((g) => (
+              <div key={g}>
+                {g ? <p className="sk-cap">{g}</p> : null}
+                {matches
+                  .filter((m) => (m.group || "") === g)
+                  .map((m) => (
+                    <button
+                      key={m.key}
+                      type="button"
+                      role="option"
+                      aria-selected={false}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        onPick(m);
+                        setQ("");
+                        setFocus(false);
+                      }}
+                    >
+                      <span>{m.label}</span>
+                      {m.sub ? <small>{m.sub}</small> : null}
+                    </button>
+                  ))}
+              </div>
+            ))
+          ) : (
+            <p className="sk-empty">Nothing matches “{q.trim()}”.</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Card({
   item,
   events,
-  file,
-  marks,
+  ctx,
   open,
 }: {
   item: Entry;
   events: LinkItem[];
-  file: DebtFile | null;
-  marks: DebtMarks;
+  ctx: FinCtx;
   open: () => void;
 }) {
-  const p = progressOf(item, file, marks);
+  const p = progressOf(item, ctx);
   const w = whenOf(item, events);
   const lists = (item.lists || []).slice(0, 3);
   const fins = (item.fin || []).map((l) => ({
     ...l,
-    ...finStats(finItems(file, l.key), marks),
+    ...finStats(finRows(l, ctx)),
   }));
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -201,7 +390,7 @@ function Card({
             { "--cols": Math.min(3, lists.length + fins.length) } as React.CSSProperties
           }
         >
-          {fins.slice(0, Math.max(0, 3 - lists.length)).map((f) => (
+          {fins.slice(0, 3).map((f) => (
             <div key={f.key} className="is-fin">
               <b>
                 <Icon name="wallet" size={9} />
@@ -251,12 +440,14 @@ function Card({
   );
 }
 
-/** The pop-out: the whole item, with room to layer sub-task lists under it. */
+/**
+ * The pop-out, laid out like the sketch: percent complete · title · days till + date across the top,
+ * Scope and Why side by side, then the lists (hand-made or linked from Finance) in a row of boxes.
+ */
 function Detail({
   item,
   events,
-  file,
-  marks,
+  ctx,
   openFinance,
   update,
   remove,
@@ -264,9 +455,8 @@ function Detail({
 }: {
   item: Entry;
   events: LinkItem[];
-  file: DebtFile | null;
-  marks: DebtMarks;
-  openFinance?: (itemId?: string) => void;
+  ctx: FinCtx;
+  openFinance?: OpenFinance;
   update: (patch: Partial<Entry>) => void;
   remove: () => void;
   close: () => void;
@@ -302,40 +492,20 @@ function Detail({
     setTaskText({ ...taskText, [l.id]: "" });
   };
 
-  const upcoming = events
-    .filter((e) => {
-      const n = daysBetween(new Date(), eventStart(e));
-      return (n >= -1 && n <= 180) || e.id === item.eventId;
-    })
-    .sort((a, b) => eventStart(a).getTime() - eventStart(b).getTime());
   const target = targetOf(item, events);
   const w = whenOf(item, events);
-  // Everything in Finance a focus can be linked to: whole ticket lists, one source, or one item.
-  const finOptions: Array<{ key: string; label: string; group: "Lists" | "Single items" }> = file
-    ? [
-        { key: "tix:md", label: "MD tickets", group: "Lists" },
-        ...mdSources(file).map((s) => ({
-          key: `src:${s.id}`,
-          label: `MD tickets · ${s.label}`,
-          group: "Lists" as const,
-        })),
-        { key: "tix:oos", label: "Out-of-state tickets", group: "Lists" },
-        ...oosSources(file).map((s) => ({
-          key: `src:${s.id}`,
-          label: `Out-of-state · ${s.label}`,
-          group: "Lists" as const,
-        })),
-        ...file.items
-          .filter((i) => i.group === "md" || i.group === "oos" || i.group === "wv")
-          .map((i) => ({
-            key: `item:${i.id}`,
-            label: i.name,
-            group: "Single items" as const,
-          })),
-      ]
-    : [];
-  const p = progressOf(item, file, marks);
+  const p = progressOf(item, ctx);
   const added = addedOf(item);
+  const finOpts = financeOptions(ctx);
+  const dateOpts: Opt[] = events
+    .filter((e) => daysBetween(new Date(), eventStart(e)) >= -30)
+    .sort((a, b) => eventStart(a).getTime() - eventStart(b).getTime())
+    .map((e) => ({
+      key: e.id,
+      label: e.title,
+      sub: `${e.kind || "Calendar"} · ${shortDate(eventStart(e))}`,
+      group: e.kind || "Calendar",
+    }));
 
   const host =
     document.querySelector(".sk-app") ||
@@ -355,7 +525,11 @@ function Detail({
         aria-label={item.title}
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="sk-dialog-head">
+        <header className="sk-fd-top">
+          <div className="sk-fd-pct">
+            <b>{p.pct === null ? "–" : `${p.pct}%`}</b>
+            <small>completed</small>
+          </div>
           <input
             className="sk-fd-title"
             value={item.title}
@@ -363,6 +537,16 @@ function Detail({
             maxLength={120}
             aria-label="Focus"
           />
+          <div className="sk-fd-when">
+            <div>
+              <b>{w.big}</b>
+              {w.cap ? <small>{w.cap}</small> : null}
+            </div>
+            <span className="sk-fcard-date">
+              {w.linked ? <Icon name="calendar" size={12} /> : null}
+              {w.num}
+            </span>
+          </div>
           <button
             ref={closeRef}
             type="button"
@@ -375,156 +559,30 @@ function Detail({
           </button>
         </header>
 
-        <div className="sk-fd-stats">
-          <span className="sk-fcard-pct">
-            <Ring pct={p.pct} />
-            <small>{p.total ? `${p.done} of ${p.total} sub-tasks` : "no sub-tasks yet"}</small>
-          </span>
-          <span className="sk-fcard-when">
-            <b>{w.big}</b>
-            {w.cap ? <small>{w.cap}</small> : null}
-          </span>
-          <span className="sk-fcard-date">
-            {w.linked ? <Icon name="calendar" size={12} /> : null}
-            {w.date}
-          </span>
-        </div>
-
-        <label className="sk-fd-field">
-          <span className="sk-cap">Scope — what it is</span>
-          <textarea
-            value={item.note || ""}
-            onChange={(e) => update({ note: e.target.value || undefined })}
-            rows={2}
-            placeholder="e.g. People at our home for Savannah’s baby shower"
-            maxLength={400}
-          />
-        </label>
-        <label className="sk-fd-field">
-          <span className="sk-cap">Why</span>
-          <textarea
-            value={item.why || ""}
-            onChange={(e) => update({ why: e.target.value || undefined })}
-            rows={2}
-            placeholder="e.g. So we can do his dog DNA test"
-            maxLength={400}
-          />
-        </label>
-
-        <label className="sk-fd-field">
-          <span className="sk-cap">Site — colours the card</span>
-          <select
-            value={item.site || ""}
-            aria-label="Site this belongs to"
-            onChange={(e) =>
-              update({ site: (e.target.value || undefined) as SourceId | undefined })
-            }
-          >
-            <option value="">No site</option>
-            {(Object.keys(sourceById) as SourceId[]).map((sid) => (
-              <option key={sid} value={sid}>
-                {sourceById[sid].name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="sk-fd-field">
-          <span className="sk-cap">Link a finance list — shows as a sub-task list</span>
-          <select
-            value=""
-            aria-label="Link a finance list"
-            disabled={!file}
-            onChange={(e) => {
-              const o = finOptions.find((x) => x.key === e.target.value);
-              if (!o || (item.fin || []).some((x) => x.key === o.key)) return;
-              update({ fin: [...(item.fin || []), { key: o.key, label: o.label }] });
-            }}
-          >
-            <option value="">
-              {file ? "Choose from Finance…" : "Finance isn’t loaded"}
-            </option>
-            {(["Lists", "Single items"] as const).map((g) => (
-              <optgroup key={g} label={g}>
-                {finOptions
-                  .filter((o) => o.group === g)
-                  .map((o) => (
-                    <option key={o.key} value={o.key}>
-                      {o.label}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
-
-        <div className="sk-fd-field">
-          <span className="sk-cap">Date (optional)</span>
-          <div className="sk-fd-date">
-            <select
-              value={item.eventId || ""}
-              aria-label="Link a calendar item"
-              onChange={(e) => {
-                const ev = events.find((x) => x.id === e.target.value);
-                if (!ev)
-                  update({
-                    eventId: undefined,
-                    eventTitle: undefined,
-                  });
-                else
-                  update({
-                    eventId: ev.id,
-                    eventTitle: ev.title,
-                    date: dayKey(eventStart(ev)),
-                  });
-              }}
-            >
-              <option value="">Not linked to a calendar item</option>
-              {upcoming.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.title} · {shortDate(eventStart(e))}
-                </option>
-              ))}
-            </select>
-            <input
-              type="date"
-              aria-label="Or pick a date"
-              value={target ? dayKey(target.date) : ""}
-              disabled={Boolean(item.eventId && target)}
-              onChange={(e) =>
-                update({
-                  date: e.target.value || undefined,
-                  eventId: undefined,
-                  eventTitle: undefined,
-                })
-              }
+        <div className="sk-fd-two">
+          <label className="sk-fd-box">
+            <span>Scope</span>
+            <textarea
+              value={item.note || ""}
+              onChange={(e) => update({ note: e.target.value || undefined })}
+              placeholder="What it is — e.g. people at our home for Savannah’s baby shower"
+              maxLength={600}
             />
-            {target ? (
-              <button
-                type="button"
-                className="sk-btn is-small"
-                onClick={() =>
-                  update({
-                    date: undefined,
-                    eventId: undefined,
-                    eventTitle: undefined,
-                  })
-                }
-              >
-                Unlink
-              </button>
-            ) : null}
-          </div>
-          {!target && added ? (
-            <p className="sk-fd-hint">
-              No date, so this counts days since it was added ({shortDate(added)}).
-            </p>
-          ) : null}
+          </label>
+          <label className="sk-fd-box">
+            <span>Why</span>
+            <textarea
+              value={item.why || ""}
+              onChange={(e) => update({ why: e.target.value || undefined })}
+              placeholder="Why it matters — e.g. so we can do his dog DNA test"
+              maxLength={600}
+            />
+          </label>
         </div>
 
-        <div className="sk-fd-lists">
+        <div className="sk-fd-three">
           {lists.map((l) => (
-            <section key={l.id} className="sk-fd-list">
+            <section key={l.id} className="sk-fd-box sk-fd-list">
               <header>
                 <input
                   value={l.name}
@@ -582,7 +640,7 @@ function Detail({
                   onChange={(e) =>
                     setTaskText({ ...taskText, [l.id]: e.target.value })
                   }
-                  placeholder="Add a sub-task"
+                  placeholder="Add — e.g. Cake $100"
                   aria-label={`Add a sub-task to ${l.name}`}
                   maxLength={160}
                 />
@@ -592,16 +650,16 @@ function Detail({
                   disabled={!(taskText[l.id] || "").trim()}
                 >
                   <Icon name="plus" size={14} />
-                  Add
                 </button>
               </form>
             </section>
           ))}
+
           {(item.fin || []).map((l) => {
-            const items = finItems(file, l.key);
-            const s = finStats(items, marks);
+            const rows = finRows(l, ctx);
+            const s = finStats(rows);
             return (
-              <section key={l.key} className="sk-fd-list sk-fd-fin">
+              <section key={l.key} className="sk-fd-box sk-fd-list sk-fd-fin">
                 <header>
                   <b>
                     <Icon name="wallet" size={13} />
@@ -620,36 +678,40 @@ function Detail({
                   </button>
                 </header>
                 <p className="sk-fd-hint">
-                  {file
+                  {s.total
                     ? `${s.done} of ${s.total} cleared · ${usd(s.owed)} still owed`
-                    : "Finance data isn’t loaded here yet."}
+                    : ctx.file || l.key.startsWith("bill:")
+                      ? "Nothing to show"
+                      : "Finance data isn’t loaded here yet."}
                 </p>
                 <ul>
-                  {items.map((it) => {
-                    const m = marks[it.id]?.status;
-                    const settled = isSettled(marks[it.id]);
-                    return (
-                      <li key={it.id} className={settled ? "is-done" : ""}>
-                        <span className={`sk-fin-dot${settled ? " is-on" : ""}`} aria-hidden="true" />
-                        <button
-                          type="button"
-                          className="sk-fin-name"
-                          title="Open this item in Finance"
-                          onClick={() => openFinance?.(it.id)}
-                        >
-                          {it.name}
-                        </button>
-                        <small>
-                          {it.unverified ? "unverified" : m || "open"} · {usd(it.amount)}
-                        </small>
-                      </li>
-                    );
-                  })}
+                  {rows.map((r) => (
+                    <li key={r.id} className={r.settled ? "is-done" : ""}>
+                      <span className={`sk-fin-dot${r.settled ? " is-on" : ""}`} aria-hidden="true" />
+                      <button
+                        type="button"
+                        className="sk-fin-name"
+                        title="Open this in Finance"
+                        onClick={() =>
+                          r.kind === "bill"
+                            ? openFinance?.(undefined, "flow")
+                            : openFinance?.(r.id)
+                        }
+                      >
+                        {r.name}
+                      </button>
+                      <small>
+                        {r.status} · {usd(r.amount)}
+                      </small>
+                    </li>
+                  ))}
                 </ul>
                 <button
                   type="button"
                   className="sk-link"
-                  onClick={() => openFinance?.()}
+                  onClick={() =>
+                    openFinance?.(undefined, l.key.startsWith("bill:") ? "flow" : "owed")
+                  }
                 >
                   Open in Finance
                   <Icon name="chevron" size={13} />
@@ -657,11 +719,12 @@ function Detail({
               </section>
             );
           })}
-          <form className="sk-fd-newlist" onSubmit={addList}>
+
+          <form className="sk-fd-box sk-fd-newlist" onSubmit={addList}>
             <input
               value={listName}
               onChange={(e) => setListName(e.target.value)}
-              placeholder="New list — e.g. Clean, Decorate, Source"
+              placeholder="New list — e.g. Clean"
               aria-label="New sub-task list"
               maxLength={60}
             />
@@ -675,6 +738,96 @@ function Detail({
             </button>
           </form>
         </div>
+
+        <div className="sk-fd-tools">
+          <label>
+            <span className="sk-cap">Site — colours the card</span>
+            <select
+              value={item.site || ""}
+              aria-label="Site this belongs to"
+              onChange={(e) =>
+                update({ site: (e.target.value || undefined) as SourceId | undefined })
+              }
+            >
+              <option value="">No site</option>
+              {(Object.keys(sourceById) as SourceId[]).map((sid) => (
+                <option key={sid} value={sid}>
+                  {sourceById[sid].name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div>
+            <span className="sk-cap">Link a payment or debt from Finance</span>
+            <SearchPick
+              options={finOpts}
+              label="Search Finance"
+              placeholder="Search every bill, ticket, card, loan…"
+              disabled={!finOpts.length}
+              onPick={(o) => {
+                if ((item.fin || []).some((x) => x.key === o.key)) return;
+                update({ fin: [...(item.fin || []), { key: o.key, label: o.label }] });
+              }}
+            />
+          </div>
+          <div>
+            <span className="sk-cap">
+              Date — {target ? "linked" : "search the calendar"}
+            </span>
+            {target ? (
+              <div className="sk-fd-linked">
+                <Icon name="calendar" size={13} />
+                <span>
+                  {target.title ? `${target.title} · ` : ""}
+                  {shortDate(target.date)}
+                </span>
+                <button
+                  type="button"
+                  className="sk-btn is-small is-icon is-quiet"
+                  aria-label="Unlink the date"
+                  onClick={() =>
+                    update({ date: undefined, eventId: undefined, eventTitle: undefined })
+                  }
+                >
+                  <Icon name="close" size={13} />
+                </button>
+              </div>
+            ) : (
+              <div className="sk-fd-datepick">
+                <SearchPick
+                  options={dateOpts}
+                  label="Search the calendar"
+                  placeholder="Search events, plans, bills, tasks…"
+                  onPick={(o) => {
+                    const ev = events.find((x) => x.id === o.key);
+                    if (!ev) return;
+                    update({
+                      eventId: ev.id,
+                      eventTitle: ev.title,
+                      date: dayKey(eventStart(ev)),
+                    });
+                  }}
+                />
+                <input
+                  type="date"
+                  aria-label="Or pick a date"
+                  onChange={(e) =>
+                    update({
+                      date: e.target.value || undefined,
+                      eventId: undefined,
+                      eventTitle: undefined,
+                    })
+                  }
+                />
+              </div>
+            )}
+          </div>
+        </div>
+        {!target && added ? (
+          <p className="sk-fd-hint">
+            No date linked, so this counts days since it was added ({shortDate(added)}).
+          </p>
+        ) : null}
 
         <footer className="sk-fd-foot">
           <button
@@ -708,21 +861,28 @@ export function FocusCards({
   list,
   extra = [],
   events: eventsIn,
+  bills = [],
   openFinance,
   label,
   empty,
+  noAdd,
 }: {
   /** Where new entries go */
   list: CardList;
   /** More lists shown in the same grid (their entries are edited in place) */
   extra?: CardList[];
   events: LinkItem[];
-  /** Jump to Finance (Outstanding), onto one item when given */
-  openFinance?: (itemId?: string) => void;
+  /** Bills still owed — linkable like debts */
+  bills?: BillDue[];
+  /** Jump to Finance, onto one item when given */
+  openFinance?: OpenFinance;
   label: string;
   empty?: string;
+  /** No "add" box (ongoing goals are made from Self) */
+  noAdd?: boolean;
 }) {
   const { file, marks } = useDebtFile();
+  const ctx: FinCtx = { file, marks, bills };
   // The MD registration renewal date is a date a focus can count down to, too.
   const events: LinkItem[] = file?.registration
     ? [
@@ -732,6 +892,7 @@ export function FocusCards({
           title: `${file.registration.vehicle} registration renews`,
           start: file.registration.due,
           allDay: true,
+          kind: "Finance",
         },
       ]
     : eventsIn;
@@ -771,8 +932,7 @@ export function FocusCards({
               key={i.id}
               item={i}
               events={events}
-              file={file}
-              marks={marks}
+              ctx={ctx}
               open={() => setOpenId(i.id)}
             />
           ))}
@@ -780,29 +940,30 @@ export function FocusCards({
       ) : empty ? (
         <p className="sk-empty">{empty}</p>
       ) : null}
-      <form className="sk-fc-add" onSubmit={add}>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder={label}
-          aria-label={label}
-          maxLength={120}
-        />
-        <button
-          type="submit"
-          className="sk-btn is-small"
-          disabled={!title.trim()}
-        >
-          <Icon name="plus" size={14} />
-          Add
-        </button>
-      </form>
+      {noAdd ? null : (
+        <form className="sk-fc-add" onSubmit={add}>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={label}
+            aria-label={label}
+            maxLength={120}
+          />
+          <button
+            type="submit"
+            className="sk-btn is-small"
+            disabled={!title.trim()}
+          >
+            <Icon name="plus" size={14} />
+            Add
+          </button>
+        </form>
+      )}
       {openItem ? (
         <Detail
           item={openItem}
           events={events}
-          file={file}
-          marks={marks}
+          ctx={ctx}
           openFinance={openFinance}
           update={(patch) => patchIn(openItem.id, (x) => ({ ...x, ...patch }))}
           remove={() => patchIn(openItem.id, () => null)}

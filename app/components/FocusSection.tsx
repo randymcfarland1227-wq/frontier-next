@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Group, ListHead, Section } from "../sticker/kit";
-import { FocusCards, type LinkItem } from "./FocusCards";
+import { FocusCards, type LinkItem, type OpenFinance } from "./FocusCards";
+import type { BillDue } from "../../lib/schedule";
 import { Icon } from "../sticker/Icon";
 import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import { readSaved, writeSaved } from "../../lib/storage";
@@ -631,12 +632,16 @@ export const shortTermSummary = (open: number) =>
 export function ShortTermFocus({
   focus,
   events = [],
+  bills = [],
   openFinance,
 }: {
   focus: ReturnType<typeof useShortTermFocus>;
   events?: LinkItem[];
-  openFinance?: (itemId?: string) => void;
+  bills?: BillDue[];
+  openFinance?: OpenFinance;
 }) {
+  const [ongoingShut, toggleOngoing] = useShut("focus-ongoing");
+  const ongoingCount = focus.ongoing[0].filter((i) => !i.done).length;
   return (
     <Group
       tone="focus"
@@ -646,12 +651,33 @@ export function ShortTermFocus({
     >
       <FocusCards
         list={focus.now}
-        extra={[focus.weeks, focus.ongoing]}
+        extra={[focus.weeks]}
         events={events}
+        bills={bills}
         openFinance={openFinance}
         label="What needs real attention — type it, then fill in the rest"
-        empty="Type what needs real attention. Ongoing goals made in Self show here too."
+        empty="Type what needs real attention right now."
       />
+      {focus.ongoing[0].length ? (
+        <>
+          <ListHead
+            title="Ongoing goals"
+            meta={`${ongoingCount} · directions, not one-time tasks`}
+            shut={ongoingShut}
+            onToggle={toggleOngoing}
+          />
+          {ongoingShut ? null : (
+            <FocusCards
+              list={focus.ongoing}
+              events={events}
+              bills={bills}
+              openFinance={openFinance}
+              label=""
+              noAdd
+            />
+          )}
+        </>
+      ) : null}
     </Group>
   );
 }

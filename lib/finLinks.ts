@@ -7,8 +7,8 @@ import { writeSaved } from './storage';
 export const OPEN_DEBT_KEY = 'lifehub-open-debt';
 
 /** Finance → Outstanding opens next time Money mounts, on this item's pop-out when an id is given. */
-export function requestOpenDebt(id?: string) {
-  writeSaved('lifehub-money-tab', 'owed');
+export function requestOpenDebt(id?: string, tab: 'owed' | 'flow' = 'owed') {
+  writeSaved('lifehub-money-tab', tab);
   try {
     if (id) sessionStorage.setItem(OPEN_DEBT_KEY, id);
     else sessionStorage.removeItem(OPEN_DEBT_KEY);

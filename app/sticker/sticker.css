@@ -2141,3 +2141,66 @@
 .sk-app .sk-fd-fin li.is-done .sk-fin-name { text-decoration: line-through; color: var(--sk-ink-2); }
 .sk-app .sk-fd-fin li small { font: var(--sk-caption); color: var(--sk-ink-2); white-space: nowrap; }
 .sk-app .sk-fd-fin { grid-column: 1 / -1; }
+
+/* ── Focus pop-out, laid out like the sketch ── */
+.sk-app .sk-fdetail { width: min(960px, 100%); gap: var(--sk-s3); }
+.sk-app .sk-fd-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--sk-s4); }
+.sk-app .sk-fd-pct { display: grid; justify-items: center; line-height: 1.05; min-width: 74px; }
+.sk-app .sk-fd-pct b, .sk-app .sk-fd-when b { font: 700 26px/1 "Unbounded", system-ui, sans-serif; }
+.sk-app .sk-fd-pct small, .sk-app .sk-fd-when small { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .sk-fd-when { display: flex; align-items: center; gap: var(--sk-s3); }
+.sk-app .sk-fd-when > div { display: grid; justify-items: center; line-height: 1.05; }
+.sk-app .sk-fd-top .sk-fd-title { text-align: center; font-size: 22px; }
+.sk-app .sk-fd-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sk-s3); }
+.sk-app .sk-fd-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sk-s3); align-items: start; }
+.sk-app .sk-fd-box {
+  display: grid; align-content: start; gap: 6px; min-width: 0; padding: 12px 14px; border-radius: 14px; border: 0; grid-column: auto;
+  background: color-mix(in srgb, var(--sk-ink) 9%, transparent);
+}
+.sk-app .sk-fd-two .sk-fd-box > span { text-align: center; font: var(--sk-headline); }
+.sk-app .sk-fd-two textarea { min-height: 150px; background: transparent; border: 0; padding: 4px; font: var(--sk-secondary); resize: vertical; color: var(--sk-ink); }
+.sk-app .sk-fd-two textarea:focus { outline: 2px solid color-mix(in srgb, var(--sk-ink) 40%, transparent); }
+.sk-app .sk-fd-list.sk-fd-box { min-height: 150px; }
+.sk-app .sk-fd-list > header input { text-align: center; font: var(--sk-headline); background: transparent; border-color: transparent; }
+.sk-app .sk-fd-list > header input:focus { border-color: var(--sk-line); }
+.sk-app .sk-fd-fin.sk-fd-box { grid-column: auto; background: color-mix(in srgb, var(--sk-tint, #5b6cff) 14%, transparent); }
+.sk-app .sk-fd-fin > header b { justify-content: center; }
+.sk-app .sk-fd-newlist.sk-fd-box { grid-column: auto; display: grid; border: 2px dashed color-mix(in srgb, var(--sk-ink) 28%, transparent); background: transparent; min-height: 150px; align-content: center; }
+.sk-app .sk-fd-tools { display: grid; grid-template-columns: minmax(130px, .8fr) minmax(0, 1.3fr) minmax(0, 1.5fr); gap: var(--sk-s3); align-items: start; }
+.sk-app .sk-fd-tools > * { display: grid; gap: 4px; min-width: 0; }
+.sk-app .sk-fd-tools :is(select, input) { font: var(--sk-secondary); padding: 8px 10px; border: 1.5px solid var(--sk-line); border-radius: 10px; background: color-mix(in srgb, var(--sk-paper) 70%, #fff); color: var(--sk-ink); min-width: 0; box-sizing: border-box; width: 100%; }
+.sk-app .sk-fd-datepick { display: grid; grid-template-columns: minmax(0, 1fr) 128px; gap: 6px; }
+.sk-app .sk-fd-linked { display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 10px; border-radius: 10px; background: color-mix(in srgb, var(--sk-ink) 9%, transparent); font: var(--sk-secondary); }
+.sk-app .sk-fd-linked span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-app .sk-fd-search { position: relative; }
+.sk-app .sk-fd-pop { position: absolute; z-index: 8; top: calc(100% + 4px); left: 0; right: 0; min-width: 260px; max-height: 280px; overflow: auto; padding: 6px; border: 1px solid #ffffffb3; border-radius: 12px; background: color-mix(in srgb, var(--sk-paper) 92%, #fff); box-shadow: 0 14px 34px #00000040; }
+.sk-app .sk-fd-pop .sk-cap { margin: 6px 6px 2px; color: var(--sk-ink-2); }
+.sk-app .sk-fd-pop button { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: 8px; background: none; color: var(--sk-ink); text-align: left; cursor: pointer; font: var(--sk-secondary); }
+.sk-app .sk-fd-pop button:hover { background: var(--sk-hover); }
+.sk-app .sk-fd-pop button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-app .sk-fd-pop button small { color: var(--sk-ink-2); white-space: nowrap; }
+@media (max-width: 760px) {
+  .sk-app .sk-fd-top { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .sk-app .sk-fd-when { grid-column: 1 / -1; justify-content: center; }
+  .sk-app .sk-fd-two, .sk-app .sk-fd-three, .sk-app .sk-fd-tools { grid-template-columns: 1fr; }
+}
+
+/* ── Today: single / split switch, and two panes that scale to their half ── */
+.sk-app .sk-section { position: relative; }
+.sk-app .sk-sactions { position: absolute; top: 4px; right: 4px; z-index: 2; }
+.sk-app .sk-viewseg button { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; min-height: 28px; padding: 3px 10px; }
+.sk-app .sk-viewseg svg { width: 16px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.sk-app .sk-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sk-s3); align-items: start; }
+.sk-app .sk-splitcol { min-width: 0; container-type: inline-size; }
+.sk-app .sk-splitcol .sk-today-tabs { flex-wrap: wrap; }
+@container (max-width: 760px) {
+  .sk-sched-grid { grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: none !important; }
+  .sk-sched-grid > .sk-month, .sk-sched-grid > .sk-col:nth-child(n) { grid-column: 1 !important; grid-row: auto !important; }
+  .sk-brief .sk-cols { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .sk-fcards { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+  .sk-ground-cols, .sk-trio { grid-template-columns: 1fr !important; }
+  .sk-month .sk-day { min-height: 56px !important; }
+  .sk-month .sk-ditem { font-size: 10px !important; }
+}
+@media (max-width: 900px) { .sk-app .sk-split { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .sk-app .sk-sactions { position: static; margin: 0 0 6px; } }

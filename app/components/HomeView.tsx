@@ -217,8 +217,26 @@ export function HomeView({
     setTodayTab(t);
     writeSaved("sk-today-tab", t);
   };
+  // Split view: two tabs side by side, each scaled to its half. Remembered on this device.
+  const [split, setSplitState] = useState<boolean>(() =>
+    readSaved<boolean>("sk-today-split", false),
+  );
+  const setSplit = (v: boolean) => {
+    setSplitState(v);
+    writeSaved("sk-today-split", v);
+  };
+  const [todayTab2, setTodayTab2] = useState<TodayTab>(() => {
+    const saved = readSaved<string>("sk-today-tab2", "calendar");
+    return TODAY_TABS.some(([id]) => id === saved)
+      ? (saved as TodayTab)
+      : "calendar";
+  });
+  const pickTodayTab2 = (t: TodayTab) => {
+    setTodayTab2(t);
+    writeSaved("sk-today-tab2", t);
+  };
   const shortTerm = useShortTermFocus();
-  // Everything on the calendar a short-term focus can count down to.
+  // Everything on the calendar a short-term focus can count down to: events, plans, bills, dated tasks.
   const { plans: hubPlans } = usePlans();
   const linkItems = [
     ...(schedule?.events || []).map((e) => ({
@@ -226,10 +244,35 @@ export function HomeView({
       title: e.title,
       start: e.start,
       allDay: e.allDay,
+      kind: "Calendar",
     })),
     ...hubPlans
       .filter((p) => p.status === "open" || p.status === "yes")
-      .map((p) => ({ id: p.id, title: p.title, start: p.date, allDay: true })),
+      .map((p) => ({
+        id: p.id,
+        title: p.title,
+        start: p.date,
+        allDay: true,
+        kind: "Plan",
+      })),
+    ...bills
+      .filter((b) => !b.skipped)
+      .map((b) => ({
+        id: `bill:${b.key}`,
+        title: `Pay ${b.bill.name}`,
+        start: b.due,
+        allDay: true,
+        kind: "Bill",
+      })),
+    ...calTasks
+      .filter((t) => !t.done)
+      .map((t) => ({
+        id: `task:${t.id}`,
+        title: t.title,
+        start: t.date,
+        allDay: true,
+        kind: "Task",
+      })),
   ];
   const todaySummary =
     tab === "grounding" ? (
@@ -295,6 +338,70 @@ export function HomeView({
       ) : null}
     </>
   );
+  const tabAvailable = (id: TodayTab) =>
+    (id !== "grounding" || grounding) && (id !== "money" || money);
+  const tab2: TodayTab = tabAvailable(todayTab2) ? todayTab2 : "calendar";
+  const tabBar = (current: TodayTab, pick: (t: TodayTab) => void) => (
+    <div className="sk-seg sk-today-tabs" role="group" aria-label="Today">
+      {TODAY_TABS.filter(([id]) => tabAvailable(id)).map(([id, label]) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={current === id}
+          onClick={() => pick(id)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+  const renderTab = (t: TodayTab) =>
+        t === "money" ? (
+          <div className="sk-money-tab">{money}</div>
+        ) : t === "grounding" ? (
+          <div className="sk-mountain">
+            <svg
+              className="sk-mtn-art"
+              viewBox="0 0 800 240"
+              preserveAspectRatio="xMidYMax slice"
+              aria-hidden="true"
+            >
+              <circle className="sk-mtn-sun" cx="610" cy="70" r="26" />
+              <path className="sk-mtn-far" d="M0 240V150l90-60 70 45 110-85 120 100 80-50 100 80 90-70 140 90v40z" />
+              <path className="sk-mtn-mid" d="M0 240V175l120-80 90 60 130-100 140 120 90-60 110 90 120-70v105z" />
+              <path className="sk-mtn-snow" d="M340 55l-26 21 14-6 12 10 10-9 16 8z" />
+              <path className="sk-mtn-near" d="M0 240V205l140-70 100 70 160-90 150 100 110-60 140 80v35z" />
+            </svg>
+            <div className="sk-mtn-body">{grounding}</div>
+          </div>
+        ) : t === "calendar" ? (
+          <ScheduleSection
+            schedule={schedule}
+            bills={bills}
+            onBillPaid={onBillPaid}
+            tasks={calTasks}
+            onTaskDone={onTaskDone}
+            onAddPrep={onAddPrep}
+          />
+        ) : t === "focus" ? (
+          <ShortTermFocus
+            focus={shortTerm}
+            events={linkItems}
+            bills={bills}
+            openFinance={(id, tab) => {
+              requestOpenDebt(id, tab);
+              enter("money");
+            }}
+          />
+        ) : (
+          <DailyBrief
+            snapshots={snapshots}
+            bills={bills}
+            schedule={schedule}
+            enter={enter}
+          />
+        );
+
   return (
     <>
       <HomeTop
@@ -315,70 +422,55 @@ export function HomeView({
         }}
       />
 
-      <Section id="brief" title="Today" summary={todaySummary}>
-        <div className="sk-seg sk-today-tabs" role="group" aria-label="Today">
-          {TODAY_TABS.filter(
-            ([id]) =>
-              (id !== "grounding" || grounding) && (id !== "money" || money),
-          ).map(
-            ([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={tab === id}
-                onClick={() => pickTodayTab(id)}
-              >
-                {label}
-              </button>
-            ),
-          )}
-        </div>
-        <div className="sk-pane" key={tab}>
-        {tab === "money" ? (
-          <div className="sk-money-tab">{money}</div>
-        ) : tab === "grounding" ? (
-          <div className="sk-mountain">
-            <svg
-              className="sk-mtn-art"
-              viewBox="0 0 800 240"
-              preserveAspectRatio="xMidYMax slice"
-              aria-hidden="true"
+      <Section
+        id="brief"
+        title="Today"
+        summary={todaySummary}
+        actions={
+          <div className="sk-seg sk-viewseg" role="group" aria-label="Today view">
+            <button
+              type="button"
+              aria-pressed={!split}
+              onClick={() => setSplit(false)}
+              title="One tab at a time"
             >
-              <circle className="sk-mtn-sun" cx="610" cy="70" r="26" />
-              <path className="sk-mtn-far" d="M0 240V150l90-60 70 45 110-85 120 100 80-50 100 80 90-70 140 90v40z" />
-              <path className="sk-mtn-mid" d="M0 240V175l120-80 90 60 130-100 140 120 90-60 110 90 120-70v105z" />
-              <path className="sk-mtn-snow" d="M340 55l-26 21 14-6 12 10 10-9 16 8z" />
-              <path className="sk-mtn-near" d="M0 240V205l140-70 100 70 160-90 150 100 110-60 140 80v35z" />
-            </svg>
-            <div className="sk-mtn-body">{grounding}</div>
+              <svg viewBox="0 0 16 12" aria-hidden="true"><rect x="1" y="1" width="14" height="10" rx="2" /></svg>
+              Single
+            </button>
+            <button
+              type="button"
+              aria-pressed={split}
+              onClick={() => setSplit(true)}
+              title="Two tabs side by side"
+            >
+              <svg viewBox="0 0 16 12" aria-hidden="true"><rect x="1" y="1" width="6" height="10" rx="2" /><rect x="9" y="1" width="6" height="10" rx="2" /></svg>
+              Split
+            </button>
           </div>
-        ) : tab === "calendar" ? (
-          <ScheduleSection
-            schedule={schedule}
-            bills={bills}
-            onBillPaid={onBillPaid}
-            tasks={calTasks}
-            onTaskDone={onTaskDone}
-            onAddPrep={onAddPrep}
-          />
-        ) : tab === "focus" ? (
-          <ShortTermFocus
-            focus={shortTerm}
-            events={linkItems}
-            openFinance={(id) => {
-              requestOpenDebt(id);
-              enter("money");
-            }}
-          />
+        }
+      >
+        {split ? (
+          <div className="sk-split">
+            {([
+              [tab2, pickTodayTab2],
+              [tab, pickTodayTab],
+            ] as const).map(([t, pick], i) => (
+              <div key={i} className="sk-splitcol">
+                {tabBar(t, pick)}
+                <div className="sk-pane" key={t}>
+                  {renderTab(t)}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
-          <DailyBrief
-            snapshots={snapshots}
-            bills={bills}
-            schedule={schedule}
-            enter={enter}
-          />
+          <>
+            {tabBar(tab, pickTodayTab)}
+            <div className="sk-pane" key={tab}>
+              {renderTab(tab)}
+            </div>
+          </>
         )}
-        </div>
       </Section>
 
       <FocusSection snapshots={snapshots} ledger={ledger} enter={enter} />

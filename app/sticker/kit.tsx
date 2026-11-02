@@ -20,7 +20,7 @@ export type MoneyTone = 'cash' | 'card' | 'save' | 'due' | 'credit' | 'owed' | '
  * A Home section: a Title-sized disclosure head with a one-line summary of what's inside, then its
  * groups. Fold state is the same saved `section:<id>` the classic sections used.
  */
-export function Section({ id, title, summary, children }: { id: string; title: string; summary?: ReactNode; children: ReactNode }) {
+export function Section({ id, title, summary, actions, children }: { id: string; title: string; summary?: ReactNode; actions?: ReactNode; children: ReactNode }) {
   const [collapsed, toggle] = useFold(id);
   const toggleRef = useRef(toggle);
   const collapsedRef = useRef(collapsed);
@@ -43,6 +43,7 @@ export function Section({ id, title, summary, children }: { id: string; title: s
         <h2 className="sk-title">{title}</h2>
         {summary ? <span className="sk-sec">{summary}</span> : null}
       </button>
+      {actions && !collapsed ? <div className="sk-sactions">{actions}</div> : null}
       {collapsed ? null : <div className="sk-sbody">{children}</div>}
     </section>
   );

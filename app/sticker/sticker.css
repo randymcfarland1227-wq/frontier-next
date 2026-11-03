@@ -2568,3 +2568,27 @@
     radial-gradient(240px 200px at 55% 110%, #ffffff66, transparent 70%),
     linear-gradient(115deg, #ffe27a, #b9e48c 50%, #7fcfe0);
 }
+
+/* ── Split view: capped panes that scroll on their own, month that never cuts text off ── */
+.sk-app .sk-splitwrap { position: relative; }
+.sk-app .sk-splitpane {
+  max-height: clamp(360px, 72vh, 760px); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--sk-ink) 35%, transparent) transparent; border-radius: 14px;
+}
+.sk-app .sk-splitpane:focus-visible { outline: 2px solid var(--sk-tint, #5b6cff); outline-offset: 2px; }
+.sk-app .sk-splitwrap::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 48px; pointer-events: none; opacity: 0; transition: opacity .2s; border-radius: 0 0 14px 14px;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--sk-page) 88%, transparent));
+}
+.sk-app .sk-splitwrap.has-more::after { opacity: 1; }
+@container today-pane (max-width: 760px) {
+  /* a narrow pane shows each day as a number plus colour dots (hover/tap for the day); no cropped words */
+  .sk-sched .sk-month .sk-ditem { display: none !important; }
+  .sk-sched .sk-month .sk-ddots { display: flex !important; flex-wrap: wrap; gap: 3px; margin-top: auto; }
+  .sk-sched .sk-month .sk-ddots i { width: 6px; height: 6px; background: var(--ev, #fff); border: 1px solid #ffffff99; }
+  .sk-sched-grid > * { min-width: 0; }
+  .sk-sched .sk-listh { flex-wrap: wrap; }
+  .sk-sched .sk-listh > .sk-link { margin: 0 0 0 auto; }
+  .sk-sched .sk-month .sk-day { min-height: 44px !important; }
+}
+@media (prefers-reduced-motion: reduce) { .sk-app .sk-splitwrap::after { transition: none; } }

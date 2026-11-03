@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type {
   FeaturedItem,
   SourceId,
@@ -61,6 +61,35 @@ const TODAY_TABS: [TodayTab, string][] = [
   ["grounding", "Grounding"],
   ["money", "Money"],
 ];
+
+/**
+ * One pane of the split view: a capped height with its own scroll, so a tall tab (Money, Grounding)
+ * never stretches the page past its neighbour. A soft fade at the bottom says "more below".
+ */
+function SplitPane({ label, children }: { label: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 8);
+    const ro = new ResizeObserver(measure); // reports once on observe, then on every size change
+    ro.observe(el);
+    for (const c of Array.from(el.children)) ro.observe(c);
+    el.addEventListener("scroll", measure, { passive: true });
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("scroll", measure);
+    };
+  }, []);
+  return (
+    <div className={`sk-splitwrap${more ? " has-more" : ""}`}>
+      <div className="sk-pane sk-splitpane" ref={ref} tabIndex={0} role="region" aria-label={label}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 /** "3 on your list · 13 on deck · 1 critical" for the Doing Now head. */
 function PrioritySummary() {
@@ -464,9 +493,9 @@ export function HomeView({
             ] as const).map(([t, pick], i) => (
               <div key={i} className="sk-splitcol">
                 {tabBar(t, pick)}
-                <div className="sk-pane" key={t}>
+                <SplitPane key={t} label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>
                   {renderTab(t)}
-                </div>
+                </SplitPane>
               </div>
             ))}
           </div>

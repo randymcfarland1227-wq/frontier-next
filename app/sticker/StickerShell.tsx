@@ -5,6 +5,7 @@ import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import { sourceById } from "../../lib/sources";
 import { ZoomControl } from "../components/ZoomControl";
 import { Icon, type IconName } from "./Icon";
+import { DaySky } from "./DaySky";
 import { NightSky } from "./NightSky";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { useSiteIcons } from "../../lib/siteIcons";
@@ -289,6 +290,7 @@ export function StickerShell({
       data-side={slim ? "slim" : "full"}
     >
       {/* Night mode only (CSS): stars, planets, constellations, shooting stars and an astronaut. */}
+      <DaySky />
       <NightSky />
       <aside className="sk-side" data-tint={tint} aria-label="Life Hub">
         <div className="sk-sidehead">

@@ -450,24 +450,26 @@ export function FocusSection({
           title="Nutrition & Fitness"
           meta={`${water} of ${BOTTLES} bottles`}
         >
-          <ListHead
-            title="Today’s tasks & habits"
-            meta={`${fitToday.filter((t) => t.done).length + nutToday.filter((t) => t.done).length} of ${fitToday.length + nutToday.length} done`}
-            shut={daysShut}
-            onToggle={toggleDays}
-          />
-          {daysShut ? null : (
-            <div className="sk-daysplit" aria-label="Today's tasks and habits">
-              <div>
-                <p className="sk-cap">Fitness today</p>
-                <DayTasks tasks={fitToday} />
+          <div className="sk-mv-today sk-day-panel">
+            <ListHead
+              title="Today’s tasks & habits"
+              meta={`${fitToday.filter((t) => t.done).length + nutToday.filter((t) => t.done).length} of ${fitToday.length + nutToday.length} done`}
+              shut={daysShut}
+              onToggle={toggleDays}
+            />
+            {daysShut ? null : (
+              <div className="sk-daysplit" aria-label="Today's tasks and habits">
+                <div>
+                  <p className="sk-cap">Fitness today</p>
+                  <DayTasks tasks={fitToday} />
+                </div>
+                <div>
+                  <p className="sk-cap">Nutrition today</p>
+                  <DayTasks tasks={nutToday} />
+                </div>
               </div>
-              <div>
-                <p className="sk-cap">Nutrition today</p>
-                <DayTasks tasks={nutToday} />
-              </div>
-            </div>
-          )}
+            )}
+          </div>
           <ListHead title="Nutrition focus" />
           <FocusCards list={nutritionLists[3]} extra={nutritionLists.filter((_, i) => i !== 3)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'nutrition', ongoing: true }} label="Add a nutrition focus" empty="Add what you’re working on with nutrition." />
           <button

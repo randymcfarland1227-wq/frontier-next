@@ -15,6 +15,7 @@ import { FOCUS_PRIORITY_LABEL, orderFocus, type FocusPriority } from '../../lib/
 import { FocusEntryDialog, type LinkItem, type OpenFinance } from './FocusCards';
 import type { Entry, useShortTermFocus } from './FocusSection';
 import { sourceById } from '../../lib/sources';
+import { focusCollections } from '../../lib/focusRouting';
 
 const SEEN_KEY = 'lifehub-brief-seen';
 const DISMISS_KEY = 'lifehub-brief-dismissed';
@@ -57,7 +58,7 @@ const FOLDS_KEY = 'sk-fold-brief-sections';
 /** Column names (Title Case) for the brief's sections. */
 const HEADS: Record<BriefSection['id'], string> = {
   money: 'Finance · due & overdue',
-  tasks: 'Tasks · due & overdue',
+  tasks: 'Tasks due today',
   mail: 'Other Mail',
   roles: 'Replies & Role Inquiries',
   sales: 'Shipping & Sales',
@@ -77,7 +78,7 @@ export function useBrief(snapshots: Record<SourceId, SourceSnapshot>, bills: Bil
   return useMemo(
     () =>
       buildBrief(snapshots, bills, new Date(`${day}T12:00:00`))
-        .map(s => ({ ...s, rows: s.rows.filter(r => !gone[r.id]) })),
+        .map(s => ({ ...s, rows: s.rows.filter(r => !gone[r.id] && (s.id !== 'tasks' || r.tone === 'today')) })),
     [snapshots, bills, gone, day],
   );
 }
@@ -94,7 +95,7 @@ export function BriefSummary({ snapshots, bills }: { snapshots: Record<SourceId,
 }
 
 const WEEKS_AHEAD = 3;
-type BRow = { id: string; title: string; note: string; tone?: string; pin?: string; go?: SpaceId; focusId?: string; priority?: FocusPriority };
+type BRow = { id: string; title: string; note: string; tone?: string; pin?: string; go?: SpaceId; focusId?: string; priority?: FocusPriority; marker?: string };
 type BCol = { id: string; title: string; rows: BRow[]; compact?: boolean; keepAll?: boolean; empty: string };
 
 export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, openFinance }: {
@@ -130,7 +131,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
     setFolds(next);
   };
   const [openFocusId, setOpenFocusId] = useState<string | null>(null);
-  const focusLists = [focus.now, focus.weeks, focus.ongoing];
+  const focusLists = focusCollections(focus).map(c => c.list);
   const focusItems = orderFocus(focusLists.flatMap(([items]) => items).filter(i => !i.done));
   const selectedList = focusLists.find(([items]) => items.some(i => i.id === openFocusId));
   const selected = selectedList?.[0].find(i => i.id === openFocusId);
@@ -145,9 +146,10 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
     .sort((a, b) => eventStart(a).getTime() - eventStart(b).getTime());
   const cols: BCol[] = [
     { id: 'doing', title: 'Action List', keepAll: true, empty: 'Nothing selected in your Action List yet.', rows: plan.map(i => ({ id: `plan:${i.key}`, title: i.title, note: sourceById[i.source].shortName, pin: i.key })) },
-    ...(['roles', 'sales', 'mail'] as const).map(id => ({ id, title: HEADS[id], empty: 'Nothing waiting in the current feed.', rows: sections.find(s => s.id === id)?.rows || [] })),
+    { id: 'mail', title: 'Mail', empty: 'Nothing waiting in the current feed.', rows: (['roles', 'sales', 'mail'] as const).flatMap(id => (sections.find(s => s.id === id)?.rows || []).map(r => ({ ...r, marker: id === 'roles' ? 'Role reply' : id === 'sales' ? 'Sales / shipping' : 'Other mail' }))) },
     { id: 'focus', title: 'Short-term Focus', keepAll: true, empty: 'No open short-term focus items.', rows: focusItems.map(i => ({ id: `focus:${i.id}`, title: i.title, note: '', focusId: i.id, priority: i.priority })) },
-    ...(['money', 'tasks'] as const).map(id => ({ id, title: HEADS[id], compact: true, empty: 'Nothing due today or overdue.', rows: sections.find(s => s.id === id)?.rows || [] })),
+    { id: 'money', title: HEADS.money, compact: true, empty: 'Nothing due today or overdue.', rows: sections.find(s => s.id === 'money')?.rows || [] },
+    ...((sections.find(s => s.id === 'tasks')?.rows.length || 0) ? [{ id: 'tasks', title: HEADS.tasks, compact: true, empty: 'Nothing due today.', rows: sections.find(s => s.id === 'tasks')!.rows }] : []),
     { id: 'soon', title: `Coming Up · ${WEEKS_AHEAD} Weeks`, empty: 'No upcoming events in the current calendar.', rows: soon.map(e => ({ id: `ev:${e.id}`, title: e.title, note: e.allDay ? eventStart(e).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : `${eventStart(e).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} · ${eventStart(e).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` })).filter(r => !gone[r.id]) },
   ];
   const all = sections.flatMap(s => s.rows.map(r => r.id));
@@ -169,7 +171,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
               const open = r.focusId ? () => setOpenFocusId(r.focusId!) : r.pin ? () => openTaskPanel(r.pin!) : r.go ? () => enter(r.go!) : undefined;
               return <li key={r.id} className="sk-brief-entry" data-focus-priority={r.priority}>
                 {open ? <button type="button" className="sk-brief-open" onClick={open} title={[r.title, r.note, r.priority ? FOCUS_PRIORITY_LABEL[r.priority] : ''].filter(Boolean).join(' · ')}>
-                  <span className="sk-brief-title">{isNew && !s.compact ? <Dot tone="needs" hint="New since you last looked" /> : null}{r.title}</span>
+                  <span className="sk-brief-title">{isNew && !s.compact ? <Dot tone="needs" hint="New since you last looked" /> : null}{r.marker ? <span className="sk-brief-kind">{r.marker}</span> : null}{r.title}</span>
                   {r.note ? <small>{r.note}</small> : null}
                 </button> : <span className="sk-brief-open"><span className="sk-brief-title">{r.title}</span><small>{r.note}</small></span>}
                 {s.keepAll ? null : <button type="button" className="sk-brief-clear" aria-label={`Clear ${r.title} from today’s brief`} title="Clear from today’s brief (it can come back tomorrow)" onClick={() => dismissIds([r.id])}><Icon name="close" size={12} /></button>}

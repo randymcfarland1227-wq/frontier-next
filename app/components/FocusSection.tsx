@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Group, ListHead, Section } from "../sticker/kit";
 import { FocusCards, type LinkItem, type OpenFinance } from "./FocusCards";
 import type { BillDue } from "../../lib/schedule";
@@ -12,6 +12,7 @@ import { dayRecord, localDayKey, useDayKey } from "../../lib/dayKey";
 import type { CompletionLedger } from "../../lib/completions";
 import { tickTickToday } from "../../lib/tickTickToday";
 import type { FocusPriority } from "../../lib/focusPriority";
+import { assignedFocusLists, type FocusSectionId } from "../../lib/focusRouting";
 
 type Snaps = Record<SourceId, SourceSnapshot>;
 
@@ -79,6 +80,10 @@ export type Entry = {
   added?: string;
   /** The site it belongs to — colours its card */
   site?: SourceId;
+  /** A Home focus section, using the same record as the main Short-term Focus view. */
+  section?: FocusSectionId;
+  /** Explicitly remove a legacy section assignment without moving its saved record. */
+  unassigned?: boolean;
   /** An ongoing goal: a direction, not a one-time task (made from Self) */
   ongoing?: boolean;
   /** Finance lists linked in as sub-task lists (key says which debt-file items: see lib/finLinks) */
@@ -114,146 +119,12 @@ function useFocusList(storageKey: string, week?: boolean) {
     const v = { scope, items: next };
     setState(v);
     writeSaved(storageKey, v);
+    window.dispatchEvent(new CustomEvent(FOCUS_LIST_EVENT, { detail: storageKey }));
   };
   return [items, save] as const;
 }
 
 /** A typed list: a title plus an optional note (folds to two lines, tap to open), circle to mark off, ✕ to remove. */
-function FocusList({
-  list: [items, save],
-  label,
-  noteLabel = "Details (optional)",
-  empty,
-  marks = true,
-  limit,
-}: {
-  list: ReturnType<typeof useFocusList>;
-  label: string;
-  noteLabel?: string;
-  empty?: string;
-  marks?: boolean;
-  /** Show only this many (open ones first); the rest sit behind "N more". */
-  limit?: number;
-}) {
-  const [showAll, setShowAll] = useState(false);
-  const [title, setTitle] = useState("");
-  const [note, setNote] = useState("");
-  const [open, setOpen] = useState<string | null>(null);
-  const add = (e: FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-    save([
-      ...items,
-      {
-        id: `${Date.now()}`,
-        title: title.trim(),
-        note: note.trim() || undefined,
-      },
-    ]);
-    setTitle("");
-    setNote("");
-  };
-  const live = items.filter((i) => !i.done);
-  const finished = items.filter((i) => i.done);
-  const row = (i: Entry) => (
-    <div
-      key={i.id}
-      className={`sk-row sk-fc-row${marks ? "" : " is-plain"}${i.done ? " is-done" : ""}${open === i.id ? " is-open" : ""}`}
-    >
-      <span className="sk-rlead">
-        {marks ? (
-          <button
-            type="button"
-            className={`sk-circle${i.done ? " is-on" : ""}`}
-            aria-pressed={!!i.done}
-            aria-label={
-              i.done ? `Mark ${i.title} not done` : `Mark ${i.title} done`
-            }
-            onClick={() =>
-              save(
-                items.map((x) => (x.id === i.id ? { ...x, done: !x.done } : x)),
-              )
-            }
-          >
-            <Icon name="check" size={12} />
-          </button>
-        ) : null}
-      </span>
-      <button
-        type="button"
-        className="sk-rmain"
-        aria-expanded={i.note ? open === i.id : undefined}
-        onClick={() => setOpen(open === i.id ? null : i.id)}
-      >
-        <span className="sk-rt">{i.title}</span>
-        {i.note ? <span className="sk-rs">{i.note}</span> : null}
-      </button>
-      <span className="sk-rv">
-        <button
-          type="button"
-          className="sk-btn is-small is-icon is-quiet"
-          aria-label={`Remove ${i.title}`}
-          title="Remove"
-          onClick={() => save(items.filter((x) => x.id !== i.id))}
-        >
-          <Icon name="close" size={14} />
-        </button>
-      </span>
-      <span />
-    </div>
-  );
-  return (
-    <>
-      {items.length ? (
-        <div className="sk-list">
-          {(limit && !showAll
-            ? [...live, ...finished].slice(0, limit)
-            : [...live, ...finished]
-          ).map(row)}
-          {limit && items.length > limit ? (
-            <button
-              type="button"
-              className="sk-link sk-more"
-              onClick={() => setShowAll(!showAll)}
-            >
-              {showAll ? "Show Fewer" : `${items.length - limit} more`}
-            </button>
-          ) : null}
-        </div>
-      ) : empty ? (
-        <p className="sk-empty">{empty}</p>
-      ) : null}
-      <form className="sk-fc-add" onSubmit={add}>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder={label}
-          aria-label={label}
-          maxLength={120}
-        />
-        <button
-          type="submit"
-          className="sk-btn is-small"
-          disabled={!title.trim()}
-        >
-          <Icon name="plus" size={14} />
-          Add
-        </button>
-        {title.trim() ? (
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder={noteLabel}
-            aria-label={noteLabel}
-            rows={2}
-            maxLength={400}
-          />
-        ) : null}
-      </form>
-    </>
-  );
-}
-
 const FIT_AREAS = [
   "Abs",
   "Cardio",
@@ -266,171 +137,31 @@ const FIT_AREAS = [
   "Back",
   "Recovery",
 ];
-const PUSH = ["", "Steady", "More", "All in"];
+/** Preserve the quick area buttons; full details use the same focus-card editor. */
+function FitnessFocus({ list: [state, save] }: { list: readonly [Entry[], (next: Entry[]) => void] }) {
+  const has = (title: string) => state.some(i => i.title.toLowerCase() === title.toLowerCase());
+  const names = [...FIT_AREAS, ...state.filter(i => !FIT_AREAS.includes(i.title)).map(i => i.title)];
+  return <div className="sk-chips" role="group" aria-label="Areas I’m pushing">
+    {names.map(title => <button key={title} type="button" aria-pressed={has(title)} onClick={() => has(title)
+      ? save(state.filter(i => i.title !== title))
+      : save([...state, { id: `fit-${title.toLowerCase()}`, title, push: 2, since: localDayKey(), section: 'fitness', ongoing: true }])}>{title}</button>)}
+  </div>;
+}
 
-const daysSince = (day: string) =>
-  Math.max(
-    0,
-    Math.round(
-      (new Date(`${localDayKey()}T00:00:00`).getTime() -
-        new Date(`${day}T00:00:00`).getTime()) /
-        86400000,
-    ),
-  );
-const startedText = (day: string) => {
-  const n = daysSince(day);
-  return n === 0 ? "today" : n === 1 ? "yesterday" : `${n} days ago`;
-};
-
-/** Fitness: tap an area to start pushing it, set how hard (1–3), add a note. */
-function FitnessFocus() {
-  const [state, setState] = useState(() =>
-    readSaved<Entry[]>("lifehub-focus-fit-areas", []),
-  );
+/** The existing fitness key stores a plain array; keep that shape and key unchanged. */
+function useFitnessFocus() {
+  const key = 'lifehub-focus-fit-areas';
+  const [items, setItems] = useState(() => readSaved<Entry[]>(key, []));
+  useEffect(() => {
+    const reload = (e: Event) => { if ((e as CustomEvent).detail === key) setItems(readSaved<Entry[]>(key, [])); };
+    window.addEventListener(FOCUS_LIST_EVENT, reload);
+    return () => window.removeEventListener(FOCUS_LIST_EVENT, reload);
+  }, []);
   const save = (next: Entry[]) => {
-    setState(next);
-    writeSaved("lifehub-focus-fit-areas", next);
+    setItems(next); writeSaved(key, next);
+    window.dispatchEvent(new CustomEvent(FOCUS_LIST_EVENT, { detail: key }));
   };
-  const [custom, setCustom] = useState("");
-  const has = (t: string) =>
-    state.some((i) => i.title.toLowerCase() === t.toLowerCase());
-  const add = (t: string) =>
-    t.trim() &&
-    !has(t) &&
-    save([
-      ...state,
-      {
-        id: `fit-${t.trim().toLowerCase()}`,
-        title: t.trim(),
-        push: 2,
-        since: localDayKey(),
-      },
-    ]);
-  const extra = state.filter((i) => !FIT_AREAS.includes(i.title));
-  return (
-    <>
-      <div className="sk-chips" role="group" aria-label="Areas I’m pushing">
-        {[...FIT_AREAS, ...extra.map((i) => i.title)].map((a) => (
-          <button
-            key={a}
-            type="button"
-            aria-pressed={has(a)}
-            onClick={() =>
-              has(a) ? save(state.filter((i) => i.title !== a)) : add(a)
-            }
-          >
-            {a}
-          </button>
-        ))}
-      </div>
-      <form
-        className="sk-fc-add"
-        onSubmit={(e) => {
-          e.preventDefault();
-          add(custom);
-          setCustom("");
-        }}
-      >
-        <input
-          value={custom}
-          onChange={(e) => setCustom(e.target.value)}
-          placeholder="What are you pushing on? e.g. Learning new split"
-          aria-label="What are you pushing on"
-          maxLength={80}
-        />
-        <button
-          type="submit"
-          className="sk-btn is-small"
-          disabled={!custom.trim()}
-        >
-          <Icon name="plus" size={14} />
-          Add
-        </button>
-      </form>
-      {state.length ? (
-        <div className="sk-list sk-fit">
-          {state.map((i) => (
-            <div key={i.id} className="sk-row sk-fit-row">
-              <span className="sk-rlead" />
-              <span className="sk-rmain">
-                <span className="sk-rt">{i.title}</span>
-                <span className="sk-fit-when">
-                  {i.since
-                    ? `Day ${daysSince(i.since) + 1} · started ${startedText(i.since)}`
-                    : "No start date yet"}
-                  <input
-                    type="date"
-                    className="sk-fit-since"
-                    value={i.since || ""}
-                    max={localDayKey()}
-                    aria-label={`${i.title} start date`}
-                    title="Day it started"
-                    onChange={(e) =>
-                      save(
-                        state.map((x) =>
-                          x.id === i.id
-                            ? { ...x, since: e.target.value || undefined }
-                            : x,
-                        ),
-                      )
-                    }
-                  />
-                </span>
-              </span>
-              <span
-                className="sk-rv sk-push"
-                role="group"
-                aria-label={`${i.title} effort`}
-              >
-                {[1, 2, 3].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    className={n <= (i.push || 0) ? "is-on" : ""}
-                    aria-label={`Push level ${n}: ${PUSH[n]}`}
-                    aria-pressed={n === i.push}
-                    onClick={() =>
-                      save(
-                        state.map((x) =>
-                          x.id === i.id ? { ...x, push: n } : x,
-                        ),
-                      )
-                    }
-                  />
-                ))}
-                <span className="sk-push-label">{PUSH[i.push || 0]}</span>
-              </span>
-              <span>
-                <button
-                  type="button"
-                  className="sk-btn is-small is-icon is-quiet"
-                  aria-label={`Remove ${i.title}`}
-                  title="Remove"
-                  onClick={() => save(state.filter((x) => x.id !== i.id))}
-                >
-                  <Icon name="close" size={14} />
-                </button>
-              </span>
-              <input
-                className="sk-fit-note"
-                value={i.note || ""}
-                placeholder="Note"
-                aria-label={`${i.title} note`}
-                maxLength={140}
-                onChange={(e) =>
-                  save(
-                    state.map((x) =>
-                      x.id === i.id ? { ...x, note: e.target.value } : x,
-                    ),
-                  )
-                }
-              />
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </>
-  );
+  return [items, save] as const;
 }
 
 const BOTTLES = 5;
@@ -628,10 +359,13 @@ export function useShortTermFocus() {
   const now = useFocusList("lifehub-focus-now2");
   const weeks = useFocusList("lifehub-focus-weeks2");
   const ongoing = useFocusList(ONGOING_KEY);
-  const open = [...now[0], ...weeks[0], ...ongoing[0]].filter(
+  const nutrition = useFocusList("lifehub-focus-nut2");
+  const marvel = useFocusList("lifehub-focus-marvel-goals");
+  const fitness = useFitnessFocus();
+  const open = [...now[0], ...weeks[0], ...ongoing[0], ...nutrition[0], ...marvel[0], ...fitness[0]].filter(
     (i) => !i.done,
   ).length;
-  return { now, weeks, ongoing, open };
+  return { now, weeks, ongoing, nutrition, marvel, fitness, open };
 }
 
 export const shortTermSummary = (open: number) =>
@@ -660,7 +394,7 @@ export function ShortTermFocus({
     >
       <FocusCards
         list={focus.now}
-        extra={[focus.weeks]}
+        extra={[focus.weeks, focus.nutrition, focus.fitness, focus.marvel]}
         events={events}
         bills={bills}
         openFinance={openFinance}
@@ -695,14 +429,23 @@ export function FocusSection({
   snapshots,
   ledger,
   enter,
+  focus,
+  events = [],
+  bills = [],
+  openFinance,
 }: {
+  focus: ReturnType<typeof useShortTermFocus>;
+  events?: LinkItem[];
+  bills?: BillDue[];
+  openFinance?: OpenFinance;
   snapshots?: Snaps;
   ledger?: CompletionLedger;
   enter: (id: SpaceId) => void;
 }) {
   const day = useDayKey();
-  const nut = useFocusList("lifehub-focus-nut2");
-  const mvGoals = useFocusList("lifehub-focus-marvel-goals");
+  const nutritionLists = assignedFocusLists(focus, "nutrition");
+  const fitnessLists = assignedFocusLists(focus, "fitness");
+  const marvelLists = assignedFocusLists(focus, "marvel");
   const [water, setWater] = useDayState<number>("lifehub-focus-water", 0);
   const [picks, setPicks] = useDayState<MarvelPicks>(
     "lifehub-focus-marvel-pick",
@@ -751,13 +494,7 @@ export function FocusSection({
             </div>
           )}
           <ListHead title="Nutrition focus" />
-          <FocusList
-            list={nut}
-            label="e.g. more protein"
-            noteLabel="How: 170 g, shake after the gym…"
-            marks={false}
-            limit={2}
-          />
+          <FocusCards list={nutritionLists[3]} extra={nutritionLists.filter((_, i) => i !== 3)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'nutrition', ongoing: true }} label="Add a nutrition focus" empty="Add what you’re working on with nutrition." />
           <button
             type="button"
             className="sk-link sk-fc-log"
@@ -767,7 +504,8 @@ export function FocusSection({
             <Icon name="chevron" size={14} />
           </button>
           <ListHead title="Pushing on" />
-          <FitnessFocus />
+          <FitnessFocus list={fitnessLists[4]} />
+          <FocusCards list={fitnessLists[4]} extra={fitnessLists.filter((_, i) => i !== 4)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'fitness', ongoing: true, push: 2, since: localDayKey() }} label="What are you pushing on" empty="Add a fitness focus, or pick an area above." />
           <ListHead title="Drink tracker" />
           <Water water={water} setWater={setWater} />
         </Group>
@@ -782,12 +520,7 @@ export function FocusSection({
             tasks={tickTickToday(/marvel/i, snapshots?.ticktick, ledger, day)}
           />
           <ListHead title="Short-term goals" />
-          <FocusList
-            list={mvGoals}
-            label="e.g. desensitize him to the toothbrush"
-            noteLabel="Why, and the next step (toothbrush → DNA test)"
-            empty="Add what you’re working on with Marvel right now."
-          />
+          <FocusCards list={marvelLists[5]} extra={marvelLists.filter((_, i) => i !== 5)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'marvel', ongoing: true }} label="Add a Marvel focus" empty="Add what you’re working on with Marvel right now." />
           <ListHead title="This or that" />
           <MarvelMenu st={picks} setSt={setPicks} />
         </Group>

@@ -27,6 +27,7 @@ import {
 import { mdSources, oosSources } from "./OutstandingView";
 import type { Entry, SubList, SubTask } from "./FocusSection";
 import { FOCUS_PRIORITY_LABEL, orderFocus, type FocusPriority } from "../../lib/focusPriority";
+import { FOCUS_SECTION_LABELS, type FocusSectionId } from "../../lib/focusRouting";
 
 /** Something on the calendar a focus can count down to: a Google event, a Life Hub plan, a bill, a task with a day. */
 export type LinkItem = {
@@ -367,8 +368,8 @@ function Card({
   };
   return (
     <div
-      className={`sk-fcard${item.done ? " is-done" : ""}${item.site ? " has-site" : ""}`}
-      data-site={item.site || undefined}
+      className={`sk-fcard${item.done ? " is-done" : ""}${item.site || item.section ? " has-site" : ""}`}
+      data-site={item.section || item.site || undefined}
       data-focus-priority={item.priority}
       role="button"
       tabIndex={0}
@@ -376,10 +377,10 @@ function Card({
       onKeyDown={onKey}
       aria-label={`${item.title} — open details`}
     >
-      {item.site || item.ongoing ? (
+      {item.site || item.section || item.ongoing ? (
         <span className="sk-fcard-tags">
-          {item.site ? (
-            <span className="sk-fcard-site">{sourceById[item.site]?.shortName}</span>
+          {item.site || item.section ? (
+            <span className="sk-fcard-site">{item.section ? FOCUS_SECTION_LABELS[item.section] : sourceById[item.site!]?.shortName}</span>
           ) : null}
           {item.ongoing ? <span className="sk-fcard-ongoing">Ongoing</span> : null}
         </span>
@@ -536,7 +537,7 @@ function Detail({
     >
       <div
         className="sk-dialog sk-fdetail"
-        data-site={item.site || undefined}
+        data-site={item.section || item.site || undefined}
         role="dialog"
         aria-modal="true"
         aria-label={item.title}
@@ -786,6 +787,10 @@ function Detail({
         </div>
 
         <div className="sk-fd-tools">
+          {item.section === 'fitness' || item.push !== undefined ? <>
+            <label><span className="sk-cap">Effort</span><select aria-label="Fitness effort" value={item.push || 2} onChange={e => update({ push: Number(e.target.value) })}><option value={1}>Steady</option><option value={2}>More</option><option value={3}>All in</option></select></label>
+            <label><span className="sk-cap">Started</span><input type="date" aria-label="Fitness start date" value={item.since || ''} max={dayKey(new Date())} onChange={e => update({ since: e.target.value || undefined })} /></label>
+          </> : null}
           <label>
             <span className="sk-cap">Priority</span>
             <select
@@ -798,15 +803,18 @@ function Detail({
             </select>
           </label>
           <label>
-            <span className="sk-cap">Site — colours the card</span>
+            <span className="sk-cap">Destination — ongoing goal</span>
             <select
-              value={item.site || ""}
-              aria-label="Site this belongs to"
+              value={item.section ? `section:${item.section}` : item.site || ""}
+              aria-label="Focus destination"
               onChange={(e) =>
-                update({ site: (e.target.value || undefined) as SourceId | undefined })
+                e.target.value.startsWith("section:")
+                  ? update({ section: e.target.value.slice(8) as FocusSectionId, site: undefined, ongoing: true, unassigned: false })
+                  : update({ site: (e.target.value || undefined) as SourceId | undefined, section: undefined, unassigned: !e.target.value, ...(e.target.value ? { ongoing: true } : {}) })
               }
             >
-              <option value="">No site</option>
+              <option value="">No destination</option>
+              <optgroup label="Focus sections">{Object.entries(FOCUS_SECTION_LABELS).map(([id, label]) => <option key={id} value={`section:${id}`}>{label}</option>)}</optgroup>
               {(Object.keys(sourceById) as SourceId[]).map((sid) => (
                 <option key={sid} value={sid}>
                   {sourceById[sid].name}
@@ -944,6 +952,7 @@ export function FocusCards({
   label,
   empty,
   noAdd,
+  defaults,
 }: {
   /** Where new entries go */
   list: CardList;
@@ -958,6 +967,7 @@ export function FocusCards({
   empty?: string;
   /** No "add" box (ongoing goals are made from Self) */
   noAdd?: boolean;
+  defaults?: Partial<Entry>;
 }) {
   const { file, marks } = useDebtFile();
   const ctx: FinCtx = { file, marks, bills };
@@ -992,7 +1002,7 @@ export function FocusCards({
     e.preventDefault();
     if (!title.trim()) return;
     const id = `${Date.now()}`;
-    list[1]([...list[0], { id, title: title.trim(), added: dayKey(new Date()) }]);
+    list[1]([...list[0], { ...defaults, id, title: title.trim(), added: dayKey(new Date()) }]);
     setTitle("");
     setOpenId(id);
   };
@@ -1036,7 +1046,7 @@ export function FocusCards({
       )}
       {openItem ? (
         <Detail
-          item={openItem}
+          item={!openItem.site && !openItem.section && !openItem.unassigned && defaults?.section ? { ...openItem, section: defaults.section, ongoing: true } : openItem}
           events={events}
           ctx={ctx}
           openFinance={openFinance}

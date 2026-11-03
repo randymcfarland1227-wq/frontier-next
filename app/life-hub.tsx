@@ -43,6 +43,8 @@ import { StickerShell } from './sticker/StickerShell';
 import './sticker/sticker.css';
 import { HomeView } from './components/HomeView';
 import { SourceCard } from './components/SourceCard';
+import { requestOpenDebt } from '../lib/finLinks';
+import { SiteFocus } from './components/AssignedFocus';
 import { SourceView } from './components/SourceView';
 import { FocusDrawer, useTodayListCount } from './components/FocusDrawer';
 import { SourceBridges } from './components/SourceBridges';
@@ -1157,6 +1159,7 @@ goalsData ? (
       ) : (
         <SourceView
           sourceId={active}
+          focusGoals={<SiteFocus target={active} events={(schedule?.events || []).map(e => ({ id: e.id, title: e.title, start: e.start, allDay: e.allDay }))} bills={moneyDues} openFinance={(id, tab) => { requestOpenDebt(id, tab); enter('money'); }} />}
           snapshot={visibleSnapshots[active]}
           openSource={() => openSource(active)}
           onCompleteFeatured={(item: FeaturedItem) => completeOnHub(active, item.id)}

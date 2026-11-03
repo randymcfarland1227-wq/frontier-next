@@ -2308,6 +2308,12 @@
 .sk-app .sk-brief-sections { display: block; columns: 280px; column-gap: 18px; }
 .sk-app .sk-brief-section { break-inside: avoid; margin-bottom: 12px; }
 
+/* Shared goals retain the site's colour and the existing compact card density. */
+.sk-app [data-site="nutrition"] { --site: #447b53; --site-b: #d9efbd; }
+.sk-app [data-site="fitness"] { --site: #467d9e; --site-b: #c9e5f0; }
+.sk-app [data-site="marvel"] { --site: #a45b7d; --site-b: #ffdcec; }
+.sk-app .sk-assigned-focus { margin-top: 10px; }
+.sk-app .sk-brief-kind { display: inline-block; padding: 1px 4px; margin-right: 5px; border: 1px solid currentColor; border-radius: 4px; color: var(--sk-ink-2); font: var(--sk-caption); }
 .sk-app .skm-dash-cols { grid-template-columns: var(--dash-cols, repeat(6, minmax(0, 1fr))); }
 .sk-app .skm-dc-stamp { display: block; padding: 0 8px 4px; color: var(--sk-ink-2); font: var(--sk-caption); }
 .sk-app .skm-dc-fold { margin-left: auto; padding: 2px; }

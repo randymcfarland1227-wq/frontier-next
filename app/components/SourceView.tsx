@@ -13,6 +13,7 @@ import { FeaturedList } from "./FeaturedList";
 import { TaskList } from "./TaskList";
 import { ShelfList } from "./ShelfList";
 import { SiteIcon } from "./SiteIcon";
+import type { ReactNode } from "react";
 import { SelfInbox } from "./SelfInbox";
 
 export function SourceView({
@@ -26,7 +27,9 @@ export function SourceView({
   onSelfAdd,
   onSelfComplete,
   onSelfStar,
+  focusGoals,
 }: {
+  focusGoals?: ReactNode;
   sourceId: SourceId;
   snapshot: SourceSnapshot;
   openSource: () => void;
@@ -92,6 +95,7 @@ export function SourceView({
       <section className="sk-group sksite-box sksite-metrics">
         <MetricGrid sourceId={sourceId} snapshot={snapshot} />
       </section>
+      {focusGoals}
       <section className="work-ledger sksite-ledger">
         {sourceId === "self" ? (
           <section className="sk-group sksite-box">

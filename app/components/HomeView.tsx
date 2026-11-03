@@ -50,6 +50,7 @@ import { ListHead, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { TickTickRings } from "./TickTickRings";
 import { Icon } from "../sticker/Icon";
+import { AssignedFocus } from "./AssignedFocus";
 import { SITE_ROWS, SitesTabs } from "../sticker/Sites";
 
 type TodayTab = "brief" | "grounding" | "calendar" | "focus" | "money";
@@ -479,7 +480,7 @@ export function HomeView({
         )}
       </Section>
 
-      <FocusSection snapshots={snapshots} ledger={ledger} enter={enter} />
+      <FocusSection snapshots={snapshots} ledger={ledger} enter={enter} focus={shortTerm} events={linkItems} bills={bills} openFinance={(id, tab) => { requestOpenDebt(id, tab); enter("money"); }} />
 
       <Section
         id="priority"
@@ -499,11 +500,10 @@ export function HomeView({
           onCompleteFeatured={onCompleteFeatured}
           onCompleteTask={onCompleteTask}
           onStarTask={onStarTask}
-          extra={{
-            self: capturesPanel,
-            radall: bills.length ? financeBills : undefined,
-            ticktick: ticktickRings,
-          }}
+          extra={Object.fromEntries(SITE_ROWS.flatMap(r => r.ids).map(id => [id, <div key={id}>
+            {id === 'self' ? capturesPanel : id === 'radall' ? (bills.length ? financeBills : null) : id === 'ticktick' ? ticktickRings : null}
+            <AssignedFocus target={id} focus={shortTerm} events={linkItems} bills={bills} openFinance={(debtId, tab) => { requestOpenDebt(debtId, tab); enter("money"); }} />
+          </div>]))}
         />
         </PriorityBoard>
       </Section>

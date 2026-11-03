@@ -87,6 +87,11 @@ async function handleTickTickComplete(
     return jsonResponse({ ok: false, error: "cors_denied" }, 403, origin);
   }
 
+  // Completing a real TickTick task needs the backup key once the backup has been claimed.
+  if (!(await syncKeyAllowed(request, env))) {
+    return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
+  }
+
   let body: { taskId?: unknown; projectId?: unknown };
   try {
     body = (await request.json()) as { taskId?: unknown; projectId?: unknown };

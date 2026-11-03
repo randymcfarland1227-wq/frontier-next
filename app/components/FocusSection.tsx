@@ -8,6 +8,7 @@ import { Icon } from "../sticker/Icon";
 import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { FOCUS_LIST_EVENT, ONGOING_KEY } from "../../lib/ongoingGoals";
+import { stampChanges } from "../../lib/focusSync";
 import { dayRecord, localDayKey, useDayKey } from "../../lib/dayKey";
 import type { CompletionLedger } from "../../lib/completions";
 import { tickTickToday } from "../../lib/tickTickToday";
@@ -78,6 +79,8 @@ export type Entry = {
   eventTitle?: string;
   /** Day (YYYY-MM-DD) it was added */
   added?: string;
+  /** When this card last changed (set on save; the cloud backup keeps the newest) */
+  at?: string;
   /** The site it belongs to — colours its card */
   site?: SourceId;
   /** A Home focus section, using the same record as the main Short-term Focus view. */
@@ -111,11 +114,19 @@ function useFocusList(storageKey: string, week?: boolean) {
       if ((e as CustomEvent).detail !== storageKey) return;
       setState(readSaved(storageKey, { scope, items: [] as Entry[] }));
     };
+    // The cloud backup merged cards in from another device.
+    const synced = () => setState(readSaved(storageKey, { scope, items: [] as Entry[] }));
     window.addEventListener(FOCUS_LIST_EVENT, reload);
-    return () => window.removeEventListener(FOCUS_LIST_EVENT, reload);
+    window.addEventListener('lifehub:synced', synced);
+    return () => {
+      window.removeEventListener(FOCUS_LIST_EVENT, reload);
+      window.removeEventListener('lifehub:synced', synced);
+    };
   }, [storageKey, scope]);
   const items = state.scope === scope ? state.items : [];
-  const save = (next: Entry[]) => {
+  const save = (changed: Entry[]) => {
+    // New and edited cards get a change time, removed ones a tombstone, so the cloud backup can merge them.
+    const next = stampChanges(storageKey, items, changed);
     const v = { scope, items: next };
     setState(v);
     writeSaved(storageKey, v);
@@ -130,10 +141,16 @@ function useFitnessFocus() {
   const [items, setItems] = useState(() => readSaved<Entry[]>(key, []));
   useEffect(() => {
     const reload = (e: Event) => { if ((e as CustomEvent).detail === key) setItems(readSaved<Entry[]>(key, [])); };
+    const synced = () => setItems(readSaved<Entry[]>(key, []));
     window.addEventListener(FOCUS_LIST_EVENT, reload);
-    return () => window.removeEventListener(FOCUS_LIST_EVENT, reload);
+    window.addEventListener('lifehub:synced', synced);
+    return () => {
+      window.removeEventListener(FOCUS_LIST_EVENT, reload);
+      window.removeEventListener('lifehub:synced', synced);
+    };
   }, []);
-  const save = (next: Entry[]) => {
+  const save = (changed: Entry[]) => {
+    const next = stampChanges(key, items, changed);
     setItems(next); writeSaved(key, next);
     window.dispatchEvent(new CustomEvent(FOCUS_LIST_EVENT, { detail: key }));
   };

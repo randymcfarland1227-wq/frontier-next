@@ -2,6 +2,8 @@
  * Token stays on the Worker — never ship TICKTICK_ACCESS_TOKEN in the Pages bundle.
  */
 
+import { syncKeyHeader } from './cloudSync';
+
 const WORKER_COMPLETE_URL =
   'https://frontier-work-room.randymcfarland1227.workers.dev/api/ticktick/complete';
 
@@ -44,7 +46,7 @@ export async function completeTickTickTask(opts: {
   try {
     const res = await fetch(WORKER_COMPLETE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...syncKeyHeader() },
       body: JSON.stringify({ taskId, projectId }),
     });
     let data: CompleteTickTickResult & { status?: number } = { ok: false };

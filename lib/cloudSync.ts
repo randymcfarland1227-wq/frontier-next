@@ -12,6 +12,7 @@ import { loadSelfItems } from './adapters/self';
 import { readSaved, writeSaved, STORAGE_KEYS, LOCAL_WRITE_EVENT } from './storage';
 import { requestPersistentStorage, vaultCookieRead, vaultIdbRead, vaultWrite } from './keyVault';
 import { mergeState, normalizeState, stateCounts, type LocalGoalLinks, type SyncedState } from './syncState';
+import { FOCUS_LIST_KEYS, FOCUS_TOMBS_KEY, readFocusState, writeFocusState } from './focusSync';
 
 const WORKER_BASE =
   (import.meta as ImportMeta & { env?: { VITE_WORKER_URL?: string } }).env?.VITE_WORKER_URL ||
@@ -49,6 +50,8 @@ const SYNCED_KEYS: string[] = [
   STORAGE_KEYS.balancePicks,
   STORAGE_KEYS.moneyMeta,
   STORAGE_KEYS.owedDone,
+  ...FOCUS_LIST_KEYS,
+  FOCUS_TOMBS_KEY,
 ];
 
 export type SyncStatus = {
@@ -162,6 +165,7 @@ export function readLocalState(): SyncedState {
     balancePicks: readSaved(STORAGE_KEYS.balancePicks, {}),
     moneyMeta: readSaved(STORAGE_KEYS.moneyMeta, {}),
     owedDone: readSaved(STORAGE_KEYS.owedDone, {}),
+    focus: readFocusState(),
   });
 }
 
@@ -208,6 +212,8 @@ function writeLocalState(next: SyncedState): boolean {
     // Peculiar's bundle: written straight to its own key (an open Peculiar tab / Life Hub's hidden
     // copy reload from the storage event).
     if (writeCandle(next.candle)) changed = true;
+    // Focus cards live in several lists; merged records are spread back into them.
+    if (writeFocusState(next.focus)) changed = true;
   } finally {
     applying = false;
   }

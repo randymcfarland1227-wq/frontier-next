@@ -68,6 +68,8 @@ export type SyncedState = {
   moneyMeta: Record<string, { at: string } & Record<string, unknown>>;
   /** Outstanding lines marked complete (lib/owedComplete.ts); an undo keeps `gone: true` so it syncs; newest change wins */
   owedDone: Record<string, { at: string; month?: string; gone?: boolean }>;
+  /** Focus cards (Daily Rhythm, Short-term, ongoing goals): "<list>::<id>" → card (null = deleted); newest change wins (lib/focusSync.ts) */
+  focus: Record<string, { entry: Record<string, unknown> | null; at: string }>;
 };
 
 /**
@@ -142,6 +144,7 @@ export function emptyState(): SyncedState {
     balancePicks: {},
     moneyMeta: {},
     owedDone: {},
+    focus: {},
   };
 }
 
@@ -188,6 +191,7 @@ export function normalizeState(raw: unknown): SyncedState {
     balancePicks: s.balancePicks && typeof s.balancePicks === 'object' ? s.balancePicks : {},
     moneyMeta: s.moneyMeta && typeof s.moneyMeta === 'object' ? s.moneyMeta : {},
     owedDone: s.owedDone && typeof s.owedDone === 'object' ? s.owedDone : {},
+    focus: s.focus && typeof s.focus === 'object' ? s.focus : {},
   };
 }
 
@@ -285,6 +289,7 @@ export function mergeState(aRaw: unknown, bRaw: unknown): SyncedState {
     balancePicks: mergeLevels(a.balancePicks, b.balancePicks),
     moneyMeta: mergeLevels(a.moneyMeta, b.moneyMeta),
     owedDone: mergeLevels(a.owedDone, b.owedDone),
+    focus: mergeLevels(a.focus, b.focus),
   };
 }
 

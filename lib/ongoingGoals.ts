@@ -7,6 +7,7 @@
  */
 
 import { readSaved, writeSaved } from './storage';
+import { addTomb, EPOCH } from './focusSync';
 
 export const ONGOING_KEY = 'lifehub-focus-ongoing';
 /** Fired after any focus list is written elsewhere, so a mounted list re-reads its key. */
@@ -27,6 +28,7 @@ export function addOngoingGoal(goal: { title: string; note?: string; why?: strin
     site: goal.site || undefined,
     ongoing: true,
     added: todayKey(),
+    at: new Date().toISOString(),
   };
   writeSaved(ONGOING_KEY, { scope: state.scope, items: [...state.items, item] });
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(FOCUS_LIST_EVENT, { detail: ONGOING_KEY }));
@@ -50,7 +52,8 @@ function seedInto(storageKey: string, shape: 'list' | 'array', seeds: Seed[]): b
   const items: Array<Record<string, unknown>> = shape === 'list' ? ((raw as { items?: Array<Record<string, unknown>> }).items ?? []) : (raw as Array<Record<string, unknown>>);
   const fresh = seeds.filter(s => !seeded.includes(s.id) && !items.some(i => i.id === s.id));
   if (!fresh.length) return false;
-  const added = fresh.map(s => ({ ...s, ongoing: true, added: todayKey() }));
+  // Seeds carry the epoch, so they never beat a later edit or delete from any device.
+  const added = fresh.map(s => ({ ...s, ongoing: true, added: todayKey(), at: EPOCH }));
   const next = [...items, ...added];
   writeSaved(storageKey, shape === 'list' ? { scope: (raw as { scope?: string }).scope ?? '', items: next } : next);
   writeSaved(SEEDED_KEY, [...seeded, ...fresh.map(s => s.id)]);
@@ -67,8 +70,9 @@ export function moveFitnessToOngoing(id: string): boolean {
   const hit = fit.find(i => i.id === id);
   if (!hit) return false;
   writeSaved('lifehub-focus-fit-areas', fit.filter(i => i.id !== id));
+  addTomb('lifehub-focus-fit-areas', id);
   const ongoing = readSaved<{ scope: string; items: Array<Record<string, unknown>> }>(ONGOING_KEY, { scope: '', items: [] });
-  if (!ongoing.items.some(i => i.id === id)) writeSaved(ONGOING_KEY, { scope: ongoing.scope, items: [...ongoing.items, { ...hit, ongoing: true, section: 'fitness' }] });
+  if (!ongoing.items.some(i => i.id === id)) writeSaved(ONGOING_KEY, { scope: ongoing.scope, items: [...ongoing.items, { ...hit, ongoing: true, section: 'fitness', at: new Date().toISOString() }] });
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(FOCUS_LIST_EVENT, { detail: 'lifehub-focus-fit-areas' }));
     window.dispatchEvent(new CustomEvent(FOCUS_LIST_EVENT, { detail: ONGOING_KEY }));

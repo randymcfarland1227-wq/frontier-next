@@ -12,12 +12,13 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import type { SourceId, SourceSnapshot, TaskItem } from './types';
 import { readSaved, writeSaved } from './storage';
 import { metricsAfterLocalComplete } from './actionable';
+import { sourceById } from './sources';
 
 export const SITE_LISTS_KEY = 'lifehub-site-lists';
 export const SITE_LISTS_EVENT = 'lifehub:site-lists';
 export const OPEN_SITE_LIST_EVENT = 'lifehub:open-site-list';
 
-export type SiteList = { id: string; site: SourceId; name: string; tasks: string[]; at: string; gone?: boolean };
+export type SiteList = { id: string; site: SourceId; name: string; tasks: string[]; at: string; gone?: boolean; alsoIn?: SourceId[] };
 export type SiteListStore = Record<string, SiteList>;
 
 const now = () => new Date().toISOString();
@@ -70,6 +71,12 @@ export function renameSiteList(id: string, name: string) {
 export function deleteSiteList(id: string) {
   const store = loadSiteLists();
   if (store[id]) put({ ...store, [id]: { ...store[id], gone: true, at: now() } });
+}
+
+/** Show this list as a benchmark in other sites (it keeps living, and finishing, in its own site). */
+export function setListAlsoIn(id: string, sites: SourceId[]) {
+  const store = loadSiteLists();
+  if (store[id]) put({ ...store, [id]: { ...store[id], alsoIn: sites, at: now() } });
 }
 
 export function useSiteListStore(): SiteListStore {
@@ -131,6 +138,22 @@ export function applySiteLists<T extends Partial<Record<SourceId, SourceSnapshot
           metrics[k] = Number(metrics[k]) + (snap.metrics[k] - probe[k]);
     }
     out[list.site] = { ...snap, tasks, featured, metrics };
+  }
+  // Benchmarks: a list from another site, mirrored as a row (not counted again) that finishes when the list does.
+  for (const list of live(store)) {
+    if (!list.alsoIn?.length) continue;
+    const { open, total } = viewOfList(list, snaps as Partial<Record<SourceId, SourceSnapshot>>);
+    if (!total) continue;
+    const home = sourceById[list.site]?.shortName || list.site;
+    for (const s of list.alsoIn) {
+      const snap = out[s];
+      if (!snap || s === list.site) continue;
+      const due = open.map(t => t.due).filter(Boolean).sort()[0];
+      const row: TaskItem = open.length
+        ? { id: `list:${list.id}`, title: list.name, detail: `Benchmark · ${open.length} of ${total} left in ${home}`, status: 'open', kind: 'list', tag: 'Benchmark', ...(due ? { due } : {}) }
+        : { id: `list:${list.id}`, title: list.name, detail: `Benchmark done · finished in ${home}`, status: 'done', kind: 'list', tag: 'Benchmark' };
+      out[s] = { ...snap, tasks: [...snap.tasks, row] };
+    }
   }
   return out as T;
 }

@@ -48,3 +48,15 @@ test('lists merge across devices: newest wins, a delete sticks', () => {
   const gone = { siteLists: { 'sl-1': list(['a', 'b'], { gone: true, at: '2026-11-05T10:00:00.000Z' }) } };
   assert.equal((mergeState(b, gone).siteLists['sl-1'] as unknown as { gone?: boolean }).gone, true);
 });
+
+test('a benchmark mirrors a list into another site, uncounted, and shows done when the list finishes', () => {
+  const mv = { ...snap([task('m1')]), source: 'move', metrics: { openTasks: 1 } } as unknown as SourceSnapshot;
+  const store = { 'sl-1': list(['a', 'b'], { alsoIn: ['move'] }) } as SiteListStore;
+  const open = applySiteLists({ radall: snap([task('a'), task('b')]), move: mv }, store);
+  const row = open.move!.tasks.find(t => t.id === 'list:sl-1')!;
+  assert.equal(row.status, 'open');
+  assert.equal(row.tag, 'Benchmark');
+  assert.equal(open.move!.metrics.openTasks, 1);
+  const done = applySiteLists({ radall: snap([task('a', { status: 'done' }), task('b', { status: 'done' })]), move: mv }, store);
+  assert.equal(done.move!.tasks.find(t => t.id === 'list:sl-1')!.status, 'done');
+});

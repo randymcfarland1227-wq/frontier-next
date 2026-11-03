@@ -13,6 +13,7 @@ import {
   OPEN_SITE_LIST_EVENT,
   removeFromSiteList,
   renameSiteList,
+  setListAlsoIn,
   useSiteLists,
   viewOfList,
   type SiteList,
@@ -92,6 +93,28 @@ function ListDialog({ list, close }: { list: SiteList; close: () => void }) {
           disabled={!pool.length}
           onPick={(o) => addToSiteList(list.id, [o.key])}
         />
+      </div>
+      <div className="sk-listdlg-add">
+        <span className="sk-cap">Also show as a benchmark in</span>
+        <div className="sk-listdlg-also">
+          {(["move", "self", "candle", "radall", "role", "resale", "income"] as const)
+            .filter((s) => s !== list.site && sourceById[s])
+            .map((s) => {
+              const on = (list.alsoIn || []).includes(s);
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  className={`sk-btn is-small${on ? "" : " is-quiet"}`}
+                  aria-pressed={on}
+                  onClick={() => setListAlsoIn(list.id, on ? (list.alsoIn || []).filter((x) => x !== s) : [...(list.alsoIn || []), s])}
+                >
+                  {on ? "✓ " : ""}
+                  {sourceById[s].shortName}
+                </button>
+              );
+            })}
+        </div>
       </div>
       <footer className="sk-fd-foot">
         <span className="sk-fd-hint">Add this list to a goal from the goal’s pop-out; it stays here too.</span>

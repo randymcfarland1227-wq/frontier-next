@@ -9,6 +9,7 @@
 export type SavedKey = { key: string; backup: 'cloud' | 'device' | 'cache'; note?: string };
 
 export const SAVED_KEYS: SavedKey[] = [
+  { key: 'lifehub-site-lists', backup: 'cloud', note: 'Tasks grouped into lists inside one site (members leave the pool; a list is one task)' },
   { key: 'lifehub-balance-offer-view', backup: 'device' },
   { key: 'lifehub-balance-open-groups', backup: 'device' },
   { key: 'lifehub-balance-picks', backup: 'cloud', note: "Balancing sheet picks (bills / incoming put on the sheet) — cloud-synced" },

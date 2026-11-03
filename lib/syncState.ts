@@ -70,6 +70,8 @@ export type SyncedState = {
   owedDone: Record<string, { at: string; month?: string; gone?: boolean }>;
   /** Focus cards (Daily Rhythm, Short-term, ongoing goals): "<list>::<id>" → card (null = deleted); newest change wins (lib/focusSync.ts) */
   focus: Record<string, { entry: Record<string, unknown> | null; at: string }>;
+  /** Site lists (tasks grouped inside one site): id → list, `gone` = deleted; newest change wins (lib/siteLists.ts) */
+  siteLists: Record<string, { at: string } & Record<string, unknown>>;
 };
 
 /**
@@ -145,6 +147,7 @@ export function emptyState(): SyncedState {
     moneyMeta: {},
     owedDone: {},
     focus: {},
+    siteLists: {},
   };
 }
 
@@ -192,6 +195,7 @@ export function normalizeState(raw: unknown): SyncedState {
     moneyMeta: s.moneyMeta && typeof s.moneyMeta === 'object' ? s.moneyMeta : {},
     owedDone: s.owedDone && typeof s.owedDone === 'object' ? s.owedDone : {},
     focus: s.focus && typeof s.focus === 'object' ? s.focus : {},
+    siteLists: s.siteLists && typeof s.siteLists === 'object' ? s.siteLists : {},
   };
 }
 
@@ -290,6 +294,7 @@ export function mergeState(aRaw: unknown, bRaw: unknown): SyncedState {
     moneyMeta: mergeLevels(a.moneyMeta, b.moneyMeta),
     owedDone: mergeLevels(a.owedDone, b.owedDone),
     focus: mergeLevels(a.focus, b.focus),
+    siteLists: mergeLevels(a.siteLists, b.siteLists),
   };
 }
 

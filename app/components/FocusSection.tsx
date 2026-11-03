@@ -13,7 +13,7 @@ import { dayRecord, localDayKey, useDayKey } from "../../lib/dayKey";
 import type { CompletionLedger } from "../../lib/completions";
 import { tickTickToday } from "../../lib/tickTickToday";
 import type { FocusPriority } from "../../lib/focusPriority";
-import { assignedFocusLists, type FocusSectionId } from "../../lib/focusRouting";
+import { assignedFocusLists, focusListView, type FocusSectionId } from "../../lib/focusRouting";
 
 type Snaps = Record<SourceId, SourceSnapshot>;
 
@@ -87,6 +87,10 @@ export type Entry = {
   section?: FocusSectionId;
   /** Explicitly remove a legacy section assignment without moving its saved record. */
   unassigned?: boolean;
+  /** Site lists (tasks grouped in one site) linked into this goal; they stay in the pool too (lib/siteLists.ts) */
+  siteLists?: string[];
+  /** An ongoing goal also shown in the Short-term focus view at the top of Today (same record, so edits mirror) */
+  inFocus?: boolean;
   /** An ongoing goal: a direction, not a one-time task (made from Self) */
   ongoing?: boolean;
   /** Finance lists linked in as sub-task lists (key says which debt-file items: see lib/finLinks) */
@@ -356,7 +360,7 @@ export function useShortTermFocus() {
   const marvel = useFocusList("lifehub-focus-marvel-goals");
   const fitness = useFitnessFocus();
   // Short-term = what needs catching up; ongoing goals (and the fitness / nutrition / Marvel directions) aren't counted.
-  const open = [...now[0], ...weeks[0]].filter((i) => !i.done).length;
+  const open = [...now[0], ...weeks[0], ...ongoing[0].filter((i) => i.inFocus)].filter((i) => !i.done).length;
   return { now, weeks, ongoing, nutrition, marvel, fitness, open };
 }
 
@@ -376,7 +380,11 @@ export function ShortTermFocus({
   openFinance?: OpenFinance;
 }) {
   const [ongoingShut, toggleOngoing] = useShut("focus-ongoing");
-  const ongoingCount = focus.ongoing[0].filter((i) => !i.done).length;
+  // A goal promoted to Short-term focus is the SAME record (so edits show in both places): it appears in the
+  // top grid and on its site, and is left out of the "Ongoing goals" row below so it isn't shown twice here.
+  const promoted = focusListView(focus.ongoing, (i) => Boolean(i.inFocus));
+  const rest = focusListView(focus.ongoing, (i) => !i.inFocus);
+  const ongoingCount = rest[0].filter((i) => !i.done).length;
   return (
     <Group
       tone="focus"
@@ -386,14 +394,14 @@ export function ShortTermFocus({
     >
       <FocusCards
         list={focus.now}
-        extra={[focus.weeks, focus.nutrition, focus.fitness, focus.marvel]}
+        extra={[focus.weeks, promoted, focus.nutrition, focus.fitness, focus.marvel]}
         events={events}
         bills={bills}
         openFinance={openFinance}
         label="What needs real attention — type it, then fill in the rest"
         empty="Type what needs real attention right now."
       />
-      {focus.ongoing[0].length ? (
+      {rest[0].length ? (
         <>
           <ListHead
             title="Ongoing goals"
@@ -403,7 +411,7 @@ export function ShortTermFocus({
           />
           {ongoingShut ? null : (
             <FocusCards
-              list={focus.ongoing}
+              list={rest}
               events={events}
               bills={bills}
               openFinance={openFinance}

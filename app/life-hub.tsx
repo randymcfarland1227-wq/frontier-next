@@ -103,6 +103,8 @@ import { FlowSyncReview } from './components/FlowSyncReview';
 import { WhyView } from './components/WhyView';
 import { DailyGrounding } from './components/DailyGrounding';
 import { isHidden, loadHidden, restoreItem, useHiddenItems } from '../lib/siteMoves';
+import { SiteListHost } from './components/SiteListDialog';
+import { applySiteLists, openSiteList, SiteListsContext, useSiteListStore } from '../lib/siteLists';
 import { FOCUS_LIST_EVENT, moveFitnessToOngoing, ONGOING_KEY, readOngoingIds, seedOngoingGoals } from '../lib/ongoingGoals';
 import { useRoleActive, withRoleShelves, withTaggedShelves } from '../lib/roleShelves';
 import { LogsView } from './components/LogsView';
@@ -541,6 +543,7 @@ export function LifeHub() {
   // labels set on Life Hub ("Items to buy") show as each task's tag.
   const taskTags = useTaskTags();
   const hiddenItems = useHiddenItems();
+  const siteListStore = useSiteListStore();
   const roleActive = useRoleActive();
   // Ongoing goals that replaced Move OS's own goal rows (device-local, so other devices keep the originals until they have the goals).
   const [ongoingIds, setOngoingIds] = useState<string[]>(() => readOngoingIds());
@@ -615,8 +618,9 @@ export function LifeHub() {
     if (out.move && ongoingIds.length) {
       out.move = { ...out.move, featured: out.move.featured.filter(f => !(f.completable === false && ongoingIds.includes(`move-goal-${f.id}`))) };
     }
-    return out;
-  }, [baseSnapshots, selfItems, taskTags, hiddenItems, roleActive, ongoingIds]);
+    // Lists: their tasks leave the pool and each list stands in as one task.
+    return applySiteLists(out, siteListStore);
+  }, [baseSnapshots, selfItems, taskTags, hiddenItems, roleActive, ongoingIds, siteListStore]);
 
   // One-time: Move OS's three goals become ongoing goals (shown in Today and on the Move page as
   // "Moving goals"), and the physical goals become the first fitness focus. Deleting a card keeps it deleted.
@@ -873,6 +877,8 @@ export function LifeHub() {
   };
 
   const completeOnHub = (source: SourceId, id: string, chosenArea?: string): void => {
+    // A list is finished by finishing its tasks: open it instead.
+    if (id.startsWith('list:')) return openSiteList(id.slice(5));
     // A Self task shown on another site's card is still a Self task.
     if (source !== 'self' && id.startsWith('self:')) return completeOnHub('self', id.slice(5), chosenArea);
     const snapNow = snapshotsRef.current[source];
@@ -1068,6 +1074,7 @@ goalsData ? (
   );
 
   return (
+    <SiteListsContext.Provider value={{ store: siteListStore, snapshots: baseSnapshots, complete: (site, taskId) => completeOnHub(site, taskId) }}>
     <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' ? 'home' : active}`} data-color-mode={theme}>
       <StickerShell
         active={active}
@@ -1205,6 +1212,7 @@ goalsData ? (
       {import.meta.env.VITE_LOCAL_PREVIEW === 'true' && <aside className="preview-banner" style={{position:'fixed',bottom:0,left:0,right:0,padding:'10px 20px',background:'#202824',color:'#fff',zIndex:9999}}>Local review · live writes disabled · <a href="/flow/#sync">Open Flow connections</a></aside>}
       <UpdateNotice />
       {import.meta.env.VITE_LOCAL_PREVIEW !== 'true' && <BackupGuard />}
+      <SiteListHost />
       <FocusDrawer
         open={focusOpen}
         close={() => setFocusOpen(false)}
@@ -1246,5 +1254,6 @@ goalsData ? (
         />
       ) : null}
     </main>
+    </SiteListsContext.Provider>
   );
 }

@@ -2597,3 +2597,19 @@
 @container today-pane (max-width: 560px) {
   .sk-brief-open small { display: none; }
 }
+
+/* ── Site lists: picking tasks to group, the list row, the list pop-out ── */
+.sk-app .sk-listmaker { display: grid; gap: 6px; padding: 8px 10px; margin: 0 0 var(--sk-s2); border: 1.5px dashed color-mix(in srgb, var(--sk-ink) 35%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--sk-ink) 5%, transparent); }
+.sk-app .sk-listmaker > div { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sk-app .sk-listmaker input, .sk-app .sk-listmaker select { font: var(--sk-secondary); padding: 6px 9px; border: 1.5px solid var(--sk-line); border-radius: 9px; background: color-mix(in srgb, var(--sk-paper) 70%, #fff); color: var(--sk-ink); min-width: 0; flex: 1 1 160px; }
+.sk-app .sk-row.is-picked { background: color-mix(in srgb, var(--sk-tint, #5b6cff) 16%, transparent); }
+.sk-app .sk-listglyph { display: inline-grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 1.5px solid var(--sk-ink); border-radius: 5px; background: color-mix(in srgb, var(--sk-ink) 10%, transparent); color: var(--sk-ink); cursor: pointer; }
+.sk-app .sk-row.is-list .sk-rt { font-weight: 700; }
+.sk-app .sk-listdlg { width: min(560px, 100%); display: grid; gap: var(--sk-s3); align-content: start; }
+.sk-app .sk-listdlg-tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.sk-app .sk-listdlg-tasks li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; font: var(--sk-secondary); }
+.sk-app .sk-listdlg-add { display: grid; gap: 4px; }
+.sk-app .sk-fd-sitelist { border: 1.5px solid color-mix(in srgb, var(--site, var(--sk-ink)) 55%, transparent); }
+.sk-app .sk-fd-sitelist > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.sk-app .sk-fd-sitelist > ul > li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; font: var(--sk-secondary); }
+.sk-app .sk-fd-tools { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }

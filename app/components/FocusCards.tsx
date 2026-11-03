@@ -6,6 +6,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { Icon } from "../sticker/Icon";
+import { openSiteList, useSiteLists, viewOfList, type SiteListsContextValue } from "../../lib/siteLists";
 import { Dialog } from "../sticker/Dialog";
 import { SearchPick, type Opt } from "../sticker/SearchPick";
 import { sourceById } from "../../lib/sources";
@@ -40,7 +41,7 @@ export type LinkItem = {
 
 type CardList = readonly [Entry[], (next: Entry[]) => void];
 /** What a finance link needs to be read live. */
-type FinCtx = { file: DebtFile | null; marks: DebtMarks; bills: BillDue[] };
+type FinCtx = { file: DebtFile | null; marks: DebtMarks; bills: BillDue[]; sl?: SiteListsContextValue };
 export type OpenFinance = (itemId?: string, tab?: "owed" | "flow") => void;
 
 const DAY = 86400000;
@@ -205,6 +206,13 @@ function progressOf(i: Entry, ctx: FinCtx) {
     total += s.total;
     done += s.done;
   }
+  for (const id of i.siteLists || []) {
+    const l = ctx.sl?.store[id];
+    if (!l || l.gone) continue;
+    const v = viewOfList(l, ctx.sl!.snapshots);
+    total += v.total;
+    done += v.done;
+  }
   if (!total) return { pct: i.done ? 100 : null, done: 0, total: 0 } as const;
   return { pct: Math.round((done / total) * 100), done, total };
 }
@@ -285,6 +293,10 @@ function Card({
     ...l,
     ...finStats(finRows(l, ctx)),
   }));
+  const linked = (item.siteLists || [])
+    .map((id) => ctx.sl?.store[id])
+    .filter((l): l is NonNullable<typeof l> => Boolean(l && !l.gone))
+    .map((l) => ({ l, ...viewOfList(l, ctx.sl!.snapshots) }));
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -318,13 +330,26 @@ function Card({
           <b>Why</b> {item.why}
         </p>
       ) : null}
-      {lists.length || fins.length ? (
+      {lists.length || fins.length || linked.length ? (
         <div
           className="sk-fcard-lists"
           style={
-            { "--cols": Math.min(3, lists.length + fins.length) } as React.CSSProperties
+            { "--cols": Math.min(3, lists.length + fins.length + linked.length) } as React.CSSProperties
           }
         >
+          {linked.slice(0, 3).map(({ l, open, total }) => (
+            <div key={l.id} className="is-fin">
+              <b>
+                <Icon name="steps" size={9} />
+                {l.name}
+              </b>
+              <ul>
+                <li className={open.length ? "" : "is-all"}>
+                  {open.length ? `${open.length} of ${total} left` : "All done"}
+                </li>
+              </ul>
+            </div>
+          ))}
           {fins.slice(0, 3).map((f) => (
             <div key={f.key} className="is-fin">
               <b>
@@ -338,7 +363,7 @@ function Card({
               </ul>
             </div>
           ))}
-          {lists.slice(0, Math.max(0, 3 - Math.min(fins.length, 3))).map((l) => (
+          {lists.slice(0, Math.max(0, 3 - Math.min(fins.length + linked.length, 3))).map((l) => (
             <div key={l.id}>
               <b>{l.name}</b>
               <ul>
@@ -608,6 +633,53 @@ function Detail({
             </section>
           ))}
 
+          {(item.siteLists || []).map((id) => {
+            const l = ctx.sl?.store[id];
+            if (!l || l.gone) return null;
+            const v = viewOfList(l, ctx.sl!.snapshots);
+            return (
+              <section key={id} className="sk-fd-box sk-fd-list sk-fd-sitelist" data-site={l.site}>
+                <header>
+                  <b>
+                    <Icon name="steps" size={13} />
+                    {l.name}
+                  </b>
+                  <button
+                    type="button"
+                    className="sk-btn is-small is-icon is-quiet"
+                    aria-label={`Unlink ${l.name}`}
+                    title="Unlink from this goal (the list stays in its site)"
+                    onClick={() => update({ siteLists: (item.siteLists || []).filter((x) => x !== id) })}
+                  >
+                    <Icon name="close" size={14} />
+                  </button>
+                </header>
+                <p className="sk-fd-hint">
+                  {sourceById[l.site].shortName} · {v.done} of {v.total} done
+                </p>
+                <ul>
+                  {v.open.map((t) => (
+                    <li key={t.id}>
+                      <button
+                        type="button"
+                        className="sk-circle"
+                        aria-label={`Mark ${t.title} done`}
+                        onClick={() => ctx.sl?.complete(l.site, t.id)}
+                      >
+                        <Icon name="check" size={12} />
+                      </button>
+                      <span>{t.title}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button type="button" className="sk-link" onClick={() => openSiteList(id)}>
+                  Open the list
+                  <Icon name="chevron" size={13} />
+                </button>
+              </section>
+            );
+          })}
+
           {(item.fin || []).map((l) => {
             const rows = finRows(l, ctx);
             const s = finStats(rows);
@@ -693,6 +765,23 @@ function Detail({
         </div>
 
         <div className="sk-fd-tools">
+          <div>
+            <span className="sk-cap">Add a list from a site (it stays in the pool too)</span>
+            <SearchPick
+              options={Object.values(ctx.sl?.store || {})
+                .filter((l) => l && !l.gone && !(item.siteLists || []).includes(l.id))
+                .map((l) => ({
+                  key: l.id,
+                  label: l.name,
+                  sub: `${sourceById[l.site].shortName} · ${viewOfList(l, ctx.sl!.snapshots).open.length} left`,
+                  group: sourceById[l.site].name,
+                }))}
+              label="Add a site list"
+              placeholder="Search your site lists…"
+              disabled={!Object.values(ctx.sl?.store || {}).some((l) => l && !l.gone)}
+              onPick={(o) => update({ siteLists: [...(item.siteLists || []), o.key] })}
+            />
+          </div>
           {item.section === 'fitness' || item.push !== undefined ? <>
             <label><span className="sk-cap">Effort</span><select aria-label="Fitness effort" value={item.push || 2} onChange={e => update({ push: Number(e.target.value) })}><option value={1}>Steady</option><option value={2}>More</option><option value={3}>All in</option></select></label>
             <label><span className="sk-cap">Started</span><input type="date" aria-label="Fitness start date" value={item.since || ''} max={dayKey(new Date())} onChange={e => update({ since: e.target.value || undefined })} /></label>
@@ -809,6 +898,18 @@ function Detail({
         ) : null}
 
         <footer className="sk-fd-foot">
+          {item.ongoing ? (
+            <button
+              type="button"
+              className={`sk-btn is-small${item.inFocus ? " is-on" : ""}`}
+              aria-pressed={Boolean(item.inFocus)}
+              onClick={() => update({ inFocus: !item.inFocus })}
+              title="Shows this goal in Short-term focus at the top of Today as well as on its site. It is one goal, so edits show in both."
+            >
+              <Icon name="target" size={14} />
+              {item.inFocus ? "In Short-term focus — take it out" : "Show in Short-term focus"}
+            </button>
+          ) : null}
           <button
             type="button"
             className={`sk-btn is-small${item.done ? " is-on" : ""}`}
@@ -836,6 +937,7 @@ function Detail({
 /** Daily Brief opens the very same editor without switching Today tabs. */
 export function FocusEntryDialog({ bills, events: eventsIn, ...props }: Omit<Parameters<typeof Detail>[0], 'ctx'> & { bills: BillDue[] }) {
   const { file, marks } = useDebtFile();
+  const sl = useSiteLists();
   const events = file?.registration ? [...eventsIn, {
     id: "fin:registration",
     title: `${file.registration.vehicle} registration renews`,
@@ -843,7 +945,7 @@ export function FocusEntryDialog({ bills, events: eventsIn, ...props }: Omit<Par
     allDay: true,
     kind: "Finance",
   }] : eventsIn;
-  return <Detail {...props} events={events} ctx={{ file, marks, bills }} />;
+  return <Detail {...props} events={events} ctx={{ file, marks, bills, sl }} />;
 }
 
 /** Short-term focus as cards: the square shows focus, scope, why and the lists; tap it for the full pop-out. */
@@ -874,7 +976,8 @@ export function FocusCards({
   defaults?: Partial<Entry>;
 }) {
   const { file, marks } = useDebtFile();
-  const ctx: FinCtx = { file, marks, bills };
+  const sl = useSiteLists();
+  const ctx: FinCtx = { file, marks, bills, sl };
   // The MD registration renewal date is a date a focus can count down to, too.
   const events: LinkItem[] = file?.registration
     ? [

@@ -36,6 +36,12 @@ import { useRowGesture } from "../components/RowMenu";
 import { SiteIcon } from "../components/SiteIcon";
 import { Circle, FoldGroup, Group, ListHead, Section, type Tone } from "./kit";
 import { SegTabs } from "./SegTabs";
+import {
+  addToSiteList,
+  createSiteList,
+  openSiteList,
+  useSiteListStore,
+} from "../../lib/siteLists";
 import { Icon, type IconName } from "./Icon";
 
 /** The three site rows. Their fold keys (`section:row-…`) are the ones the classic rows saved. */
@@ -146,6 +152,7 @@ function TaskRow({
   setMenu,
   onComplete,
   onStar,
+  select,
 }: {
   sourceId: SourceId;
   task: TaskItem;
@@ -156,7 +163,10 @@ function TaskRow({
   setMenu: (id: string | null) => void;
   onComplete?: (task: TaskItem) => void;
   onStar?: (task: TaskItem) => void;
+  /** Picking tasks to group into a list */
+  select?: { picked: boolean; toggle: () => void };
 }) {
+  const isList = task.kind === "list";
   const key = pinKey(sourceId, task.id);
   // Self keeps a star button; everywhere else right-click / long-press opens the star + day menu.
   const dayMenus = sourceId !== "self";
@@ -170,12 +180,32 @@ function TaskRow({
   const facts = starred || habit || task.tag || due || (narrow && when.text);
   return (
     <div
-      className={`sk-row${task.status === "done" ? " is-done" : ""}`}
+      className={`sk-row${task.status === "done" ? " is-done" : ""}${select?.picked ? " is-picked" : ""}${isList ? " is-list" : ""}`}
       {...bind}
-      {...(task.status === "done" ? {} : dragFrom(key))}
+      {...(task.status === "done" || select ? {} : dragFrom(key))}
     >
       <span className="sk-rlead">
-        {onComplete && task.status !== "done" ? (
+        {select ? (
+          <button
+            type="button"
+            className={`sk-circle${select.picked ? " is-on" : ""}`}
+            aria-pressed={select.picked}
+            aria-label={`${select.picked ? "Leave out" : "Add"} ${task.title}`}
+            onClick={select.toggle}
+          >
+            <Icon name="check" size={12} />
+          </button>
+        ) : isList ? (
+          <button
+            type="button"
+            className="sk-listglyph"
+            aria-label={`Open the list ${task.title}`}
+            title="Open this list"
+            onClick={() => openSiteList(task.id.slice(5))}
+          >
+            <Icon name="steps" size={14} />
+          </button>
+        ) : onComplete && task.status !== "done" ? (
           <Circle
             onDone={() => onComplete(task)}
             label={`Done: ${task.title}`}
@@ -185,7 +215,13 @@ function TaskRow({
       <button
         type="button"
         className="sk-rmain"
-        onClick={() => openTaskPanel(key)}
+        onClick={() =>
+          select
+            ? select.toggle()
+            : isList
+              ? openSiteList(task.id.slice(5))
+              : openTaskPanel(key)
+        }
         title={[
           task.title,
           when.text,
@@ -301,6 +337,7 @@ function SiteTasks({
   split,
   exclude,
   starred,
+  pick,
 }: {
   sourceId: SourceId;
   snapshot: SourceSnapshot;
@@ -309,6 +346,8 @@ function SiteTasks({
   split?: boolean;
   exclude?: Set<string>;
   starred?: Set<string>;
+  /** Picking tasks to group into a list (lists and habits can't be picked) */
+  pick?: { picked: Set<string>; toggle: (id: string) => void };
 }) {
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
@@ -362,6 +401,11 @@ function SiteTasks({
         setMenu={setMenuFor}
         onComplete={onComplete}
         onStar={onStar}
+        select={
+          pick && task.kind !== "list" && !isHabit(task)
+            ? { picked: pick.picked.has(task.id), toggle: () => pick.toggle(task.id) }
+            : undefined
+        }
       />
     );
   };
@@ -730,6 +774,63 @@ function SiteShelves({ snapshot }: { snapshot: SourceSnapshot }) {
 }
 
 /** One site inside a Sites group: icon + name (open its page), open count, ↗ site, fold; then its lists. */
+/** The bar above a site's tasks while you pick tasks to group: make a new list, or add to one you have. */
+function ListMaker({
+  site,
+  picked,
+  done,
+}: {
+  site: SourceId;
+  picked: string[];
+  done: () => void;
+}) {
+  const store = useSiteListStore();
+  const mine = Object.values(store).filter((l) => l && !l.gone && l.site === site);
+  const [name, setName] = useState("");
+  const [into, setInto] = useState("");
+  const n = picked.length;
+  const go = () => {
+    if (!n) return;
+    if (into) addToSiteList(into, picked);
+    else createSiteList(site, name, picked);
+    done();
+  };
+  return (
+    <div className="sk-listmaker" role="group" aria-label="Group tasks into a list">
+      <span className="sk-cap">
+        {n ? `${n} picked — they leave the pool and live in the list` : "Tap the circles of the tasks to group"}
+      </span>
+      <div>
+        {mine.length ? (
+          <select value={into} onChange={(e) => setInto(e.target.value)} aria-label="Add to an existing list">
+            <option value="">New list…</option>
+            {mine.map((l) => (
+              <option key={l.id} value={l.id}>
+                Add to “{l.name}”
+              </option>
+            ))}
+          </select>
+        ) : null}
+        {into ? null : (
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Name the list — e.g. Storefront"
+            aria-label="List name"
+            maxLength={60}
+          />
+        )}
+        <button type="button" className="sk-btn is-small" disabled={!n || (!into && !name.trim())} onClick={go}>
+          {into ? "Add to list" : "Make list"}
+        </button>
+        <button type="button" className="sk-btn is-small is-quiet" onClick={done}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SiteBlock({
   source,
   snapshot,
@@ -781,6 +882,20 @@ function SiteBlock({
     setCollapsed(next);
   };
   const links = source.relatedLinks || [];
+  // Grouping tasks into a list (the middle rung: task → list → goal).
+  const [grouping, setGrouping] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(() => new Set());
+  const togglePick = (id: string) =>
+    setPicked((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const stopGrouping = () => {
+    setGrouping(false);
+    setPicked(new Set());
+  };
 
   const { lanes } = usePriorityPins();
   const { base, deduct, value } = shownMetric(source.id, snapshot, lanes);
@@ -845,6 +960,18 @@ function SiteBlock({
             <Icon name="external" size={14} />
           </button>
         ) : null}
+        {source.id !== "self" ? (
+          <button
+            type="button"
+            className="sk-ricon"
+            aria-pressed={grouping}
+            onClick={() => (grouping ? stopGrouping() : setGrouping(true))}
+            title="Group tasks into a list"
+            aria-label={`Group ${source.shortName} tasks into a list`}
+          >
+            <Icon name="steps" size={14} />
+          </button>
+        ) : null}
         <button
           type="button"
           className={`sk-ricon sk-srcfold${collapsed ? "" : " is-open"}`}
@@ -885,9 +1012,17 @@ function SiteBlock({
                   onComplete={onCompleteFeatured}
                 />
               ) : null}
+              {grouping ? (
+                <ListMaker
+                  site={source.id}
+                  picked={[...picked]}
+                  done={stopGrouping}
+                />
+              ) : null}
               <SiteTasks
                 sourceId={source.id}
                 snapshot={snapshot}
+                pick={grouping ? { picked, toggle: togglePick } : undefined}
                 exclude={
                   inline
                     ? undefined
@@ -1069,15 +1204,28 @@ function AllTasks({
             return (
               <div key={key} className="sk-row" {...dragFrom(key)}>
                 <span className="sk-rlead">
-                  <Circle
-                    onDone={() => onCompleteTask(sid, t)}
-                    label={`Done: ${t.title}`}
-                  />
+                  {t.kind === "list" ? (
+                    <button
+                      type="button"
+                      className="sk-listglyph"
+                      aria-label={`Open the list ${t.title}`}
+                      onClick={() => openSiteList(t.id.slice(5))}
+                    >
+                      <Icon name="steps" size={14} />
+                    </button>
+                  ) : (
+                    <Circle
+                      onDone={() => onCompleteTask(sid, t)}
+                      label={`Done: ${t.title}`}
+                    />
+                  )}
                 </span>
                 <button
                   type="button"
                   className="sk-rmain"
-                  onClick={() => openTaskPanel(key)}
+                  onClick={() =>
+                    t.kind === "list" ? openSiteList(t.id.slice(5)) : openTaskPanel(key)
+                  }
                   title={[t.title, when.text, "Open details, subtasks and plan"]
                     .filter(Boolean)
                     .join(" — ")}

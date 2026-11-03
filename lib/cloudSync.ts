@@ -12,6 +12,7 @@ import { loadSelfItems } from './adapters/self';
 import { readSaved, writeSaved, STORAGE_KEYS, LOCAL_WRITE_EVENT } from './storage';
 import { requestPersistentStorage, vaultCookieRead, vaultIdbRead, vaultWrite } from './keyVault';
 import { mergeState, normalizeState, stateCounts, type LocalGoalLinks, type SyncedState } from './syncState';
+import { SITE_LISTS_KEY } from './siteLists';
 import { FOCUS_LIST_KEYS, FOCUS_TOMBS_KEY, readFocusState, writeFocusState } from './focusSync';
 
 const WORKER_BASE =
@@ -52,6 +53,7 @@ const SYNCED_KEYS: string[] = [
   STORAGE_KEYS.owedDone,
   ...FOCUS_LIST_KEYS,
   FOCUS_TOMBS_KEY,
+  SITE_LISTS_KEY,
 ];
 
 export type SyncStatus = {
@@ -166,6 +168,7 @@ export function readLocalState(): SyncedState {
     moneyMeta: readSaved(STORAGE_KEYS.moneyMeta, {}),
     owedDone: readSaved(STORAGE_KEYS.owedDone, {}),
     focus: readFocusState(),
+    siteLists: readSaved(SITE_LISTS_KEY, {}),
   });
 }
 
@@ -199,6 +202,7 @@ function writeLocalState(next: SyncedState): boolean {
     [STORAGE_KEYS.balancePicks, current.balancePicks, next.balancePicks],
     [STORAGE_KEYS.moneyMeta, current.moneyMeta, next.moneyMeta],
     [STORAGE_KEYS.owedDone, current.owedDone, next.owedDone],
+    [SITE_LISTS_KEY, current.siteLists, next.siteLists],
   ];
   let changed = false;
   applying = true;

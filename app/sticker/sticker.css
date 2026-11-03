@@ -2592,3 +2592,6 @@
   .sk-sched .sk-month .sk-day { min-height: 44px !important; }
 }
 @media (prefers-reduced-motion: reduce) { .sk-app .sk-splitwrap::after { transition: none; } }
+/* Money inside a split pane: no sideways bleed (the pane clips it) */
+.sk-app .sk-splitpane .sk-money-tab { margin-inline: 0; }
+.sk-app .sk-splitpane .settings-view { max-width: 100%; }

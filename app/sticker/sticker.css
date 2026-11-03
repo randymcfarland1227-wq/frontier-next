@@ -2399,3 +2399,9 @@
 @media (max-width: 1100px) { .sk-app .sk-gcols { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .sk-app .sk-gcols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @container (max-width: 760px) { .sk-gcols { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+
+/* Night sky shows on every page: the page colour sits on .sk-app, the content areas let it through */
+.frontier-shell[data-color-mode="dark"] .sk-app { background-color: var(--sk-page); }
+.frontier-shell[data-color-mode="dark"] .sk-app :is(.sk-main, .sksite) { background-color: transparent; }
+.frontier-shell[data-color-mode="dark"] .sk-app[data-page] .sk-main { background-color: transparent; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-night::before { opacity: 1; }

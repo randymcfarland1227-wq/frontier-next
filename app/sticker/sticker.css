@@ -2440,3 +2440,6 @@
 @keyframes sk-wave { from { transform: rotate(0deg); } to { transform: rotate(-12deg); } }
 @media (max-width: 900px) { .sk-app .sk-astro, .sk-app .sk-p-teal, .sk-app .sk-c-cass { display: none !important; } }
 @media (prefers-reduced-motion: reduce) { .sk-app :is(.sk-planet, .sk-moon, .sk-astro, .sk-astro-arm, .sk-const circle) { animation: none !important; } .sk-app .sk-const path { animation: none; stroke-dashoffset: 0; } }
+/* small placement fixes: keep the footer text clear of the planet and the astronaut */
+.sk-app .sk-p-ring { left: -96px; bottom: 10vh; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-astro { right: 30px; bottom: 92px; }

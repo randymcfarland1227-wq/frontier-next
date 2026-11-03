@@ -5,7 +5,11 @@ import { orderFocus } from '../lib/focusPriority';
 import { SOURCE_IDS } from '../lib/sources';
 import type { SourceId, SourceSnapshot } from '../lib/types';
 
-const snapshots = () => Object.fromEntries(SOURCE_IDS.map(source => [source, { source, metrics: {}, tasks: [], featured: [], refreshedAt: '' }])) as Record<SourceId, SourceSnapshot>;
+const snapshots = () => {
+  const result = {} as Record<SourceId, SourceSnapshot>;
+  for (const source of SOURCE_IDS) result[source] = { source, metrics: {}, tasks: [], featured: [], refreshedAt: '' };
+  return result;
+};
 
 test('mail routes shipping and reply work without duplicating task and featured copies', () => {
   const snaps = snapshots();

@@ -31,6 +31,7 @@ import { MenuRow } from "./RowMenu";
 import { countdown, fromDayKey, money, type BillDue } from "../../lib/schedule";
 import { Circle, Dot, ListHead, Tag } from "../sticker/kit";
 import { Icon } from "../sticker/Icon";
+import { useSiteLists } from "../../lib/siteLists";
 
 /** Self's stand-in detail for starred items with no note — not worth a subtext line. */
 const FILLER_DETAIL = "Captured in Self inbox";
@@ -170,10 +171,21 @@ export function PriorityBoard({
   // Row whose 📅 day line is open
   const [dayFor, setDayFor] = useState<string | null>(null);
 
-  const catalog = useMemo(
-    () => buildCatalog(snapshots, bills),
-    [snapshots, bills],
-  );
+  const sl = useSiteLists();
+  // Tasks inside a site list leave the pool but keep their own panel (notes, questions, findings).
+  const catalog = useMemo(() => {
+    const withMembers = { ...snapshots } as Record<SourceId, SourceSnapshot>;
+    for (const l of Object.values(sl.store)) {
+      if (!l || l.gone) continue;
+      const base = sl.snapshots[l.site];
+      const cur = withMembers[l.site];
+      if (!base || !cur) continue;
+      const have = new Set(cur.tasks.map((t) => t.id));
+      const extra = base.tasks.filter((t) => l.tasks.includes(t.id) && !have.has(t.id));
+      if (extra.length) withMembers[l.site] = { ...cur, tasks: [...cur.tasks, ...extra] };
+    }
+    return buildCatalog(withMembers, bills);
+  }, [snapshots, bills, sl.store, sl.snapshots]);
   const criticals = useMemo(
     () => criticalKeys(levels).map(([s, id]) => pinKey(s, id)),
     [levels],

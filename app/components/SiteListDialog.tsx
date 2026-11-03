@@ -6,6 +6,7 @@ import { Circle } from "../sticker/kit";
 import { Icon } from "../sticker/Icon";
 import { SearchPick } from "../sticker/SearchPick";
 import { sourceById } from "../../lib/sources";
+import { loadLanes, openTaskPanel, pinKey } from "../../lib/priorityPins";
 import {
   addToSiteList,
   deleteSiteList,
@@ -31,6 +32,11 @@ export function SiteListHost() {
   const list = openId ? store[openId] : undefined;
   if (!list || list.gone) return null;
   return <ListDialog list={list} close={() => setOpenId(null)} />;
+}
+
+function hasNotes(site: string, id: string) {
+  const e = loadLanes()[pinKey(site as never, id)];
+  return Boolean(e && (e.note || e.before?.length || e.subs?.length));
 }
 
 function ListDialog({ list, close }: { list: SiteList; close: () => void }) {
@@ -71,7 +77,10 @@ function ListDialog({ list, close }: { list: SiteList; close: () => void }) {
         {open.map((t) => (
           <li key={t.id}>
             <Circle onDone={() => complete(list.site, t.id)} label={`Done: ${t.title}`} />
-            <span>{t.title}</span>
+            <button type="button" className="sk-fd-taskopen" title="Open its notes, questions and findings" onClick={() => openTaskPanel(pinKey(list.site, t.id))}>
+              {t.title}
+              {hasNotes(list.site, t.id) ? " ✎" : ""}
+            </button>
             <button
               type="button"
               className="sk-btn is-small is-quiet"

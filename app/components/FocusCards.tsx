@@ -6,6 +6,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { Icon } from "../sticker/Icon";
+import { openTaskPanel, pinKey } from "../../lib/priorityPins";
 import { openSiteList, useSiteLists, viewOfList, type SiteListsContextValue } from "../../lib/siteLists";
 import { Dialog } from "../sticker/Dialog";
 import { SearchPick, type Opt } from "../sticker/SearchPick";
@@ -668,7 +669,9 @@ function Detail({
                       >
                         <Icon name="check" size={12} />
                       </button>
-                      <span>{t.title}</span>
+                      <button type="button" className="sk-fd-taskopen" title="Open its notes, questions and findings" onClick={() => openTaskPanel(pinKey(l.site, t.id))}>
+                        {t.title}
+                      </button>
                     </li>
                   ))}
                 </ul>

@@ -2615,3 +2615,6 @@
 .sk-app .sk-fd-tools { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
 
 .sk-listdlg-also{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.sk-app .sk-fd-taskopen{all:unset;cursor:pointer;font:inherit;text-align:left;min-width:0;overflow-wrap:anywhere}
+.sk-app .sk-fd-taskopen:hover{text-decoration:underline}
+.sk-app .sk-fd-taskopen:focus-visible{outline:2px solid var(--sk-ink);outline-offset:2px}

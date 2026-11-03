@@ -2304,3 +2304,6 @@
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-fcard[data-focus-priority] { border-color: var(--focus-priority-color); outline: 1px solid var(--focus-priority-color); outline-offset: -2px; }
 .sk-app .sk-focus-rank { font: var(--sk-caption); color: var(--sk-ink-2); }
 .sk-app .sk-brief .sk-ghead-actions { flex-wrap: wrap; min-width: 0; max-width: 100%; gap: 4px 10px; }
+/* Each section flows independently, so a long shipping list cannot leave empty grid rows. */
+.sk-app .sk-brief-sections { display: block; columns: 280px; column-gap: 18px; }
+.sk-app .sk-brief-section { break-inside: avoid; margin-bottom: 12px; }

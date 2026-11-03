@@ -26,6 +26,7 @@ import {
 } from "../../lib/debtFile";
 import { mdSources, oosSources } from "./OutstandingView";
 import type { Entry, SubList, SubTask } from "./FocusSection";
+import { FOCUS_PRIORITY_LABEL, orderFocus, type FocusPriority } from "../../lib/focusPriority";
 
 /** Something on the calendar a focus can count down to: a Google event, a Life Hub plan, a bill, a task with a day. */
 export type LinkItem = {
@@ -368,6 +369,7 @@ function Card({
     <div
       className={`sk-fcard${item.done ? " is-done" : ""}${item.site ? " has-site" : ""}`}
       data-site={item.site || undefined}
+      data-focus-priority={item.priority}
       role="button"
       tabIndex={0}
       onClick={open}
@@ -383,6 +385,7 @@ function Card({
         </span>
       ) : null}
       <h4 className="sk-fcard-t">{item.title}</h4>
+      {item.priority ? <span className="sk-focus-rank">{FOCUS_PRIORITY_LABEL[item.priority]}</span> : null}
       {item.note ? <p className="sk-fcard-scope">{item.note}</p> : null}
       {item.why ? (
         <p className="sk-fcard-why">
@@ -784,6 +787,17 @@ function Detail({
 
         <div className="sk-fd-tools">
           <label>
+            <span className="sk-cap">Priority</span>
+            <select
+              aria-label="Focus priority"
+              value={item.priority || ""}
+              onChange={(e) => update({ priority: (e.target.value || undefined) as FocusPriority | undefined })}
+            >
+              <option value="">Unranked</option>
+              {Object.entries(FOCUS_PRIORITY_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+          <label>
             <span className="sk-cap">Site — colours the card</span>
             <select
               value={item.site || ""}
@@ -907,6 +921,19 @@ function Detail({
   );
 }
 
+/** Daily Brief opens the very same editor without switching Today tabs. */
+export function FocusEntryDialog({ bills, events: eventsIn, ...props }: Omit<Parameters<typeof Detail>[0], 'ctx'> & { bills: BillDue[] }) {
+  const { file, marks } = useDebtFile();
+  const events = file?.registration ? [...eventsIn, {
+    id: "fin:registration",
+    title: `${file.registration.vehicle} registration renews`,
+    start: file.registration.due,
+    allDay: true,
+    kind: "Finance",
+  }] : eventsIn;
+  return <Detail {...props} events={events} ctx={{ file, marks, bills }} />;
+}
+
 /** Short-term focus as cards: the square shows focus, scope, why and the lists; tap it for the full pop-out. */
 export function FocusCards({
   list,
@@ -969,10 +996,7 @@ export function FocusCards({
     setTitle("");
     setOpenId(id);
   };
-  const ordered = [
-    ...all.filter((a) => !a.item.done),
-    ...all.filter((a) => a.item.done),
-  ].map((a) => a.item);
+  const ordered = orderFocus(all.map((a) => a.item));
   const openItem = all.find((a) => a.item.id === openId)?.item;
   return (
     <>

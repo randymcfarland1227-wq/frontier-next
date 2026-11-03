@@ -11,6 +11,7 @@ import { FOCUS_LIST_EVENT, ONGOING_KEY } from "../../lib/ongoingGoals";
 import { dayRecord, localDayKey, useDayKey } from "../../lib/dayKey";
 import type { CompletionLedger } from "../../lib/completions";
 import { tickTickToday } from "../../lib/tickTickToday";
+import type { FocusPriority } from "../../lib/focusPriority";
 
 type Snaps = Record<SourceId, SourceSnapshot>;
 
@@ -61,6 +62,8 @@ export type Entry = {
   /** Scope (what it is) — the old "detail" note */
   note?: string;
   done?: boolean;
+  /** Optional ranking shared by the card and Daily Brief. */
+  priority?: FocusPriority;
   push?: number;
   /** Day (YYYY-MM-DD) it started — drives "Day 3 · started 2 days ago" */
   since?: string;

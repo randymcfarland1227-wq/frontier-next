@@ -2273,3 +2273,14 @@
   .sk-app .sk-splitcol .sched-grid { grid-template-columns: minmax(0, 1fr); }
   .sk-app .sk-splitcol .sched-cal { min-width: 0; }
 }
+
+/* Priority outlines share their meaning with existing task ranks; text labels also identify card rank. */
+.sk-app [data-focus-priority="red"] { --focus-priority-color: #d34850; }
+.sk-app [data-focus-priority="yellow"] { --focus-priority-color: #b78712; }
+.sk-app [data-focus-priority="green"] { --focus-priority-color: #348966; }
+.frontier-shell[data-color-mode="dark"] .sk-app [data-focus-priority="red"] { --focus-priority-color: #ff8890; }
+.frontier-shell[data-color-mode="dark"] .sk-app [data-focus-priority="yellow"] { --focus-priority-color: #f0c657; }
+.frontier-shell[data-color-mode="dark"] .sk-app [data-focus-priority="green"] { --focus-priority-color: #73d3a6; }
+.sk-app .sk-fcard[data-focus-priority], .sk-app .sk-brief-entry[data-focus-priority],
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-fcard[data-focus-priority] { border-color: var(--focus-priority-color); outline: 1px solid var(--focus-priority-color); outline-offset: -2px; }
+.sk-app .sk-focus-rank { font: var(--sk-caption); color: var(--sk-ink-2); }

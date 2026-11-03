@@ -12,7 +12,8 @@
     "preview:pages": "vite preview --config vite.github.config.ts",
     "deploy": "npm run build && wrangler deploy",
     "start": "vinext start",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern dist-pages --ignore-pattern .next"
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern dist-pages --ignore-pattern .next",
+    "check": "tsc --noEmit -p . && node scripts/check-lint-baseline.mjs && node scripts/check-saved-keys.mjs && node scripts/check-class-names.mjs && node scripts/run-tests.mjs"
   },
   "dependencies": {
     "next": "16.2.6",

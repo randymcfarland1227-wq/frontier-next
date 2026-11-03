@@ -22,7 +22,7 @@ function Constellation({
   box: string;
 }) {
   return (
-    <svg className={`sk-const ${className}`} viewBox={box} fill="none">
+    <svg className={`sk-sky-const ${className}`} viewBox={box} fill="none">
       <path d={lines} />
       {stars.map(([x, y, r], i) => (
         <circle
@@ -43,9 +43,9 @@ function Constellation({
 export function NightSky() {
   return (
     <>
-      <div className="sk-night" aria-hidden="true">
+      <div className="sk-sky-night" aria-hidden="true">
         {/* A ringed planet, half off the left edge */}
-        <svg className="sk-planet sk-p-ring" viewBox="0 0 240 160">
+        <svg className="sk-sky-planet sk-sky-p-ring" viewBox="0 0 240 160">
           <defs>
             <radialGradient id="nsPlanet" cx="34%" cy="30%" r="78%">
               <stop offset="0" stopColor="#e2c8ff" />
@@ -73,7 +73,7 @@ export function NightSky() {
         </svg>
 
         {/* A small teal planet with a moon that slowly circles it */}
-        <svg className="sk-planet sk-p-teal" viewBox="0 0 120 120">
+        <svg className="sk-sky-planet sk-sky-p-teal" viewBox="0 0 120 120">
           <defs>
             <radialGradient id="nsTeal" cx="35%" cy="30%" r="75%">
               <stop offset="0" stopColor="#b8f5e8" />
@@ -91,7 +91,7 @@ export function NightSky() {
         </svg>
 
         {/* A crescent moon */}
-        <svg className="sk-moon" viewBox="0 0 100 100">
+        <svg className="sk-sky-moon" viewBox="0 0 100 100">
           <defs>
             <mask id="nsBite">
               <rect width="100" height="100" fill="#fff" />
@@ -107,14 +107,14 @@ export function NightSky() {
         </svg>
 
         <Constellation
-          className="sk-c-cass"
+          className="sk-sky-c-cass"
           label="CASSIOPEIA"
           box="0 0 220 120"
           lines="M12 30 L58 92 L102 44 L152 96 L206 36"
           stars={[[12, 30, 2.6], [58, 92, 3], [102, 44, 2.4], [152, 96, 3.2], [206, 36, 2.6]]}
         />
         <Constellation
-          className="sk-c-dipper"
+          className="sk-sky-c-dipper"
           label="URSA MAJOR"
           box="0 0 260 140"
           lines="M20 36 L66 54 L106 62 L146 70 L212 74 L206 112 L150 106 L146 70"
@@ -125,7 +125,7 @@ export function NightSky() {
       </div>
 
       {/* The astronaut: floats over a corner, slowly turning. */}
-      <div className="sk-astro" aria-hidden="true">
+      <div className="sk-sky-astro" aria-hidden="true">
         <svg viewBox="0 0 120 150">
           <defs>
             <linearGradient id="nsVisor" x1="0" y1="0" x2="1" y2="1">
@@ -133,9 +133,9 @@ export function NightSky() {
               <stop offset="1" stopColor="#12113a" />
             </linearGradient>
           </defs>
-          <path className="sk-astro-tether" d="M46 96 C20 112 40 132 6 146" />
+          <path className="sk-sky-astro-tether" d="M46 96 C20 112 40 132 6 146" />
           <rect x="30" y="52" width="22" height="48" rx="8" fill="#b9c2da" />
-          <g className="sk-astro-arm">
+          <g className="sk-sky-astro-arm">
             <rect x="74" y="60" width="12" height="32" rx="6" fill="#eef1f8" transform="rotate(-38 80 62)" />
             <circle cx="95" cy="46" r="6" fill="#cfd6e8" />
           </g>

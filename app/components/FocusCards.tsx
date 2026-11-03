@@ -1,14 +1,13 @@
 "use client";
 
 import {
-  useEffect,
-  useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import { createPortal } from "react-dom";
 import { Icon } from "../sticker/Icon";
+import { Dialog } from "../sticker/Dialog";
+import { SearchPick, type Opt } from "../sticker/SearchPick";
 import { sourceById } from "../../lib/sources";
 import type { SourceId } from "../../lib/types";
 import {
@@ -145,7 +144,6 @@ function finStats(rows: FinRow[]) {
   return { total: live.length, done, open: live.length - done, owed };
 }
 
-type Opt = { key: string; label: string; sub?: string; group?: string };
 
 /** Everything in Finance a focus can be linked to, across tabs: ticket lists, bills due, every logged debt/account. */
 function financeOptions(ctx: FinCtx): Opt[] {
@@ -266,79 +264,6 @@ function Ring({ pct }: { pct: number | null }) {
     >
       <b>{pct === null ? "–" : `${pct}%`}</b>
     </span>
-  );
-}
-
-/** A search box with a pop-up of matches: type to filter, pick one. */
-function SearchPick({
-  options,
-  onPick,
-  placeholder,
-  label,
-  disabled,
-}: {
-  options: Opt[];
-  onPick: (o: Opt) => void;
-  placeholder: string;
-  label: string;
-  disabled?: boolean;
-}) {
-  const [q, setQ] = useState("");
-  const [focus, setFocus] = useState(false);
-  const needle = q.trim().toLowerCase();
-  const matches = options
-    .filter(
-      (o) =>
-        !needle || `${o.label} ${o.sub || ""} ${o.group || ""}`.toLowerCase().includes(needle),
-    )
-    .slice(0, 40);
-  const groups = [...new Set(matches.map((m) => m.group || ""))];
-  return (
-    <div className="sk-fd-search">
-      <input
-        type="search"
-        value={q}
-        disabled={disabled}
-        onChange={(e) => setQ(e.target.value)}
-        onFocus={() => setFocus(true)}
-        onBlur={() => window.setTimeout(() => setFocus(false), 150)}
-        onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setFocus(false))}
-        placeholder={placeholder}
-        aria-label={label}
-      />
-      {focus && !disabled ? (
-        <div className="sk-fd-pop" role="listbox">
-          {matches.length ? (
-            groups.map((g) => (
-              <div key={g}>
-                {g ? <p className="sk-cap">{g}</p> : null}
-                {matches
-                  .filter((m) => (m.group || "") === g)
-                  .map((m) => (
-                    <button
-                      key={m.key}
-                      type="button"
-                      role="option"
-                      aria-selected={false}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        onPick(m);
-                        setQ("");
-                        setFocus(false);
-                      }}
-                    >
-                      <span>{m.label}</span>
-                      {m.sub ? <small>{m.sub}</small> : null}
-                    </button>
-                  ))}
-              </div>
-            ))
-          ) : (
-            <p className="sk-empty">Nothing matches “{q.trim()}”.</p>
-          )}
-        </div>
-      ) : null}
-    </div>
   );
 }
 
@@ -474,22 +399,6 @@ function Detail({
   const [listName, setListName] = useState("");
   const [financeListId, setFinanceListId] = useState("");
   const [taskText, setTaskText] = useState<Record<string, string>>({});
-  const closeRef = useRef<HTMLButtonElement>(null);
-  // Focus the close button once, when the pop-out opens — never again while you type.
-  useEffect(() => {
-    closeRef.current?.focus();
-  }, []);
-  const closeNow = useRef(close);
-  useEffect(() => {
-    closeNow.current = close;
-  });
-  useEffect(() => {
-    const onKey = (e: globalThis.KeyboardEvent) =>
-      e.key === "Escape" && closeNow.current();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
   const lists = item.lists || [];
   const setLists = (next: SubList[]) => update({ lists: next });
   const patchList = (id: string, patch: Partial<SubList>) =>
@@ -532,24 +441,14 @@ function Detail({
       group: e.kind || "Calendar",
     }));
 
-  const host =
-    document.querySelector(".sk-app") ||
-    document.querySelector(".frontier-shell") ||
-    document.body;
-  return createPortal(
-    <div
-      className="sk-dialog-back sk-fdetail-back"
-      role="presentation"
-      onClick={close}
+  return (
+    <Dialog
+      label={item.title}
+      onClose={close}
+      className="sk-fdetail"
+      backClassName="sk-fdetail-back"
+      dataSite={item.site || undefined}
     >
-      <div
-        className="sk-dialog sk-fdetail"
-        data-site={item.section || item.site || undefined}
-        role="dialog"
-        aria-modal="true"
-        aria-label={item.title}
-        onClick={(e) => e.stopPropagation()}
-      >
         <header className="sk-fd-top">
           <div className="sk-fd-pct">
             <b>{p.pct === null ? "–" : `${p.pct}%`}</b>
@@ -573,7 +472,7 @@ function Detail({
             </span>
           </div>
           <button
-            ref={closeRef}
+            data-autofocus
             type="button"
             className="sk-btn is-small is-icon"
             onClick={close}
@@ -930,9 +829,7 @@ function Detail({
             Remove this focus
           </button>
         </footer>
-      </div>
-    </div>,
-    host,
+    </Dialog>
   );
 }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import type { Goal, GoalsData } from "../../lib/goals";
 import type { SourceSnapshot, SpaceId } from "../../lib/types";
 import type { CompletionLedger } from "../../lib/completions";
@@ -17,6 +16,7 @@ import {
 } from "../../lib/goalModes";
 import { Group, Row, Tag } from "../sticker/kit";
 import { Icon } from "../sticker/Icon";
+import { Dialog } from "../sticker/Dialog";
 
 const AFFIRMATIONS_KEY = "lifehub-grounding-affirmations";
 const dayKey = localDayKey;
@@ -256,12 +256,6 @@ export function DailyGrounding({
     writeSaved("lifehub-why-tab", "flow");
     enter("why");
   };
-  useEffect(() => {
-    if (!openCat) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpenCat(null);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [openCat]);
 
   return (
     <>
@@ -345,65 +339,48 @@ export function DailyGrounding({
         )}
       </Group>
 
-      {openCategory
-        ? createPortal(
-            <div
-              className="sk-dialog-back"
-              role="presentation"
+      {openCategory ? (
+        <Dialog label={openCategory.label} onClose={() => setOpenCat(null)}>
+                <header className="sk-dialog-head">
+            <span aria-hidden="true">{openCategory.icon}</span>
+            <h3 className="sk-title">{openCategory.label}</h3>
+            <button
+              type="button"
+              className="sk-btn is-icon is-small"
+              aria-label="Close"
               onClick={() => setOpenCat(null)}
             >
-              <div
-                className="sk-dialog"
-                role="dialog"
-                aria-modal="true"
-                aria-label={openCategory.label}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <header className="sk-dialog-head">
-                  <span aria-hidden="true">{openCategory.icon}</span>
-                  <h3 className="sk-title">{openCategory.label}</h3>
-                  <button
-                    type="button"
-                    className="sk-btn is-icon is-small"
-                    aria-label="Close"
-                    onClick={() => setOpenCat(null)}
-                  >
-                    <Icon name="close" size={16} />
-                  </button>
-                </header>
-                <div className="sk-list">
-                  {popGoals.map((g) => {
-                    const mode = modeOf(g.id, modes).mode || "none";
-                    const open = selectedGoal === g.id;
-                    return (
-                      <div key={g.id}>
-                        <Row
-                          title={g.title}
-                          value={
-                            <Tag tone={MODE_TONE[mode]}>{MODE_LABEL[mode]}</Tag>
-                          }
-                          highlight={open}
-                          onOpen={() => selectGoal(open ? null : g.id)}
-                        />
-                        {open && selected ? (
-                          <GoalDetail
-                            goal={selected}
-                            modes={modes}
-                            close={() => selectGoal(null)}
-                            openFlow={openFlow}
-                          />
-                        ) : null}
-                      </div>
-                    );
-                  })}
+              <Icon name="close" size={16} />
+            </button>
+          </header>
+          <div className="sk-list">
+            {popGoals.map((g) => {
+              const mode = modeOf(g.id, modes).mode || "none";
+              const open = selectedGoal === g.id;
+              return (
+                <div key={g.id}>
+                  <Row
+                    title={g.title}
+                    value={
+                      <Tag tone={MODE_TONE[mode]}>{MODE_LABEL[mode]}</Tag>
+                    }
+                    highlight={open}
+                    onOpen={() => selectGoal(open ? null : g.id)}
+                  />
+                  {open && selected ? (
+                    <GoalDetail
+                      goal={selected}
+                      modes={modes}
+                      close={() => selectGoal(null)}
+                      openFlow={openFlow}
+                    />
+                  ) : null}
                 </div>
-              </div>
-            </div>,
-            document.querySelector(".sk-app") ||
-              document.querySelector(".frontier-shell") ||
-              document.body,
-          )
-        : null}
+              );
+            })}
+          </div>
+        </Dialog>
+      ) : null}
     </>
   );
 }

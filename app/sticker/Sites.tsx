@@ -35,6 +35,7 @@ import { DayMenu, shortDue } from "../components/DayMenu";
 import { useRowGesture } from "../components/RowMenu";
 import { SiteIcon } from "../components/SiteIcon";
 import { Circle, FoldGroup, Group, ListHead, Section, type Tone } from "./kit";
+import { SegTabs } from "./SegTabs";
 import { Icon, type IconName } from "./Icon";
 
 /** The three site rows. Their fold keys (`section:row-…`) are the ones the classic rows saved. */
@@ -1151,30 +1152,19 @@ export function SitesTabs({
   };
   return (
     <div className="sk-sitetabs">
-      <div className="sk-seg sk-today-tabs" role="group" aria-label="Sites">
-        <button
-          type="button"
-          aria-pressed={id === "all"}
-          onClick={() => pick("all")}
-        >
-          All
-          {allCount ? <span className="sk-tabn">{allCount}</span> : null}
-        </button>
-        {all.map((sid) => {
-          const n = shownMetric(sid, snapshots[sid], lanes).value || 0;
-          return (
-            <button
-              key={sid}
-              type="button"
-              aria-pressed={id === sid}
-              onClick={() => pick(sid)}
-            >
-              {sourceById[sid].shortName}
-              {n ? <span className="sk-tabn">{n}</span> : null}
-            </button>
-          );
-        })}
-      </div>
+      <SegTabs<SourceId | "all">
+        label="Sites"
+        value={id}
+        onPick={pick}
+        items={[
+          { id: "all", label: "All", count: allCount },
+          ...all.map((sid) => ({
+            id: sid as SourceId | "all",
+            label: sourceById[sid].shortName,
+            count: shownMetric(sid, snapshots[sid], lanes).value || 0,
+          })),
+        ]}
+      />
       <div className="sk-pane" key={id}>
         {id === "all" ? (
           <AllTasks snapshots={snapshots} onCompleteTask={onCompleteTask} />

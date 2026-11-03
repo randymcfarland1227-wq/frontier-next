@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type {
   FeaturedItem,
   SourceId,
@@ -47,6 +47,8 @@ import {
 } from "./FocusSection";
 import { HomeTop } from "../sticker/HomeTop";
 import { ListHead, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
+import { CapPane } from "../sticker/CapPane";
+import { SegTabs } from "../sticker/SegTabs";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { TickTickRings } from "./TickTickRings";
 import { Icon } from "../sticker/Icon";
@@ -61,35 +63,6 @@ const TODAY_TABS: [TodayTab, string][] = [
   ["grounding", "Grounding"],
   ["money", "Money"],
 ];
-
-/**
- * One pane of the split view: a capped height with its own scroll, so a tall tab (Money, Grounding)
- * never stretches the page past its neighbour. A soft fade at the bottom says "more below".
- */
-function SplitPane({ label, children }: { label: string; children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [more, setMore] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 8);
-    const ro = new ResizeObserver(measure); // reports once on observe, then on every size change
-    ro.observe(el);
-    for (const c of Array.from(el.children)) ro.observe(c);
-    el.addEventListener("scroll", measure, { passive: true });
-    return () => {
-      ro.disconnect();
-      el.removeEventListener("scroll", measure);
-    };
-  }, []);
-  return (
-    <div className={`sk-splitwrap${more ? " has-more" : ""}`}>
-      <div className="sk-pane sk-splitpane" ref={ref} tabIndex={0} role="region" aria-label={label}>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 /** "3 on your list · 13 on deck · 1 critical" for the Doing Now head. */
 function PrioritySummary() {
@@ -372,18 +345,12 @@ export function HomeView({
     (id !== "grounding" || grounding) && (id !== "money" || money);
   const tab2: TodayTab = tabAvailable(todayTab2) ? todayTab2 : "calendar";
   const tabBar = (current: TodayTab, pick: (t: TodayTab) => void) => (
-    <div className="sk-seg sk-today-tabs" role="group" aria-label="Today">
-      {TODAY_TABS.filter(([id]) => tabAvailable(id)).map(([id, label]) => (
-        <button
-          key={id}
-          type="button"
-          aria-pressed={current === id}
-          onClick={() => pick(id)}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
+    <SegTabs
+      label="Today"
+      value={current}
+      onPick={pick}
+      items={TODAY_TABS.filter(([id]) => tabAvailable(id)).map(([id, label]) => ({ id, label }))}
+    />
   );
   const renderTab = (t: TodayTab) =>
         t === "money" ? (
@@ -493,18 +460,18 @@ export function HomeView({
             ] as const).map(([t, pick], i) => (
               <div key={i} className="sk-splitcol">
                 {tabBar(t, pick)}
-                <SplitPane key={t} label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>
+                <CapPane key={t} cap="split" label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>
                   {renderTab(t)}
-                </SplitPane>
+                </CapPane>
               </div>
             ))}
           </div>
         ) : (
           <>
             {tabBar(tab, pickTodayTab)}
-            <div className="sk-pane" key={tab}>
+            <CapPane key={tab} cap="page" label={TODAY_TABS.find(([id]) => id === tab)?.[1] || "Today"}>
               {renderTab(tab)}
-            </div>
+            </CapPane>
           </>
         )}
       </Section>

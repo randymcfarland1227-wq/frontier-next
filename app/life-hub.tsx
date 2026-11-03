@@ -103,7 +103,7 @@ import { FlowSyncReview } from './components/FlowSyncReview';
 import { WhyView } from './components/WhyView';
 import { DailyGrounding } from './components/DailyGrounding';
 import { isHidden, removeItem, useHiddenItems } from '../lib/siteMoves';
-import { seedFitnessFocus, seedOngoingGoals } from '../lib/ongoingGoals';
+import { moveFitnessToOngoing, seedOngoingGoals } from '../lib/ongoingGoals';
 import { useRoleActive, withRoleShelves, withTaggedShelves } from '../lib/roleShelves';
 import { LogsView } from './components/LogsView';
 import { UpdateNotice } from './components/UpdateNotice';
@@ -617,7 +617,8 @@ export function LifeHub() {
       why: 'One of the three goals the move unlocks after.', site: 'move',
     })))) for (const g of goals) removeItem('move', g.id);
     const physical = (goalsData?.goals || []).filter(g => g.categoryId === 'physical' && g.status === 'active');
-    if (physical.length) seedFitnessFocus([{
+    moveFitnessToOngoing('fit-physical-body');
+    if (physical.length) seedOngoingGoals([{
       id: 'fit-physical-body', title: 'Physical body', section: 'fitness',
       note: 'Keep my body strong, mobile and recovering.',
       lists: [{ id: 'physical-goals', name: 'Physical goals', tasks: physical.map(g => ({ id: `pg-${g.id}`, text: g.title, done: false })) }],

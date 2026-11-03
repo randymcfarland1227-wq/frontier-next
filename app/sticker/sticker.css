@@ -2351,13 +2351,13 @@
   background: linear-gradient(90deg, transparent, #ffffffcc 70%, #fff); box-shadow: 0 0 8px 1px #9db7ff99;
   transform: translate3d(0, 0, 0) rotate(35deg); animation: sk-shoot var(--d, 9s) linear var(--w, 0s) infinite;
 }
-.sk-app .sk-night i:nth-child(1) { top: 6%;  left: 14%; --d: 9s;  --w: 1s; }
-.sk-app .sk-night i:nth-child(2) { top: 18%; left: 52%; --d: 13s; --w: 4s; width: 110px; }
-.sk-app .sk-night i:nth-child(3) { top: 4%;  left: 76%; --d: 11s; --w: 7s; }
-.sk-app .sk-night i:nth-child(4) { top: 34%; left: 30%; --d: 15s; --w: 2s; width: 180px; }
-.sk-app .sk-night i:nth-child(5) { top: 26%; left: 88%; --d: 8s;  --w: 9s; width: 100px; }
-.sk-app .sk-night i:nth-child(6) { top: 48%; left: 8%;  --d: 12s; --w: 5s; }
-.sk-app .sk-night i:nth-child(7) { top: 12%; left: 38%; --d: 17s; --w: 11s; width: 200px; }
+.sk-app .sk-night i:nth-of-type(1) { top: 6%;  left: 14%; --d: 9s;  --w: 1s; }
+.sk-app .sk-night i:nth-of-type(2) { top: 18%; left: 52%; --d: 13s; --w: 4s; width: 110px; }
+.sk-app .sk-night i:nth-of-type(3) { top: 4%;  left: 76%; --d: 11s; --w: 7s; }
+.sk-app .sk-night i:nth-of-type(4) { top: 34%; left: 30%; --d: 15s; --w: 2s; width: 180px; }
+.sk-app .sk-night i:nth-of-type(5) { top: 26%; left: 88%; --d: 8s;  --w: 9s; width: 100px; }
+.sk-app .sk-night i:nth-of-type(6) { top: 48%; left: 8%;  --d: 12s; --w: 5s; }
+.sk-app .sk-night i:nth-of-type(7) { top: 12%; left: 38%; --d: 17s; --w: 11s; width: 200px; }
 @keyframes sk-shoot {
   0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(35deg); }
   1.5% { opacity: 1; }
@@ -2406,22 +2406,6 @@
 .frontier-shell[data-color-mode="dark"] .sk-app[data-page] .sk-main { background-color: transparent; }
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-night::before { opacity: 1; }
 
-/* Meteors cross the whole screen (over the page, under dialogs); stars stay behind everything. */
-.sk-app .sk-meteors { display: none; }
-.frontier-shell[data-color-mode="dark"] .sk-app .sk-meteors { display: block; position: fixed; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; }
-.sk-app .sk-meteors i {
-  position: absolute; width: 190px; height: 3px; border-radius: 3px; opacity: 0; will-change: transform, opacity;
-  background: linear-gradient(90deg, transparent, #ffffffcc 70%, #fff); box-shadow: 0 0 10px 2px #9db7ffaa;
-  transform: translate3d(0, 0, 0) rotate(35deg); animation: sk-shoot var(--d, 9s) linear var(--w, 0s) infinite;
-}
-.sk-app .sk-meteors i:nth-child(1) { top: 6%;  left: 14%; --d: 7s;  --w: 1s; }
-.sk-app .sk-meteors i:nth-child(2) { top: 18%; left: 52%; --d: 10s; --w: 3s; width: 140px; }
-.sk-app .sk-meteors i:nth-child(3) { top: 4%;  left: 76%; --d: 8s;  --w: 5s; }
-.sk-app .sk-meteors i:nth-child(4) { top: 34%; left: 30%; --d: 12s; --w: 2s; width: 240px; }
-.sk-app .sk-meteors i:nth-child(5) { top: 26%; left: 88%; --d: 9s;  --w: 7s; width: 130px; }
-.sk-app .sk-meteors i:nth-child(6) { top: 48%; left: 8%;  --d: 11s; --w: 4s; }
-.sk-app .sk-meteors i:nth-child(7) { top: 12%; left: 38%; --d: 14s; --w: 8s; width: 260px; }
-@media (prefers-reduced-motion: reduce) { .sk-app .sk-meteors { display: none !important; } }
 /* brighter, slightly bigger stars */
 .sk-app .sk-night::before {
   background-image:
@@ -2429,3 +2413,30 @@
     radial-gradient(2px 2px at 220px 160px, #fff, transparent), radial-gradient(1.4px 1.4px at 70px 190px, #ffe9c9, transparent),
     radial-gradient(1.4px 1.4px at 300px 40px, #fff, transparent);
 }
+
+/* ── Night scenery: planets, moons, constellations behind the page; an astronaut over a corner ── */
+.sk-app .sk-astro { display: none; }
+.sk-app .sk-night > svg { position: absolute; display: block; }
+.sk-app .sk-planet, .sk-app .sk-moon { will-change: transform; animation: sk-drift 70s ease-in-out infinite alternate; }
+.sk-app .sk-p-ring { left: -64px; bottom: 7vh; width: 260px; opacity: .85; filter: drop-shadow(0 0 28px #7e5bd655); }
+.sk-app .sk-p-teal { right: 4.5vw; top: 17vh; width: 120px; opacity: .9; animation-duration: 90s; animation-direction: alternate-reverse; filter: drop-shadow(0 0 18px #2fa6a055); }
+.sk-app .sk-moon { right: 15vw; top: 6vh; width: 64px; opacity: .9; animation-duration: 110s; filter: drop-shadow(0 0 14px #f4efe066); }
+.sk-app .sk-const { color: #cfe0ff; opacity: .6; }
+.sk-app .sk-const path { stroke: currentColor; stroke-opacity: .32; stroke-width: 1; stroke-dasharray: 520; stroke-dashoffset: 520; animation: sk-draw 3s ease-out .6s forwards; }
+.sk-app .sk-const circle { fill: #fff; animation: sk-twinkle 4s ease-in-out infinite alternate; filter: drop-shadow(0 0 3px #bcd4ff); }
+.sk-app .sk-const text { fill: currentColor; fill-opacity: .55; font: 600 8px "DM Sans", system-ui, sans-serif; letter-spacing: .28em; }
+.sk-app .sk-c-cass { left: 26vw; bottom: 2.5vh; width: 200px; }
+.sk-app .sk-c-dipper { right: 5vw; bottom: 3vh; width: 230px; }
+@keyframes sk-draw { to { stroke-dashoffset: 0; } }
+@keyframes sk-drift { to { transform: translate3d(14px, -12px, 0) rotate(2.5deg); } }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-astro {
+  display: block; position: fixed; right: 22px; bottom: 56px; width: 74px; z-index: 6; pointer-events: none; opacity: .94;
+  animation: sk-float 9s ease-in-out infinite alternate; will-change: transform; filter: drop-shadow(0 6px 14px #00000066);
+}
+.sk-app .sk-astro svg { display: block; width: 100%; height: auto; overflow: visible; }
+.sk-app .sk-astro-tether { stroke: #cfd6e8; stroke-opacity: .5; stroke-width: 1.6; fill: none; stroke-dasharray: 3 4; }
+.sk-app .sk-astro-arm { transform-origin: 74px 62px; animation: sk-wave 5s ease-in-out infinite alternate; }
+@keyframes sk-float { from { transform: translate3d(0, 0, 0) rotate(-5deg); } to { transform: translate3d(-10px, -16px, 0) rotate(5deg); } }
+@keyframes sk-wave { from { transform: rotate(0deg); } to { transform: rotate(-12deg); } }
+@media (max-width: 900px) { .sk-app .sk-astro, .sk-app .sk-p-teal, .sk-app .sk-c-cass { display: none !important; } }
+@media (prefers-reduced-motion: reduce) { .sk-app :is(.sk-planet, .sk-moon, .sk-astro, .sk-astro-arm, .sk-const circle) { animation: none !important; } .sk-app .sk-const path { animation: none; stroke-dashoffset: 0; } }

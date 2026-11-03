@@ -338,9 +338,8 @@ export function useShortTermFocus() {
   const nutrition = useFocusList("lifehub-focus-nut2");
   const marvel = useFocusList("lifehub-focus-marvel-goals");
   const fitness = useFitnessFocus();
-  const open = [...now[0], ...weeks[0], ...ongoing[0], ...nutrition[0], ...marvel[0], ...fitness[0]].filter(
-    (i) => !i.done,
-  ).length;
+  // Short-term = what needs catching up; ongoing goals (and the fitness / nutrition / Marvel directions) aren't counted.
+  const open = [...now[0], ...weeks[0]].filter((i) => !i.done).length;
   return { now, weeks, ongoing, nutrition, marvel, fitness, open };
 }
 

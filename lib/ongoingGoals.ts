@@ -55,3 +55,18 @@ function seedInto(storageKey: string, shape: 'list' | 'array', seeds: Seed[]): b
 export const seedOngoingGoals = (seeds: Seed[]) => seedInto(ONGOING_KEY, 'list', seeds);
 /** The fitness focus list is a plain array under its own key. */
 export const seedFitnessFocus = (seeds: Seed[]) => seedInto('lifehub-focus-fit-areas', 'array', seeds);
+
+/** The fitness card used to live in the fitness list; it's an ongoing goal (still shown under Fitness focus). */
+export function moveFitnessToOngoing(id: string): boolean {
+  const fit = readSaved<Array<Record<string, unknown>>>('lifehub-focus-fit-areas', []);
+  const hit = fit.find(i => i.id === id);
+  if (!hit) return false;
+  writeSaved('lifehub-focus-fit-areas', fit.filter(i => i.id !== id));
+  const ongoing = readSaved<{ scope: string; items: Array<Record<string, unknown>> }>(ONGOING_KEY, { scope: '', items: [] });
+  if (!ongoing.items.some(i => i.id === id)) writeSaved(ONGOING_KEY, { scope: ongoing.scope, items: [...ongoing.items, { ...hit, ongoing: true, section: 'fitness' }] });
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(FOCUS_LIST_EVENT, { detail: 'lifehub-focus-fit-areas' }));
+    window.dispatchEvent(new CustomEvent(FOCUS_LIST_EVENT, { detail: ONGOING_KEY }));
+  }
+  return true;
+}

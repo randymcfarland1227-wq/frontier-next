@@ -5,6 +5,7 @@ import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import { sourceById } from "../../lib/sources";
 import { ZoomControl } from "../components/ZoomControl";
 import { Icon, type IconName } from "./Icon";
+import { NightSky } from "./NightSky";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { useSiteIcons } from "../../lib/siteIcons";
 import { shownMetric } from "../../lib/actionable";
@@ -287,11 +288,8 @@ export function StickerShell({
       }
       data-side={slim ? "slim" : "full"}
     >
-      {/* Night mode only (CSS): a star field with the odd shooting star behind everything. */}
-      <div className="sk-night" aria-hidden="true" />
-      <div className="sk-meteors" aria-hidden="true">
-        <i /><i /><i /><i /><i /><i /><i />
-      </div>
+      {/* Night mode only (CSS): stars, planets, constellations, shooting stars and an astronaut. */}
+      <NightSky />
       <aside className="sk-side" data-tint={tint} aria-label="Life Hub">
         <div className="sk-sidehead">
           <button type="button" className="sk-brand" onClick={() => go("home")}>

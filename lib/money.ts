@@ -351,6 +351,8 @@ export type MoneyItem = {
   provider?: string;
   installment?: string;
   cells: { date?: Cell; name: Cell; amount?: Cell };
+  /** Not in the sheet yet: the same bill carried into a later month (see rollForward) */
+  projected?: boolean;
 };
 
 export type MoneyModel = {
@@ -416,6 +418,73 @@ export function flagFor(flags: ItemFlag[], name: string, due: string): { nonCrit
     if (f.payBy && (f.due || (due <= f.payBy && daysBetween(fromDayKey(due), fromDayKey(f.payBy)) <= 45))) out.payBy = f.payBy;
   }
   return out;
+}
+
+/**
+ * Monthly things repeat on their own: for each bill, card minimum and subscription, its next months
+ * appear on the same day (clamped to a short month) until `ahead` days out. The sheet always wins —
+ * a month that already has a row for that bill gets no copy — and nothing from earlier months is
+ * removed, so an unpaid bill stays where it was. Pay-later and cash-advance rows (one-offs) and
+ * split payments don't repeat.
+ */
+export function rollForward(items: MoneyItem[], today: Date, ahead = 75): MoneyItem[] {
+  const limit = dayKey(addDays(startOfDay(today), ahead));
+  const groups = new Map<string, MoneyItem[]>();
+  for (const i of items) {
+    if (!i.date || i.status || !(i.kind === 'bill' || i.kind === 'card' || i.kind === 'sub') || /split/i.test(i.name)) continue;
+    const key = `${i.kind}:${slug(i.name)}:${Number(i.date.slice(8))}`;
+    groups.set(key, [...(groups.get(key) || []), i]);
+  }
+  // A short-month clamp (Jan 31 → Feb 28) is the same monthly payment, not a second series.
+  const singleDays = new Map<string, number>();
+  const byName = new Map<string, MoneyItem[]>();
+  for (const list of groups.values()) {
+    const key = `${list[0].kind}:${slug(list[0].name)}`;
+    byName.set(key, [...(byName.get(key) || []), ...list]);
+  }
+  for (const [key, list] of byName) {
+    const months = list.map(i => i.date!.slice(0, 7));
+    if (new Set(months).size !== months.length) continue;
+    const last = list.reduce((a, b) => b.date! > a.date! ? b : a);
+    const date = fromDayKey(last.date!);
+    const day = date.getDate();
+    const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    singleDays.set(key, day === monthEnd ? Math.max(...list.map(i => Number(i.date!.slice(8)))) : day);
+    for (const groupKey of groups.keys()) if (groupKey.startsWith(`${key}:`)) groups.delete(groupKey);
+    groups.set(key, list);
+  }
+  const out: MoneyItem[] = [];
+  for (const [groupKey, list] of groups) {
+    const last = list.reduce((a, b) => (b.date! > a.date! ? b : a));
+    const day = singleDays.get(groupKey) ?? Number(last.date!.slice(8));
+    // One payment a month under this name: any row that month counts (even if its day moved).
+    // Several (two rent payments): only the same day's rows count.
+    const sameName = [...groups.values()].filter(g => g[0].kind === last.kind && slug(g[0].name) === slug(last.name));
+    const have = new Set((sameName.length > 1 ? list : sameName.flat()).map(i => i.date!.slice(0, 7)));
+    let y = Number(last.date!.slice(0, 4));
+    let m = Number(last.date!.slice(5, 7)) - 1;
+    for (let n = 0; n < 6; n++) {
+      m += 1;
+      if (m > 11) {
+        m = 0;
+        y += 1;
+      }
+      const dim = new Date(y, m + 1, 0).getDate();
+      const date = dayKey(new Date(y, m, Math.min(day, dim)));
+      if (date > limit) break;
+      // A row for this bill already sits in that month (typed in the sheet, or another day's copy): leave it be.
+      if (have.has(date.slice(0, 7))) continue;
+      out.push({
+        ...last,
+        id: `money:${last.kind}:${slug(last.name)}:${date}`,
+        date,
+        dateText: `${m + 1}/${Math.min(day, dim)}`,
+        skipped: false,
+        projected: true,
+      });
+    }
+  }
+  return [...items, ...out];
 }
 
 /** Rows of a block as dated money items. */
@@ -679,6 +748,7 @@ export function parseMoney(snap: MoneySnapshot, today = new Date()): MoneyModel 
       cells: { name: row[1], amount: row[2] },
     });
   }
+  const allItems = rollForward(items, today);
 
   return {
     refreshedAt: snap.refreshedAt,
@@ -717,7 +787,7 @@ export function parseMoney(snap: MoneySnapshot, today = new Date()): MoneyModel 
     cashAdvances,
     moreCards,
     flags,
-    items,
+    items: allItems,
     missing,
   };
 }

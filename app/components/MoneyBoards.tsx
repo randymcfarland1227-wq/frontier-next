@@ -8,7 +8,7 @@
  * fees, loan terms, sales, pay-from) lives in lib/moneyMeta.ts.
  */
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
   amountOf,
   cardSummaries,
@@ -43,6 +43,7 @@ import { isOverdue } from "../../lib/billEdits";
 import { isLedgerPaid, ledgerMonthRows } from "../../lib/moneyLedger";
 import { MenuRow } from "./RowMenu";
 import { Icon } from "../sticker/Icon";
+import { readSaved, writeSaved } from "../../lib/storage";
 
 export type CellView = (c: Cell | undefined, placeholder?: string) => ReactNode;
 type Get = (key: string) => MetaEntry | undefined;
@@ -283,6 +284,21 @@ function useBalanceSeen(rows: BankRow[], get: Get) {
       ? "no change seen yet"
       : `changed ${new Date(e.at).toLocaleDateString([], { month: "short", day: "numeric" })}`;
   };
+}
+
+/** When Life Hub last saw each card's balance or limit change. */
+function useCardSeen(cards: CardRow[], get: Get) {
+  const sig = cards.map(c => `${c.name}:${c.bal ?? ''}:${c.avail ?? ''}`).join('|');
+  useEffect(() => {
+    for (const c of cards) {
+      const k = `cbal:${metaName(c.name)}`;
+      const cur = c.bal ?? 0;
+      const prev = get(k);
+      if (!prev) setMeta(k, { amount: cur, state: 'avail', name: 'first' });
+      else if (prev.amount !== cur) setMeta(k, { amount: cur, name: undefined });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig]);
 }
 
 type Sale = MetaEntry & { id: string };
@@ -1391,6 +1407,26 @@ export function MoneyDash({
   const { get } = useMoneyMeta();
   const rows = bankRows(model);
   const cards = cardRows(model, [], get);
+  const seen = useBalanceSeen(rows, get);
+  void seen;
+  useCardSeen(cards, get);
+  const [foldedCols, setFoldedCols] = useState<Record<string, boolean>>(() => readSaved<Record<string, boolean>>(DASH_FOLD_KEY, {}));
+  const isFolded = (id: string) => Boolean(foldedCols[id]);
+  const fold = (id: string) => {
+    setFoldedCols(prev => {
+      const next = { ...prev, [id]: !prev[id] };
+      writeSaved(DASH_FOLD_KEY, next);
+      return next;
+    });
+  };
+  // When the figures last changed on Life Hub's side of the sync (the sheet keeps no per-cell date).
+  const stampFmt = (iso?: string) => (iso ? new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
+  const latest = (keys: string[]) => {
+    const ats = keys.map(k => get(k)).filter((e): e is MetaEntry => Boolean(e && e.name !== 'first')).map(e => e.at);
+    return ats.length ? ats.reduce((a, b) => (b > a ? b : a)) : undefined;
+  };
+  const cashStamp = `updated ${stampFmt(latest(rows.map(r => `bal:${metaName(r.name)}`))) || `· sheet ${stampFmt(model.refreshedAt)}`}`;
+  const cardStamp = `updated ${stampFmt(latest(cards.map(c => `cbal:${metaName(c.name)}`))) || `· sheet ${stampFmt(model.refreshedAt)}`}`;
   const savT = model.savings;
   const goals = (savT?.rows || [])
     .filter((r) => r[0]?.text.trim())
@@ -1418,23 +1454,21 @@ export function MoneyDash({
     ["paylater", "Pay later", "paylater"],
     ["cash", "Advances", "cash"],
   ];
-  const owedSum = sumOf(owed.map((o) => o.sum));
-  const cardLim = sumOf(cards.filter((c) => c.limit).map((c) => c.limit));
-  const cardBal = sumOf(cards.filter((c) => c.limit).map((c) => c.bal));
-  const paidPct = monthCount
-    ? Math.round((monthPaid / monthCount) * 100)
-    : undefined;
   const monthLabel = new Date().toLocaleDateString([], { month: "long" });
-  // Drawing 1: six columns, each its own sticker Group in its money tone. Boxes = sums. It sits at
-  // the top of the page and scrolls away with it (never pinned).
+  const colIds = ['cash-accounts', 'card-cards', 'save-savings', 'due-week', 'plan-credit', 'owed-owed'];
+  const dashCols = colIds.map(id => (foldedCols[id] ? 'minmax(0, .5fr)' : 'minmax(0, 1fr)')).join(' ');
+  const owedSum = sumOf(owed.map(o => o.sum));
+  const cardLim = sumOf(cards.filter(c => c.limit).map(c => c.limit));
+  const cardBal = sumOf(cards.filter(c => c.limit).map(c => c.bal));
+  const paidPct = monthCount ? Math.round((monthPaid / monthCount) * 100) : undefined;
   return (
     <section className="skm-dash" aria-label="Money at a glance">
       <div className="skm-dash-top">
         <h1 className="sk-large">Money</h1>
         {top}
       </div>
-      <div className="skm-dash-cols">
-        <DashCol tone="cash" title="Cash · pend" go="accounts" onGo={onGo}>
+      <div className="skm-dash-cols" style={{ '--dash-cols': dashCols } as CSSProperties}>
+        <DashCol id="cash-accounts" title="Cash · pend" stamp={cashStamp} folded={isFolded("cash-accounts")} onFold={() => fold("cash-accounts")} tone="cash" go="accounts" onGo={onGo}>
           <div className="skm-grid is-3">
             <span />
             <small>avail</small>
@@ -1461,7 +1495,7 @@ export function MoneyDash({
             ]}
           />
         </DashCol>
-        <DashCol tone="card" title="Cards" go="cards" onGo={onGo}>
+        <DashCol id="card-cards" title="Cards" stamp={cardStamp} folded={isFolded("card-cards")} onFold={() => fold("card-cards")} tone="card" go="cards" onGo={onGo}>
           <div className="skm-grid is-4">
             <span />
             <small>limit</small>
@@ -1494,13 +1528,8 @@ export function MoneyDash({
             ]}
           />
         </DashCol>
-        <DashCol tone="save" title="Savings" go="savings" onGo={onGo}>
-          <div
-            className="skm-grid"
-            style={{
-              gridTemplateColumns: `minmax(0, 1.2fr) repeat(${goalIdx.length + 1}, minmax(0, 1fr))`,
-            }}
-          >
+        <DashCol id="save-savings" title="Savings" folded={isFolded("save-savings")} onFold={() => fold("save-savings")} tone="save" go="savings" onGo={onGo}>
+          <div className="skm-grid" style={{ gridTemplateColumns: `minmax(0, 1fr) repeat(${goalIdx.length + 1}, minmax(0, 1fr))` }}>
             <span />
             {goalIdx.map((gi) => (
               <small key={gi} title={goals[gi]}>
@@ -1547,9 +1576,9 @@ export function MoneyDash({
             ]}
           />
         </DashCol>
-        <DashCol tone="due" title="Bills · routine" go="week" onGo={onGo}>
-          <div className="skm-big">
-            <b>{paidPct !== undefined ? `${paidPct}%` : "—"}</b>
+        <DashCol id="due-week" title="Bills · routine" folded={isFolded("due-week")} onFold={() => fold("due-week")} tone="due" go="week" onGo={onGo}>
+          <div className="mb-dc-big">
+            <b>{paidPct !== undefined ? `${paidPct}%` : '—'}</b>
             <small>
               of {monthLabel} paid · {monthPaid} of {monthCount}
             </small>
@@ -1572,9 +1601,9 @@ export function MoneyDash({
             />
           ) : null}
         </DashCol>
-        <DashCol tone="credit" title="Credit" go="credit" onGo={onGo}>
-          <div className="skm-scores">
-            {credit.scores.map((s) => (
+        <DashCol id="plan-credit" title="Credit" folded={isFolded("plan-credit")} onFold={() => fold("plan-credit")} tone="plan" go="credit" onGo={onGo}>
+          <div className="mb-dc-scores">
+            {credit.scores.map(s => (
               <span key={s.bureau} className={`bu-${bureauKey(s.bureau)}`}>
                 <small className="skm-bu">{s.bureau}</small>
                 <b>{s.score ?? "—"}</b>
@@ -1603,9 +1632,9 @@ export function MoneyDash({
             ]}
           />
         </DashCol>
-        <DashCol tone="owed" title="Outstanding" go="owed" onGo={onGo}>
+        <DashCol id="owed-owed" title="Current liabilities" folded={isFolded("owed-owed")} onFold={() => fold("owed-owed")} tone="owed" go="owed" onGo={onGo}>
           <div className="skm-grid is-2">
-            {owed.map((o) => (
+            {owed.map(o => (
               <Frag key={o.label}>
                 <span className="skm-gname" title={o.note}>
                   {o.label}
@@ -1682,44 +1711,19 @@ function DashSums({
   );
 }
 
-/** A dashboard column: a sticker Group in its money tone; the head (or any empty spot) opens its tab. */
-function DashCol({
-  tone,
-  title,
-  go,
-  onGo,
-  children,
-}: {
-  tone: string;
-  title: string;
-  go: string;
-  onGo: (where: string) => void;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className={`sk-group tone-${tone} skm-dc`}
-      role="button"
-      tabIndex={0}
-      aria-label={`${title}: open its tab`}
-      onClick={() => onGo(go)}
-      onKeyDown={(e) => {
-        if (
-          e.target === e.currentTarget &&
-          (e.key === "Enter" || e.key === " ")
-        ) {
-          e.preventDefault();
-          onGo(go);
-        }
-      }}
-    >
-      <div className="sk-ghead skm-dc-head">
-        <h3 className="sk-hl">{title}</h3>
-        <Icon name="chevron" className="skm-dc-go" />
-      </div>
-      <div className="sk-gbody skm-dc-body">{children}</div>
+const DASH_FOLD_KEY = 'lifehub-dash-folded';
+
+function DashCol({ id, title, stamp, folded, onFold, tone, go, onGo, children }: { id: string; title: string; stamp?: string; folded: boolean; onFold: () => void; tone: string; go: string; onGo: (where: string) => void; children: ReactNode }) {
+  return <div className={`sk-group tone-${tone} skm-dc${folded ? ' is-folded' : ''}`} role="button" tabIndex={0} aria-label={`${title}: open its tab`} onClick={() => onGo(go)} onKeyDown={e => {
+    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onGo(go); }
+  }}>
+    <div className="sk-ghead skm-dc-head">
+      <h3 className="sk-hl">{title}</h3>
+      <button type="button" className="sk-link skm-dc-fold" aria-expanded={!folded} aria-label={`${folded ? 'Open' : 'Fold'} ${title}`} data-col={id} onClick={e => { e.stopPropagation(); onFold(); }}><Icon name="chevronDown" size={12} /></button>
     </div>
-  );
+    {stamp ? <small className="skm-dc-stamp">{stamp}</small> : null}
+    {folded ? null : <div className="sk-gbody skm-dc-body">{children}</div>}
+  </div>;
 }
 
 function Frag({ children }: { children: ReactNode }) {

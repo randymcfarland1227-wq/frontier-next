@@ -2307,3 +2307,8 @@
 /* Each section flows independently, so a long shipping list cannot leave empty grid rows. */
 .sk-app .sk-brief-sections { display: block; columns: 280px; column-gap: 18px; }
 .sk-app .sk-brief-section { break-inside: avoid; margin-bottom: 12px; }
+
+.sk-app .skm-dash-cols { grid-template-columns: var(--dash-cols, repeat(6, minmax(0, 1fr))); }
+.sk-app .skm-dc-stamp { display: block; padding: 0 8px 4px; color: var(--sk-ink-2); font: var(--sk-caption); }
+.sk-app .skm-dc-fold { margin-left: auto; padding: 2px; }
+@media (max-width: 1100px) { .sk-app .skm-dash-cols { grid-template-columns: repeat(6, minmax(168px, 1fr)); } }

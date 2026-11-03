@@ -59,6 +59,7 @@ import {
 import { addCapture, loadCaptures, markPromoted, setCaptureStatus, type Capture } from '../lib/captures';
 import { CapturesPanel } from './components/CapturesPanel';
 import { REFRESH_EVENT, syncGoogleNow } from '../lib/syncNow';
+import { applyFinanceSeed } from '../lib/financeSeed';
 import { useDayKey } from '../lib/dayKey';
 import { WhyPanel } from './components/WhyPanel';
 import { AreaPicker } from './components/AreaPicker';
@@ -109,7 +110,7 @@ import { SiteIconSettings } from './components/SiteIconSettings';
 import { NeedsSorting } from './components/NeedsSorting';
 import { backfillFocusAreas, loadFocusAreas, type FocusAreaConfig } from '../lib/focusAreas';
 import { billDues, fromDayKey, loadCachedSchedule, paidBillKeys, pullScheduleSnapshot, type BillDue, type CalTask, type ScheduleSnapshot } from '../lib/schedule';
-import { lifeSubDues, useLifeSubs } from '../lib/lifeSubs';
+import { lifeSubDues, useLifeSubs, withoutSheetTwins } from '../lib/lifeSubs';
 import { payPlanDues, usePayPlans } from '../lib/payPlans';
 import { usePriorityPins } from '../lib/priorityPins';
 import { applyBillEdits, useBillEdits } from '../lib/billEdits';
@@ -339,6 +340,7 @@ export function LifeHub() {
     setTheme(savedTheme);
     document.documentElement.dataset.theme = savedTheme;
     setReady(true);
+    applyFinanceSeed();
     startCloudSync();
   }, []);
 
@@ -751,7 +753,10 @@ export function LifeHub() {
   const billEdits = useBillEdits();
   const lifeSubs = useLifeSubs();
   const moneyDues = useMemo(
-    () => applyBillEdits([...moneyBillDues(moneyModel, paidKeys), ...payPlanDues(payPlans, paidKeys), ...lifeSubDues(lifeSubs, paidKeys)], billEdits),
+    () => {
+      const sheet = moneyBillDues(moneyModel, paidKeys);
+      return applyBillEdits([...sheet, ...payPlanDues(payPlans, paidKeys), ...withoutSheetTwins(lifeSubDues(lifeSubs, paidKeys), moneyBillDues(moneyModel, new Set<string>()))], billEdits);
+    },
     [moneyModel, payPlans, paidKeys, billEdits, lifeSubs],
   );
   // Today's List badge: the Doing Now action list plus what you've added from Today / Focus / Sites.
@@ -774,7 +779,7 @@ export function LifeHub() {
     const all = [
       ...moneyBillDues(moneyModel, none),
       ...payPlanDues(payPlans, none),
-      ...lifeSubDues(lifeSubs, none, now, 45, 120, true),
+      ...withoutSheetTwins(lifeSubDues(lifeSubs, none, now, 45, 120, true), moneyBillDues(moneyModel, none)),
       ...(schedule?.bills || []).flatMap(b => billDues(b, none, now, 45)),
     ];
     return applyBillEdits(all, billEdits).filter(inMonth);

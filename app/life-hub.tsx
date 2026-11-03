@@ -104,6 +104,7 @@ import { WhyView } from './components/WhyView';
 import { DailyGrounding } from './components/DailyGrounding';
 import { isHidden, loadHidden, restoreItem, useHiddenItems } from '../lib/siteMoves';
 import { SiteListHost } from './components/SiteListDialog';
+import { DebtPopHost } from './components/DebtPop';
 import { applySiteLists, openSiteList, SiteListsContext, useSiteListStore } from '../lib/siteLists';
 import { FOCUS_LIST_EVENT, moveFitnessToOngoing, ONGOING_KEY, readOngoingIds, seedOngoingGoals } from '../lib/ongoingGoals';
 import { useRoleActive, withRoleShelves, withTaggedShelves } from '../lib/roleShelves';
@@ -1213,6 +1214,7 @@ goalsData ? (
       <UpdateNotice />
       {import.meta.env.VITE_LOCAL_PREVIEW !== 'true' && <BackupGuard />}
       <SiteListHost />
+      <DebtPopHost />
       <FocusDrawer
         open={focusOpen}
         close={() => setFocusOpen(false)}

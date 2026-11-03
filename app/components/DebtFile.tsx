@@ -516,7 +516,7 @@ function PlanChip({ plan }: { plan: DebtPlan }) {
 }
 
 /** Name and amount only — everything else lives in the pop-out. */
-function TicketRow({
+export function TicketRow({
   item,
   marks,
   onOpen,
@@ -547,7 +547,7 @@ function MarkChip({ mark }: { mark?: DebtMark }) {
   ) : null;
 }
 
-function Story({
+export function Story({
   item,
   file,
   mark,
@@ -901,7 +901,7 @@ function Sec({
   );
 }
 
-function LetterStory({
+export function LetterStory({
   letter,
   file,
   marks,

@@ -7,6 +7,7 @@ import {
 } from "react";
 import { Icon } from "../sticker/Icon";
 import { openTaskPanel, pinKey } from "../../lib/priorityPins";
+import { openDebtPop } from "./DebtPop";
 import { openSiteList, useSiteLists, viewOfList, type SiteListsContextValue } from "../../lib/siteLists";
 import { Dialog } from "../sticker/Dialog";
 import { SearchPick, type Opt } from "../sticker/SearchPick";
@@ -76,7 +77,7 @@ type FinRow = {
   kind: "debt" | "bill";
 };
 
-function debtItems(file: DebtFile | null, key: string): DebtItem[] {
+export function debtItems(file: DebtFile | null, key: string): DebtItem[] {
   if (!file) return [];
   if (key === "tix:md") return mdSources(file).flatMap((s) => s.items);
   if (key === "tix:oos") return oosSources(file).flatMap((s) => s.items);
@@ -575,10 +576,11 @@ function Detail({
                         type="button"
                         className="sk-fin-name"
                         title={`${t.text} · Open in Finance`}
-                        onClick={() => openFinance?.(
-                          t.fin!.key.startsWith("item:") ? t.fin!.key.slice(5) : undefined,
-                          t.fin!.key.startsWith("bill:") ? "flow" : "owed",
-                        )}
+                        onClick={() =>
+                          t.fin!.key.startsWith("bill:")
+                            ? openFinance?.(undefined, "flow")
+                            : openDebtPop(t.fin!.key, t.text)
+                        }
                       >
                         {t.text}
                       </button>
@@ -719,11 +721,11 @@ function Detail({
                       <button
                         type="button"
                         className="sk-fin-name"
-                        title="Open this in Finance"
+                        title="Open its details"
                         onClick={() =>
                           r.kind === "bill"
                             ? openFinance?.(undefined, "flow")
-                            : openFinance?.(r.id)
+                            : openDebtPop(`item:${r.id}`, r.name)
                         }
                       >
                         {r.name}

@@ -2494,20 +2494,20 @@
 .sk-app .sk-day-panel .sk-listh { padding-top: 0; }
 
 /* ── Day mode: a park behind the page — forest greens, sun, clouds, hills, trees, leaves, birds ── */
-.sk-app .sk-day { display: none; }
+.sk-app .sk-dayscene { display: none; }
 .frontier-shell:not([data-color-mode="dark"]) .sk-app { --sk-page: #e6f2df; --sk-grid: #d3e6c9; background-color: var(--sk-page); }
 .frontier-shell:not([data-color-mode="dark"]) .sk-app :is(.sk-main, .sksite) { background-color: transparent; }
-.frontier-shell:not([data-color-mode="dark"]) .sk-app .sk-day {
+.frontier-shell:not([data-color-mode="dark"]) .sk-app .sk-dayscene {
   display: block; position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden;
   background:
     radial-gradient(700px 420px at 12% 18%, #fff6c455, transparent 70%),
     radial-gradient(800px 520px at 92% 60%, #c9ecb455, transparent 70%),
     linear-gradient(180deg, #b9e0f5 0%, #d9f0e6 42%, #eaf5dc 100%);
 }
-.sk-app .sk-day > * { position: absolute; display: block; }
+.sk-app .sk-dayscene > * { position: absolute; display: block; }
 /* sun with slowly turning rays */
-.sk-app .sk-sun { top: -70px; right: 7vw; width: 190px; height: 190px; border-radius: 50%; background: radial-gradient(circle, #fffbe2 0 34%, #ffe27a 36% 56%, #ffe27a00 72%); box-shadow: 0 0 80px 30px #fff1a866; }
-.sk-app .sk-sun::before {
+.sk-app .sk-daysun { top: -70px; right: 7vw; width: 190px; height: 190px; border-radius: 50%; background: radial-gradient(circle, #fffbe2 0 34%, #ffe27a 36% 56%, #ffe27a00 72%); box-shadow: 0 0 80px 30px #fff1a866; }
+.sk-app .sk-daysun::before {
   content: ""; position: absolute; inset: -90px; border-radius: 50%; animation: sk-turn 140s linear infinite;
   background: repeating-conic-gradient(from 0deg, #fff3a84d 0 5deg, transparent 5deg 20deg);
   -webkit-mask-image: radial-gradient(circle, transparent 28%, #000 40%, transparent 68%); mask-image: radial-gradient(circle, transparent 28%, #000 40%, transparent 68%);
@@ -2558,8 +2558,8 @@
 .sk-app .sk-wing { transform-box: fill-box; transform-origin: 50% 50%; animation: sk-flap .5s ease-in-out infinite alternate; }
 @keyframes sk-flap { from { transform: scaleX(1); } to { transform: scaleX(.35); } }
 @keyframes sk-wander { 0% { transform: translate3d(0, 0, 0); } 25% { transform: translate3d(90px, -40px, 0); } 50% { transform: translate3d(190px, 10px, 0); } 75% { transform: translate3d(280px, -50px, 0); } 100% { transform: translate3d(380px, -10px, 0); } }
-@media (max-width: 900px) { .sk-app .sk-trees-r, .sk-app .sk-bench, .sk-app .sk-butterfly, .sk-app .sk-sun::before { display: none; } .sk-app .sk-trees { width: 260px; height: 205px; } }
-@media (prefers-reduced-motion: reduce) { .sk-app :is(.sk-cloud, .sk-leaf, .sk-bird, .sk-butterfly, .sk-wing, .sk-tree, .sk-shaft, .sk-sun::before) { animation: none !important; } .sk-app :is(.sk-leaf, .sk-bird) { display: none; } }
+@media (max-width: 900px) { .sk-app .sk-trees-r, .sk-app .sk-bench, .sk-app .sk-butterfly, .sk-app .sk-daysun::before { display: none; } .sk-app .sk-trees { width: 260px; height: 205px; } }
+@media (prefers-reduced-motion: reduce) { .sk-app :is(.sk-cloud, .sk-leaf, .sk-bird, .sk-butterfly, .sk-wing, .sk-tree, .sk-shaft, .sk-daysun::before) { animation: none !important; } .sk-app :is(.sk-leaf, .sk-bird) { display: none; } }
 /* day palette: sunlit gold → leaf green → sky for the home header */
 .frontier-shell:not([data-color-mode="dark"]) .sk-app[data-page="home"] .sk-hero {
   background:

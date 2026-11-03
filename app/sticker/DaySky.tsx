@@ -41,8 +41,8 @@ const Cloud = ({ className }: { className: string }) => (
 
 export function DaySky() {
   return (
-    <div className="sk-day" aria-hidden="true">
-      <div className="sk-sun" />
+    <div className="sk-dayscene" aria-hidden="true">
+      <div className="sk-daysun" />
       <i className="sk-shaft" />
       <i className="sk-shaft is-2" />
       <Cloud className="c1" />

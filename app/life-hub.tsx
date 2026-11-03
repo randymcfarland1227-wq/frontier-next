@@ -102,7 +102,8 @@ import { ruleFor, saveTaskRule, sourceRuleKey, taskRuleKey, useTaskRules } from 
 import { FlowSyncReview } from './components/FlowSyncReview';
 import { WhyView } from './components/WhyView';
 import { DailyGrounding } from './components/DailyGrounding';
-import { isHidden, useHiddenItems } from '../lib/siteMoves';
+import { isHidden, removeItem, useHiddenItems } from '../lib/siteMoves';
+import { seedFitnessFocus, seedOngoingGoals } from '../lib/ongoingGoals';
 import { useRoleActive, withRoleShelves, withTaggedShelves } from '../lib/roleShelves';
 import { LogsView } from './components/LogsView';
 import { UpdateNotice } from './components/UpdateNotice';
@@ -606,6 +607,22 @@ export function LifeHub() {
     }
     return out;
   }, [baseSnapshots, selfItems, taskTags, hiddenItems, roleActive]);
+
+  // One-time: Move OS's three goals become ongoing goals (shown in Today and on the Move page as
+  // "Moving goals"), and the physical goals become the first fitness focus. Deleting a card keeps it deleted.
+  useEffect(() => {
+    const goals = (visibleSnapshots.move?.featured || []).filter(f => f.completable === false);
+    if (goals.length && seedOngoingGoals(goals.map(g => ({
+      id: `move-goal-${g.id}`, title: g.title, note: g.detail || undefined,
+      why: 'One of the three goals the move unlocks after.', site: 'move',
+    })))) for (const g of goals) removeItem('move', g.id);
+    const physical = (goalsData?.goals || []).filter(g => g.categoryId === 'physical' && g.status === 'active');
+    if (physical.length) seedFitnessFocus([{
+      id: 'fit-physical-body', title: 'Physical body', section: 'fitness',
+      note: 'Keep my body strong, mobile and recovering.',
+      lists: [{ id: 'physical-goals', name: 'Physical goals', tasks: physical.map(g => ({ id: `pg-${g.id}`, text: g.title, done: false })) }],
+    }]);
+  }, [visibleSnapshots.move, goalsData]);
 
   // Today's workload per bucket (open items + done today + habits due today), remembered per day.
   const todayAvail = useMemo(

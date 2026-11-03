@@ -31,3 +31,27 @@ export function addOngoingGoal(goal: { title: string; note?: string; why?: strin
   writeSaved(ONGOING_KEY, { scope: state.scope, items: [...state.items, item] });
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(FOCUS_LIST_EVENT, { detail: ONGOING_KEY }));
 }
+
+const SEEDED_KEY = 'lifehub-seeded-goals';
+type Seed = { id: string; title: string; note?: string; why?: string; site?: string; section?: string; lists?: unknown[] };
+
+/**
+ * One-time moves of things Randy already had (Move OS goals, the physical goals) into focus lists.
+ * Each id is remembered, so deleting the card later never brings it back.
+ */
+function seedInto(storageKey: string, shape: 'list' | 'array', seeds: Seed[]): boolean {
+  const seeded = readSaved<string[]>(SEEDED_KEY, []);
+  const raw = readSaved<unknown>(storageKey, shape === 'list' ? { scope: '', items: [] } : []);
+  const items: Array<Record<string, unknown>> = shape === 'list' ? ((raw as { items?: Array<Record<string, unknown>> }).items ?? []) : (raw as Array<Record<string, unknown>>);
+  const fresh = seeds.filter(s => !seeded.includes(s.id) && !items.some(i => i.id === s.id));
+  if (!fresh.length) return false;
+  const added = fresh.map(s => ({ ...s, ongoing: true, added: todayKey() }));
+  const next = [...items, ...added];
+  writeSaved(storageKey, shape === 'list' ? { scope: (raw as { scope?: string }).scope ?? '', items: next } : next);
+  writeSaved(SEEDED_KEY, [...seeded, ...fresh.map(s => s.id)]);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(FOCUS_LIST_EVENT, { detail: storageKey }));
+  return true;
+}
+export const seedOngoingGoals = (seeds: Seed[]) => seedInto(ONGOING_KEY, 'list', seeds);
+/** The fitness focus list is a plain array under its own key. */
+export const seedFitnessFocus = (seeds: Seed[]) => seedInto('lifehub-focus-fit-areas', 'array', seeds);

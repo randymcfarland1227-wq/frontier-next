@@ -124,30 +124,6 @@ function useFocusList(storageKey: string, week?: boolean) {
   return [items, save] as const;
 }
 
-/** A typed list: a title plus an optional note (folds to two lines, tap to open), circle to mark off, ✕ to remove. */
-const FIT_AREAS = [
-  "Abs",
-  "Cardio",
-  "Movement",
-  "Strength",
-  "Mobility",
-  "Positioning",
-  "Posture",
-  "Legs",
-  "Back",
-  "Recovery",
-];
-/** Preserve the quick area buttons; full details use the same focus-card editor. */
-function FitnessFocus({ list: [state, save] }: { list: readonly [Entry[], (next: Entry[]) => void] }) {
-  const has = (title: string) => state.some(i => i.title.toLowerCase() === title.toLowerCase());
-  const names = [...FIT_AREAS, ...state.filter(i => !FIT_AREAS.includes(i.title)).map(i => i.title)];
-  return <div className="sk-chips" role="group" aria-label="Areas I’m pushing">
-    {names.map(title => <button key={title} type="button" aria-pressed={has(title)} onClick={() => has(title)
-      ? save(state.filter(i => i.title !== title))
-      : save([...state, { id: `fit-${title.toLowerCase()}`, title, push: 2, since: localDayKey(), section: 'fitness', ongoing: true }])}>{title}</button>)}
-  </div>;
-}
-
 /** The existing fitness key stores a plain array; keep that shape and key unchanged. */
 function useFitnessFocus() {
   const key = 'lifehub-focus-fit-areas';
@@ -467,7 +443,7 @@ export function FocusSection({
   const marvelDone = MARVEL_MENU.filter((g) => picks[g.id]?.done).length;
   const summary = `${water} of ${BOTTLES} bottles · Marvel ${marvelDone} of ${MARVEL_MENU.length}`;
   return (
-    <Section id="focus" title="Focus" summary={summary}>
+    <Section id="focus" title="Daily Rhythm" summary={summary}>
       <div className="sk-trio is-duo" data-day={day}>
         <Group
           tone="habit"
@@ -503,9 +479,8 @@ export function FocusSection({
             Log in the tracker
             <Icon name="chevron" size={14} />
           </button>
-          <ListHead title="Pushing on" />
-          <FitnessFocus list={fitnessLists[4]} />
-          <FocusCards list={fitnessLists[4]} extra={fitnessLists.filter((_, i) => i !== 4)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'fitness', ongoing: true, push: 2, since: localDayKey() }} label="What are you pushing on" empty="Add a fitness focus, or pick an area above." />
+          <ListHead title="Fitness focus" />
+          <FocusCards list={fitnessLists[4]} extra={fitnessLists.filter((_, i) => i !== 4)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'fitness', ongoing: true, push: 2, since: localDayKey() }} label="Add a fitness focus" empty="Add what you’re working on with fitness." />
           <ListHead title="Drink tracker" />
           <Water water={water} setWater={setWater} />
         </Group>

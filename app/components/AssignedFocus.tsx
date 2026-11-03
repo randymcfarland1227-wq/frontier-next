@@ -14,10 +14,11 @@ export function AssignedFocus({ target, focus, events = [], bills = [], openFina
   const lists = assignedFocusLists(focus, target);
   const isSection = target in FOCUS_SECTION_LABELS;
   const name = isSection ? FOCUS_SECTION_LABELS[target as keyof typeof FOCUS_SECTION_LABELS] : sourceById[target as SourceId].name;
-  return <Group tone="focus" icon="target" title="Ongoing goals" className="sk-assigned-focus" meta={name}>
+  const moving = target === 'move';
+  return <Group tone="focus" icon="target" title={moving ? 'Moving goals' : 'Ongoing goals'} className="sk-assigned-focus" meta={name}>
     <FocusCards list={lists[2]} extra={lists.filter((_, i) => i !== 2)} events={events} bills={bills} openFinance={openFinance}
       defaults={isSection ? { section: target as keyof typeof FOCUS_SECTION_LABELS, ongoing: true } : { site: target as SourceId, ongoing: true }}
-      label={`Add an ongoing goal for ${name}`} empty="Assigned focus items appear here with their scope, why and lists." />
+      label={moving ? "Add a moving goal" : `Add an ongoing goal for ${name}`} empty="Assigned focus items appear here with their scope, why and lists." />
   </Group>;
 }
 

@@ -4,12 +4,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { buildBrief, type BriefSection } from '../../lib/dailyBrief';
 import { REFRESH_EVENT } from '../../lib/syncNow';
 import { openTaskPanel } from '../../lib/priorityPins';
-import { readSaved, writeSaved } from '../../lib/storage';
+import { LOCAL_WRITE_EVENT, readSaved, writeSaved } from '../../lib/storage';
 import { eventEnd, eventStart, type BillDue, type ScheduleSnapshot } from '../../lib/schedule';
 import { usePlan } from './FocusDrawer';
 import type { SourceId, SourceSnapshot, SpaceId } from '../../lib/types';
-import { Dot, Group, ListHead, Row } from '../sticker/kit';
+import { Dot, Group, ListHead } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
+import { useDayKey } from '../../lib/dayKey';
+import { FOCUS_PRIORITY_LABEL, orderFocus, type FocusPriority } from '../../lib/focusPriority';
+import { FocusEntryDialog, type LinkItem, type OpenFinance } from './FocusCards';
+import type { Entry, useShortTermFocus } from './FocusSection';
+import { sourceById } from '../../lib/sources';
 
 const SEEN_KEY = 'lifehub-brief-seen';
 const DISMISS_KEY = 'lifehub-brief-dismissed';
@@ -47,33 +52,33 @@ function restoreAll() {
   writeSaved(DISMISS_KEY, {});
   window.dispatchEvent(new Event(DISMISS_EVENT));
 }
-const SHOWN = typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches ? 4 : 6;
+const FOLDS_KEY = 'sk-fold-brief-sections';
 
 /** Column names (Title Case) for the brief's sections. */
 const HEADS: Record<BriefSection['id'], string> = {
-  money: 'Money Due Now',
-  tasks: 'Tasks Due Today',
-  mail: 'Mail Waiting',
-  roles: 'Role Replies',
-  sales: 'Sales & Listings',
+  money: 'Finance · due & overdue',
+  tasks: 'Tasks · due & overdue',
+  mail: 'Other Mail',
+  roles: 'Replies & Role Inquiries',
+  sales: 'Shipping & Sales',
 };
 const SHORT: Record<BriefSection['id'], [string, string]> = {
   money: ['bill due', 'bills due'],
-  tasks: ['task today', 'tasks today'],
+  tasks: ['task due', 'tasks due'],
   mail: ['mail', 'mail'],
   roles: ['role reply', 'role replies'],
   sales: ['sale to do', 'sales to do'],
 };
 
-/** The brief's sections that can need you (tasks due today live in Doing now and the site cards). */
+/** Live source sections; date-sensitive rows refresh when the day changes. */
 export function useBrief(snapshots: Record<SourceId, SourceSnapshot>, bills: BillDue[]) {
   const gone = useDismissed();
+  const day = useDayKey();
   return useMemo(
     () =>
-      buildBrief(snapshots, bills)
-        .filter(s => s.id !== 'tasks')
+      buildBrief(snapshots, bills, new Date(`${day}T12:00:00`))
         .map(s => ({ ...s, rows: s.rows.filter(r => !gone[r.id]) })),
-    [snapshots, bills, gone],
+    [snapshots, bills, gone, day],
   );
 }
 
@@ -89,140 +94,91 @@ export function BriefSummary({ snapshots, bills }: { snapshots: Record<SourceId,
 }
 
 const WEEKS_AHEAD = 3;
-type BRow = { id: string; title: string; note: string; tone?: string; pin?: string; go?: SpaceId };
-type BCol = { id: string; title: string; rows: BRow[] };
+type BRow = { id: string; title: string; note: string; tone?: string; pin?: string; go?: SpaceId; focusId?: string; priority?: FocusPriority };
+type BCol = { id: string; title: string; rows: BRow[]; compact?: boolean; keepAll?: boolean; empty: string };
 
-export function DailyBrief({
-  snapshots,
-  bills,
-  schedule,
-  enter,
-}: {
+export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, openFinance }: {
   snapshots: Record<SourceId, SourceSnapshot>;
   bills: BillDue[];
   schedule: ScheduleSnapshot | null;
   enter: (id: SpaceId) => void;
+  focus: ReturnType<typeof useShortTermFocus>;
+  events: LinkItem[];
+  openFinance: OpenFinance;
 }) {
   const sections = useBrief(snapshots, bills);
   const gone = useDismissed();
   const { plan } = usePlan(snapshots, bills);
-  const hidden = Object.keys(useDismissed()).length;
-  const stamp = Math.max(
-    0,
-    ...(['gmail', 'outlook', 'role', 'radall', 'resale', 'ticktick'] as SourceId[]).map(id => Date.parse(snapshots[id]?.refreshedAt || '') || 0),
-  );
-  const updated = stamp
-    ? `${new Date(stamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${
-        new Date(stamp).toDateString() === new Date().toDateString() ? '' : ` · ${new Date(stamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}`
-      }`
-    : null;
+  const hidden = Object.keys(gone).length;
+  const [folds, setFolds] = useState<Record<string, boolean>>(() => readSaved(FOLDS_KEY, {}));
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    const sync = (e: Event) => {
+      if ((e as CustomEvent).detail === FOLDS_KEY || e.type === 'storage') setFolds(readSaved(FOLDS_KEY, {}));
+    };
+    window.addEventListener(LOCAL_WRITE_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => { window.removeEventListener(LOCAL_WRITE_EVENT, sync); window.removeEventListener('storage', sync); };
+  }, []);
+  const toggle = (id: string) => {
+    const next = { ...readSaved<Record<string, boolean>>(FOLDS_KEY, {}), [id]: !folds[id] };
+    writeSaved(FOLDS_KEY, next);
+    setFolds(next);
+  };
+  const [openFocusId, setOpenFocusId] = useState<string | null>(null);
+  const focusLists = [focus.now, focus.weeks, focus.ongoing];
+  const focusItems = orderFocus(focusLists.flatMap(([items]) => items).filter(i => !i.done));
+  const selectedList = focusLists.find(([items]) => items.some(i => i.id === openFocusId));
+  const selected = selectedList?.[0].find(i => i.id === openFocusId);
+  const updateFocus = (patch: Partial<Entry>) => {
+    if (selectedList && selected) selectedList[1](selectedList[0].map(i => i.id === selected.id ? { ...i, ...patch } : i));
+  };
+  const stamp = Math.max(0, ...(['gmail', 'outlook', 'role', 'radall', 'resale', 'ticktick'] as SourceId[]).map(id => Date.parse(snapshots[id]?.refreshedAt || '') || 0));
+  const updated = stamp ? `${new Date(stamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${new Date(stamp).toDateString() === new Date().toDateString() ? '' : ` · ${new Date(stamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}`}` : null;
   const [seen, setSeen] = useState<string[]>(() => readSaved<string[]>(SEEN_KEY, []));
-  const [more, setMore] = useState<string | null>(null);
-  const [nowMs] = useState(() => Date.now());
   const soon = (schedule?.events || [])
     .filter(e => (e.myStatus === 'owner' || e.myStatus === 'yes') && eventEnd(e).getTime() > nowMs && eventStart(e).getTime() < nowMs + WEEKS_AHEAD * 7 * 86400000)
     .sort((a, b) => eventStart(a).getTime() - eventStart(b).getTime());
-  const extra = (id: string, title: string, rows: BRow[]): BCol => ({ id, title, rows: rows.filter(r => !gone[r.id]) });
   const cols: BCol[] = [
-    extra('doing', 'Doing Now', plan.map(i => ({ id: `plan:${i.key}`, title: i.title, note: i.source, go: i.source as SpaceId }))),
-    ...sections.map(s => ({ id: s.id, title: HEADS[s.id], rows: s.rows as BRow[] })),
-    extra(
-      'soon',
-      `Coming Up · ${WEEKS_AHEAD} Weeks`,
-      soon.map(e => ({
-        id: `ev:${e.id}`,
-        title: e.title,
-        note: e.allDay
-          ? eventStart(e).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
-          : `${eventStart(e).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} · ${eventStart(e).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
-      })),
-    ),
+    { id: 'doing', title: 'Action List', keepAll: true, empty: 'Nothing selected in your Action List yet.', rows: plan.map(i => ({ id: `plan:${i.key}`, title: i.title, note: sourceById[i.source].shortName, pin: i.key })) },
+    ...(['roles', 'sales', 'mail'] as const).map(id => ({ id, title: HEADS[id], empty: 'Nothing waiting in the current feed.', rows: sections.find(s => s.id === id)?.rows || [] })),
+    { id: 'focus', title: 'Short-term Focus', keepAll: true, empty: 'No open short-term focus items.', rows: focusItems.map(i => ({ id: `focus:${i.id}`, title: i.title, note: '', focusId: i.id, priority: i.priority })) },
+    ...(['money', 'tasks'] as const).map(id => ({ id, title: HEADS[id], compact: true, empty: 'Nothing due today or overdue.', rows: sections.find(s => s.id === id)?.rows || [] })),
+    { id: 'soon', title: `Coming Up · ${WEEKS_AHEAD} Weeks`, empty: 'No upcoming events in the current calendar.', rows: soon.map(e => ({ id: `ev:${e.id}`, title: e.title, note: e.allDay ? eventStart(e).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : `${eventStart(e).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} · ${eventStart(e).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` })).filter(r => !gone[r.id]) },
   ];
   const all = sections.flatMap(s => s.rows.map(r => r.id));
   const fresh = all.filter(id => !seen.includes(id)).length;
-  const markSeen = () => {
-    writeSaved(SEEN_KEY, all);
-    setSeen(all);
-  };
-  const live = cols.filter(c => c.rows.length);
-  return (
-    <Group
-      tone="needs"
-      icon="sun"
-      title="Daily Brief"
-      className="sk-brief"
-      meta={fresh ? `${fresh} new since you last looked` : 'Doing Now, bills, replies and what’s coming in three weeks'}
-      actions={
-        <>
-          <span className="sk-updated" title="Newest pull across mail, roles, sales, money and TickTick">
-            <Icon name="refresh" size={12} />
-            {updated ? `Updated ${updated}` : 'Not updated yet'}
-          </span>
-          {hidden ? (
-            <button type="button" className="sk-link" onClick={restoreAll} title="Bring back what you cleared today">
-              <Icon name="eye" size={14} />
-              Show {hidden} Cleared
-            </button>
-          ) : null}
-          {fresh ? (
-            <button type="button" className="sk-link" onClick={markSeen} title="Clears the new marks; items stay until they’re dealt with">
-              <Icon name="eye" size={14} />
-              Mark Seen
-            </button>
-          ) : null}
-          <button type="button" className="sk-link" onClick={() => window.dispatchEvent(new Event(REFRESH_EVENT))} title="Pull mail, roles and sales again">
-            <Icon name="refresh" size={14} />
-            Check for Replies
-          </button>
-        </>
-      }
-    >
-      {live.length ? (
-        <div className="sk-cols" style={{ '--cols': Math.min(live.length, 4) } as React.CSSProperties}>
-          {live.map(s => {
-            const rows = more === s.id ? s.rows : s.rows.slice(0, SHOWN);
-            return (
-              <div key={s.id} className="sk-col">
-                <ListHead title={s.title} meta={s.rows.length} />
-                {rows.map(r => {
-                  const isNew = !seen.includes(r.id);
-                  return (
-                    <Row
-                      key={r.id}
-                      highlight={isNew}
-                      lead={isNew ? <Dot tone="needs" hint="New since you last looked" /> : null}
-                      title={r.title}
-                      sub={r.note}
-                      value={r.tone === 'late' ? 'Overdue' : r.tone === 'today' ? 'Today' : undefined}
-                      valueTone={r.tone === 'late' ? 'late' : undefined}
-                      hint={`${r.title} — ${r.note}`}
-                      onOpen={r.pin || r.go ? () => (r.pin ? openTaskPanel(r.pin) : enter(r.go as SpaceId)) : undefined}
-                    >
-                      <button
-                        type="button"
-                        className="sk-dismiss"
-                        aria-label={`Clear ${r.title} from today’s brief`}
-                        title="Clear from today’s brief (it can come back tomorrow)"
-                        onClick={() => dismissIds([r.id])}
-                      >
-                        <Icon name="close" size={13} />
-                      </button>
-                    </Row>
-                  );
-                })}
-                {s.rows.length > SHOWN ? (
-                  <button type="button" className="sk-link sk-more" onClick={() => setMore(more === s.id ? null : s.id)}>
-                    {more === s.id ? 'Show Fewer' : `${s.rows.length - SHOWN} more`}
-                    <Icon name={more === s.id ? 'chevronDown' : 'chevron'} size={14} />
-                  </button>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="sk-empty">Nothing in Doing Now, no bills, replies or events in the next three weeks.</p>
-      )}
+  const markSeen = () => { writeSaved(SEEN_KEY, all); setSeen(all); };
+  return <>
+    <Group tone="needs" icon="sun" title="Daily Brief" className="sk-brief" meta={fresh ? `${fresh} new since you last looked` : 'Your actions, replies, focus and due items'} actions={<>
+      <span className="sk-updated" title="Newest source update; each section uses its latest available feed"><Icon name="refresh" size={12} />{updated ? `Updated ${updated}` : 'Not updated yet'}</span>
+      {hidden ? <button type="button" className="sk-link" onClick={restoreAll} title="Bring back what you cleared today"><Icon name="eye" size={14} />Show {hidden} Cleared</button> : null}
+      {fresh ? <button type="button" className="sk-link" onClick={markSeen} title="Clears the new marks; items stay until they’re dealt with"><Icon name="eye" size={14} />Mark Seen</button> : null}
+      <button type="button" className="sk-link" onClick={() => window.dispatchEvent(new Event(REFRESH_EVENT))} title="Pull the latest available source feeds"><Icon name="refresh" size={14} />Refresh Sources</button>
+    </>}>
+      <div className="sk-brief-sections">
+        {cols.map(s => <section key={s.id} className={`sk-brief-section${s.compact ? ' is-compact' : ''}`} aria-label={s.title}>
+          <ListHead title={s.title} meta={s.rows.length} shut={Boolean(folds[s.id])} onToggle={() => toggle(s.id)} />
+          {folds[s.id] ? null : <>
+            {s.rows.length ? <ul className="sk-brief-items">{s.rows.map(r => {
+              const isNew = !s.keepAll && !seen.includes(r.id);
+              const open = r.focusId ? () => setOpenFocusId(r.focusId!) : r.pin ? () => openTaskPanel(r.pin!) : r.go ? () => enter(r.go!) : undefined;
+              return <li key={r.id} className="sk-brief-entry" data-focus-priority={r.priority}>
+                {open ? <button type="button" className="sk-brief-open" onClick={open} title={[r.title, r.note, r.priority ? FOCUS_PRIORITY_LABEL[r.priority] : ''].filter(Boolean).join(' · ')}>
+                  <span className="sk-brief-title">{isNew && !s.compact ? <Dot tone="needs" hint="New since you last looked" /> : null}{r.title}</span>
+                  {r.note ? <small>{r.note}</small> : null}
+                </button> : <span className="sk-brief-open"><span className="sk-brief-title">{r.title}</span><small>{r.note}</small></span>}
+                {s.keepAll ? null : <button type="button" className="sk-brief-clear" aria-label={`Clear ${r.title} from today’s brief`} title="Clear from today’s brief (it can come back tomorrow)" onClick={() => dismissIds([r.id])}><Icon name="close" size={12} /></button>}
+              </li>;
+            })}</ul> : <p className="sk-brief-empty">{s.empty}</p>}
+          </>}
+        </section>)}
+      </div>
     </Group>
-  );
+    {selected && selectedList ? <FocusEntryDialog item={selected} events={events} bills={bills} openFinance={openFinance} update={updateFocus} remove={() => selectedList[1](selectedList[0].filter(i => i.id !== selected.id))} close={() => setOpenFocusId(null)} /> : null}
+  </>;
 }

@@ -399,6 +399,12 @@ export function HomeView({
             bills={bills}
             schedule={schedule}
             enter={enter}
+            focus={shortTerm}
+            events={linkItems}
+            openFinance={(id, tab) => {
+              requestOpenDebt(id, tab);
+              enter("money");
+            }}
           />
         );
 

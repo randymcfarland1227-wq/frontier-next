@@ -18,7 +18,7 @@ Glass lives in variables (`--gl-panel-*`, `--gl-group-*`, `--gl-row-*`, light + 
 Anything that can run long sits in `<CapPane cap="page|split">` (app/sticker/CapPane.tsx): capped height, own scroll, "more below" fade, keyboard-focusable. Split panes cap at 72vh (360–760px), full-width panes at 86vh. Pop-outs are `.sk-dialog` (max 85vh, scrolls).
 
 ## 4. Layouts follow their own box
-`CapPane` is a container named `today-pane`. Use `@container today-pane (max-width: …)` for anything inside Today, not `@media`. States: wide, narrow (≤760px: Money shows headline + totals, month shows dots, calendar lists in tight type), tight (≤520px: brief notes hidden).
+`CapPane` is a container named `today-pane`. Use `@container today-pane (max-width: …)` for anything inside Today, not `@media`. States: wide, narrow (≤900px of the pane's own width, measured before page zoom: Money shows headline + totals, month shows dots, calendar lists in tight type), tight (≤560px: brief notes hidden).
 
 ## 5. Shared parts (use these; don't re-write them)
 - `Dialog` (app/sticker/Dialog.tsx): portal, Esc, backdrop, focus **once** on open (`data-autofocus`).

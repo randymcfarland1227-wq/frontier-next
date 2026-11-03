@@ -2143,7 +2143,7 @@
 .sk-app .sk-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sk-s3); align-items: start; }
 .sk-app .sk-splitcol { min-width: 0; container-type: inline-size; }
 .sk-app .sk-splitcol .sk-today-tabs { flex-wrap: wrap; }
-@container (max-width: 760px) {
+@container (max-width: 900px) {
   .sk-brief .sk-cols { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .sk-fcards { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
   .sk-ground-cols, .sk-trio { grid-template-columns: 1fr !important; }
@@ -2184,7 +2184,7 @@
   .sk-app .sk-wday > header { border-bottom: 0; min-width: 64px; flex-direction: column; gap: 2px; }
   .sk-app .sk-wday ul { flex: 1 1 200px; }
 }
-@container (max-width: 700px) {
+@container (max-width: 800px) {
   .sk-wgrid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
   .sk-wday { min-height: 220px !important; padding: 6px !important; }
   .sk-wit { font-size: 10.5px !important; }
@@ -2195,7 +2195,7 @@
 
 /* Split panes reflow at their own width; keep the existing compact type scale. */
 .sk-app .sk-splitcol { container-name: today-pane; }
-@container today-pane (max-width: 760px) {
+@container today-pane (max-width: 900px) {
   .sk-app .sk-splitcol :is(.sk-aff, .skm-dash-cols) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sk-app .sk-splitcol .skm-acct-row.is-two { grid-template-columns: minmax(0, 1fr); }
   .sk-app .sk-splitcol .sk-fcards { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
@@ -2205,7 +2205,7 @@
   .sk-app .sk-splitcol .sk-wday ul { flex: 1 1 200px; }
   .sk-app .sk-splitcol .sk-wit { font-size: 11.5px !important; }
 }
-@container today-pane (max-width: 600px) {
+@container today-pane (max-width: 640px) {
   .sk-app .sk-splitcol .sk-brief .sk-cols,
   .sk-app .sk-splitcol :is(.sk-aff, .skm-dash-cols) { grid-template-columns: minmax(0, 1fr) !important; }
   .sk-app .sk-splitcol :is(.sk-ghead, .sk-goal-head) { flex-wrap: wrap; }
@@ -2217,7 +2217,7 @@
 .sk-app .sk-fd-finrow.is-done .sk-fin-name { text-decoration: line-through; color: var(--sk-ink-2); }
 .sk-app .sk-fd-list .sk-fd-search input { width: 100%; min-width: 0; box-sizing: border-box; }
 
-@container today-pane (max-width: 760px) {
+@container today-pane (max-width: 900px) {
   .sk-app .sk-splitcol .sched-grid { grid-template-columns: minmax(0, 1fr); }
   .sk-app .sk-splitcol .sched-cal { min-width: 0; }
 }
@@ -2330,7 +2330,7 @@
 .sk-app .sk-ggoals button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 1100px) { .sk-app .sk-gcols { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .sk-app .sk-gcols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@container (max-width: 760px) { .sk-gcols { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+@container (max-width: 900px) { .sk-gcols { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
 
 /* Night sky shows on every page: the page colour sits on .sk-app, the content areas let it through */
 .frontier-shell[data-color-mode="dark"] .sk-app { background-color: var(--sk-page); }
@@ -2377,7 +2377,7 @@
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-sky-astro { right: 30px; bottom: 92px; }
 
 /* ── Split calendar: month on the left, the lists on the right in small type (no stacking) ── */
-@container today-pane (max-width: 760px) {
+@container today-pane (max-width: 900px) {
   .sk-sched-grid { grid-template-columns: minmax(0, 1.5fr) minmax(150px, 1fr) !important; grid-template-rows: auto 1fr !important; gap: var(--sk-s2) !important; }
   .sk-sched-grid > .sk-month { grid-column: 1 !important; grid-row: 1 / span 2 !important; }
   .sk-sched-grid > .sk-col:nth-child(1) { grid-column: 2 !important; grid-row: 1 !important; }
@@ -2515,7 +2515,7 @@
   background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--sk-page) 88%, transparent));
 }
 .sk-app .sk-splitwrap.has-more::after { opacity: 1; }
-@container today-pane (max-width: 760px) {
+@container today-pane (max-width: 900px) {
   /* a narrow pane shows each day as a number plus colour dots (hover/tap for the day); no cropped words */
   .sk-sched .sk-month .sk-ditem { display: none !important; }
   .sk-sched .sk-month .sk-ddots { display: flex !important; flex-wrap: wrap; gap: 3px; margin-top: auto; }
@@ -2589,11 +2589,11 @@
 .sk-app .sk-splitwrap[data-cap="page"] .sk-splitpane { max-height: clamp(480px, 86vh, 1000px); }
 
 /* narrow pane: Money shows each box as a headline + its totals (the full tables are on the Money page) */
-@container today-pane (max-width: 760px) {
+@container today-pane (max-width: 900px) {
   .sk-money-tab .skm-dash-cols { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; overflow: visible; }
   .sk-money-tab .skm-dc-body > :is(.skm-grid, .skm-dc-stamp, .skm-dim) { display: none; }
   .sk-money-tab .skm-dc-body { padding-top: 2px; }
 }
-@container today-pane (max-width: 520px) {
+@container today-pane (max-width: 560px) {
   .sk-brief-open small { display: none; }
 }

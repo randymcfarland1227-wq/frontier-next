@@ -9,22 +9,26 @@
 function Pine({ x, h, tone, delay }: { x: number; h: number; tone: string; delay: number }) {
   const w = h * 0.5;
   return (
-    <g className="sk-tree" style={{ animationDelay: `${delay}s` }} transform={`translate(${x} ${300 - h})`}>
+    <g transform={`translate(${x} ${300 - h})`}>
+      <g className="sk-tree" style={{ animationDelay: `${delay}s` }}>
       <rect x={w / 2 - 4} y={h - 18} width="8" height="18" fill="#6b4a2f" />
       <path d={`M${w / 2} 0 L${w} ${h * 0.5} H0 Z`} fill={tone} />
       <path d={`M${w / 2} ${h * 0.22} L${w * 1.05} ${h * 0.78} H${-w * 0.05} Z`} fill={tone} opacity=".92" />
+      </g>
     </g>
   );
 }
 
 function Oak({ x, r, tone, delay }: { x: number; r: number; tone: string; delay: number }) {
   return (
-    <g className="sk-tree" style={{ animationDelay: `${delay}s` }} transform={`translate(${x} ${300 - r * 2.3})`}>
+    <g transform={`translate(${x} ${300 - r * 2.3})`}>
+      <g className="sk-tree" style={{ animationDelay: `${delay}s` }}>
       <rect x={r - 5} y={r * 1.3} width="10" height={r * 1.0} rx="3" fill="#6b4a2f" />
       <circle cx={r} cy={r} r={r} fill={tone} />
       <circle cx={r * 0.55} cy={r * 1.2} r={r * 0.62} fill={tone} opacity=".9" />
       <circle cx={r * 1.5} cy={r * 1.15} r={r * 0.6} fill={tone} opacity=".9" />
       <circle cx={r * 0.8} cy={r * 0.55} r={r * 0.4} fill="#ffffff" opacity=".12" />
+      </g>
     </g>
   );
 }

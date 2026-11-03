@@ -2531,7 +2531,7 @@
 .sk-app .sk-trees-l { left: -40px; }
 .sk-app .sk-trees-r { right: -40px; }
 .sk-app .sk-tree { transform-box: fill-box; transform-origin: 50% 100%; animation: sk-sway 8s ease-in-out infinite alternate; }
-@keyframes sk-sway { from { transform: translate(var(--tx, 0), var(--ty, 0)) rotate(-1.3deg); } to { transform: translate(var(--tx, 0), var(--ty, 0)) rotate(1.3deg); } }
+@keyframes sk-sway { from { transform: rotate(-1.3deg); } to { transform: rotate(1.3deg); } }
 /* park furniture */
 .sk-app .sk-bench { left: 58vw; bottom: 7px; width: 112px; opacity: .95; }
 /* leaves fall, birds cross, a butterfly wanders */

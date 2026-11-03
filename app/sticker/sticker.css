@@ -2618,3 +2618,4 @@
 .sk-app .sk-fd-taskopen{all:unset;cursor:pointer;font:inherit;text-align:left;min-width:0;overflow-wrap:anywhere}
 .sk-app .sk-fd-taskopen:hover{text-decoration:underline}
 .sk-app .sk-fd-taskopen:focus-visible{outline:2px solid var(--sk-ink);outline-offset:2px}
+.drawer-wrap.plan-panel-wrap{z-index:70}

@@ -288,7 +288,8 @@ export function StickerShell({
       data-side={slim ? "slim" : "full"}
     >
       {/* Night mode only (CSS): a star field with the odd shooting star behind everything. */}
-      <div className="sk-night" aria-hidden="true">
+      <div className="sk-night" aria-hidden="true" />
+      <div className="sk-meteors" aria-hidden="true">
         <i /><i /><i /><i /><i /><i /><i />
       </div>
       <aside className="sk-side" data-tint={tint} aria-label="Life Hub">

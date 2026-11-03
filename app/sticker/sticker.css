@@ -2405,3 +2405,27 @@
 .frontier-shell[data-color-mode="dark"] .sk-app :is(.sk-main, .sksite) { background-color: transparent; }
 .frontier-shell[data-color-mode="dark"] .sk-app[data-page] .sk-main { background-color: transparent; }
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-night::before { opacity: 1; }
+
+/* Meteors cross the whole screen (over the page, under dialogs); stars stay behind everything. */
+.sk-app .sk-meteors { display: none; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-meteors { display: block; position: fixed; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; }
+.sk-app .sk-meteors i {
+  position: absolute; width: 190px; height: 3px; border-radius: 3px; opacity: 0; will-change: transform, opacity;
+  background: linear-gradient(90deg, transparent, #ffffffcc 70%, #fff); box-shadow: 0 0 10px 2px #9db7ffaa;
+  transform: translate3d(0, 0, 0) rotate(35deg); animation: sk-shoot var(--d, 9s) linear var(--w, 0s) infinite;
+}
+.sk-app .sk-meteors i:nth-child(1) { top: 6%;  left: 14%; --d: 7s;  --w: 1s; }
+.sk-app .sk-meteors i:nth-child(2) { top: 18%; left: 52%; --d: 10s; --w: 3s; width: 140px; }
+.sk-app .sk-meteors i:nth-child(3) { top: 4%;  left: 76%; --d: 8s;  --w: 5s; }
+.sk-app .sk-meteors i:nth-child(4) { top: 34%; left: 30%; --d: 12s; --w: 2s; width: 240px; }
+.sk-app .sk-meteors i:nth-child(5) { top: 26%; left: 88%; --d: 9s;  --w: 7s; width: 130px; }
+.sk-app .sk-meteors i:nth-child(6) { top: 48%; left: 8%;  --d: 11s; --w: 4s; }
+.sk-app .sk-meteors i:nth-child(7) { top: 12%; left: 38%; --d: 14s; --w: 8s; width: 260px; }
+@media (prefers-reduced-motion: reduce) { .sk-app .sk-meteors { display: none !important; } }
+/* brighter, slightly bigger stars */
+.sk-app .sk-night::before {
+  background-image:
+    radial-gradient(1.6px 1.6px at 20px 30px, #fff, transparent), radial-gradient(1.4px 1.4px at 120px 80px, #cfe0ff, transparent),
+    radial-gradient(2px 2px at 220px 160px, #fff, transparent), radial-gradient(1.4px 1.4px at 70px 190px, #ffe9c9, transparent),
+    radial-gradient(1.4px 1.4px at 300px 40px, #fff, transparent);
+}

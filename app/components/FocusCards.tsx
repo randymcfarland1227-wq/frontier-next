@@ -475,13 +475,20 @@ function Detail({
   const [financeListId, setFinanceListId] = useState("");
   const [taskText, setTaskText] = useState<Record<string, string>>({});
   const closeRef = useRef<HTMLButtonElement>(null);
+  // Focus the close button once, when the pop-out opens — never again while you type.
   useEffect(() => {
     closeRef.current?.focus();
+  }, []);
+  const closeNow = useRef(close);
+  useEffect(() => {
+    closeNow.current = close;
+  });
+  useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) =>
-      e.key === "Escape" && close();
+      e.key === "Escape" && closeNow.current();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [close]);
+  }, []);
 
   const lists = item.lists || [];
   const setLists = (next: SubList[]) => update({ lists: next });

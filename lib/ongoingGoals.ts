@@ -32,6 +32,11 @@ export function addOngoingGoal(goal: { title: string; note?: string; why?: strin
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(FOCUS_LIST_EVENT, { detail: ONGOING_KEY }));
 }
 
+/** Ids currently in the ongoing list (used to tuck away the originals a goal replaced, per device). */
+export function readOngoingIds(): string[] {
+  return readSaved<{ items?: Array<{ id?: string }> }>(ONGOING_KEY, { items: [] }).items?.map(i => String(i.id)) ?? [];
+}
+
 const SEEDED_KEY = 'lifehub-seeded-goals';
 type Seed = { id: string; title: string; note?: string; why?: string; site?: string; section?: string; lists?: unknown[] };
 

@@ -50,6 +50,11 @@ function setHidden(key: string, on: boolean) {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(HIDDEN_EVENT));
 }
 
+/** Bring a removed row back (clears the hidden mark). */
+export function restoreItem(source: string, id: string) {
+  setHidden(hiddenKey(source, id), false);
+}
+
 export function removeItem(source: string, id: string) {
   setHidden(hiddenKey(source, id), true);
 }

@@ -102,8 +102,8 @@ import { ruleFor, saveTaskRule, sourceRuleKey, taskRuleKey, useTaskRules } from 
 import { FlowSyncReview } from './components/FlowSyncReview';
 import { WhyView } from './components/WhyView';
 import { DailyGrounding } from './components/DailyGrounding';
-import { isHidden, removeItem, useHiddenItems } from '../lib/siteMoves';
-import { moveFitnessToOngoing, seedOngoingGoals } from '../lib/ongoingGoals';
+import { isHidden, loadHidden, restoreItem, useHiddenItems } from '../lib/siteMoves';
+import { FOCUS_LIST_EVENT, moveFitnessToOngoing, ONGOING_KEY, readOngoingIds, seedOngoingGoals } from '../lib/ongoingGoals';
 import { useRoleActive, withRoleShelves, withTaggedShelves } from '../lib/roleShelves';
 import { LogsView } from './components/LogsView';
 import { UpdateNotice } from './components/UpdateNotice';
@@ -542,6 +542,13 @@ export function LifeHub() {
   const taskTags = useTaskTags();
   const hiddenItems = useHiddenItems();
   const roleActive = useRoleActive();
+  // Ongoing goals that replaced Move OS's own goal rows (device-local, so other devices keep the originals until they have the goals).
+  const [ongoingIds, setOngoingIds] = useState<string[]>(() => readOngoingIds());
+  useEffect(() => {
+    const reload = (e: Event) => { if ((e as CustomEvent).detail === ONGOING_KEY) setOngoingIds(readOngoingIds()); };
+    window.addEventListener(FOCUS_LIST_EVENT, reload);
+    return () => window.removeEventListener(FOCUS_LIST_EVENT, reload);
+  }, []);
   const visibleSnapshots = useMemo(() => {
     const out = { ...baseSnapshots };
     // Removed rows (not done) leave every list and count.
@@ -605,17 +612,22 @@ export function LifeHub() {
         out[id] = { ...snap, tasks: snap.tasks.map(withTag), featured: snap.featured.map(withTag) };
       }
     }
+    if (out.move && ongoingIds.length) {
+      out.move = { ...out.move, featured: out.move.featured.filter(f => !(f.completable === false && ongoingIds.includes(`move-goal-${f.id}`))) };
+    }
     return out;
-  }, [baseSnapshots, selfItems, taskTags, hiddenItems, roleActive]);
+  }, [baseSnapshots, selfItems, taskTags, hiddenItems, roleActive, ongoingIds]);
 
   // One-time: Move OS's three goals become ongoing goals (shown in Today and on the Move page as
   // "Moving goals"), and the physical goals become the first fitness focus. Deleting a card keeps it deleted.
   useEffect(() => {
-    const goals = (visibleSnapshots.move?.featured || []).filter(f => f.completable === false);
-    if (goals.length && seedOngoingGoals(goals.map(g => ({
+    const goals = (baseSnapshots.move?.featured || []).filter(f => f.completable === false);
+    seedOngoingGoals(goals.map(g => ({
       id: `move-goal-${g.id}`, title: g.title, note: g.detail || undefined,
       why: 'One of the three goals the move unlocks after.', site: 'move',
-    })))) for (const g of goals) removeItem('move', g.id);
+    })));
+    // The originals are tucked away on this device only (below), never through the synced hidden list.
+    for (const g of goals) if (isHidden(loadHidden(), 'move', g.id)) restoreItem('move', g.id);
     const physical = (goalsData?.goals || []).filter(g => g.categoryId === 'physical' && g.status === 'active');
     moveFitnessToOngoing('fit-physical-body');
     if (physical.length) seedOngoingGoals([{
@@ -623,7 +635,7 @@ export function LifeHub() {
       note: 'Keep my body strong, mobile and recovering.',
       lists: [{ id: 'physical-goals', name: 'Physical goals', tasks: physical.map(g => ({ id: `pg-${g.id}`, text: g.title, done: false })) }],
     }]);
-  }, [visibleSnapshots.move, goalsData]);
+  }, [baseSnapshots.move, goalsData]);
 
   // Today's workload per bucket (open items + done today + habits due today), remembered per day.
   const todayAvail = useMemo(

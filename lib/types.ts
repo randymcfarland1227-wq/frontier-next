@@ -23,6 +23,8 @@ export type SpaceId = 'home' | 'settings' | 'why' | 'money' | 'logs' | SourceId;
 export type OriginStep = { id: string; text: string; done: boolean };
 
 export type FeaturedItem = {
+  /** Optional classification supplied by a mail-sync agent. */
+  briefKind?: 'reply' | 'shipping' | 'mail';
   id: string;
   title: string;
   detail: string;
@@ -36,6 +38,8 @@ export type FeaturedItem = {
 };
 
 export type TaskItem = {
+  /** Optional classification supplied by a mail-sync agent. */
+  briefKind?: 'reply' | 'shipping' | 'mail';
   id: string;
   title: string;
   detail?: string;

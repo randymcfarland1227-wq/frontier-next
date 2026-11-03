@@ -41,11 +41,10 @@ function tasksDue(snaps: Record<SourceId, SourceSnapshot>, now: Date): BriefRow[
   const today = dayKey(now);
   const rows: BriefRow[] = [];
   for (const id of Object.keys(snaps) as SourceId[]) {
-    if (id === 'gmail' || id === 'outlook' || id === 'role' || id === 'resale') continue;
-    for (const t of snaps[id].tasks) {
+    for (const t of snaps[id]?.tasks || []) {
       if (t.status === 'done' || isHabit(t) || !t.due) continue;
       const due = t.due.slice(0, 10);
-      if (due > today) continue;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(due) || due > today) continue;
       const late = Math.round((new Date(`${today}T00:00:00`).getTime() - new Date(`${due}T00:00:00`).getTime()) / DAY);
       rows.push({
         id: `task:${id}:${t.id}`,
@@ -60,42 +59,65 @@ function tasksDue(snaps: Record<SourceId, SourceSnapshot>, now: Date): BriefRow[
   return rows.sort((a, b) => Number(b.tone === 'late') - Number(a.tone === 'late'));
 }
 
-function mailRows(snaps: Record<SourceId, SourceSnapshot>): BriefRow[] {
-  const rows: BriefRow[] = [];
+/** Explicit agent labels win; uncertain mail remains visible instead of being dropped. */
+export function mailCategory(item: { title: string; detail?: string; tag?: string; briefKind?: 'reply' | 'shipping' | 'mail' }): 'mail' | 'roles' | 'sales' {
+  if (item.briefKind) return item.briefKind === 'reply' ? 'roles' : item.briefKind === 'shipping' ? 'sales' : 'mail';
+  const text = `${item.tag || ''} ${item.title} ${item.detail || ''}`;
+  const shipping = /you (?:made (?:a|the) sale|sold)|please ship|ship (?:it|this|your|by|out)|ready to ship|shipping label|awaiting shipment|needs? shipping|pack (?:it|and)|^ship\b/i;
+  const fulfilled = /has (?:been )?shipped|was shipped|has been delivered|order (?:shipped|delivered)|shipment delivered/i;
+  if (shipping.test(text) && !fulfilled.test(text)) return 'sales';
+  const role = /recruit|interview|hiring|job offer|role inquir|job opportunit|phone screen|assessment|availability|respond|reply required/i;
+  const noReply = /unfortunately|not (?:moving|selected)|rejection|application (?:received|submitted)|thank you for applying/i;
+  return role.test(text) && !noReply.test(text) ? 'roles' : 'mail';
+}
+
+function mailRows(snaps: Record<SourceId, SourceSnapshot>): Array<BriefRow & { category: 'mail' | 'roles' | 'sales' }> {
+  const rows: Array<BriefRow & { category: 'mail' | 'roles' | 'sales' }> = [];
   for (const id of ['gmail', 'outlook'] as const) {
-    for (const f of snaps[id]?.featured || []) {
-      rows.push({ id: `mail:${id}:${f.id}`, title: f.title, note: [sourceById[id].shortName, f.meta].filter(Boolean).join(' · '), go: id });
-    }
+    const snap = snaps[id];
+    const completed = new Set((snap?.tasks || []).filter(t => t.status === 'done').map(t => t.id));
+    const items = new Map<string, { id: string; title: string; detail?: string; meta?: string; tag?: string; briefKind?: 'reply' | 'shipping' | 'mail' }>();
+    for (const f of snap?.featured || []) if (!completed.has(f.id)) items.set(f.id, f);
+    for (const t of snap?.tasks || []) if (t.status !== 'done') items.set(t.id, { ...items.get(t.id), ...t });
+    for (const f of items.values()) rows.push({
+      id: `mail:${id}:${f.id}`, title: f.title,
+      note: [sourceById[id].shortName, f.tag || f.meta].filter(Boolean).join(' · '),
+      go: id, pin: `${id}:${f.id}`, category: mailCategory(f),
+    });
   }
   return rows;
 }
 
-const RESPONSE = /repl|respon|interview|recruit|offer|assess|screen|reject|schedule/i;
+const RESPONSE = /repl|respon|interview|recruit|offer|assess|screen|schedule/i;
 function roleRows(snap?: SourceSnapshot): BriefRow[] {
   if (!snap) return [];
-  const rows: BriefRow[] = [];
-  for (const f of snap.featured) rows.push({ id: `role:f:${f.id}`, title: f.title, note: f.meta || f.detail, go: 'role' });
-  for (const t of snap.tasks) {
-    if (t.status === 'done') continue;
-    if (RESPONSE.test(`${t.tag || ''} ${t.title}`)) rows.push({ id: `role:t:${t.id}`, title: t.title, note: t.tag || 'Role Hub', go: 'role', pin: `role:${t.id}` });
+  const rows = new Map<string, BriefRow>();
+  const completed = new Set(snap.tasks.filter(t => t.status === 'done').map(t => t.id));
+  for (const f of snap.featured) {
+    if (!completed.has(f.id) && RESPONSE.test(`${f.tag || ''} ${f.title}`)) rows.set(f.id, { id: `role:f:${f.id}`, title: f.title, note: f.meta || f.detail, go: 'role', pin: `role:${f.id}` });
   }
-  return rows;
+  for (const t of snap.tasks) {
+    if (t.status === 'done' || rows.has(t.id)) continue;
+    if (RESPONSE.test(`${t.tag || ''} ${t.title}`)) rows.set(t.id, { id: `role:t:${t.id}`, title: t.title, note: t.tag || 'Role Hub', go: 'role', pin: `role:${t.id}` });
+  }
+  return [...rows.values()];
 }
 
 function saleRows(snap?: SourceSnapshot): BriefRow[] {
   if (!snap) return [];
   return snap.tasks
-    .filter(t => t.status !== 'done' && /ship|sold|offer|end listing/i.test(t.tag || t.title))
+    .filter(t => t.status !== 'done' && /ship|sold|offer|end listing/i.test(`${t.tag || ''} ${t.title}`))
     .map(t => ({ id: `sale:${t.id}`, title: t.title, note: t.tag || 'Resale', go: 'resale' as const, pin: `resale:${t.id}` }));
 }
 
 export function buildBrief(snaps: Record<SourceId, SourceSnapshot>, bills: BillDue[], now = new Date()): BriefSection[] {
+  const mail = mailRows(snaps);
   return [
     { id: 'money', label: 'Money · overdue or due today', rows: money_(bills) },
-    { id: 'tasks', label: 'Tasks due today', rows: tasksDue(snaps, now) },
-    { id: 'mail', label: 'Mail needing you', rows: mailRows(snaps) },
-    { id: 'roles', label: 'Roles · replies & next steps', rows: roleRows(snaps.role) },
-    { id: 'sales', label: 'Sold & selling · to do', rows: saleRows(snaps.resale) },
+    { id: 'tasks', label: 'Tasks · due today & overdue', rows: tasksDue(snaps, now) },
+    { id: 'mail', label: 'Mail needing you', rows: mail.filter(r => r.category === 'mail') },
+    { id: 'roles', label: 'Roles · replies & next steps', rows: [...mail.filter(r => r.category === 'roles'), ...roleRows(snaps.role)] },
+    { id: 'sales', label: 'Sold & selling · to do', rows: [...mail.filter(r => r.category === 'sales'), ...saleRows(snaps.resale)] },
   ];
 }
 

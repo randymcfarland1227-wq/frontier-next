@@ -9,7 +9,7 @@ import { Circle, Row } from '../sticker/kit';
 /** How loud the countdown is: overdue / within 3 days / later / skipped. */
 function urgency(d: BillDue) {
   if (d.skipped) return 'is-skipped';
-  if (d.days < 0) return d.bill.nonCritical ? 'is-overdue is-noncritical' : 'is-overdue';
+  if (d.days < 0) return d.bill.nonCritical ? 'is-overdue is-noncritical' : d.bill.priority ? 'is-overdue is-priority' : 'is-overdue';
   if (d.days <= 3) return 'is-soon';
   return 'is-later';
 }
@@ -182,7 +182,7 @@ export function KitBillRow({ d, onPaid }: { d: BillDue; onPaid: (due: BillDue) =
     <>
       <Row
         bind={bind}
-        className={pin.pinned ? 'is-pinned' : undefined}
+        className={[pin.pinned ? 'is-pinned' : '', d.bill.priority ? 'is-priority' : '', d.bill.nonCritical ? 'is-noncritical' : ''].filter(Boolean).join(' ') || undefined}
         lead={d.skipped ? null : <Circle onDone={() => onPaid(d)} label={`Mark ${d.bill.name} paid for ${date}`} />}
         title={d.bill.name}
         sub={

@@ -57,6 +57,8 @@ export type Bill = {
   kind?: 'bill' | 'card' | 'sub' | 'paylater' | 'cash' | 'plan';
   /** Non Critical: still overdue after its day, but shown orange, not red (sheet "Item Flags" or Life Hub) */
   nonCritical?: boolean;
+  /** Priority: pay this one first — overdue shows red and sorts to the top (set on Life Hub) */
+  priority?: boolean;
   /** Last day to pay before a late fee / suspension — YYYY-MM-DD; still overdue after the due date */
   payBy?: string;
 };

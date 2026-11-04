@@ -513,7 +513,7 @@ function DueRow({ d, onPaid, showDay }: { d: BillDue; onPaid: (d: BillDue) => vo
   const changed = billChangeText(d);
   return (
     <>
-      <li className={d.skipped ? 'is-skipped' : d.days < 0 ? `is-overdue${d.bill.nonCritical ? ' is-noncritical' : ''}` : ''} style={{ '--ev': kind ? MONEY_KINDS[kind].color : '#a8632a' } as React.CSSProperties}>
+      <li className={d.skipped ? 'is-skipped' : d.days < 0 ? `is-overdue${d.bill.nonCritical ? ' is-noncritical' : ''}${d.bill.priority ? ' is-priority' : ''}` : ''} style={{ '--ev': kind ? MONEY_KINDS[kind].color : '#a8632a' } as React.CSSProperties}>
         {showDay ? <span className="mny-due-day">{fromDayKey(d.due).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</span> : null}
         <span className="mny-due-kind">{d.skipped ? 'Skipped' : kind === 'paylater' ? provider || 'Pay later' : kind ? MONEY_KINDS[kind].label : 'Bill'}</span>
         <span className="mny-due-name">
@@ -762,7 +762,7 @@ function MonthRow({ d, paidAt, onPaid, fullDate = false }: { d: BillDue; paidAt:
   const installment = d.bill.kind === 'paylater' ? (d.bill.notes || '').split(' · ')[2] : '';
   const from = usePayFrom()(d);
   return (
-    <li className={`mm-row is-${state}${d.bill.nonCritical ? ' is-noncritical' : ''}`} style={{ '--ev': d.bill.kind ? MONEY_KINDS[d.bill.kind].color : '#a8632a' } as React.CSSProperties}>
+    <li className={`mm-row is-${state}${d.bill.nonCritical ? ' is-noncritical' : ''}${d.bill.priority ? ' is-priority' : ''}`} style={{ '--ev': d.bill.kind ? MONEY_KINDS[d.bill.kind].color : '#a8632a' } as React.CSSProperties}>
       <span className="mm-day" aria-label={day.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}>
         <b>{day.getDate()}</b>
         <small>{day.toLocaleDateString([], fullDate ? { month: 'short' } : { weekday: 'short' })}</small>
@@ -1612,6 +1612,7 @@ type BalanceLine = {
   overdue?: boolean;
   /** Non Critical: overdue shows orange, not red */
   nonCritical?: boolean;
+  priority?: boolean;
   /** Pay by (grace day after the due date) */
   payBy?: string;
   /** Counts toward this month's sheet (unpaid future, or overdue) */
@@ -1657,6 +1658,7 @@ function payLine(d: BillDue, paidAt: Record<string, string>): BalanceLine {
     color: d.bill.kind ? MONEY_KINDS[d.bill.kind].color : '#a8632a',
     overdue: d.days < 0 && !paidAt[d.key],
     nonCritical: d.bill.nonCritical,
+    priority: d.bill.priority,
     payBy: d.bill.payBy,
     open: !d.skipped && !paidAt[d.key] && (d.days >= 0 || isOverdue(d)),
     paid: paidAt[d.key],
@@ -2100,7 +2102,7 @@ function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week'
             <button
               key={l.key}
               type="button"
-              className={`bal-led-row is-item is-${l.kind}${l.kind === 'in' && !l.landed ? ' is-coming' : ''}${l.landed ? ' is-landed' : ''}${l.overdue ? ` is-overdue${l.nonCritical ? ' is-noncritical' : ''}` : ''}`}
+              className={`bal-led-row is-item is-${l.kind}${l.kind === 'in' && !l.landed ? ' is-coming' : ''}${l.landed ? ' is-landed' : ''}${l.overdue ? ` is-overdue${l.nonCritical ? ' is-noncritical' : ''}` : ''}${l.priority ? ' is-priority' : ''}`}
               style={{ '--ev': l.color } as React.CSSProperties}
               onClick={() => panels.openLine(l.key)}
               title="Details"
@@ -2223,7 +2225,7 @@ function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week'
           const offerRow = (l: BalanceLine) => (
             <li
               key={l.key}
-              className={`bal-line is-${l.kind}${l.overdue ? ` is-overdue${l.nonCritical ? ' is-noncritical' : ''}` : ''}`}
+              className={`bal-line is-${l.kind}${l.overdue ? ` is-overdue${l.nonCritical ? ' is-noncritical' : ''}` : ''}${l.priority ? ' is-priority' : ''}`}
               style={{ '--ev': l.color } as React.CSSProperties}
               draggable
               onDragStart={e => {
@@ -2667,7 +2669,7 @@ function ChangeThisOne({ due, onGone }: { due: BillDue; onGone?: () => void }) {
       <h4 className="mb-cp-h">This payment</h4>
       {changed && !open ? <p className="mb-dim">Changed for this one: {billChangeText(due) || 'edited'}{due.editNote ? ` · ${due.editNote}` : ''}</p> : null}
       {open ? (
-        <BillChangeForm due={due} onDone={() => setOpen(false)} onGone={onGone} />
+        <BillChangeForm due={due} onDone={() => setOpen(false)} onGone={onGone} hideFlags />
       ) : (
         <button type="button" className="sk-btn is-small" onClick={() => setOpen(true)}>
           {changed ? 'Edit change' : 'Change amount / due day / note'}
@@ -2701,6 +2703,7 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
         {l.what ? <p className="mb-dim">{l.what}</p> : null}
         {l.due && state ? <p className="bal-drw-chips"><span className={PAID_STATES.includes(state) ? 'is-ok' : state === 'late' ? 'is-short' : ''}>{STATE_TEXT[state](l.due, paidAt)}</span></p> : null}
       </div>
+      {l.due ? <BillFlagsFields due={l.due} dueKeys={history.map(x => x.key)} /> : null}
       <div className="mb-cp-figs">
         <span><small>balance left</small><b>{l.bal !== undefined ? money(l.bal) : '—'}</b></span>
         <span><small>principal</small><b>{l.principal ? money(l.principal) : '—'}</b></span>
@@ -2763,6 +2766,7 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
         <h3>{name.trim()}</h3>
         {mine && state ? <p className="bal-drw-chips"><span className={PAID_STATES.includes(state) ? 'is-ok' : state === 'late' ? 'is-short' : ''}>{PAID_STATES.includes(state) ? 'Paid this month' : 'Not paid yet this month'} · {STATE_TEXT[state](mine, paidAt)}</span></p> : null}
       </div>
+      {mine ? <BillFlagsFields due={mine} dueKeys={list.map(x => x.key)} /> : null}
       <div className="mb-cp-figs">
         <span><small>amount</small><b>{mine ? money(mine.bill.amount) || '?' : '—'}</b></span>
         <span><small>next charge</small><b>{open ? fromDayKey(open.due).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '—'}</b></span>
@@ -2828,6 +2832,7 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
   return (
     <Modal label={c.name} onClose={onClose} onBack={onBack}>
       <h3>{c.name}</h3>
+      {c.due ? <BillFlagsFields due={c.due} /> : null}
       <div className="mb-cp-figs">
         <span><small>balance</small><b>{money(c.bal || 0)}</b></span>
         <span><small>limit</small><b>{c.limit ? money(c.limit) : '—'}</b></span>
@@ -2914,6 +2919,7 @@ function ItemPanel({ id, dues, model, paidAt, onPaid, onBack, onClose }: { id: s
         <h3>{d.bill.name.trim()}</h3>
         <p className="bal-drw-chips"><span className={['paid', 'crossed', 'charged'].includes(state) ? 'is-ok' : state === 'late' ? 'is-short' : ''}>{STATE_TEXT[state](d, paidAt)}</span></p>
       </div>
+      <BillFlagsFields due={d} dueKeys={same.map(x => x.key)} />
       <div className="mb-cp-figs">
         <span><small>amount</small><b>{money(d.bill.amount) || '?'}</b></span>
         <span><small>due</small><b>{fromDayKey(d.due).toLocaleDateString([], { month: 'short', day: 'numeric' })}</b></span>
@@ -2966,7 +2972,7 @@ function AccountPanel({ name, book, model, onSave, onBack, onClose }: { name: st
   const label = wi === 'month' ? 'this month' : wi === 0 ? 'this week' : book.weeks[wi].label;
   const lineRow = (l: RegLine) => (
     <li key={l.key}>
-      <button type="button" className={`bal-rl is-${l.kind}${l.kind === 'in' && !l.landed ? ' is-coming' : ''}${l.landed ? ' is-landed' : ''}${l.overdue ? ` is-overdue${l.nonCritical ? ' is-noncritical' : ''}` : ''}`} style={{ '--ev': l.color } as React.CSSProperties} onClick={() => panels.openLine(l.key)}>
+      <button type="button" className={`bal-rl is-${l.kind}${l.kind === 'in' && !l.landed ? ' is-coming' : ''}${l.landed ? ' is-landed' : ''}${l.overdue ? ` is-overdue${l.nonCritical ? ' is-noncritical' : ''}` : ''}${l.priority ? ' is-priority' : ''}`} style={{ '--ev': l.color } as React.CSSProperties} onClick={() => panels.openLine(l.key)}>
         <span className="bal-day">{dayNum(l.when)}</span>
         <span className="bal-name">
           {l.name}
@@ -3177,7 +3183,7 @@ function LedgerByCategory({ dues, paidAt, model, onPaid, hidePaid }: { dues: Bil
                   const st = monthState(d, paidAt);
                   const isDone = ['paid', 'crossed', 'charged'].includes(st);
                   return (
-                    <li key={d.key} className={`ledger-row is-${st}${d.bill.nonCritical ? ' is-noncritical' : ''}`}>
+                    <li key={d.key} className={`ledger-row is-${st}${d.bill.nonCritical ? ' is-noncritical' : ''}${d.bill.priority ? ' is-priority' : ''}`}>
                       <span className="ledger-day">{fromDayKey(d.due).getDate()}</span>
                       <span className="ledger-name"><BrandLogo name={d.bill.name} /><ItemName id={d.key}>{d.bill.name}</ItemName><FlagBadges d={d} /></span>
                       <span className="ledger-amt">{money(d.bill.amount) || '?'}</span>

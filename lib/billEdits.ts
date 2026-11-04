@@ -48,6 +48,9 @@ export type BillDay = {
   endFrom?: string;
   /** Display name kept so a deleted one can be listed and restored */
   endName?: string;
+  /** Every payment of this bill: Non critical (orange) or Priority (red, first). Set on Life Hub. */
+  nonCritical?: boolean;
+  priority?: boolean;
 };
 export type BillDays = Record<string, BillDay>;
 
@@ -74,6 +77,24 @@ export function setBillAmount(ruleKey: string, amount: number | null, from: stri
   all[ruleKey] = { ...prev, amount: amount ?? undefined, amountFrom: amount === null ? undefined : from, at: new Date().toISOString() };
   writeSaved(STORAGE_KEYS.billDays, all);
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BILL_DAYS_EVENT));
+}
+
+/** Mark every payment of a bill Non critical, Priority, or normal (both off). Per-payment Non critical overrides are cleared. */
+export function setBillLevel(ruleKey: string, level: 'normal' | 'noncritical' | 'priority', dueKeys: string[] = []) {
+  const all = loadBillDays();
+  const prev = all[ruleKey] || { day: null, from: '' };
+  all[ruleKey] = { ...prev, nonCritical: level === 'noncritical', priority: level === 'priority' || undefined, at: new Date().toISOString() };
+  writeSaved(STORAGE_KEYS.billDays, all);
+  const edits = loadBillEdits();
+  let touched = false;
+  for (const k of dueKeys) if (edits[k]?.nonCritical !== undefined) { delete edits[k].nonCritical; edits[k].at = new Date().toISOString(); touched = true; }
+  if (touched) writeSaved(STORAGE_KEYS.billEdits, edits);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BILL_DAYS_EVENT));
+}
+
+/** A bill's level: Priority, Non critical, or normal. */
+export function billLevel(bill: { nonCritical?: boolean; priority?: boolean }): 'normal' | 'noncritical' | 'priority' {
+  return bill.priority ? 'priority' : bill.nonCritical ? 'noncritical' : 'normal';
 }
 
 /** Delete a bill / subscription for good (every payment from `from` on) or bring it back with `null`. */
@@ -190,6 +211,7 @@ export function applyBillEdits(dues: BillDue[], edits: BillEdits, today = new Da
       const ruled = withBillDay(d.due, rule);
       if (ruled !== d.due) d = { ...d, due: ruled, days: daysBetween(t, fromDayKey(ruled)), everyMonth: rule!.day! };
       if (rule?.amount !== undefined && rule.amountFrom && d.due.slice(0, 7) >= rule.amountFrom) d = { ...d, bill: { ...d.bill, amount: rule.amount } };
+      if (rule && (rule.nonCritical !== undefined || rule.priority !== undefined)) d = { ...d, bill: { ...d.bill, nonCritical: rule.priority ? undefined : rule.nonCritical ?? d.bill.nonCritical, priority: rule.priority || undefined } };
       const e = edits[d.key];
       d = withBillFlags(d, e);
       if (!hasEdit(e)) return d;

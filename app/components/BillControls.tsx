@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { fromDayKey, type BillDue } from '../../lib/schedule';
-import { billRuleKey, loadBillDays, loadBillEdits, setBillAmount, setBillDay, setBillEdit, setBillEnd, setBillFlags, useBillEdits } from '../../lib/billEdits';
+import { billRuleKey, loadBillDays, loadBillEdits, setBillAmount, setBillDay, setBillEdit, setBillEnd, setBillFlags, setBillLevel, billLevel, useBillEdits } from '../../lib/billEdits';
 import { loadLifeSubs, updateLifeSub } from '../../lib/lifeSubs';
 import { pinKey, updatePinDetails, usePriorityPins } from '../../lib/priorityPins';
 
@@ -37,16 +37,28 @@ const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 =
  * suspension; it still counts as overdue after the due date). Saved on Life Hub right away (synced);
  * the sheet's "Item Flags" block on the Randy tab sets the starting values.
  */
-export function BillFlagsFields({ due }: { due: BillDue }) {
+export function BillFlagsFields({ due, dueKeys }: { due: BillDue; dueKeys?: string[] }) {
   const saved = useBillEdits()[due.key];
-  const nonCritical = saved?.nonCritical ?? !!due.bill.nonCritical;
+  const level = billLevel(due.bill);
   const payBy = saved?.payBy !== undefined ? saved.payBy : due.bill.payBy || '';
+  const ruleKey = billRuleKey(due.bill);
   return (
     <div className="bill-flags" role="group" aria-label={`Flags for ${due.bill.name}`}>
-      <label className="bill-flags-check">
-        <input type="checkbox" checked={nonCritical} onChange={e => setBillFlags(due.key, { nonCritical: e.target.checked })} />
-        Non critical <small>overdue shows orange, not red</small>
-      </label>
+      <div className="bill-change-modes bill-level" role="radiogroup" aria-label={`${due.bill.name} level`}>
+        {(
+          [
+            ['normal', 'Normal'],
+            ['noncritical', 'Non critical'],
+            ['priority', 'Priority'],
+          ] as const
+        ).map(([id, label]) => (
+          <label key={id} className={`is-${id}${level === id ? ' is-on' : ''}`}>
+            <input type="radio" name={`level-${due.key}`} checked={level === id} onChange={() => setBillLevel(ruleKey, id, [due.key, ...(dueKeys || [])])} />
+            {label}
+          </label>
+        ))}
+      </div>
+      <small className="bill-level-hint">Every payment of {due.bill.name}: non critical shows orange; priority shows red and goes first.</small>
       <label className="bill-change-field">
         <span>Pay by</span>
         <input type="date" value={payBy} min={due.orig || due.due} onChange={e => setBillFlags(due.key, { payBy: e.target.value })} aria-label={`Pay by date for ${due.bill.name}`} />
@@ -66,7 +78,7 @@ const payLeft = (k: string) => Math.round((fromDayKey(k).getTime() - new Date(ne
 
 /** "Pay by Oct 23" (grace / suspension date after the due date) and "Non critical" chips. */
 export function FlagBadges({ d }: { d: BillDue }) {
-  if (!d.bill.payBy && !d.bill.nonCritical) return null;
+  if (!d.bill.payBy && !d.bill.nonCritical && !d.bill.priority) return null;
   return (
     <>
       {d.bill.payBy ? (
@@ -74,6 +86,7 @@ export function FlagBadges({ d }: { d: BillDue }) {
           Pay by {payByText(d.bill.payBy)} · {payLeft(d.bill.payBy) < 0 ? 'PASSED' : payLeft(d.bill.payBy) === 0 ? 'TODAY' : `${payLeft(d.bill.payBy)} day${payLeft(d.bill.payBy) === 1 ? '' : 's'} left`}
         </small>
       ) : null}
+      {d.bill.priority ? <small className="mny-flag is-priority" title="Priority: pay this one first">Priority</small> : null}
       {d.bill.nonCritical ? <small className="mny-flag is-noncritical" title="Non critical: shown orange when overdue">Non critical</small> : null}
     </>
   );
@@ -113,7 +126,7 @@ export function BillPinButton({ due, className = 'row-action ghost' }: { due: Bi
  * Change one due date of a bill: pay as usual, skip it this time, or move it — plus an amount for
  * this time and a note. Saved on Life Hub (synced), not in the sheet.
  */
-export function BillChangeForm({ due, onDone, onGone }: { due: BillDue; onDone: () => void; onGone?: () => void }) {
+export function BillChangeForm({ due, onDone, onGone, hideFlags }: { due: BillDue; onDone: () => void; onGone?: () => void; hideFlags?: boolean }) {
   const saved = loadBillEdits()[due.key];
   const original = due.orig || due.due;
   const [mode, setMode] = useState<'usual' | 'skip' | 'move'>(saved?.skip ? 'skip' : saved?.moveTo ? 'move' : 'usual');
@@ -243,7 +256,7 @@ export function BillChangeForm({ due, onDone, onGone }: { due: BillDue; onDone: 
           placeholder={mode === 'skip' ? 'Why? e.g. Shopping for cheaper insurance' : 'Optional'}
         />
       </label>
-      <BillFlagsFields due={due} />
+      {hideFlags ? null : <BillFlagsFields due={due} />}
       <div className="bill-change-actions">
         <button type="submit" className="row-action">
           Save

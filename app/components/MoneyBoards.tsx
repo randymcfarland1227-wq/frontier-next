@@ -1016,7 +1016,7 @@ function WeekLine({
   return (
     <MenuRow
       as="li"
-      className="skw-line"
+      className={`skw-line${d.bill.nonCritical ? " is-noncritical" : ""}${d.bill.priority ? " is-priority" : ""}`}
       style={{ ["--k" as string]: MONEY_KINDS[kind]?.color }}
       title={d.bill.name.trim()}
       items={[
@@ -1098,9 +1098,11 @@ export function WeekBoard({
   const all = [
     ...new Map([...monthDues, ...dues].map((d) => [d.key, d])).values(),
   ].filter((d) => !d.skipped && d.bill.kind !== "plan");
+  // Priority first, non critical last, then oldest first.
+  const rank = (d: BillDue) => (d.bill.priority ? 0 : d.bill.nonCritical ? 2 : 1);
   const overdue = dues
     .filter((d) => isOverdue(d) && !paidAt[d.key])
-    .sort((a, b) => a.due.localeCompare(b.due));
+    .sort((a, b) => rank(a) - rank(b) || a.due.localeCompare(b.due));
   const open = dues
     .filter(
       (d) =>

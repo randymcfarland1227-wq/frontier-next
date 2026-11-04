@@ -200,7 +200,7 @@ export function HomeView({
   const bills = [...tabBills, ...moneyDues].sort((a, b) =>
     a.due.localeCompare(b.due),
   );
-  const overdueBills = bills.filter(isOverdue);
+  const overdueBills = bills.filter(isOverdue).sort((a, b) => (a.bill.priority ? 0 : a.bill.nonCritical ? 2 : 1) - (b.bill.priority ? 0 : b.bill.nonCritical ? 2 : 1));
   useBriefPush(snapshots, bills);
   // Paid from anywhere a bill shows up as a Priority item ("Doing now").
   const payFromPriority = (source: SourceId, item: FeaturedItem) => {

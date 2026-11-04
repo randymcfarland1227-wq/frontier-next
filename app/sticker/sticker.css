@@ -2936,3 +2936,12 @@
 .bal-credit li{display:grid;grid-template-columns:1fr auto;gap:0 8px;align-items:baseline;padding:6px 8px;border-radius:10px;background:var(--sk-card,rgba(0,0,0,.03))}
 .bal-credit li b{color:#1b7a46}
 .bal-credit li small{grid-column:1/-1;opacity:.7;font-size:.78em}
+
+/* Bill level: Non critical = orange box, Priority = red box (rows, ledger lines, Brief rows, week Overdue box) */
+.sk-app .is-noncritical:is(li, .skw-line, .bal-led-row, .bal-line, .bal-rl, .mm-row, .ledger-row, .sk-row) { background: color-mix(in srgb, #f08a24 24%, var(--sk-paper, #fff)) !important; }
+.sk-app .is-priority:is(li, .skw-line, .bal-led-row, .bal-line, .bal-rl, .mm-row, .ledger-row, .sk-row) { background: color-mix(in srgb, #e0443a 20%, var(--sk-paper, #fff)) !important; box-shadow: inset 4px 0 0 #c62828; }
+.sk-app .mny-flag.is-priority { background: #c62828; color: #fff; }
+.sk-app .mny-flag.is-noncritical { background: #f08a24; color: #16141f; }
+.sk-app .bill-level label.is-noncritical.is-on { background: #f08a24; color: #16141f; }
+.sk-app .bill-level label.is-priority.is-on { background: #c62828; color: #fff; }
+.sk-app .bill-level-hint { display: block; opacity: .7; font-size: .78em; margin: 2px 0 6px; }

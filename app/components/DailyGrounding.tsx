@@ -117,11 +117,12 @@ function AffirmationForm({
         )}
       </label>
       <span className="sk-trace">
-        {draft ? null : (
+        {guide.ghost && guide.ghost.toLowerCase().startsWith(draft.toLowerCase()) && draft.length < guide.ghost.length ? (
           <span className="sk-ghost" aria-hidden="true">
-            {guide.ghost}
+            <span style={{ visibility: "hidden" }}>{guide.ghost.slice(0, draft.length)}</span>
+            {guide.ghost.slice(draft.length)}
           </span>
-        )}
+        ) : null}
         <textarea
           id={`affirmation-${guide.id}`}
           rows={3}

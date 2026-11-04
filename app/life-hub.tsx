@@ -123,7 +123,7 @@ import { useMoneyMeta } from '../lib/moneyMeta';
 import { payPlanDues, usePayPlans } from '../lib/payPlans';
 import { usePriorityPins } from '../lib/priorityPins';
 import { applyBillEdits, useBillEdits } from '../lib/billEdits';
-import { loadCachedMoney, moneyBillDues, parseMoney, pullMoneySnapshot, saveMoneyEdits, type CellEdit, type MoneySnapshot } from '../lib/money';
+import { crossOffEdit, loadCachedMoney, moneyBillDues, parseMoney, pullMoneySnapshot, saveMoneyEdits, type CellEdit, type MoneySnapshot } from '../lib/money';
 import { MoneyPage, MoneyPanelHost } from './components/MoneyPage';
 
 const starterFocus: FocusItem[] = [
@@ -238,6 +238,16 @@ export function LifeHub() {
   // Radall sheet money tabs (private, via the Worker) — Money page + money on the calendar.
   const [moneySnap, setMoneySnap] = useState<MoneySnapshot | null>(() => loadCachedMoney());
   const moneyModel = useMemo(() => (moneySnap ? parseMoney(moneySnap) : null), [moneySnap]);
+  // Paid on Life Hub: logged here (synced), and a sheet row is crossed off in the sheet too.
+  const payBill = (due: BillDue) => {
+    setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }));
+    const edit = crossOffEdit(moneyModel?.items.find(i => i.id === due.key));
+    if (!edit) return;
+    void saveMoneyEdits([edit]).then(res => {
+      if (res.snapshot) setMoneySnap(res.snapshot);
+      if (!res.ok || res.results.some(r => !r.ok)) console.warn('Sheet cross-off failed', due.bill.name, res.error || res.results);
+    });
+  };
   const [completionStats, setCompletionStats] = useState<CompletionStats>(emptyStats());
   const [focusConfig, setFocusConfig] = useState<FocusAreaConfig | null>(null);
   const [habitSchedule, setHabitSchedule] = useState<HabitSchedule[] | null>(null);
@@ -1095,7 +1105,7 @@ goalsData ? (
           monthDues={monthDues}
           paidAt={paidAt}
           lifeSubs={lifeSubs}
-          onPaid={(due: BillDue) => setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }))}
+          onPaid={payBill}
           onSave={async (edits: CellEdit[]) => {
             const res = await saveMoneyEdits(edits);
             if (res.snapshot) setMoneySnap(res.snapshot);
@@ -1162,8 +1172,7 @@ goalsData ? (
           openFocus={() => setFocusOpen(true)}
           money={moneyPage}
           grounding={<DailyGrounding move={visibleSnapshots.move} goals={goalsData} enter={enter} ticktick={visibleSnapshots.ticktick} ledger={visibleLedger} />}
-          onBillPaid={(due: BillDue) =>
-            setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }))
+          onBillPaid={payBill
           }
           focusConfig={focusConfig}
           renderSorting={entries =>
@@ -1257,7 +1266,7 @@ goalsData ? (
       <UpdateNotice />
       {import.meta.env.VITE_LOCAL_PREVIEW !== 'true' && <BackupGuard />}
       <SiteListHost />
-      <MoneyPanelHost model={moneyModel} dues={moneyDues} monthDues={monthDues} paidAt={paidAt} onPaid={(due: BillDue) => setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }))} />
+      <MoneyPanelHost model={moneyModel} dues={moneyDues} monthDues={monthDues} paidAt={paidAt} onPaid={payBill} />
       <DebtPopHost />
       <FocusDrawer
         open={focusOpen}
@@ -1270,7 +1279,7 @@ goalsData ? (
         schedule={schedule}
         onCompleteItem={(source, item) => {
           const due = moneyDues.find(b => b.key === item.id);
-          if (source === 'radall' && due) setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }));
+          if (source === 'radall' && due) payBill(due);
           else completeOnHub(source, item.id);
         }}
       />

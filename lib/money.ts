@@ -849,6 +849,19 @@ export function moneyBillDues(model: MoneyModel | null, paid: Set<string>, today
   }));
 }
 
+/**
+ * The sheet edit that crosses out one money item's row (its date / name / amount cells), or undefined
+ * when there's nothing in the sheet to cross (a month carried forward, a row already crossed out).
+ */
+export function crossOffEdit(item: MoneyItem | undefined, strike = true): CellEdit | undefined {
+  if (!item || item.projected || (strike && item.skipped)) return undefined;
+  const cells = [item.cells.date, item.cells.name, item.cells.amount].filter((c): c is Cell => Boolean(c) && c!.tab === item.cells.name.tab && c!.r === item.cells.name.r);
+  if (!cells.length) return undefined;
+  const first = cells.reduce((a, b) => (b.c < a.c ? b : a));
+  const last = cells.reduce((a, b) => (b.c > a.c ? b : a));
+  return { tab: first.tab, r: first.r, c1: first.c, c2: last.c, expect: first.text, strike };
+}
+
 export function sumAmounts(dues: Array<{ item: { amount?: number } }>): number {
   return dues.reduce((s, d) => s + (d.item.amount || 0), 0);
 }

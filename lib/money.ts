@@ -862,6 +862,43 @@ export function crossOffEdit(item: MoneyItem | undefined, strike = true): CellEd
   return { tab: first.tab, r: first.r, c1: first.c, c2: last.c, expect: first.text, strike };
 }
 
+/**
+ * Add an item to the sheet's To purchase list: written into the blank row under its last item
+ * (Item · Why · Cost · Where / note · … · … · Priority). Empty values are skipped.
+ */
+export function purchaseAddEdits(table: Table, v: { item: string; why?: string; cost?: string; where?: string; priority?: string }): CellEdit[] {
+  if (!table.rows.length || !v.item.trim()) return [];
+  const c1 = Math.min(...table.rows.map(r => r[0].c));
+  const r = Math.max(...table.rows.map(row => row[0].r)) + 1;
+  const put: Array<[number, string | undefined]> = [[0, v.item], [1, v.why], [2, v.cost], [3, v.where], [6, v.priority]];
+  return put.filter(([, x]) => x && x.trim()).map(([i, x]) => ({ tab: table.tab, r, c: c1 + i, expect: '', value: x!.trim() }));
+}
+
+/**
+ * Delete item `index` from the To purchase list without leaving a hole (the list ends at blank rows):
+ * every later item moves up one, crossed-out ones stay crossed out, and the last row is cleared.
+ */
+export function purchaseDeleteEdits(table: Table, index: number): CellEdit[] {
+  const rows = table.rows;
+  if (index < 0 || index >= rows.length) return [];
+  const edits: CellEdit[] = [];
+  const width = Math.max(...rows.map(r => r.length));
+  for (let i = index; i < rows.length; i++) {
+    const cur = rows[i];
+    const next = rows[i + 1];
+    for (let k = 0; k < width; k++) {
+      const cell = cur[k];
+      if (!cell) continue;
+      const value = next?.[k]?.text ?? '';
+      if (cell.text !== value) edits.push({ tab: cell.tab, r: cell.r, c: cell.c, expect: cell.text, value });
+    }
+    const struck = cur.some(c => c.struck);
+    const wantStruck = Boolean(next?.some(c => c.struck));
+    if (struck !== wantStruck) edits.push({ tab: cur[0].tab, r: cur[0].r, c1: cur[0].c, c2: cur[cur.length - 1].c, expect: next?.[0]?.text ?? '', strike: wantStruck });
+  }
+  return edits;
+}
+
 export function sumAmounts(dues: Array<{ item: { amount?: number } }>): number {
   return dues.reduce((s, d) => s + (d.item.amount || 0), 0);
 }

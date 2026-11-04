@@ -6,7 +6,7 @@ import { MoneyZoom } from './MoneyZoom';
 import { createPortal } from 'react-dom';
 import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PayPlanner } from './PayPlanner';
-import { debtOptions } from '../../lib/money';
+import { debtOptions, purchaseAddEdits, purchaseDeleteEdits } from '../../lib/money';
 import { MoneySelector } from './MoneySelector';
 import { isLedgerPaid, ledgerMonthRows } from '../../lib/moneyLedger';
 import { DebtFile } from './DebtFile';
@@ -232,6 +232,72 @@ function BalancingAdd({ table, onSave }: { table: Table; onSave: Save }) {
       {error ? <p role="alert" className="sub-form-wide">{error}</p> : null}
       <div className="sub-form-actions"><button type="submit" className="sk-btn is-small" disabled={busy}>{busy ? 'Adding…' : 'Add line item'}</button><button type="button" className="sk-btn is-small" disabled={busy} onClick={cancel}>Cancel</button></div>
     </form>
+  );
+}
+
+/** The sheet's To purchase list: open items on top, bought (crossed-out) ones folded below; add and delete write to the sheet. */
+function ToPurchase({ table, onSave }: { table: Table; onSave: Save }) {
+  const [adding, setAdding] = useState(false);
+  const [f, setF] = useState({ item: '', why: '', cost: '', where: '', priority: '' });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const isStruck = (r: Cell[]) => r.some(c => c.struck);
+  const open = table.rows.filter(r => !isStruck(r));
+  const bought = table.rows.filter(isStruck);
+  const run = async (edits: CellEdit[]) => {
+    if (!edits.length) return false;
+    setBusy(true);
+    setErr('');
+    const res = await onSave(edits);
+    setBusy(false);
+    const bad = !res.ok || res.results.some(x => !x.ok);
+    if (bad) setErr(`The sheet didn’t take all of it (${res.error || res.results.find(x => !x.ok)?.error || 'error'}). Refresh and check the sheet.`);
+    return !bad;
+  };
+  const del = (row: Cell[]) => {
+    const name = row.find(c => c.text && amountOf(c.text) === undefined)?.text || 'this item';
+    if (!window.confirm(`Delete ${name} from To purchase? It’s removed from the sheet and the items under it move up.`)) return;
+    void run(purchaseDeleteEdits(table, table.rows.indexOf(row)));
+  };
+  const actions = (row: Cell[]) => (
+    <button type="button" className="row-action ghost" disabled={busy} onClick={() => del(row)} aria-label="Delete item" title="Delete from the sheet">✕</button>
+  );
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  return (
+    <Fold title="To purchase" meta={`${open.length} open`} open>
+      {open.length ? <SheetTable table={{ ...table, rows: open }} onSave={onSave} opts={{ check: 'Bought', actions }} /> : <p className="mny-empty">Nothing left to buy.</p>}
+      {adding ? (
+        <form
+          className="sub-form"
+          onSubmit={async e => {
+            e.preventDefault();
+            if (await run(purchaseAddEdits(table, f))) {
+              setF({ item: '', why: '', cost: '', where: '', priority: '' });
+              setAdding(false);
+            }
+          }}
+          onKeyDown={e => e.key === 'Escape' && setAdding(false)}
+        >
+          <label className="sub-form-wide"><span>Item</span><input autoFocus value={f.item} onChange={set('item')} required /></label>
+          <label className="sub-form-wide"><span>Why</span><input value={f.why} onChange={set('why')} placeholder="Optional" /></label>
+          <label><span>Cost</span><input inputMode="decimal" value={f.cost} onChange={set('cost')} placeholder="$" /></label>
+          <label><span>Where / note</span><input value={f.where} onChange={set('where')} /></label>
+          <label><span>Priority</span><input value={f.priority} onChange={set('priority')} /></label>
+          <div className="sub-form-actions">
+            <button type="submit" className="sk-btn is-small is-prominent" disabled={busy}>{busy ? 'Adding…' : 'Add to sheet'}</button>
+            <button type="button" className="sk-btn is-small" onClick={() => setAdding(false)}>Cancel</button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" className="sk-btn is-small is-prominent" onClick={() => setAdding(true)}>+ Add item</button>
+      )}
+      {err ? <p className="mb-late">{err}</p> : null}
+      {bought.length ? (
+        <Fold title="Bought" meta={`${bought.length} crossed off`}>
+          <SheetTable table={{ ...table, rows: bought }} onSave={onSave} opts={{ check: 'Bought', actions }} />
+        </Fold>
+      ) : null}
+    </Fold>
   );
 }
 
@@ -3819,11 +3885,7 @@ export function MoneyPage({
               ) : null}
             </Section>
             <Section tone="shop" title="Purchases" hint="Tick when bought (crosses it out in the sheet). Move items between lists." href={link('Restock/Purchases')}>
-              {model.toPurchase ? (
-                <Fold title="To purchase" meta={`${model.toPurchase.rows.filter(r => !r.some(c => c.struck)).length} open`} open>
-                  <SheetTable table={model.toPurchase} onSave={save} opts={{ check: 'Bought' }} />
-                </Fold>
-              ) : null}
+              {model.toPurchase ? <ToPurchase table={model.toPurchase} onSave={save} /> : null}
               {openNeeded ? (
                 <Fold title="Needed" meta={`${openNeeded.rows.length} open`} open={openNeeded.rows.length > 0}>
                   {openNeeded.rows.length ? (

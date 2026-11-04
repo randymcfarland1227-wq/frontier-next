@@ -36,10 +36,10 @@ import {
 } from '../../lib/money';
 import { addDays, dayKey, dayName, daysBetween, fromDayKey, money, startOfDay, startOfWeek, type BillDue } from '../../lib/schedule';
 import { readSaved, writeSaved, STORAGE_KEYS } from '../../lib/storage';
-import { isOverdue, loadBillEdits } from '../../lib/billEdits';
-import { BillChangeForm, BillFlagsFields, BillPinButton, FlagBadges, billChangeText } from './BillControls';
+import { billRuleKey, isEnded, loadBillDays, setBillEnd, isOverdue, loadBillEdits } from '../../lib/billEdits';
+import { deleteForGood, BillChangeForm, BillFlagsFields, BillPinButton, FlagBadges, billChangeText } from './BillControls';
 import { addExtraCard, updateExtraCard, useExtraCards, type ExtraCard } from '../../lib/extraCards';
-import { addLifeSub, updateLifeSub, type LifeSub } from '../../lib/lifeSubs';
+import { addLifeSub, loadLifeSubs, updateLifeSub, type LifeSub } from '../../lib/lifeSubs';
 import { addCustomItem, METHOD_LABEL, mondayOf, setBalancePicks, setPickLanded, srcKey, updatePick, useBalancePicks, type BalancePlan, type CustomItem, type PayMethod } from '../../lib/balancePicks';
 import { addIncoming, incomingDues, updateIncoming, useIncoming, type Incoming, type IncomingDue } from '../../lib/incoming';
 
@@ -1087,6 +1087,7 @@ function SubAdd({ onDone }: { onDone: () => void }) {
     const d = Number(day);
     if (!name.trim() || !(d >= 1 && d <= 31)) return;
     const amt = amountOf(amount);
+    setBillEnd(billRuleKey({ name: name.trim(), kind: 'sub' }), null);
     addLifeSub({ name, amount: amt, day: d, cycle, month: cycle === 'yearly' ? month : undefined, status, note: note.trim() || undefined });
     onDone();
   };
@@ -1150,8 +1151,11 @@ function SubsView({ model, lifeSubs, paidAt, dues, onSave }: { model: MoneyModel
   const [adding, setAdding] = useState(false);
   const panels = useMoneyPanels();
   const today = startOfDay(new Date());
+  const [, bump] = useState(0);
+  const endRules = loadBillDays();
+  const deleted = Object.entries(endRules).filter(([k, v]) => k.startsWith('sub:') && v.endFrom);
   const sheetRows: SubRow[] = (model.subs?.rows || [])
-    .filter(r => r[1]?.text)
+    .filter(r => r[1]?.text && !isEnded(dayKey(today), endRules[billRuleKey({ name: r[1].text.trim(), kind: 'sub' })]))
     .map(r => {
       const date = parseSheetDate(r[0]?.text || '', today);
       return {
@@ -1165,7 +1169,7 @@ function SubsView({ model, lifeSubs, paidAt, dues, onSave }: { model: MoneyModel
         row: r,
       };
     });
-  const otherRows: SubRow[] = model.subsOther.map(r => ({
+  const otherRows: SubRow[] = model.subsOther.filter(r => !isEnded(dayKey(today), endRules[billRuleKey({ name: r[1].text.trim(), kind: 'sub' })])).map(r => ({
     key: `other:${r[1].r}`,
     name: r[1].text.trim(),
     amount: amountOf(r[2]?.text || ''),
@@ -1251,6 +1255,17 @@ function SubsView({ model, lifeSubs, paidAt, dues, onSave }: { model: MoneyModel
                     {r.status === 'skipped' ? 'Uncross' : 'Cross off'}
                   </button>
                 ) : null}
+                {r.from === 'sheet' ? (
+                  <button
+                    type="button"
+                    className="sk-btn is-small"
+                    onClick={() => { if (window.confirm(`Delete ${r.name} for good? It comes off Life Hub (the sheet isn't changed).`)) { deleteForGood({ name: r.name, kind: 'sub' }, dayKey(today).slice(0, 7)); bump(n => n + 1); } }}
+                    aria-label={`Delete ${r.name}`}
+                    title="Delete for good (cancelled, never wanted)"
+                  >
+                    ✕
+                  </button>
+                ) : null}
                 {r.sub ? (
                   <>
                     <select
@@ -1279,6 +1294,16 @@ function SubsView({ model, lifeSubs, paidAt, dues, onSave }: { model: MoneyModel
           );
         })}
       </ul>
+      {deleted.length ? (
+        <p className="mb-dim subs-deleted">
+          Deleted:{' '}
+          {deleted.map(([k, v]) => (
+            <button key={k} type="button" className="sk-btn is-small" onClick={() => { setBillEnd(k, null); bump(n => n + 1); }} title="Bring it back">
+              {v.endName || k.slice(4)} · restore
+            </button>
+          ))}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -2431,7 +2456,7 @@ function PaidHistory({ list, paidAt }: { list: BillDue[]; paidAt: Record<string,
 const PAID_STATES = ['paid', 'crossed', 'charged', 'skipped'];
 
 /** Edit just this one payment (amount, new due day, skip, note); the next cycle stays as it was. */
-function ChangeThisOne({ due }: { due: BillDue }) {
+function ChangeThisOne({ due, onGone }: { due: BillDue; onGone?: () => void }) {
   const [open, setOpen] = useState(false);
   const edit = loadBillEdits()[due.key];
   const changed = Boolean(edit && (edit.skip || edit.moveTo || edit.amount !== undefined || edit.note));
@@ -2440,13 +2465,13 @@ function ChangeThisOne({ due }: { due: BillDue }) {
       <h4 className="mb-cp-h">This payment</h4>
       {changed && !open ? <p className="mb-dim">Changed for this one: {billChangeText(due) || 'edited'}{due.editNote ? ` · ${due.editNote}` : ''}</p> : null}
       {open ? (
-        <BillChangeForm due={due} onDone={() => setOpen(false)} />
+        <BillChangeForm due={due} onDone={() => setOpen(false)} onGone={onGone} />
       ) : (
         <button type="button" className="sk-btn is-small" onClick={() => setOpen(true)}>
           {changed ? 'Edit change' : 'Change amount / due day / note'}
         </button>
       )}
-      <p className="mb-dim">Only this payment changes — next month’s stays the same.</p>
+      <p className="mb-dim">Pick “this payment only” or “every later payment” when you change the amount or day.</p>
     </div>
   );
 }
@@ -2491,7 +2516,7 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
       </div>
       <SinceField metaKey={l.key} label="Loan started" />
       <PaidHistory list={history} paidAt={paidAt} />
-      {l.due ? <ChangeThisOne due={l.due} /> : null}
+      {l.due ? <ChangeThisOne due={l.due} onGone={onClose} /> : null}
       <div className="bal-dlg-actions">
         <button type="button" className="sk-btn is-small" onClick={() => setMeta(l.key, { closed: l.closed ? undefined : true })}>{l.closed ? 'Reopen' : 'Mark closed'}</button>
         {l.due && state && !PAID_STATES.includes(state) ? <button type="button" className="sk-btn is-small is-prominent" onClick={() => { onPaid(l.due!); onClose(); }}>Mark paid</button> : null}
@@ -2511,6 +2536,7 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
   const thisMonth = new Date().toISOString().slice(0, 7);
   const mine = cur.find(d => d.due.startsWith(thisMonth)) || cur[0];
   const state = mine ? monthState(mine, paidAt) : undefined;
+  const hubSub = loadLifeSubs().find(x => !x.removed && x.name.trim().toLowerCase() === name.trim().toLowerCase());
   const src = srcKey('pay', name.trim());
   const pick = (acct: string) => {
     setMeta(`from:${src}`, { acct: acct || undefined });
@@ -2536,8 +2562,36 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
         <optgroup label="Cards">{cards.map(c => <option key={c} value={c}>{c}</option>)}</optgroup>
       </select>
       <PaidHistory list={list} paidAt={paidAt} />
-      {mine ? <ChangeThisOne due={mine} /> : null}
-      {mine && state && !PAID_STATES.includes(state) ? <button type="button" className="sk-btn is-small" onClick={() => { onPaid(mine); onClose(); }}>Mark paid</button> : null}
+      {mine ? <ChangeThisOne due={mine} onGone={onClose} /> : null}
+      {hubSub ? (
+        <>
+          <h4 className="mb-cp-h">Yours to edit</h4>
+          <div className="mb-cp-edit">
+            <label>Amount $<input type="number" step="0.01" defaultValue={hubSub.amount ?? ''} onBlur={e => updateLifeSub(hubSub.id, { amount: e.target.value.trim() === '' ? undefined : Number(e.target.value) })} /></label>
+            <label>Charges on day<input type="number" min={1} max={31} defaultValue={hubSub.day} onBlur={e => { const n = Number(e.target.value); if (n >= 1 && n <= 31) updateLifeSub(hubSub.id, { day: n }); }} /></label>
+            <label>Status
+              <select defaultValue={hubSub.status} onChange={e => updateLifeSub(hubSub.id, { status: e.target.value as LifeSub['status'] })}>
+                <option value="active">Active</option><option value="trial">Trial</option><option value="paused">Paused</option><option value="cancelled">Cancelled</option>
+              </select>
+            </label>
+          </div>
+          <p className="mb-dim">These apply to every charge from now on.</p>
+        </>
+      ) : null}
+      <div className="bal-dlg-actions">
+        {mine && state && !PAID_STATES.includes(state) ? <button type="button" className="sk-btn is-small is-prominent" onClick={() => { onPaid(mine); onClose(); }}>Mark paid</button> : null}
+        <button
+          type="button"
+          className="sk-btn is-small is-danger"
+          onClick={() => {
+            if (!window.confirm(`Delete ${name.trim()} for good? Every charge from now on comes off Life Hub (a cancelled trial, say). The sheet isn't changed.`)) return;
+            deleteForGood({ name, kind: 'sub', id: mine?.bill.id }, (open?.due || thisMonth).slice(0, 7) < thisMonth ? thisMonth : (open?.due || thisMonth).slice(0, 7));
+            onClose();
+          }}
+        >
+          Delete subscription
+        </button>
+      </div>
     </Modal>
   );
 }
@@ -2589,7 +2643,7 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
       </div>
       {c.carry ? <p className="mb-dim">Interest carrying this balance ≈ {money(c.carry)}/mo.</p> : null}
       <SinceField metaKey={c.key} label="Opened" />
-      {c.due ? <ChangeThisOne due={c.due} /> : null}
+      {c.due ? <ChangeThisOne due={c.due} onGone={onClose} /> : null}
       <PaidHistory list={dues.filter(d => d.bill.kind === 'card' && nearest(d.bill.name, cardRows(model, monthDues, get), r => r.name)?.key === c.key)} paidAt={paidAt} />
     </Modal>
   );
@@ -2643,7 +2697,7 @@ function ItemPanel({ id, dues, model, paidAt, onPaid, onBack, onClose }: { id: s
           </ul>
         </>
       ) : null}
-      <ChangeThisOne due={d} />
+      <ChangeThisOne due={d} onGone={onClose} />
       {['paid', 'crossed', 'charged', 'skipped'].includes(state) ? null : (
         <button type="button" className="sk-btn is-small" onClick={() => { onPaid(d); onClose(); }}>Mark paid</button>
       )}

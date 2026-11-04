@@ -44,6 +44,10 @@ export type BillDay = {
   /** New usual amount (price changed), from `amountFrom` (YYYY-MM) on; set on Life Hub */
   amount?: number;
   amountFrom?: string;
+  /** Deleted for good on Life Hub: no payments from this month (YYYY-MM) on. The sheet isn't written. */
+  endFrom?: string;
+  /** Display name kept so a deleted one can be listed and restored */
+  endName?: string;
 };
 export type BillDays = Record<string, BillDay>;
 
@@ -70,6 +74,20 @@ export function setBillAmount(ruleKey: string, amount: number | null, from: stri
   all[ruleKey] = { ...prev, amount: amount ?? undefined, amountFrom: amount === null ? undefined : from, at: new Date().toISOString() };
   writeSaved(STORAGE_KEYS.billDays, all);
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BILL_DAYS_EVENT));
+}
+
+/** Delete a bill / subscription for good (every payment from `from` on) or bring it back with `null`. */
+export function setBillEnd(ruleKey: string, from: string | null, name?: string) {
+  const all = loadBillDays();
+  const prev = all[ruleKey] || { day: null, from: from || '' };
+  all[ruleKey] = { ...prev, endFrom: from ?? undefined, endName: from ? name : undefined, at: new Date().toISOString() };
+  writeSaved(STORAGE_KEYS.billDays, all);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BILL_DAYS_EVENT));
+}
+
+/** True when the rule deleted this due date's month (or any earlier one). */
+export function isEnded(due: string, rule?: BillDay): boolean {
+  return Boolean(rule?.endFrom && due.slice(0, 7) >= rule.endFrom);
 }
 
 /** The bill's due date moved to its new day, within the same month. */
@@ -165,7 +183,7 @@ export function hasEdit(e?: BillEdit): boolean {
 export function applyBillEdits(dues: BillDue[], edits: BillEdits, today = new Date(), days: BillDays = loadBillDays()): BillDue[] {
   const t = startOfDay(today);
   return dues
-    .filter(d => !edits[d.key]?.removed)
+    .filter(d => !edits[d.key]?.removed && !isEnded(d.due, days[billRuleKey(d.bill)]))
     .map(d => {
       // A new day every month (set on Life Hub) first; a one-off change below still wins.
       const rule = days[billRuleKey(d.bill)];

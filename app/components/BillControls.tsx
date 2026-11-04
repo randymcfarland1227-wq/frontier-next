@@ -2,10 +2,21 @@
 
 import { useState, type FormEvent } from 'react';
 import { fromDayKey, type BillDue } from '../../lib/schedule';
-import { billRuleKey, loadBillDays, loadBillEdits, setBillAmount, setBillDay, setBillEdit, setBillFlags, useBillEdits } from '../../lib/billEdits';
+import { billRuleKey, loadBillDays, loadBillEdits, setBillAmount, setBillDay, setBillEdit, setBillEnd, setBillFlags, useBillEdits } from '../../lib/billEdits';
+import { loadLifeSubs, updateLifeSub } from '../../lib/lifeSubs';
 import { pinKey, updatePinDetails, usePriorityPins } from '../../lib/priorityPins';
 
 const shortDay = (k: string) => fromDayKey(k).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+
+/**
+ * Delete a bill / subscription for good: every payment from `fromMonth` (YYYY-MM) on. Subscriptions made on
+ * Life Hub are removed outright; sheet rows get a hub-side "ended" rule (the sheet isn't written).
+ */
+export function deleteForGood(bill: { name: string; kind?: string; id?: string }, fromMonth: string) {
+  const mine = loadLifeSubs().filter(x => !x.removed && x.name.trim().toLowerCase() === bill.name.trim().toLowerCase());
+  mine.forEach(x => updateLifeSub(x.id, { removed: true }));
+  if (!(bill.id || '').startsWith('money:lhsub:')) setBillEnd(billRuleKey(bill), fromMonth, bill.name.trim());
+}
 
 /** "Skipped · shopping for cheaper" / "Moved from Thu, Oct 10" — what was changed on Life Hub. */
 export function billChangeText(d: BillDue): string {
@@ -102,7 +113,7 @@ export function BillPinButton({ due, className = 'row-action ghost' }: { due: Bi
  * Change one due date of a bill: pay as usual, skip it this time, or move it — plus an amount for
  * this time and a note. Saved on Life Hub (synced), not in the sheet.
  */
-export function BillChangeForm({ due, onDone }: { due: BillDue; onDone: () => void }) {
+export function BillChangeForm({ due, onDone, onGone }: { due: BillDue; onDone: () => void; onGone?: () => void }) {
   const saved = loadBillEdits()[due.key];
   const original = due.orig || due.due;
   const [mode, setMode] = useState<'usual' | 'skip' | 'move'>(saved?.skip ? 'skip' : saved?.moveTo ? 'move' : 'usual');
@@ -111,8 +122,9 @@ export function BillChangeForm({ due, onDone }: { due: BillDue; onDone: () => vo
   const [note, setNote] = useState(saved?.note || '');
   const ruleKey = billRuleKey(due.bill);
   const rule = loadBillDays()[ruleKey];
-  const [everyMonth, setEveryMonth] = useState(false);
-  const [amountOnward, setAmountOnward] = useState(false);
+  const [scope, setScope] = useState<'one' | 'all'>('one');
+  const everyMonth = scope === 'all';
+  const amountOnward = scope === 'all';
   const name = due.bill.name;
 
   const submit = (e: FormEvent) => {
@@ -168,10 +180,6 @@ export function BillChangeForm({ due, onDone }: { due: BillDue; onDone: () => vo
             <span>New day</span>
             <input type="date" value={moveTo} onChange={e => setMoveTo(e.target.value)} required />
           </label>
-          <label className="bill-change-every">
-            <input type="checkbox" checked={everyMonth} onChange={e => setEveryMonth(e.target.checked)} />
-            Every month from now on{moveTo ? ` — due the ${ordinal(Number(moveTo.slice(8, 10)))}` : ''}
-          </label>
         </>
       ) : null}
       {rule?.day ? (
@@ -195,11 +203,20 @@ export function BillChangeForm({ due, onDone }: { due: BillDue; onDone: () => vo
           <input inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} placeholder={due.bill.amount !== undefined ? String(due.bill.amount) : 'Same as usual'} />
         </label>
       ) : null}
-      {mode !== 'skip' ? (
-        <label className="bill-change-every">
-          <input type="checkbox" checked={amountOnward} onChange={e => setAmountOnward(e.target.checked)} />
-          Price changed — use this amount every month from now on
-        </label>
+      {mode === 'move' || (mode !== 'skip' && amount.trim() !== '') ? (
+        <div className="bill-change-modes" role="radiogroup" aria-label="Apply to">
+          {(
+            [
+              ['one', 'This payment only'],
+              ['all', 'This and every later payment'],
+            ] as const
+          ).map(([id, label]) => (
+            <label key={id} className={scope === id ? 'is-on' : ''}>
+              <input type="radio" name={`scope-${due.key}`} checked={scope === id} onChange={() => setScope(id)} />
+              {label}
+            </label>
+          ))}
+        </div>
       ) : null}
       {rule?.amount !== undefined ? (
         <p className="bill-change-rule">
@@ -240,10 +257,22 @@ export function BillChangeForm({ due, onDone }: { due: BillDue; onDone: () => vo
           onClick={() => {
             if (!window.confirm(`Remove ${name} (${due.due}) from your lists?`)) return;
             setBillEdit(due.key, { removed: true });
-            onDone();
+            (onGone || onDone)();
           }}
         >
-          Remove
+          Remove this payment
+        </button>
+        <button
+          type="button"
+          className="row-action ghost bill-change-reset is-danger"
+          title="Deletes it from every Life Hub list from this payment on (the sheet isn't changed)"
+          onClick={() => {
+            if (!window.confirm(`Delete ${name} for good — this payment and every later one?`)) return;
+            deleteForGood(due.bill, (due.orig || due.due).slice(0, 7));
+            (onGone || onDone)();
+          }}
+        >
+          Delete for good
         </button>
         {saved && (saved.skip || saved.moveTo || saved.amount !== undefined || saved.note) ? (
           <button

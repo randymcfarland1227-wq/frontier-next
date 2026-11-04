@@ -2922,3 +2922,7 @@
 .sk-app .sk-parking-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--sk-ink) 12%, transparent); border-radius: 8px; font-size: 13px; }
 .sk-app .sk-parking-note { overflow-wrap: anywhere; }
 .sk-app .sk-parking-list small { color: var(--sk-ink-2); font-size: 11px; }
+
+/* delete-for-good buttons */
+.sk-btn.is-danger,.row-action.is-danger{color:#b3261e}
+.subs-deleted{display:flex;flex-wrap:wrap;gap:6px;align-items:center}

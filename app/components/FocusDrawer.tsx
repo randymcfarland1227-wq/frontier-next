@@ -313,6 +313,14 @@ export function FocusDrawer({
         <header className="sk-dialog-head">
           <Icon name="checks" size={20} />
           <h2 className="sk-title">Today</h2>
+        <div className="sk-seg sk-today-sheettabs" role="group" aria-label="Today">
+          <button type="button" aria-pressed={tab === "list"} onClick={() => setTab("list")}>
+            Today&apos;s list
+          </button>
+          <button type="button" aria-pressed={tab === "parking"} onClick={() => setTab("parking")}>
+            Today&apos;s Parking Lot
+          </button>
+        </div>
           <button
             ref={closeRef}
             type="button"
@@ -323,14 +331,6 @@ export function FocusDrawer({
             <Icon name="close" size={16} />
           </button>
         </header>
-        <div className="sk-seg" role="group" aria-label="Today">
-          <button type="button" aria-pressed={tab === "list"} onClick={() => setTab("list")}>
-            Today&apos;s list
-          </button>
-          <button type="button" aria-pressed={tab === "parking"} onClick={() => setTab("parking")}>
-            Today&apos;s Parking Lot
-          </button>
-        </div>
         {tab === "parking" ? <ParkingLot catalog={catalog} /> : (<>
         <p className="sk-sec">
           {total ? `${left} of ${total} left · ` : ""}Your Doing Now action

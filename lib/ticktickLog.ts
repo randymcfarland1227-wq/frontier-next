@@ -4,7 +4,7 @@
  * shows the logged state at once and TickTick's next pull confirms it.
  */
 import { syncKeyHeader } from './cloudSync';
-import { loadDayLog, saveDayLog, stampOfToday } from './ticktickDone';
+import { loadDayLog, saveDayLog, stampOfToday, unmarkTickTickHabit } from './ticktickDone';
 import { projectIdFromTask } from './ticktickComplete';
 import type { TaskItem } from './types';
 import { useEffect, useState } from 'react';
@@ -89,4 +89,15 @@ export async function logTickTick(task: Pick<TaskItem, 'id' | 'kind' | 'projectI
   void _gone;
   save({ ...back, map: rest });
   return false;
+}
+
+/** Take back today's skip / not-done on a habit (here and on TickTick). */
+export async function clearTickTickLog(habitId: string): Promise<boolean> {
+  const cur = load();
+  const { [habitId]: _gone, ...rest } = cur.map;
+  void _gone;
+  save({ ...cur, map: rest });
+  const log = loadDayLog();
+  saveDayLog({ ...log, skippedHabits: log.skippedHabits.filter((id) => id !== habitId) });
+  return unmarkTickTickHabit(habitId);
 }

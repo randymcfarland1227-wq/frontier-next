@@ -2904,3 +2904,13 @@
 .sk-app .sk-parking { display: grid; gap: 8px; }
 .sk-app .sk-parking-text, .sk-app .sk-parking-attach textarea { width: 100%; box-sizing: border-box; padding: 10px; font: var(--sk-body); line-height: 1.5; color: var(--sk-ink); background: color-mix(in srgb, var(--sk-paper, #fff) 55%, transparent); border: 1px solid var(--sk-edge); border-radius: 8px; resize: vertical; }
 .sk-app .sk-parking-attach { display: grid; gap: 6px; justify-items: start; }
+/* Habit rows: Done (circle) · Skip · Undo */
+.sk-app .sk-habits li .sk-habit-act { margin-left: auto; padding: 2px 8px; border: 1px solid var(--sk-edge); border-radius: 999px; background: none; color: var(--sk-ink-2); font: inherit; font-size: 11px; cursor: pointer; opacity: .75; }
+.sk-app .sk-habits li .sk-habit-act:hover { opacity: 1; color: var(--sk-ink); }
+.sk-app .sk-habits li .sk-habit-tag { margin-left: auto; font-style: normal; font-size: 11px; color: var(--sk-ink-2); }
+.sk-app .sk-habits li.is-skipped span { color: var(--sk-ink-2); font-style: italic; }
+/* Today sheet: the two tabs sit in the header, next to the title */
+.sk-app .sk-sheetside .sk-dialog-head { flex-wrap: wrap; row-gap: 8px; }
+.sk-app .sk-seg.sk-today-sheettabs { margin: 0 auto 0 8px; }
+.sk-app .sk-seg.sk-today-sheettabs button { font-size: 13px; padding: 4px 10px; }
+.sk-app .sk-sheetside .sk-dialog-head .sk-title { flex: 0 0 auto; }

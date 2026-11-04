@@ -93,12 +93,19 @@ export function saveLedger(ledger: CompletionLedger) {
   writeSaved(STORAGE_KEYS.completions, { entries });
 }
 
+const localDay = (iso?: string) => {
+  const d = new Date(iso || '');
+  return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 /** Uncheck a task done on the hub: every completion of it (any day) stops counting. */
-export function reopenCompletion(source: SourceId, taskId: string): CompletionLedger {
+export function reopenCompletion(source: SourceId, taskId: string, onlyDay?: string): CompletionLedger {
   const saved = readSaved<CompletionLedger>(STORAGE_KEYS.completions, { entries: {} }).entries || {};
   const at = new Date().toISOString();
   const entries = { ...saved };
   for (const [k, e] of Object.entries(saved)) {
+    // Habits keep one id forever: `onlyDay` (YYYY-MM-DD, local) reopens just that day's check-in.
+    if (onlyDay && localDay(e?.completedAt) !== onlyDay) continue;
     if (e?.source === source && e.taskId === taskId && !isReopened(e)) entries[k] = { ...e, reopenedAt: at };
   }
   writeSaved(STORAGE_KEYS.completions, { entries });

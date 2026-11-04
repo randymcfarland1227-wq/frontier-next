@@ -157,6 +157,20 @@ export async function pullTickTickDone(): Promise<CompletionLedger | null> {
   return Object.keys(ledger.entries).length === before && !moved ? null : ledger;
 }
 
+/** Undo today's habit check-in or skip on TickTick (status 0 = unmarked). */
+export async function unmarkTickTickHabit(habitId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/ticktick/habit-checkin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...syncKeyHeader() },
+      body: JSON.stringify({ habitId, stamp: stamp(new Date()), status: 0 }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Hub Done on a habit: check it in on TickTick too (fire-and-forget). */
 export function checkInTickTickHabit(habitId: string) {
   void fetch(`${WORKER_BASE}/api/ticktick/habit-checkin`, {

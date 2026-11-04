@@ -12,6 +12,9 @@ import { stampChanges } from "../../lib/focusSync";
 import { dayRecord, localDayKey, useDayKey } from "../../lib/dayKey";
 import type { CompletionLedger } from "../../lib/completions";
 import { tickTickToday } from "../../lib/tickTickToday";
+import { clearTickTickLog, logTickTick, useLoggedToday } from "../../lib/ticktickLog";
+import { loadDayLog, TICKTICK_DAYLOG_EVENT } from "../../lib/ticktickDone";
+import { useSiteLists } from "../../lib/siteLists";
 import type { FocusPriority } from "../../lib/focusPriority";
 import { assignedFocusLists, focusListView, type FocusSectionId } from "../../lib/focusRouting";
 import flowMap from "../../public/data/flow-map.json";
@@ -272,9 +275,11 @@ const HABIT_GROUPS = [
 ] as const;
 const HABIT_SECTIONS = new Map<string, string>();
 const HABIT_TITLES = new Map<string, string>();
+const HABIT_NAMES = new Map<string, string>();
 for (const r of (flowMap as { records?: Array<{ id: string; title?: string; name?: string; sectionName?: string; executionType?: string }> }).records || []) {
   if (r.executionType !== "Habit" || !r.sectionName) continue;
   HABIT_SECTIONS.set(r.id, r.sectionName);
+  HABIT_NAMES.set(r.id, r.title || r.name || "Habit");
   HABIT_TITLES.set((r.title || r.name || "").toLowerCase(), r.sectionName);
 }
 function habitGroupOf(id: string, title: string): (typeof HABIT_GROUPS)[number]["id"] {
@@ -300,8 +305,24 @@ function TickTickHabits({
   day: string;
   complete?: (t: TaskItem) => void;
 }) {
-  const open = (ticktick?.tasks || []).filter((t) => isHabit(t) && t.status !== "done");
-  const openIds = new Set(open.map((t) => t.id));
+  const { reopen } = useSiteLists();
+  const logged = useLoggedToday();
+  const [dayLog, setDayLog] = useState(loadDayLog);
+  useEffect(() => {
+    const on = () => setDayLog(loadDayLog());
+    window.addEventListener(TICKTICK_DAYLOG_EVENT, on);
+    return () => window.removeEventListener(TICKTICK_DAYLOG_EVENT, on);
+  }, []);
+  const [shutGroups, setShutGroups] = useState<Record<string, boolean>>({ optional: true, night: true });
+  const [msg, setMsg] = useState("");
+  const skippedIds = new Set([...Object.keys(logged), ...dayLog.skippedHabits]);
+  const all = (ticktick?.tasks || []).filter((t) => isHabit(t) && t.status !== "done");
+  const open = all.filter((t) => !skippedIds.has(t.id));
+  const titleOf = (id: string) => all.find((t) => t.id === id)?.title || HABIT_NAMES.get(id) || "Habit";
+  const skipped = [...skippedIds]
+    .filter((id) => HABIT_NAMES.has(id) || all.some((t) => t.id === id))
+    .map((id) => ({ id, title: titleOf(id) }));
+  const openIds = new Set(all.map((t) => t.id));
   const done = Object.entries(ledger?.entries || {})
     .filter(
       ([k, e]) =>
@@ -310,20 +331,26 @@ function TickTickHabits({
         !openIds.has(e.taskId) &&
         localDayKey(new Date(e.completedAt)) === day,
     )
-    .map(([k, e]) => ({ key: k, title: e.title || "Habit" }));
-  const [shutGroups, setShutGroups] = useState<Record<string, boolean>>({ optional: true, night: true });
-  if (!open.length && !done.length) return <p className="sk-empty">No TickTick habits today.</p>;
-  const byGroup = (id: string, title: string) => {
-    const g = habitGroupOf(id, title);
-    return g;
+    .map(([k, e]) => ({ key: k, id: e.taskId, title: e.title || "Habit" }));
+  if (!open.length && !done.length && !skipped.length) return <p className="sk-empty">No TickTick habits today.</p>;
+  const say = (m: string) => {
+    setMsg(m);
+    window.setTimeout(() => setMsg(""), 4000);
   };
-  const doneIdOf = (key: string) => key.split("::")[0];
+  const skip = async (t: TaskItem) => {
+    if (!(await logTickTick(t, "skipped"))) say("Skip wasn’t saved to TickTick");
+  };
+  const unskip = async (id: string) => {
+    if (!(await clearTickTickLog(id))) say("Undo wasn’t saved to TickTick");
+  };
   return (
     <div className="sk-habits" aria-label="TickTick habits today">
+      {msg ? <p className="sk-cap" role="status">{msg}</p> : null}
       {HABIT_GROUPS.map((g) => {
-        const mine = open.filter((t) => byGroup(t.id, t.title) === g.id);
-        const fin = done.filter((t) => byGroup(doneIdOf(t.key), t.title) === g.id);
-        if (!mine.length && !fin.length) return null;
+        const mine = open.filter((t) => habitGroupOf(t.id, t.title) === g.id);
+        const fin = done.filter((t) => habitGroupOf(t.id, t.title) === g.id);
+        const off = skipped.filter((t) => habitGroupOf(t.id, t.title) === g.id);
+        if (!mine.length && !fin.length && !off.length) return null;
         const shut = shutGroups[g.id] ?? false;
         return (
           <div key={g.id} className={`sk-habit-group${shut ? " is-shut" : ""}`}>
@@ -335,7 +362,7 @@ function TickTickHabits({
             >
               <Icon name={shut ? "chevron" : "chevronDown"} size={12} />
               <strong>{g.label}</strong>
-              <em>{mine.length ? `${mine.length} left` : "all done"}</em>
+              <em>{mine.length ? `${mine.length} left` : "all logged"}</em>
             </button>
             {shut ? null : (
               <ul className="sk-daytasks">
@@ -343,12 +370,33 @@ function TickTickHabits({
                   <li key={t.id}>
                     {complete ? <Circle onDone={() => complete(t)} label={`Check in: ${t.title}`} /> : <Icon name="minus" size={12} />}
                     <span>{t.title}</span>
+                    <button type="button" className="sk-habit-act" onClick={() => void skip(t)} title="Skip today (like TickTick)">
+                      Skip
+                    </button>
                   </li>
                 ))}
                 {fin.map((t) => (
                   <li key={t.key} className="is-done">
-                    <Icon name="check" size={12} />
+                    <button
+                      type="button"
+                      className="sk-circle is-done"
+                      onClick={() => reopen?.("ticktick", t.id)}
+                      aria-label={`Uncheck ${t.title}`}
+                      title="Uncheck (undo today’s check-in)"
+                    >
+                      <Icon name="check" size={12} />
+                    </button>
                     <span>{t.title}</span>
+                    <em className="sk-habit-tag">done</em>
+                  </li>
+                ))}
+                {off.map((t) => (
+                  <li key={t.id} className="is-skipped">
+                    <Icon name="minus" size={12} />
+                    <span>{t.title}</span>
+                    <button type="button" className="sk-habit-act" onClick={() => void unskip(t.id)} title="Undo the skip">
+                      Undo skip
+                    </button>
                   </li>
                 ))}
               </ul>

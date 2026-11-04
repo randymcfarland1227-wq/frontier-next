@@ -63,11 +63,11 @@ import { addCapture, loadCaptures, markPromoted, setCaptureStatus, type Capture 
 import { CapturesPanel } from './components/CapturesPanel';
 import { REFRESH_EVENT, syncGoogleNow } from '../lib/syncNow';
 import { applyFinanceSeed } from '../lib/financeSeed';
-import { useDayKey } from '../lib/dayKey';
+import { localDayKey, useDayKey } from '../lib/dayKey';
 import { WhyPanel } from './components/WhyPanel';
 import { AreaPicker } from './components/AreaPicker';
 import { DECK, loadLanes, unpin } from '../lib/priorityPins';
-import { checkInTickTickHabit, getHabitSchedule, pullTickTickDone } from '../lib/ticktickDone';
+import { checkInTickTickHabit, getHabitSchedule, pullTickTickDone, unmarkTickTickHabit } from '../lib/ticktickDone';
 import {
   bucketSuggestions,
   dayKey,
@@ -903,6 +903,13 @@ export function LifeHub() {
         if (!snap?.tasks.some(t => t.id === id && t.status === 'done')) return current;
         return { ...current, [source]: { ...snap, tasks: snap.tasks.map(t => (t.id === id ? { ...t, status: 'open' } : t)) } };
       });
+    }
+    // A TickTick habit: undo only today's check-in, here and on TickTick, then pull it back in.
+    const habit = source === 'ticktick' && (habitSchedule || []).some(h => h.id === id);
+    if (habit) {
+      setLedger(reopenCompletion(source, id, localDayKey()));
+      void unmarkTickTickHabit(id).then(() => window.dispatchEvent(new Event(REFRESH_EVENT)));
+      return;
     }
     setLedger(reopenCompletion(source, id));
     if (source !== 'self') window.dispatchEvent(new Event(REFRESH_EVENT));

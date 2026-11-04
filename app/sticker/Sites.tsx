@@ -1294,12 +1294,20 @@ export function SitesTabs({
   const allCount = all
     .flatMap((sid) => snapshots[sid]?.tasks || [])
     .filter((t) => t.status !== "done" && !isHabit(t)).length;
+  // Fold just the open site away (Doing Now above stays); picking a tab opens it again.
+  const [shut, setShut] = useState(() => readSaved<boolean>("sk-sites-shut", false));
+  const setShutSaved = (v: boolean) => {
+    setShut(v);
+    writeSaved("sk-sites-shut", v);
+  };
   const pick = (next: SourceId | "all") => {
     setSaved(next);
     writeSaved("sk-sites-tab", next);
+    if (shut) setShutSaved(false);
   };
   return (
     <div className="sk-sitetabs">
+      <div className="sk-sitetabs-bar">
       <SegTabs<SourceId | "all">
         label="Sites"
         value={id}
@@ -1313,7 +1321,18 @@ export function SitesTabs({
           })),
         ]}
       />
-      <div className="sk-pane" key={id}>
+      <button
+        type="button"
+        className="sk-ricon sk-sitefold"
+        aria-expanded={!shut}
+        aria-label={shut ? "Show the site below" : "Hide the site below"}
+        title={shut ? "Show the site" : "Hide the site (Doing Now stays)"}
+        onClick={() => setShutSaved(!shut)}
+      >
+        <Icon name="chevronDown" size={14} />
+      </button>
+      </div>
+      {shut ? null : <div className="sk-pane" key={id}>
         {id === "all" ? (
           <AllTasks snapshots={snapshots} onCompleteTask={onCompleteTask} />
         ) : (
@@ -1329,7 +1348,7 @@ export function SitesTabs({
             extra={extra?.[id]}
           />
         )}
-      </div>
+      </div>}
     </div>
   );
 }

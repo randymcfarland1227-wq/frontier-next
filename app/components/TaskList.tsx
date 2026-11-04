@@ -87,13 +87,12 @@ export function TaskList({
   const taskTotal = allOpen.filter(t => !isHabit(t)).length;
   const habitTotal = allOpen.filter(isHabit).length;
   const starredNote = (shown: number, total: number) => (total > shown ? ` · ${total - shown} in Starred above` : '');
-  const done = snapshot.tasks.filter(t => t.status === 'done');
 
   const visibleTasks = useMemo(() => {
     if (compact && !expanded) return [] as TaskItem[];
-    const list = showAll ? [...tasks, ...habits, ...done] : [...tasks, ...habits].slice(0, PREVIEW);
+    const list = showAll ? [...tasks, ...habits] : [...tasks, ...habits].slice(0, PREVIEW);
     return list;
-  }, [compact, expanded, showAll, tasks, habits, done]);
+  }, [compact, expanded, showAll, tasks, habits]);
 
   const total = snapshot.tasks.length;
   const openCount = openTasks.length;

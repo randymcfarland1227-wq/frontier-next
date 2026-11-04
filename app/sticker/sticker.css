@@ -2697,3 +2697,13 @@
   .sk-app .sk-seg button::before { inset: -14px -4px; }
   .sk-app .ldp { margin-top: 18px; }
 }
+
+/* Habits & Tasks readout: a pie for the percent, the count underneath. */
+.sk-app .sk-pie-row { display: flex; align-items: center; gap: 8px; }
+.sk-app .sk-pie { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--sk-edge); background: conic-gradient(currentColor var(--pc, 0%), color-mix(in srgb, currentColor 18%, transparent) 0); }
+.sk-app .sk-pie-count { display: block; font: var(--sk-caption); opacity: .85; }
+/* Site tabs: fold the open site away while Doing Now stays. */
+.sk-app .sk-sitetabs-bar { display: flex; align-items: center; gap: 8px; }
+.sk-app .sk-sitetabs-bar > :first-child { flex: 1; min-width: 0; }
+.sk-app .sk-sitefold svg { transition: transform .15s ease-out; }
+.sk-app .sk-sitefold[aria-expanded="true"] svg { transform: rotate(180deg); }

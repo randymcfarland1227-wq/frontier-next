@@ -84,15 +84,18 @@ function SplitReadout({
           return (
             <span key={p.label} className="sk-ro-half">
               <small>{p.label}</small>
-              <b className="sk-figure">
-                {p.done}
-                <small>
-                  of {p.total} · {pc}%
-                </small>
-              </b>
-              <span className="sk-meter" aria-hidden="true">
-                <i style={{ width: `${pc}%` }} />
+              <span className="sk-pie-row">
+                <span
+                  className="sk-pie"
+                  role="img"
+                  aria-label={`${pc}% of ${p.label.toLowerCase()} done`}
+                  style={{ "--pc": `${pc}%` } as React.CSSProperties}
+                />
+                <b className="sk-figure">{pc}%</b>
               </span>
+              <small className="sk-pie-count">
+                {p.done} of {p.total} done
+              </small>
             </span>
           );
         })}

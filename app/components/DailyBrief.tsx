@@ -138,7 +138,9 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
   };
   const [openFocusId, setOpenFocusId] = useState<string | null>(null);
   const focusLists = focusCollections(focus).map(c => c.list);
-  const focusItems = orderFocus(focusLists.flatMap(([items]) => items).filter(i => !i.done));
+    const focusRows = (short: boolean) => orderFocus(focusLists.flatMap(([items], n) => items.filter(i => !i.done && (n < 2 || (n === 2 && Boolean(i.inFocus)) ? short : !short))));
+  const focusItems = focusRows(true);
+  const goalItems = focusRows(false);
   const selectedList = focusLists.find(([items]) => items.some(i => i.id === openFocusId));
   const selected = selectedList?.[0].find(i => i.id === openFocusId);
   const updateFocus = (patch: Partial<Entry>) => {
@@ -154,6 +156,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
     { id: 'doing', title: 'Action List', keepAll: true, empty: 'Nothing selected in your Action List yet.', rows: plan.map(i => ({ id: `plan:${i.key}`, title: i.title, note: sourceById[i.source].shortName, pin: i.key })) },
     { id: 'mail', title: 'Mail', empty: 'Nothing waiting in the current feed.', rows: (['roles', 'sales', 'mail'] as const).flatMap(id => (sections.find(s => s.id === id)?.rows || []).map(r => ({ ...r, marker: id === 'roles' ? 'Role reply' : id === 'sales' ? 'Sales / shipping' : 'Other mail' }))) },
     { id: 'focus', title: 'Short-term Focus', keepAll: true, empty: 'No open short-term focus items.', rows: focusItems.map(i => ({ id: `focus:${i.id}`, title: i.title, note: '', focusId: i.id, priority: i.priority })) },
+    { id: 'goals', title: 'Ongoing Goals', keepAll: true, empty: 'No open ongoing goals.', rows: goalItems.map(i => ({ id: `focus:${i.id}`, title: i.title, note: '', focusId: i.id, priority: i.priority })) },
     { id: 'money', title: HEADS.money, compact: true, empty: 'Nothing due today or overdue.', rows: sections.find(s => s.id === 'money')?.rows || [] },
     ...((sections.find(s => s.id === 'tasks')?.rows.length || 0) ? [{ id: 'tasks', title: HEADS.tasks, compact: true, empty: 'Nothing due today.', rows: sections.find(s => s.id === 'tasks')!.rows }] : []),
     { id: 'soon', title: `Coming Up · ${WEEKS_AHEAD} Weeks`, empty: 'No upcoming events in the current calendar.', rows: soon.map(e => ({ id: `ev:${e.id}`, title: e.title, when: whenLabel(eventStart(e)), note: e.allDay ? eventStart(e).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : `${eventStart(e).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} · ${eventStart(e).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` })).filter(r => !gone[r.id]) },

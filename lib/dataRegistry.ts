@@ -97,6 +97,7 @@ export const SAVED_KEYS: SavedKey[] = [
   { key: 'sk-side-slim', backup: 'device' },
   { key: 'sk-side-tint', backup: 'device' },
   { key: 'sk-sites-tab', backup: 'device' },
+  { key: 'sk-sites-shut', backup: 'device' },
   { key: 'sk-today-split', backup: 'device' },
   { key: 'sk-today-tab', backup: 'device' },
   { key: 'sk-today-tab2', backup: 'device' },

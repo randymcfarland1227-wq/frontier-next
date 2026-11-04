@@ -46,10 +46,10 @@ export function SelfInbox({
         <button type="submit">Add to Self</button>
       </form>
       <div className="ledger-list">
-        {items.length === 0 ? (
+        {items.filter(i => !i.done).length === 0 ? (
           <p className="local-note">Nothing captured yet. Add a note above — star it to feature it on the home card.</p>
         ) : (
-          items.map(item => (
+          items.filter(i => !i.done).map(item => (
             <div className={`ledger-row ${item.done ? 'done' : ''}`} key={item.id}>
               <div className="ledger-dot" />
               <div>

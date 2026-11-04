@@ -2929,3 +2929,10 @@
 
 /* bill change: "Apply to" label inside the scope row */
 .bill-change-scope{font-size:.8em;opacity:.75;align-self:center;margin-right:2px}
+
+/* Week ledger: available credit on cards (only cards with credit left) */
+.bal-credit{margin-top:12px}
+.bal-credit ul{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px}
+.bal-credit li{display:grid;grid-template-columns:1fr auto;gap:0 8px;align-items:baseline;padding:6px 8px;border-radius:10px;background:var(--sk-card,rgba(0,0,0,.03))}
+.bal-credit li b{color:#1b7a46}
+.bal-credit li small{grid-column:1/-1;opacity:.7;font-size:.78em}

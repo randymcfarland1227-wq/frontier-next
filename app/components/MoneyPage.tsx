@@ -1878,6 +1878,37 @@ function NewItemForm({ book, onDone }: { book: Book; onDone: () => void }) {
  * the sheet and crossed out. Pending stays pending until moved into Now. Weeks carry forward; the
  * month is every week in one register with a line between weeks.
  */
+/** Week ledger side: cards that still have credit to spend (none = hidden), so an overdue bill can go on one. */
+function CardCredit({ model }: { model: MoneyModel }) {
+  const panels = useMoneyPanels();
+  const { get } = useMoneyMeta();
+  const rows = cardRows(model, [], get)
+    .filter(r => (r.avail ?? 0) > 0.009)
+    .sort((a, b) => (b.avail || 0) - (a.avail || 0));
+  if (!rows.length) return null;
+  const total = rows.reduce((t, r) => t + (r.avail || 0), 0);
+  return (
+    <section className="bal-credit" aria-label="Available credit">
+      <header className="bal-head">
+        <h3>Available credit</h3>
+        <span>{money(total)} across {rows.length} card{rows.length === 1 ? '' : 's'}</span>
+      </header>
+      <ul>
+        {rows.map(r => (
+          <li key={r.key}>
+            <button type="button" className="mny-item-link" onClick={() => panels.openCard(r.name)} title="Card details">{r.name}</button>
+            <b>{money(r.avail || 0)}</b>
+            <small>
+              {r.limit ? `of ${money(r.limit)} · ${Math.round(r.util ?? 0)}% used` : 'limit not set'}
+              {r.apr !== undefined ? ` · ${r.apr}% APR` : ''}
+            </small>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week' | 'month'; book: Book; model: MoneyModel; onSave: Save; tasks?: ReactNode }) {
   const panels = useMoneyPanels();
   const { weeks, regs, keys } = book;
@@ -2084,6 +2115,7 @@ function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week'
 
       <div className="bal-side">
       {tasks ? <section className="mny-tasks" aria-label="Finance tasks">{tasks}</section> : null}
+      {period === 'week' ? <CardCredit model={model} /> : null}
       {period === 'week' ? null : (
       <aside className="bal-offer" aria-label="Upcoming — add to the sheet">
         <header className="bal-head">

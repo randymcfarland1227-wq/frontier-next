@@ -2724,7 +2724,6 @@
 .sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dash .skm-grid { font-size: 18px; }
 .sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dash :is(.skm-grid > small, .skm-dim, .skm-sums small) { font-size: 16px; }
 .sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dash :is(.skm-sums b, .mb-dc-scores b) { font-size: 19px; }
-.sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dash-cols { overflow: visible; }
 .sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dc-head .sk-hl { font-size: 21px; }
 
 /* Money size − / + : only in split view */
@@ -2734,3 +2733,9 @@
 .sk-app .skm-zoom button:hover:not(:disabled) { background: var(--sk-hover); }
 .sk-app .skm-zoom button:disabled { opacity: .35; cursor: default; }
 .sk-app .skm-zoom .skm-zoom-val { font-size: 17px; min-width: 70px; border-inline: 2px solid var(--sk-edge); }
+
+/* Split-view Money never cuts off on the right: wide tables scroll inside their own box, and the
+   pane itself can scroll sideways as a last resort. */
+.sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab :is(.sk-group, section, div):has(> table) { overflow-x: auto; max-width: 100%; }
+.sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab :is(.sk-group, .skm-sec) { min-width: 0; max-width: 100%; }
+.sk-app .sk-splitwrap[data-cap="split"] .sk-splitpane:has(.sk-money-tab) { overflow-x: auto; }

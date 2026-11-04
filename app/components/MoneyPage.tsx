@@ -3,6 +3,7 @@
 import { hasSyncKey } from '../../lib/cloudSync';
 import { LinkDevicePrompt } from './LinkDevicePrompt';
 import { MoneyZoom } from './MoneyZoom';
+import { createPortal } from 'react-dom';
 import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PayPlanner } from './PayPlanner';
 import { debtOptions } from '../../lib/money';
@@ -3653,5 +3654,57 @@ export function MoneyPage({
         <ItemPanel key={panel.id} id={panel.id} dues={[...dues, ...monthDues]} model={model} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : null}
     </MoneyPanelCtx.Provider>
+  );
+}
+
+/** Open a bill's own pop-out (card / subscription / loan / item) from anywhere, e.g. the Daily Brief. */
+export const OPEN_MONEY_DUE_EVENT = 'lifehub:open-money-due';
+export const openMoneyDue = (key: string) => window.dispatchEvent(new CustomEvent(OPEN_MONEY_DUE_EVENT, { detail: key }));
+
+/** The Money page's pop-outs, outside the Money page. Balancing-sheet lines open as the plain item panel. */
+export function MoneyPanelHost({ model, dues, monthDues, paidAt, onPaid }: { model: MoneyModel | null; dues: BillDue[]; monthDues: BillDue[]; paidAt: Record<string, string>; onPaid: (d: BillDue) => void }) {
+  const { get: metaGet } = useMoneyMeta();
+  const [panel, setPanel] = useState<PanelState | null>(null);
+  const all = useMemo(() => [...dues, ...monthDues], [dues, monthDues]);
+  useEffect(() => {
+    const on = (e: Event) => {
+      const key = String((e as CustomEvent).detail);
+      const d = all.find(x => x.key === key);
+      const ent = d && model ? entityOfDue(d, model, monthDues, metaGet) : undefined;
+      setPanel({ type: ent ? ent.type : 'item', id: ent ? ent.id : key });
+    };
+    window.addEventListener(OPEN_MONEY_DUE_EVENT, on);
+    return () => window.removeEventListener(OPEN_MONEY_DUE_EVENT, on);
+  }, [all, model, monthDues, metaGet]);
+  const api = useMemo(
+    () => ({
+      openLine: (key: string) => setPanel(cur => ({ type: 'item' as const, id: key, back: cur || undefined })),
+      openAccount: () => {},
+      openCard: (name: string) => setPanel(cur => ({ type: 'card' as const, id: name, back: cur || undefined })),
+      openItem: (key: string) => setPanel(cur => ({ type: 'item' as const, id: key, back: cur || undefined })),
+      openLoan: (name: string) => setPanel(cur => ({ type: 'loan' as const, id: name, back: cur || undefined })),
+      openSub: (name: string) => setPanel(cur => ({ type: 'sub' as const, id: name, back: cur || undefined })),
+      openDue: (key: string) => setPanel(cur => ({ type: 'item' as const, id: key, back: cur || undefined })),
+      has: () => false,
+    }),
+    [],
+  );
+  if (!panel || !model || typeof document === 'undefined') return null;
+  const back = panel.back ? () => setPanel(panel.back!) : undefined;
+  const close = () => setPanel(null);
+  const host = document.querySelector('.sk-app') || document.body;
+  return createPortal(
+    <MoneyPanelCtx.Provider value={api}>
+      {panel.type === 'card' ? (
+        <CardPanel key={panel.id} name={panel.id} model={model} dues={all} monthDues={monthDues} paidAt={paidAt} onPaid={onPaid} onBack={back} onClose={close} />
+      ) : panel.type === 'loan' ? (
+        <LoanPanel key={panel.id} name={panel.id} model={model} dues={all} monthDues={monthDues} paidAt={paidAt} onPaid={onPaid} onBack={back} onClose={close} />
+      ) : panel.type === 'sub' ? (
+        <SubPanel key={panel.id} name={panel.id} model={model} dues={all} paidAt={paidAt} onPaid={onPaid} onBack={back} onClose={close} />
+      ) : (
+        <ItemPanel key={panel.id} id={panel.id} dues={all} model={model} paidAt={paidAt} onPaid={onPaid} onBack={back} onClose={close} />
+      )}
+    </MoneyPanelCtx.Provider>,
+    host,
   );
 }

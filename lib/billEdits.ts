@@ -36,7 +36,15 @@ export const BILL_DAYS_EVENT = 'lifehub:bill-days';
  * kind + name, so it covers the sheet's dates for every month, not just one occurrence. Payment
  * keys don't change, so Paid / Pin / Change keep working. Cloud-synced as `billDays`.
  */
-export type BillDay = { day: number | null; /** YYYY-MM it starts */ from: string; at: string };
+export type BillDay = {
+  day: number | null;
+  /** YYYY-MM it starts */
+  from: string;
+  at: string;
+  /** New usual amount (price changed), from `amountFrom` (YYYY-MM) on; set on Life Hub */
+  amount?: number;
+  amountFrom?: string;
+};
 export type BillDays = Record<string, BillDay>;
 
 export function billRuleKey(bill: { name: string; kind?: string }): string {
@@ -50,7 +58,16 @@ export function loadBillDays(): BillDays {
 /** Set a bill's day for every month from `from` (YYYY-MM) on; `null` goes back to the sheet's day. */
 export function setBillDay(ruleKey: string, day: number | null, from: string) {
   const all = loadBillDays();
-  all[ruleKey] = { day, from, at: new Date().toISOString() };
+  all[ruleKey] = { ...all[ruleKey], day, from, at: new Date().toISOString() };
+  writeSaved(STORAGE_KEYS.billDays, all);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BILL_DAYS_EVENT));
+}
+
+/** A new usual amount from `from` (YYYY-MM) on — the price changed; `null` goes back to the sheet's amount. */
+export function setBillAmount(ruleKey: string, amount: number | null, from: string) {
+  const all = loadBillDays();
+  const prev = all[ruleKey] || { day: null, from };
+  all[ruleKey] = { ...prev, amount: amount ?? undefined, amountFrom: amount === null ? undefined : from, at: new Date().toISOString() };
   writeSaved(STORAGE_KEYS.billDays, all);
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BILL_DAYS_EVENT));
 }
@@ -154,6 +171,7 @@ export function applyBillEdits(dues: BillDue[], edits: BillEdits, today = new Da
       const rule = days[billRuleKey(d.bill)];
       const ruled = withBillDay(d.due, rule);
       if (ruled !== d.due) d = { ...d, due: ruled, days: daysBetween(t, fromDayKey(ruled)), everyMonth: rule!.day! };
+      if (rule?.amount !== undefined && rule.amountFrom && d.due.slice(0, 7) >= rule.amountFrom) d = { ...d, bill: { ...d.bill, amount: rule.amount } };
       const e = edits[d.key];
       d = withBillFlags(d, e);
       if (!hasEdit(e)) return d;

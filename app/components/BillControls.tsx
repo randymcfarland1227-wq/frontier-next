@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { fromDayKey, type BillDue } from '../../lib/schedule';
-import { billRuleKey, loadBillDays, loadBillEdits, setBillDay, setBillEdit, setBillFlags, useBillEdits } from '../../lib/billEdits';
+import { billRuleKey, loadBillDays, loadBillEdits, setBillAmount, setBillDay, setBillEdit, setBillFlags, useBillEdits } from '../../lib/billEdits';
 import { pinKey, updatePinDetails, usePriorityPins } from '../../lib/priorityPins';
 
 const shortDay = (k: string) => fromDayKey(k).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
@@ -112,6 +112,7 @@ export function BillChangeForm({ due, onDone }: { due: BillDue; onDone: () => vo
   const ruleKey = billRuleKey(due.bill);
   const rule = loadBillDays()[ruleKey];
   const [everyMonth, setEveryMonth] = useState(false);
+  const [amountOnward, setAmountOnward] = useState(false);
   const name = due.bill.name;
 
   const submit = (e: FormEvent) => {
@@ -120,10 +121,14 @@ export function BillChangeForm({ due, onDone }: { due: BillDue; onDone: () => vo
     // Every month: the bill's day changes from this month on (not just this one payment).
     const repeat = mode === 'move' && everyMonth && moveTo;
     if (repeat) setBillDay(ruleKey, Number(moveTo.slice(8, 10)), original.slice(0, 7));
+    const ok = n !== undefined && Number.isFinite(n);
+    // Price changed: the new amount is the usual one from this month on (this one included).
+    const onward = ok && amountOnward && mode !== 'skip';
+    if (onward) setBillAmount(ruleKey, n!, original.slice(0, 7));
     setBillEdit(due.key, {
       skip: mode === 'skip',
       moveTo: mode === 'move' && !repeat && moveTo && moveTo !== original ? moveTo : undefined,
-      amount: n !== undefined && Number.isFinite(n) ? n : undefined,
+      amount: ok && !onward ? n : undefined,
       note,
     });
     onDone();
@@ -189,6 +194,27 @@ export function BillChangeForm({ due, onDone }: { due: BillDue; onDone: () => vo
           <span>Amount this time</span>
           <input inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} placeholder={due.bill.amount !== undefined ? String(due.bill.amount) : 'Same as usual'} />
         </label>
+      ) : null}
+      {mode !== 'skip' ? (
+        <label className="bill-change-every">
+          <input type="checkbox" checked={amountOnward} onChange={e => setAmountOnward(e.target.checked)} />
+          Price changed — use this amount every month from now on
+        </label>
+      ) : null}
+      {rule?.amount !== undefined ? (
+        <p className="bill-change-rule">
+          Usual amount ${rule.amount} from {rule.amountFrom} (changed on Life Hub).{' '}
+          <button
+            type="button"
+            className="row-action ghost"
+            onClick={() => {
+              setBillAmount(ruleKey, null, rule.amountFrom || original.slice(0, 7));
+              onDone();
+            }}
+          >
+            Back to the sheet’s amount
+          </button>
+        </p>
       ) : null}
       <label className="bill-change-field is-wide">
         <span>Note</span>

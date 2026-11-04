@@ -122,7 +122,7 @@ import { payPlanDues, usePayPlans } from '../lib/payPlans';
 import { usePriorityPins } from '../lib/priorityPins';
 import { applyBillEdits, useBillEdits } from '../lib/billEdits';
 import { loadCachedMoney, moneyBillDues, parseMoney, pullMoneySnapshot, saveMoneyEdits, type CellEdit, type MoneySnapshot } from '../lib/money';
-import { MoneyPage } from './components/MoneyPage';
+import { MoneyPage, MoneyPanelHost } from './components/MoneyPage';
 
 const starterFocus: FocusItem[] = [
   { id: 1, text: 'Move one strong application forward', space: 'role', done: false },
@@ -1252,6 +1252,7 @@ goalsData ? (
       <UpdateNotice />
       {import.meta.env.VITE_LOCAL_PREVIEW !== 'true' && <BackupGuard />}
       <SiteListHost />
+      <MoneyPanelHost model={moneyModel} dues={moneyDues} monthDues={monthDues} paidAt={paidAt} onPaid={(due: BillDue) => setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }))} />
       <DebtPopHost />
       <FocusDrawer
         open={focusOpen}

@@ -59,7 +59,7 @@ export type SyncedState = {
   /** Role Hub certs / portfolio ideas marked Active on Life Hub: id → 'active' / null; newest change wins */
   roleActive: Record<string, { mark: string | null; at: string }>;
   /** A bill's new day every month (kind:name → day, from month); newest change wins */
-  billDays: Record<string, { day: number | null; from: string; at: string }>;
+  billDays: Record<string, { day: number | null; from: string; at: string; amount?: number; amountFrom?: string }>;
   /** Goals marked active / passive (goal id → mode / null = Flow's suggestion); newest change wins */
   goalModes: Record<string, { mode: string | null; at: string }>;
   /** Balancing sheet picks: payment / incoming key → 'in' / null; newest change wins */

@@ -5,6 +5,7 @@ import { buildBrief, type BriefSection } from '../../lib/dailyBrief';
 import { REFRESH_EVENT } from '../../lib/syncNow';
 import { doneInMix, endMix, groupSteps, openTaskPanel, requestOpenMix, unpin } from '../../lib/priorityPins';
 import { useFeaturedLevels } from '../../lib/featuredLevels';
+import { openMoneyDue } from './MoneyPage';
 import type { PriorityItem } from './PriorityPanel';
 import { LOCAL_WRITE_EVENT, readSaved, writeSaved } from '../../lib/storage';
 import { eventEnd, eventStart, type BillDue, type ScheduleSnapshot } from '../../lib/schedule';
@@ -191,7 +192,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
           {folds[s.id] ? null : <>
             {s.rows.length ? <ul className="sk-brief-items">{s.rows.map(r => {
               const isNew = !s.keepAll && !seen.includes(r.id);
-              const open = r.mix ? () => requestOpenMix(r.mix!) : r.focusId ? () => setOpenFocusId(r.focusId!) : r.pin ? () => openTaskPanel(r.pin!) : r.go ? () => enter(r.go!) : undefined;
+              const open = r.id.startsWith('bill:') ? () => openMoneyDue(r.id.slice(5)) : r.mix ? () => requestOpenMix(r.mix!) : r.focusId ? () => setOpenFocusId(r.focusId!) : r.pin ? () => openTaskPanel(r.pin!) : r.go ? () => enter(r.go!) : undefined;
               return <li key={r.id} className="sk-brief-entry" data-focus-priority={r.priority}>
                 {open ? <button type="button" className="sk-brief-open" onClick={open} title={[r.title, r.note, r.priority ? FOCUS_PRIORITY_LABEL[r.priority] : ''].filter(Boolean).join(' · ')}>
                   <span className="sk-brief-title">{isNew && !s.compact ? <Dot tone="needs" hint="New since you last looked" /> : null}{r.marker ? <span className="sk-brief-kind">{r.marker}</span> : null}{r.title}{r.when ? <em className="sk-brief-when">{r.when}</em> : null}</span>

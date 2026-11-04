@@ -15,6 +15,12 @@ import {
   placePin,
   setDeckSlot,
   unpin,
+  liveMixes,
+  createMix,
+  addToMix,
+  leaveMix,
+  renameMix,
+  endMix,
   usePriorityPins,
   type Lane,
   PIN_DRAG_TYPE,
@@ -201,6 +207,48 @@ export function PriorityBoard({
     [pins, lanes, catalog],
   );
 
+  // Action List steps: a mix (items from different sites made into one list) takes the place of
+  // its first member; the rest of its members fold into it.
+  const mixes = useMemo(() => liveMixes(lanes), [lanes]);
+  type Step =
+    | { kind: "one"; item: PriorityItem }
+    | { kind: "mix"; id: string; name: string; items: PriorityItem[] };
+  const steps = useMemo(() => {
+    const names = new Map(mixes.map((m) => [m.id, m.name]));
+    const out: Step[] = [];
+    const seen = new Map<string, Step & { kind: "mix" }>();
+    for (const item of plan) {
+      const id = lanes[item.key]?.mix;
+      const name = id ? names.get(id) : undefined;
+      if (!id || !name) {
+        out.push({ kind: "one", item });
+        continue;
+      }
+      const got = seen.get(id);
+      if (got) got.items.push(item);
+      else {
+        const step = { kind: "mix" as const, id, name, items: [item] };
+        seen.set(id, step);
+        out.push(step);
+      }
+    }
+    return out;
+  }, [plan, lanes, mixes]);
+  const [openMix, setOpenMix] = useState<string | null>(null);
+  const newMix = (item: PriorityItem) => {
+    const name = window.prompt("Name the new list (e.g. Digital declutter)")?.trim();
+    if (!name) return;
+    setOpenMix(createMix(name, [item.key]));
+  };
+  const nameMix = (id: string, now: string) => {
+    const name = window.prompt("Rename this list", now)?.trim();
+    if (name && name !== now) renameMix(id, name);
+  };
+  const finishMix = (id: string, items: PriorityItem[]) => {
+    items.forEach(finish);
+    endMix(id);
+  };
+
   // On deck: one group per site; critical first, then red/yellow/green, then pin order.
   // Moved this visit but not locked: forgotten on refresh (back to auto sort).
   const [movedSlots, setMovedSlots] = useState<Record<string, number>>({});
@@ -293,7 +341,11 @@ export function PriorityBoard({
     e.preventDefault();
     e.stopPropagation();
     const key = e.dataTransfer.getData(DRAG_TYPE) || dragging;
-    if (key && key !== before) placePin(key, lane, before);
+    const mix = key ? lanes[key]?.mix : undefined;
+    const group = mix ? plan.filter((i) => lanes[i.key]?.mix === mix).map((i) => i.key) : [];
+    if (key && group.length > 1 && lane === PLAN) {
+      if (!before || !group.includes(before)) group.forEach((k) => placePin(k, lane, before));
+    } else if (key && key !== before) placePin(key, lane, before);
     setDragging(null);
     setOver(null);
   };
@@ -507,45 +559,125 @@ export function PriorityBoard({
             />
             {plan.length ? (
               <ol className="sk-list">
-                {plan.map((item, i) => (
+                {steps.map((step, i) =>
+                  step.kind === "mix" ? (
+                    <MenuRow
+                      as="li"
+                      key={`mix:${step.id}`}
+                      title={step.name}
+                      items={[
+                        { label: "Rename list…", onSelect: () => nameMix(step.id, step.name) },
+                        { label: "Split back into single items", onSelect: () => endMix(step.id) },
+                        { label: "Back on deck (all)", onSelect: () => endMix(step.id, DECK) },
+                        { label: "Take all off the plan", onSelect: () => endMix(step.id, null), danger: true },
+                      ]}
+                      className={`sk-row is-numbered sk-mix${openMix === step.id ? " is-open" : ""}${step.items.some((x) => x.key === dragging) ? " is-dragging" : ""}${over === step.items[0].key ? " is-over" : ""}`}
+                      dragProps={dragProps(step.items[0], PLAN)}
+                    >
+                      <span className="sk-num" aria-label={`Step ${i + 1}`}>
+                        {i + 1}
+                      </span>
+                      <span className="sk-rlead">
+                        {onComplete ? (
+                          <Circle
+                            onDone={() => finishMix(step.id, step.items)}
+                            label={`Done: ${step.name} (all ${step.items.length})`}
+                          />
+                        ) : (
+                          <span />
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        className="sk-rmain"
+                        aria-expanded={openMix === step.id}
+                        onClick={() => setOpenMix(openMix === step.id ? null : step.id)}
+                        title={step.items.map((x) => x.title).join(" · ")}
+                      >
+                        <span className="sk-rt">
+                          <Icon name="steps" size={13} /> {step.name}
+                        </span>
+                        <span className="sk-rs">
+                          {step.items.length} item{step.items.length === 1 ? "" : "s"} ·{" "}
+                          {[...new Set(step.items.map((x) => sourceById[x.source].shortName))].join(", ")}
+                        </span>
+                      </button>
+                      <span className="sk-rv" />
+                      <Icon name="chevron" className="sk-rchev" size={14} />
+                      {openMix === step.id ? (
+                        <ul className="sk-list sk-mix-items">
+                          {step.items.map((item) => (
+                            <MenuRow
+                              as="li"
+                              key={item.key}
+                              title={item.title}
+                              items={[
+                                { label: "Open", onSelect: () => setOpenKey(item.key) },
+                                { label: "Remove from this list", onSelect: () => leaveMix(item.key) },
+                                { label: "Take off the plan", onSelect: () => { leaveMix(item.key); remove(item); }, danger: true },
+                              ]}
+                              className="sk-row"
+                            >
+                              <span className="sk-rlead">{check(item)}</span>
+                              {rowBody(item, true)}
+                            </MenuRow>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </MenuRow>
+                  ) : (
                   <MenuRow
                     as="li"
-                    key={item.key}
-                    title={item.title}
+                    key={step.item.key}
+                    title={step.item.title}
                     items={[
                       {
-                        label: lanes[item.key]?.due
+                        label: lanes[step.item.key]?.due
                           ? "Change day…"
                           : "Give it a day…",
-                        onSelect: () => setDayFor(item.key),
+                        onSelect: () => setDayFor(step.item.key),
                       },
                       {
+                        label: "New list with this…",
+                        onSelect: () => newMix(step.item),
+                      },
+                      ...mixes
+                        .filter((m) => steps.some((x) => x.kind === "mix" && x.id === m.id))
+                        .map((m) => ({
+                          label: `Add to “${m.name}”`,
+                          onSelect: () => {
+                            addToMix(m.id, step.item.key);
+                            setOpenMix(m.id);
+                          },
+                        })),
+                      {
                         label: "Back on deck",
-                        onSelect: () => move(item, DECK),
+                        onSelect: () => move(step.item, DECK),
                       },
                       {
                         label: "Take off the plan",
-                        onSelect: () => remove(item),
+                        onSelect: () => remove(step.item),
                         danger: true,
                       },
                     ]}
-                    className={`sk-row is-numbered${levelClass(item)}`}
-                    dragProps={dragProps(item, PLAN)}
+                    className={`sk-row is-numbered${levelClass(step.item)}`}
+                    dragProps={dragProps(step.item, PLAN)}
                   >
                     <span className="sk-num" aria-label={`Step ${i + 1}`}>
                       {i + 1}
                     </span>
-                    <span className="sk-rlead">{check(item)}</span>
-                    {rowBody(item, true)}
-                    {dayFor === item.key ? (
+                    <span className="sk-rlead">{check(step.item)}</span>
+                    {rowBody(step.item, true)}
+                    {dayFor === step.item.key ? (
                       <DayMenu
-                        itemKey={item.key}
-                        title={item.title}
+                        itemKey={step.item.key}
+                        title={step.item.title}
                         onClose={() => setDayFor(null)}
                       />
                     ) : null}
                   </MenuRow>
-                ))}
+                  ),
+                )}
               </ol>
             ) : (
               <p className="sk-empty">

@@ -2855,3 +2855,14 @@
 .sk-app .sk-brief-section.is-numbered .sk-brief-items { counter-reset: briefn; }
 .sk-app .sk-brief-section.is-numbered .sk-brief-entry { counter-increment: briefn; }
 .sk-app .sk-brief-section.is-numbered .sk-brief-title::before { content: counter(briefn) ". "; font-weight: 700; opacity: .7; }
+
+/* Corner ring never sits on content: whatever comes right after the title (rank, note, linked
+   lists) also leaves the ring's width free on the right. */
+.sk-app .sk-fcard-corner ~ .sk-fcard-t + * { padding-right: 34px; }
+.sk-app .sk-fcard-corner ~ .sk-fcard-t + .sk-fcard-lists { padding-right: 30px; }
+
+/* Action List mixes: one numbered row for a list made from items on different sites. */
+.sk-app .sk-row.sk-mix .sk-rt svg { vertical-align: -2px; opacity: .8; }
+.sk-app .sk-row.sk-mix.is-open > .sk-rchev { transform: rotate(90deg); opacity: 1; }
+.sk-app .sk-row.sk-mix > .sk-mix-items { grid-column: 2 / -1; margin: 6px 0 0; padding-left: 10px; border-left: 2px solid var(--sk-line); }
+.sk-app .sk-mix-items > .sk-row { min-height: 40px; padding-block: 6px; }

@@ -61,6 +61,12 @@ export type LaneEntry = {
   subs?: BeforeStep[];
   /** A day for it (YYYY-MM-DD) — Priority + calendar only, never sent back to its site */
   due?: string;
+  /** Action List mix it belongs to (id of a `mix:<id>` entry) */
+  mix?: string;
+  /** On a `mix:<id>` entry: the list's name */
+  name?: string;
+  /** On a `mix:<id>` entry: deleted / finished */
+  gone?: boolean;
 };
 export type LaneMap = Record<string, LaneEntry>;
 
@@ -218,4 +224,67 @@ export function arrangeDeck<T extends string>(auto: T[], locked: Record<string, 
   movedIds.forEach(id => place(id, moved[id]));
   const rest = auto.filter(id => !slots.includes(id));
   return slots.map(s => s ?? rest.shift()!) as T[];
+}
+
+/**
+ * Action List mixes (2026-11-04): Randy groups items from different sites into one list
+ * ("Digital declutter" = a TickTick task + an iCloud email). Checking the list off finishes every
+ * item in it. Stored in the same synced lane map: `mix:<id>` holds the name (lane null, so nothing
+ * treats it as a pin); each member's own entry carries `mix: <id>`. Site lists and focus lists are
+ * separate and untouched.
+ */
+export const mixKey = (id: string) => `mix:${id}`;
+export type Mix = { id: string; name: string };
+
+export function liveMixes(map: LaneMap): Mix[] {
+  return Object.entries(map)
+    .filter(([k, e]) => k.startsWith('mix:') && e && !e.gone && e.name)
+    .map(([k, e]) => ({ id: k.slice(4), name: e.name! }));
+}
+
+/** New mix holding `keys`, which go on the Action List if they aren't already. */
+export function createMix(name: string, keys: string[]): string {
+  const id = Date.now().toString(36);
+  const at = new Date().toISOString();
+  const map = loadLanes();
+  map[mixKey(id)] = { lane: null, order: 0, at, name };
+  for (const k of keys) map[k] = { ...(map[k] || { lane: PLAN, order: 9999, at }), mix: id, at };
+  saveLanes(map);
+  for (const k of keys) if (map[k].lane !== PLAN) placePin(k, PLAN);
+  return id;
+}
+
+export function addToMix(id: string, key: string) {
+  const map = loadLanes();
+  const at = new Date().toISOString();
+  map[key] = { ...(map[key] || { lane: PLAN, order: 9999, at }), mix: id, at };
+  saveLanes(map);
+}
+
+/** Take one item out of its mix; it stays where it is on the Action List. */
+export function leaveMix(key: string) {
+  const map = loadLanes();
+  if (!map[key]?.mix) return;
+  map[key] = { ...map[key], mix: undefined, at: new Date().toISOString() };
+  saveLanes(map);
+}
+
+export function renameMix(id: string, name: string) {
+  const map = loadLanes();
+  const prev = map[mixKey(id)];
+  if (!prev) return;
+  map[mixKey(id)] = { ...prev, name, at: new Date().toISOString() };
+  saveLanes(map);
+}
+
+/** Retire a mix; its items go back to being single rows (or `lane` for all of them, e.g. null = off). */
+export function endMix(id: string, lane?: Lane | null) {
+  const map = loadLanes();
+  const at = new Date().toISOString();
+  if (map[mixKey(id)]) map[mixKey(id)] = { ...map[mixKey(id)], gone: true, at };
+  for (const [k, e] of Object.entries(map)) {
+    if (e?.mix !== id) continue;
+    map[k] = { ...e, mix: undefined, ...(lane !== undefined ? { lane } : {}), at };
+  }
+  saveLanes(map);
 }

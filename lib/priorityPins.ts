@@ -18,9 +18,18 @@ import { readSaved, writeSaved, STORAGE_KEYS } from './storage';
 export const PRIORITY_PINS_EVENT = 'lifehub:priority-pins';
 /** Any task title on any card fires this with a pin key; Doing now opens that item's panel. */
 export const OPEN_TASK_EVENT = 'lifehub:open-task';
-export const openTaskPanel = (key: string) => {
-  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(OPEN_TASK_EVENT, { detail: key }));
-};
+/**
+ * Doing Now owns these pop-outs, and its section unmounts while folded. So if it's folded,
+ * unfold it first and fire the event once it has mounted its listeners.
+ */
+function fireOnBoard(name: string, detail: string) {
+  if (typeof window === 'undefined') return;
+  const send = () => window.dispatchEvent(new CustomEvent(name, { detail }));
+  if (document.getElementById('sk-priority')?.classList.contains('is-open')) return send();
+  window.dispatchEvent(new CustomEvent('sk:reveal', { detail: 'priority' }));
+  window.setTimeout(send, 150);
+}
+export const openTaskPanel = (key: string) => fireOnBoard(OPEN_TASK_EVENT, key);
 
 /** Drag payload: a row on any site carries its pin key; Doing Now takes it. */
 export const PIN_DRAG_TYPE = 'text/lifehub-pin';
@@ -278,7 +287,7 @@ export function groupSteps<T extends { key: string }>(plan: T[], lanes: LaneMap)
 
 /** Ask Doing Now to expand a mix and scroll to it (the Daily Brief uses this). */
 export const OPEN_MIX_EVENT = 'lifehub:open-mix';
-export const requestOpenMix = (id: string) => window.dispatchEvent(new CustomEvent(OPEN_MIX_EVENT, { detail: id }));
+export const requestOpenMix = (id: string) => fireOnBoard(OPEN_MIX_EVENT, id);
 
 /** New mix holding `keys`, which go on the Action List if they aren't already. */
 export function createMix(name: string, keys: string[]): string {

@@ -2974,3 +2974,5 @@
 .sk-app .mb-saved { margin: 6px 0 0; padding: 6px 10px; border: 2px solid var(--sk-edge); border-radius: 10px; background: var(--sk-tint); font: var(--sk-caption); color: var(--sk-ink); }
 .sk-app .mb-hist-fold { margin-top: 6px; }
 .sk-app .mb-hist-fold > summary + * { padding: 0 var(--sk-s2) var(--sk-s2); }
+.sk-app .mb-saved.is-fail { border-color: var(--sk-alert); }
+.sk-app .fin-task-hint { margin: 0; font: var(--sk-caption); color: var(--sk-ink-2); }

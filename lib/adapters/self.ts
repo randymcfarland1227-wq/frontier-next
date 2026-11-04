@@ -20,6 +20,9 @@ export type SelfItem = {
   forEvent?: { id: string; title: string; date: string };
   /** Moved to another site's card (e.g. a finance task captured in Self). Unset = lives in Self. */
   home?: string;
+  /** Finance task also written to the Radall sheet's Task List: 'written' (the sheet row is the
+   *  real task from then on), 'failed' (lives on Life Hub only), 'pending' while saving */
+  sheet?: 'pending' | 'written' | 'failed';
   /** Moved here from another site's row (a Gmail or Outlook item…) — keeps its link */
   from?: { source: string; id: string; url?: string };
 };
@@ -133,6 +136,14 @@ export function setSelfDue(id: string, due?: string): SelfItem[] {
 export const SELF_ITEMS_EVENT = 'lifehub:self-items';
 
 /** Move a Self task to another site's card (or back to Self with `home` unset). */
+export function setSelfSheet(id: string, sheet: SelfItem['sheet']): SelfItem[] {
+  const at = new Date().toISOString();
+  const updated = loadSelfItems().map(i => (i.id === id ? { ...i, sheet, updatedAt: at } : i));
+  saveSelfItems(updated);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(SELF_ITEMS_EVENT));
+  return updated;
+}
+
 export function setSelfHome(id: string, home?: string): SelfItem[] {
   const at = new Date().toISOString();
   const updated = loadSelfItems().map(i => (i.id === id ? { ...i, home: home || undefined, updatedAt: at } : i));

@@ -5,6 +5,8 @@
  * Lives in the "Life Hub Mail Sync" Apps Script project (script id 1xOI9TUs…), next to Code.js:
  *   - syncStarredMail (10-minute trigger + Life Hub's Refresh) calls lhPushMoney_(key).
  *   - doPost routes { action: 'moneyEdit', edits } to lhMoneyEdit_(edits).
+ *   - An edit { tab: 'Task List', appendTask: true, title, due, note } adds a Finance task row to the
+ *     Task List tab (lhAppendTask_); then the Radall tasks are pushed again right away.
  *
  * The site does the reading (it finds each block by its heading), so this file only ships what
  * the tabs show: display values, which cells are crossed out, which hold formulas, and merges.
@@ -81,8 +83,14 @@ function lhPushMoney_(key) {
  */
 function lhMoneyEdit_(edits) {
   var ss = SpreadsheetApp.openById(LH_MONEY.SHEET_ID);
+  var appended = false;
   var results = (edits || []).slice(0, 20).map(function (e) {
     try {
+      if (e && e.appendTask === true) {
+        var res = lhAppendTask_(ss, e);
+        if (res.ok && !res.existed) appended = true;
+        return res;
+      }
       if (!e || LH_MONEY.TABS.indexOf(e.tab) < 0) return { ok: false, error: 'tab not allowed' };
       var sh = ss.getSheetByName(e.tab);
       if (!sh) return { ok: false, error: 'no tab' };
@@ -124,7 +132,59 @@ function lhMoneyEdit_(edits) {
     }
   });
   SpreadsheetApp.flush();
-  return { ok: true, results: results, snapshot: lhMoneySnapshot_() };
+  var radall;
+  if (appended) {
+    try {
+      radall = syncRadallTasks(PropertiesService.getScriptProperties().getProperty('LIFEHUB_MAIL_KEY'));
+    } catch (err) {
+      radall = 'Radall not sent (' + String(err).slice(0, 80) + ')';
+    }
+  }
+  return { ok: true, results: results, snapshot: lhMoneySnapshot_(), radall: radall };
+}
+
+/**
+ * Add one Finance task (Task · Type · Note · Amount · Due Date) to the Task List tab, in the first
+ * row after the last task (a row is inserted if that one isn't empty). A task with the same title
+ * (ignoring case and spaces) is never added twice. Plain text only; due is YYYY-MM-DD.
+ */
+function lhAppendTask_(ss, e) {
+  var TAB = 'Task List';
+  if (e.tab !== TAB) return { ok: false, error: 'tab not allowed' };
+  var title = String(e.title || '').trim().slice(0, 200);
+  var note = String(e.note || '').trim().slice(0, 300);
+  var due = String(e.due || '').trim();
+  if (!title) return { ok: false, error: 'no title' };
+  if (/^[=+@]/.test(title) || /^[=+@]/.test(note)) return { ok: false, error: 'no formulas from Life Hub' };
+  if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) return { ok: false, error: 'bad date' };
+  var sh = ss.getSheetByName(TAB);
+  if (!sh) return { ok: false, error: 'no tab' };
+  var shown = sh.getRange(1, 1, Math.max(sh.getLastRow(), 1), 5).getDisplayValues();
+  var header = shown.findIndex(function (r) { return String(r[0]).trim().toLowerCase() === 'task'; });
+  if (header < 0) return { ok: false, error: 'no "Task" header row' };
+  var cols = shown[header].map(function (h) { return String(h).trim().toLowerCase(); });
+  var noteCol = cols.indexOf('note');
+  var dueCol = cols.indexOf('due date');
+  var norm = function (s) { return String(s).toLowerCase().replace(/\s+/g, ' ').trim(); };
+  var last = header;
+  for (var i = header + 1; i < shown.length; i++) {
+    if (norm(shown[i][0]) === norm(title)) return { ok: true, existed: true, row: i + 1 };
+    if (shown[i].some(function (v) { return String(v).trim() !== ''; })) last = i;
+  }
+  var row = last + 2;
+  var target = sh.getRange(row, 1, 1, 5);
+  if (target.getDisplayValues()[0].some(function (v) { return String(v).trim() !== ''; }) || target.getFormulas()[0].some(Boolean)) {
+    sh.insertRowAfter(last + 1);
+    target = sh.getRange(row, 1, 1, 5);
+  }
+  sh.getRange(row, 1).setValue(title);
+  if (note && noteCol >= 0) sh.getRange(row, noteCol + 1).setValue(note);
+  if (due && dueCol >= 0) {
+    var p = due.split('-').map(Number);
+    sh.getRange(row, dueCol + 1).setValue(new Date(p[0], p[1] - 1, p[2])).setNumberFormat('M/d/yyyy');
+  }
+  lhMoneyLog_(ss, TAB, target.getA1Notation(), '', [title, note, due].filter(Boolean).join(' · '));
+  return { ok: true, row: row };
 }
 
 /** Insert only the Balancing columns; neighboring account/bill blocks stay in place. */

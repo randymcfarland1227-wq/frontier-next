@@ -74,9 +74,11 @@ export type CellEdit =
   | { tab: string; r: number; c: number; expect: string; value: string }
   | { tab: string; r: number; c1: number; c2: number; expect: string; strike: boolean }
   /** Move a row segment to a new row inserted under row `moveAfter` (e.g. Needed → Wants) */
-  | { tab: string; r: number; c: number; c1: number; c2: number; expect: string; moveAfter: number };
+  | { tab: string; r: number; c: number; c1: number; c2: number; expect: string; moveAfter: number }
+  /** Add a Finance task row to the Radall 'Task List' tab (same title = not added twice) */
+  | { tab: 'Task List'; appendTask: true; title: string; due?: string; note?: string };
 
-export type EditResult = { ok: boolean; error?: string; now?: string };
+export type EditResult = { ok: boolean; error?: string; now?: string; row?: number; existed?: boolean };
 
 /**
  * The same account's balance lives twice on the Randy tab: Debit Accounts (Chk column) and the

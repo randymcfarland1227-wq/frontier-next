@@ -226,6 +226,9 @@ function hideLedgerDone(
   return next;
 }
 
+/** Titles compared the way the sheet sync matches them (case and spacing ignored). */
+const sameTitle = (t: string) => t.toLowerCase().replace(/\s+/g, ' ').trim();
+
 export function LifeHub() {
   const [active, setActive] = useState<SpaceId>(typeof window !== 'undefined' && window.location.hash === '#settings' ? 'settings' : 'home');
   const [focusOpen, setFocusOpen] = useState(false);
@@ -635,6 +638,15 @@ export function LifeHub() {
       const home = item.home as SourceId | undefined;
       if (!home || home === 'self' || !out[home]) continue;
       if (hiddenItems[`self::${item.id}`]?.mark === 'hide') continue;
+      // A finance task written to the Radall Task List shows once: as the sheet's row when the
+      // Radall sync has it (matched by title), and on its own only until that sync arrives.
+      if (home === 'radall') {
+        const key = sameTitle(item.title);
+        if (out.radall?.tasks.some(t => sameTitle(t.title) === key)) continue;
+        // Written, and the sheet has synced since it was added: the sheet's row is the task now
+        // (shown above, or done / removed there).
+        if (item.sheet === 'written' && Date.parse(out.radall?.refreshedAt || '') > Date.parse(item.createdAt)) continue;
+      }
       const fromName = item.from ? sourceById[item.from.source as SourceId]?.name || item.from.source : 'Self';
       const snap = out[home];
       const id = `self:${item.id}`;

@@ -2917,3 +2917,8 @@
 /* Daily Brief Action List: a done circle on the right of each row */
 .sk-app .sk-brief-entry:has(> .sk-brief-done) { grid-template-columns: minmax(0, 1fr) auto; }
 .sk-app .sk-brief-done { display: grid; place-items: center; padding: 0 8px; }
+/* Parking Lot: one note per line, newest last */
+.sk-app .sk-parking-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.sk-app .sk-parking-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--sk-ink) 12%, transparent); border-radius: 8px; font-size: 13px; }
+.sk-app .sk-parking-note { overflow-wrap: anywhere; }
+.sk-app .sk-parking-list small { color: var(--sk-ink-2); font-size: 11px; }

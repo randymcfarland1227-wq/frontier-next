@@ -35,21 +35,33 @@ type Pick = {
 };
 
 const PARKING_KEY = "lifehub-parking-lot";
+type ParkNote = { id: number; text: string; at: string };
+type ParkStore = Record<string, ParkNote[] | string>;
+/** A day's notes; the first version kept one block of text, which becomes one note. */
+const notesOf = (v: ParkNote[] | string | undefined): ParkNote[] =>
+  Array.isArray(v) ? v : v && v.trim() ? [{ id: 1, text: v.trim(), at: "" }] : [];
 
 /** Today's Parking Lot: one scratch note for the day's work, plus a way to pin a note onto an existing task. */
 function ParkingLot({ catalog }: { catalog: Map<string, PriorityItem> }) {
   const day = useDayKey();
-  const [text, setText] = useState(() => readSaved<Record<string, string>>(PARKING_KEY, {})[day] || "");
+  const [notes, setNotes] = useState<ParkNote[]>(() => notesOf(readSaved<ParkStore>(PARKING_KEY, {})[day]));
+  const [entry, setEntry] = useState("");
   const [target, setTarget] = useState<{ key: string; label: string } | null>(null);
   const [attach, setAttach] = useState("");
   const [done, setDone] = useState("");
-  const save = (v: string) => {
-    setText(v);
-    const all = readSaved<Record<string, string>>(PARKING_KEY, {});
+  const save = (list: ParkNote[]) => {
+    setNotes(list);
+    const all = readSaved<ParkStore>(PARKING_KEY, {});
     // Keep a week of days; older ones fall away.
-    const next = { ...all, [day]: v };
+    const next: ParkStore = { ...all, [day]: list };
     const keep = Object.keys(next).sort().slice(-7);
     writeSaved(PARKING_KEY, Object.fromEntries(keep.map((d) => [d, next[d]])));
+  };
+  const addNote = () => {
+    const t = entry.trim();
+    if (!t) return;
+    save([...notes, { id: Date.now(), text: t, at: new Date().toISOString() }]);
+    setEntry("");
   };
   const options = [...catalog.entries()].map(([key, item]) => ({
     key,
@@ -66,15 +78,52 @@ function ParkingLot({ catalog }: { catalog: Map<string, PriorityItem> }) {
   };
   return (
     <div className="sk-parking">
-      <p className="sk-sec">A scratch page for today’s work. Stays with the day; a new day starts clean.</p>
-      <textarea
+      <p className="sk-sec">Quick notes for today’s work. Each day starts clean.</p>
+      <input
         className="sk-parking-text"
-        value={text}
-        onChange={(e) => save(e.target.value)}
-        placeholder="Park thoughts, links, ideas and loose ends here…"
-        aria-label="Today's Parking Lot"
-        rows={9}
+        value={entry}
+        onChange={(e) => setEntry(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            addNote();
+          }
+        }}
+        placeholder="Type a note, press Enter…"
+        aria-label="Add a note to today's Parking Lot"
+        maxLength={600}
       />
+      {notes.length ? (
+        <ul className="sk-parking-list">
+          {notes.map((n) => (
+            <li key={n.id}>
+              <span className="sk-parking-note">{n.text}</span>
+              <small>{n.at ? new Date(n.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : ""}</small>
+              <button
+                type="button"
+                className="sk-link"
+                title="Put this note on a task's details"
+                onClick={() => {
+                  setAttach(n.text);
+                  setDone("");
+                }}
+              >
+                → Task
+              </button>
+              <button
+                type="button"
+                className="sk-btn is-small is-icon is-quiet"
+                aria-label={`Delete note: ${n.text}`}
+                onClick={() => save(notes.filter((x) => x.id !== n.id))}
+              >
+                <Icon name="close" size={12} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="sk-empty">Nothing parked yet today.</p>
+      )}
       <h3 className="sk-cap sk-todayh">Attach a note to a task</h3>
       <SearchPick
         options={options}
@@ -85,17 +134,17 @@ function ParkingLot({ catalog }: { catalog: Map<string, PriorityItem> }) {
           setDone("");
         }}
       />
-      {target ? (
+      {target || attach ? (
         <div className="sk-parking-attach">
           <textarea
             value={attach}
             onChange={(e) => setAttach(e.target.value)}
-            placeholder={`Note for “${target.label}”…`}
+            placeholder={target ? `Note for “${target.label}”…` : "Note…"}
             aria-label="Note to attach"
             rows={3}
           />
-          <button type="button" className="sk-btn is-small" disabled={!attach.trim()} onClick={attachNow}>
-            Attach to task
+          <button type="button" className="sk-btn is-small" disabled={!attach.trim() || !target} onClick={attachNow}>
+            {target ? `Attach to “${target.label}”` : "Pick a task above first"}
           </button>
         </div>
       ) : null}

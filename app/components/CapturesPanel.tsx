@@ -12,7 +12,7 @@ import type { SelfItem } from '../../lib/adapters/self';
 import { useRowMenu, type RowMenuItem } from './RowMenu';
 import { Circle, ListHead, Row, Tag } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
-import { openTaskPanel, pinDragProps, pinKey, usePriorityPins } from '../../lib/priorityPins';
+import { PLAN, openTaskPanel, pinDragProps, pinKey, usePriorityPins } from '../../lib/priorityPins';
 import { addOngoingGoal } from '../../lib/ongoingGoals';
 import { addToSiteList, createSiteList, listOfTask, openSiteList, useSiteListStore } from '../../lib/siteLists';
 
@@ -199,8 +199,8 @@ export function CapturesPanel({
     ...(t.done ? [] : [{ label: 'Add to new list…', onSelect: () => newList(t) }]),
     ...(t.done ? [] : myLists.map(l => ({ label: `Add to list: ${l.name}`, onSelect: () => addToSiteList(l.id, [t.id]) }))),
     { label: t.starred ? 'Unstar' : 'Star', onSelect: () => onTaskStar(t.id), hidden: t.done },
-    { label: 'Pin to Priority', onSelect: () => addPin('self', t.id), hidden: t.done || !t.starred || isPinned('self', t.id) },
-    { label: 'Take off Priority', onSelect: () => removePin('self', t.id), hidden: t.done || !isPinned('self', t.id) },
+    { label: 'Add to Doing Now', onSelect: () => addPin('self', t.id, PLAN), hidden: t.done || isPinned('self', t.id) },
+    { label: 'Take off Doing Now', onSelect: () => removePin('self', t.id), hidden: t.done || !isPinned('self', t.id) },
     { label: 'Day: today', onSelect: () => onTaskDue(t.id, dayShift(0)), hidden: t.done },
     { label: 'Day: tomorrow', onSelect: () => onTaskDue(t.id, dayShift(1)), hidden: t.done },
     { label: t.due ? 'Change day…' : 'Pick a day…', onSelect: () => setDayFor(t.id), hidden: t.done },

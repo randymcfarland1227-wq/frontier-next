@@ -23,6 +23,7 @@ import {
   pinKey,
   pinDragProps,
   usePriorityPins,
+  PLAN,
 } from "../../lib/priorityPins";
 import { byLevel, useFeaturedLevels } from "../../lib/featuredLevels";
 import { readSaved, writeSaved, STORAGE_KEYS } from "../../lib/storage";
@@ -579,10 +580,10 @@ function StarredRow({
           itemKey={key}
           title={item.title}
           toggle={{
-            label: pinned ? "◎ Pinned" : "◎ Pin to Priority",
+            label: pinned ? "✓ In Doing Now" : "＋ Add to Doing Now",
             on: pinned,
             onClick: () =>
-              pinned ? removePin(sourceId, item.id) : addPin(sourceId, item.id),
+              pinned ? removePin(sourceId, item.id) : addPin(sourceId, item.id, PLAN),
           }}
           tag={
             TAGGABLE.includes(sourceId)

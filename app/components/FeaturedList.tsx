@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { tagTone } from '../../lib/tagTone';
 import type { FeaturedItem, SourceId, SourceSnapshot } from '../../lib/types';
 import { sourceById, isMusicTask, MUSIC_HUB_URL } from '../../lib/sources';
-import { openTaskPanel, pinKey, usePriorityPins } from '../../lib/priorityPins';
+import { PLAN, openTaskPanel, pinKey, usePriorityPins } from '../../lib/priorityPins';
 import { DayMenu, shortDue } from './DayMenu';
 import { setTaskTag, TAG_SUGGESTIONS, TAGGABLE } from '../../lib/taskTags';
 import { setSelfHome } from '../../lib/adapters/self';
@@ -120,9 +120,9 @@ export function FeaturedList({
                   itemKey={pinKey(sourceId, item.id)}
                   title={item.title}
                   toggle={{
-                    label: pinned ? '◎ Pinned' : '◎ Pin to Priority',
+                    label: pinned ? '✓ In Doing Now' : '＋ Add to Doing Now',
                     on: pinned,
-                    onClick: () => (pinned ? removePin(sourceId, item.id) : addPin(sourceId, item.id)),
+                    onClick: () => (pinned ? removePin(sourceId, item.id) : addPin(sourceId, item.id, PLAN)),
                   }}
                   tag={
                     TAGGABLE.includes(sourceId)

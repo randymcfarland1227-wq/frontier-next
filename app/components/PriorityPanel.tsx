@@ -153,7 +153,7 @@ export function PriorityPanel({
             <LevelDot level={level} title={item.title} onCycle={onCycleLevel} />
           )}
           <CriticalFlag on={critical} title={item.title} onToggle={onToggleCritical} />
-          <span className="plan-panel-where">{lane === PLAN ? 'On your action list' : lane === DECK ? 'On deck' : ''}</span>
+          {lane ? <span className="plan-panel-where">{lane === PLAN ? 'In Doing Now · action list' : 'In Doing Now · on deck'}</span> : <button type="button" className="row-action plan-panel-add" onClick={() => onMove(PLAN)}>＋ Add to Doing Now</button>}
         </div>
         {item.detail ? <p className="plan-panel-detail">{item.detail}</p> : null}
         {item.originUrl ? (

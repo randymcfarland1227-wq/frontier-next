@@ -2770,3 +2770,6 @@
 .sk-app .sk-brief-entry:hover { border-left-color: var(--sk-needs); }
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-brief-entry { background: color-mix(in srgb, #000 28%, transparent); border-color: color-mix(in srgb, var(--sk-ink) 16%, transparent); border-left-color: color-mix(in srgb, var(--sk-ink) 45%, transparent); }
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-brief-section .sk-listh { background: color-mix(in srgb, #fff 6%, transparent); }
+
+/* Task pop-out: Add to Doing Now sits up top, next to the level marks. */
+.plan-panel-marks .plan-panel-add { margin-left: auto; padding: 5px 12px; border-radius: 999px; font-weight: 700; }

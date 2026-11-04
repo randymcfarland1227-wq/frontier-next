@@ -862,6 +862,45 @@ export function crossOffEdit(item: MoneyItem | undefined, strike = true): CellEd
   return { tab: first.tab, r: first.r, c1: first.c, c2: last.c, expect: first.text, strike };
 }
 
+/** A date written the way the cell already writes dates: 11/6, 11/6/26, 11/6/2026, Nov 6, Nov 6, 2026. */
+export function sheetDateText(iso: string, like: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const t = like.trim();
+  const slash = t.match(/^\d{1,2}\/\d{1,2}(?:\/(\d{2,4}))?$/);
+  if (slash) return `${m}/${d}${slash[1] ? `/${slash[1].length === 2 ? String(y).slice(2) : y}` : ''}`;
+  const named = t.match(/^([A-Za-z]{3,9})\.?\s+\d{1,2}(\s*,\s*\d{4})?$/);
+  if (named) {
+    const long = named[1].length > 3;
+    const name = new Date(y, m - 1, d).toLocaleDateString('en-US', { month: long ? 'long' : 'short' });
+    return `${name} ${d}${named[2] ? `, ${y}` : ''}`;
+  }
+  return `${m}/${d}`;
+}
+
+/** An amount written the way the cell already writes it ($109, $109.00, 109). */
+export function sheetMoneyText(n: number, like: string): string {
+  const t = like.trim();
+  const dollar = !t || t.includes('$');
+  const cents = /\.\d{2}\b/.test(t) || n % 1 !== 0;
+  return `${dollar ? '$' : ''}${cents ? n.toFixed(2) : String(n)}`;
+}
+
+/**
+ * The sheet edits that change one money row's amount and / or date (this payment only). Skips a
+ * projected row (not in the sheet yet), a formula cell, or a date cell on another row (a shared date).
+ */
+export function rowChangeEdits(item: MoneyItem | undefined, change: { amount?: number; date?: string }): CellEdit[] {
+  if (!item || item.projected) return [];
+  const out: CellEdit[] = [];
+  const a = item.cells.amount;
+  if (change.amount !== undefined && Number.isFinite(change.amount) && change.amount !== item.amount && a && !a.formula && a.r === item.cells.name.r)
+    out.push({ tab: a.tab, r: a.r, c: a.c, expect: a.text, value: sheetMoneyText(change.amount, a.text) });
+  const dc = item.cells.date;
+  if (change.date && change.date !== item.date && dc && !dc.formula && dc.tab === item.cells.name.tab && dc.r === item.cells.name.r)
+    out.push({ tab: dc.tab, r: dc.r, c: dc.c, expect: dc.text, value: sheetDateText(change.date, dc.text) });
+  return out;
+}
+
 /**
  * Add an item to the sheet's To purchase list: written into the blank row under its last item
  * (Item · Why · Cost · Where / note · … · … · Priority). Empty values are skipped.

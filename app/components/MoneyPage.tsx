@@ -11,6 +11,7 @@ import { MoneySelector } from './MoneySelector';
 import { isLedgerPaid, ledgerMonthRows } from '../../lib/moneyLedger';
 import { DebtFile } from './DebtFile';
 import { CardPayoff } from './CardPayoff';
+import { billHistory } from '../../lib/billHistory';
 import { AccountsBoard, CardsTable, LoansTable, MoneyDash, PaySources, WeekBoard, cardRows, loanRows, nearest, type CellView, type DashCredit } from './MoneyBoards';
 import { outstandingParts, ticketTotals } from './OutstandingView';
 import { useOwedDone } from '../../lib/owedComplete';
@@ -1665,7 +1666,7 @@ function payLine(d: BillDue, paidAt: Record<string, string>): BalanceLine {
     payBy: d.bill.payBy,
     open: !d.skipped && !paidAt[d.key] && (d.days >= 0 || isOverdue(d)),
     paid: paidAt[d.key],
-    src: srcKey('pay', d.bill.name),
+    src: srcKey('pay', d.bill.origName ?? d.bill.name),
   };
 }
 function inLine(d: IncomingDue): BalanceLine {
@@ -1888,7 +1889,7 @@ function usePayFrom() {
   const { get } = useMoneyMeta();
   const plan = useBalancePicks();
   return (d: BillDue) => {
-    const src = srcKey('pay', d.bill.name);
+    const src = srcKey('pay', d.bill.origName ?? d.bill.name);
     return get(`from:${src}`)?.acct || plan.entries[d.key]?.acct || plan.remembered.get(src)?.acct || '';
   };
 }
@@ -2347,9 +2348,14 @@ function LinePanel({
   onPaid,
   onBack,
   onClose,
+  allDues,
+  paidAt,
 }: {
   id: string;
   due?: BillDue;
+  /** Every payment Life Hub knows (for the history) */
+  allDues?: BillDue[];
+  paidAt?: Record<string, string>;
   book: Book;
   model: MoneyModel;
   onSave: Save;
@@ -2580,6 +2586,7 @@ function LinePanel({
         </section>
       ) : null}
 
+      {due ? <PaidHistory list={allDues || [due]} paidAt={paidAt || {}} model={model} current={due} /> : null}
       {due ? <ChangeThisOne due={due} /> : null}
 
       <div className="bal-dlg-actions">
@@ -2644,18 +2651,44 @@ function SinceField({ metaKey, label }: { metaKey: string; label: string }) {
   );
 }
 
-/** Every payment of one entity that Life Hub knows about, newest first, paid or not. */
-function PaidHistory({ list, paidAt }: { list: BillDue[]; paidAt: Record<string, string> }) {
-  const rows = [...new Map(list.map(x => [x.key, x])).values()].sort((a, b) => b.due.localeCompare(a.due)).slice(0, 12);
-  if (!rows.length) return null;
+/**
+ * Payment history for one bill: last paid (when + how much), the usual amount, whether this one is
+ * more, then every payment folded — this month's and later from the schedule, earlier months from the
+ * sheet's rows (struck = paid) and every Mark paid tap (amounts recorded from Nov 4, 2026 on).
+ */
+function PaidHistory({ list, paidAt, model, current }: { list: BillDue[]; paidAt: Record<string, string>; model?: MoneyModel; current?: BillDue }) {
+  const { meta } = useMoneyMeta();
+  const base = current || list[0];
+  if (!base) return null;
+  const h = billHistory(base.bill, list, model?.items || [], paidAt, meta);
+  if (!h.rows.length) return null;
+  const day = (iso: string) => fromDayKey(iso.slice(0, 10)).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  const now = current?.bill.amount;
+  const diff = now !== undefined && h.usual !== undefined ? now - h.usual : 0;
+  const stateText = (r: (typeof h.rows)[number]) =>
+    r.state === 'paid' ? `paid ${r.paidOn ? day(r.paidOn) : ''}` : r.state === 'crossed' ? 'crossed off in the sheet' : r.state === 'skipped' ? 'skipped' : r.due < dayKey(new Date()) ? 'not paid' : 'coming up';
   return (
     <>
-      <h4 className="mb-cp-h">Payments</h4>
-      <ul className="mb-cp-list">
-        {rows.map(x => (
-          <li key={x.key}><span>{fromDayKey(x.due).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span><b>{money(x.bill.amount) || '?'}</b><small>{STATE_TEXT[monthState(x, paidAt)](x, paidAt)}</small></li>
-        ))}
-      </ul>
+      <h4 className="mb-cp-h">Payment history</h4>
+      <div className="mb-cp-figs">
+        <span><small>last paid</small><b>{h.lastPaid ? (h.lastPaid.amount !== undefined ? money(h.lastPaid.amount) : '?') : '—'}</b><small>{h.lastPaid ? (h.lastPaid.paidOn ? `on ${day(h.lastPaid.paidOn)}` : `${day(h.lastPaid.due)} bill`) : 'no payment marked yet'}</small></span>
+        <span><small>usual amount</small><b>{h.usual !== undefined ? money(h.usual) : '—'}</b></span>
+        {current && now !== undefined ? (
+          <span><small>this one</small><b className={diff > 0 ? 'mb-late' : diff < 0 ? 'mb-ok' : ''}>{money(now)}</b><small>{diff > 0 ? `${money(diff)} more than usual` : diff < 0 ? `${money(-diff)} less than usual` : 'same as usual'}</small></span>
+        ) : null}
+      </div>
+      <details className="skm-fold mb-hist-fold">
+        <summary><Icon name="chevron" className="skm-fchev" /><span className="skm-ftitle">Every payment</span><span className="sk-sec skm-fmeta">{h.rows.length}</span></summary>
+        <ul className="mb-cp-list">
+          {h.rows.map(r => (
+            <li key={r.key}>
+              <span>{day(r.due)}</span>
+              <b className={h.usual !== undefined && r.amount !== undefined && r.amount > h.usual ? 'mb-late' : ''}>{r.amount !== undefined ? money(r.amount) : '?'}</b>
+              <small>{stateText(r)}</small>
+            </li>
+          ))}
+        </ul>
+      </details>
     </>
   );
 }
@@ -2665,6 +2698,7 @@ const PAID_STATES = ['paid', 'crossed', 'charged', 'skipped'];
 /** Edit just this one payment (amount, new due day, skip, note); the next cycle stays as it was. */
 function ChangeThisOne({ due, onGone }: { due: BillDue; onGone?: () => void }) {
   const [open, setOpen] = useState(false);
+  const [said, setSaid] = useState('');
   const edit = loadBillEdits()[due.key];
   const changed = Boolean(edit && (edit.skip || edit.moveTo || edit.amount !== undefined || edit.note));
   return (
@@ -2672,12 +2706,13 @@ function ChangeThisOne({ due, onGone }: { due: BillDue; onGone?: () => void }) {
       <h4 className="mb-cp-h">This payment</h4>
       {changed && !open ? <p className="mb-dim">Changed for this one: {billChangeText(due) || 'edited'}{due.editNote ? ` · ${due.editNote}` : ''}</p> : null}
       {open ? (
-        <BillChangeForm due={due} onDone={() => setOpen(false)} onGone={onGone} hideFlags />
+        <BillChangeForm due={due} onDone={() => setOpen(false)} onGone={onGone} hideFlags onSaved={setSaid} />
       ) : (
-        <button type="button" className="sk-btn is-small" onClick={() => setOpen(true)}>
-          {changed ? 'Edit change' : 'Change amount / due day / note'}
+        <button type="button" className="sk-btn is-small" onClick={() => { setSaid(''); setOpen(true); }}>
+          {changed ? 'Edit change' : 'Change amount / due date / name / note'}
         </button>
       )}
+      {said && !open ? <p className="mb-saved" role="status">{said}</p> : null}
       
     </div>
   );
@@ -2731,7 +2766,7 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
         </div>
       ) : null}
       <SinceField metaKey={l.key} label="Loan started" />
-      <PaidHistory list={history} paidAt={paidAt} />
+      <PaidHistory list={history} paidAt={paidAt} model={model} current={l.due} />
       {l.due ? <ChangeThisOne due={l.due} onGone={onClose} /> : null}
       <div className="bal-dlg-actions">
         <button type="button" className="sk-btn is-small" onClick={() => { setMeta(l.key, { closed: l.closed ? undefined : true }); if (l.hub) updateLifeSub(l.hub.id, { status: l.closed ? 'active' : 'cancelled' }); }}>{l.closed ? 'Reopen' : 'Mark closed'}</button>
@@ -2755,8 +2790,10 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
   const thisMonth = new Date().toISOString().slice(0, 7);
   const mine = cur.find(d => d.due.startsWith(thisMonth)) || cur[0];
   const state = mine ? monthState(mine, paidAt) : undefined;
-  const hubSub = loadLifeSubs().find(x => !x.removed && x.name.trim().toLowerCase() === name.trim().toLowerCase());
-  const src = srcKey('pay', name.trim());
+  // Renamed on Life Hub: the hub sub and pay-from stay under the sheet / original name.
+  const orig = (list.find(d => d.bill.origName)?.bill.origName ?? name).trim();
+  const hubSub = loadLifeSubs().find(x => !x.removed && x.name.trim().toLowerCase() === orig.toLowerCase());
+  const src = srcKey('pay', orig);
   const pick = (acct: string) => {
     setMeta(`from:${src}`, { acct: acct || undefined });
     const bank = banks.find(b => b.name === acct);
@@ -2781,7 +2818,7 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
         <optgroup label="Accounts">{banks.map(b => <option key={b.name} value={b.name}>{b.label}</option>)}</optgroup>
         <optgroup label="Cards">{cards.map(c => <option key={c} value={c}>{c}</option>)}</optgroup>
       </select>
-      <PaidHistory list={list} paidAt={paidAt} />
+      <PaidHistory list={list} paidAt={paidAt} model={model} current={mine} />
       {mine ? <ChangeThisOne due={mine} onGone={onClose} /> : null}
       {hubSub ? (
         <>
@@ -2885,7 +2922,7 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
       ) : null}
       <SinceField metaKey={c.key} label="Opened" />
       {c.due ? <ChangeThisOne due={c.due} onGone={onClose} /> : null}
-      <PaidHistory list={dues.filter(d => d.bill.kind === 'card' && nearest(d.bill.name, cardRows(model, monthDues, get), r => r.name)?.key === c.key)} paidAt={paidAt} />
+      <PaidHistory list={dues.filter(d => d.bill.kind === 'card' && nearest(d.bill.name, cardRows(model, monthDues, get), r => r.name)?.key === c.key)} paidAt={paidAt} model={model} current={c.due} />
       {c.hub ? (
         <div className="bal-dlg-actions">
           <button type="button" className="sk-btn is-small is-danger" onClick={() => { if (window.confirm(`Delete ${c.name}? It comes off the card list and its payments stop.`)) { updateExtraCard(c.hub!.id, { removed: true }); onClose(); } }}>Delete card</button>
@@ -2934,16 +2971,7 @@ function ItemPanel({ id, dues, model, paidAt, onPaid, onBack, onClose }: { id: s
         <optgroup label="Accounts">{banks.map(b => <option key={b.name} value={b.name}>{b.label}</option>)}</optgroup>
         <optgroup label="Cards">{cards.map(c => <option key={c} value={c}>{c}</option>)}</optgroup>
       </select>
-      {same.length ? (
-        <>
-          <h4 className="mb-cp-h">Other payments</h4>
-          <ul className="mb-cp-list">
-            {same.map(x => (
-              <li key={x.key}><span>{fromDayKey(x.due).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span><b>{money(x.bill.amount) || '?'}</b><small>{STATE_TEXT[monthState(x, paidAt)](x, paidAt)}</small></li>
-            ))}
-          </ul>
-        </>
-      ) : null}
+      <PaidHistory list={dues} paidAt={paidAt} model={model} current={d} />
       <ChangeThisOne due={d} onGone={onClose} />
       {['paid', 'crossed', 'charged', 'skipped'].includes(state) ? null : (
         <button type="button" className="sk-btn is-small" onClick={() => { onPaid(d); onClose(); }}>Mark paid</button>
@@ -3942,7 +3970,7 @@ export function MoneyPage({
       <p className="money-foot">Every change from Life Hub is logged on the sheet’s “Life Hub edits” tab.</p>
     </div>
       {panel?.type === 'line' ? (
-        <LinePanel key={panel.id} id={panel.id} due={[...dues, ...monthDues].find(x => x.key === panel.id)} book={book} model={model} onSave={save} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
+        <LinePanel key={panel.id} id={panel.id} allDues={[...dues, ...monthDues]} paidAt={paidAt} due={[...dues, ...monthDues].find(x => x.key === panel.id)} book={book} model={model} onSave={save} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : panel?.type === 'acct' ? (
         <AccountPanel key={panel.id} name={panel.id} book={book} model={model} onSave={save} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : panel?.type === 'card' ? (

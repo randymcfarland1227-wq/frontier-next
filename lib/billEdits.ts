@@ -48,14 +48,16 @@ export type BillDay = {
   endFrom?: string;
   /** Display name kept so a deleted one can be listed and restored */
   endName?: string;
+  /** Renamed on Life Hub: every payment shows this name (the sheet keeps its own) */
+  rename?: string;
   /** Every payment of this bill: Non critical (orange) or Priority (red, first). Set on Life Hub. */
   nonCritical?: boolean;
   priority?: boolean;
 };
 export type BillDays = Record<string, BillDay>;
 
-export function billRuleKey(bill: { name: string; kind?: string }): string {
-  return `${bill.kind || 'bill'}:${bill.name.toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
+export function billRuleKey(bill: { name: string; kind?: string; origName?: string }): string {
+  return `${bill.kind || 'bill'}:${(bill.origName ?? bill.name).toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
 }
 
 export function loadBillDays(): BillDays {
@@ -89,6 +91,16 @@ export function setBillLevel(ruleKey: string, level: 'normal' | 'noncritical' | 
   let touched = false;
   for (const k of dueKeys) if (edits[k]?.nonCritical !== undefined) { delete edits[k].nonCritical; edits[k].at = new Date().toISOString(); touched = true; }
   if (touched) writeSaved(STORAGE_KEYS.billEdits, edits);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BILL_DAYS_EVENT));
+}
+
+/** Rename every payment of a bill on Life Hub; `null` / '' goes back to the sheet's name. */
+export function setBillName(ruleKey: string, name: string | null) {
+  const all = loadBillDays();
+  const prev = all[ruleKey] || { day: null, from: '' };
+  const n = name?.trim();
+  all[ruleKey] = { ...prev, rename: n || undefined, at: new Date().toISOString() };
+  writeSaved(STORAGE_KEYS.billDays, all);
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BILL_DAYS_EVENT));
 }
 
@@ -212,6 +224,7 @@ export function applyBillEdits(dues: BillDue[], edits: BillEdits, today = new Da
       if (ruled !== d.due) d = { ...d, due: ruled, days: daysBetween(t, fromDayKey(ruled)), everyMonth: rule!.day! };
       if (rule?.amount !== undefined && rule.amountFrom && d.due.slice(0, 7) >= rule.amountFrom) d = { ...d, bill: { ...d.bill, amount: rule.amount } };
       if (rule && (rule.nonCritical !== undefined || rule.priority !== undefined)) d = { ...d, bill: { ...d.bill, nonCritical: rule.priority ? undefined : rule.nonCritical ?? d.bill.nonCritical, priority: rule.priority || undefined } };
+      if (rule?.rename && rule.rename !== d.bill.name) d = { ...d, bill: { ...d.bill, name: rule.rename, origName: d.bill.origName ?? d.bill.name } };
       const e = edits[d.key];
       d = withBillFlags(d, e);
       if (!hasEdit(e)) return d;

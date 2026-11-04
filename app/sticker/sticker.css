@@ -2969,3 +2969,8 @@
 .sk-app .mb-po-fold > summary + * { padding: 0 var(--sk-s2) var(--sk-s2); }
 .sk-app .mb-po-table td, .sk-app .mb-po-table th { padding: 4px 6px; }
 .sk-app .mb-po-table tr.mb-po-under td { background: color-mix(in srgb, var(--sk-done) 18%, transparent); }
+
+/* Money pop-outs: what a change saved, and the payment history fold */
+.sk-app .mb-saved { margin: 6px 0 0; padding: 6px 10px; border: 2px solid var(--sk-edge); border-radius: 10px; background: var(--sk-tint); font: var(--sk-caption); color: var(--sk-ink); }
+.sk-app .mb-hist-fold { margin-top: 6px; }
+.sk-app .mb-hist-fold > summary + * { padding: 0 var(--sk-s2) var(--sk-s2); }

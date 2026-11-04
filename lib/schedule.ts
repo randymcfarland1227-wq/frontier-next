@@ -53,6 +53,8 @@ export type Bill = {
   payUrl?: string;
   autopay?: boolean;
   notes?: string;
+  /** Its name before a Life Hub rename (rules, pay-from and history stay keyed to this) */
+  origName?: string;
   /** Set for items from the Radall money tabs (bill, card min, subscription, pay later) */
   kind?: 'bill' | 'card' | 'sub' | 'paylater' | 'cash' | 'plan';
   /** Non Critical: still overdue after its day, but shown orange, not red (sheet "Item Flags" or Life Hub) */

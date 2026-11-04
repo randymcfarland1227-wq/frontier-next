@@ -2,9 +2,17 @@
 
 import { useState, type FormEvent } from 'react';
 import { fromDayKey, type BillDue } from '../../lib/schedule';
-import { billRuleKey, loadBillDays, loadBillEdits, setBillAmount, setBillDay, setBillEdit, setBillEnd, setBillFlags, setBillLevel, billLevel, useBillEdits } from '../../lib/billEdits';
+import { billRuleKey, loadBillDays, loadBillEdits, setBillAmount, setBillDay, setBillEdit, setBillEnd, setBillFlags, setBillLevel, setBillName, billLevel, useBillEdits } from '../../lib/billEdits';
+import { money } from '../../lib/schedule';
 import { loadLifeSubs, updateLifeSub } from '../../lib/lifeSubs';
 import { pinKey, updatePinDetails, usePriorityPins } from '../../lib/priorityPins';
+
+/** Writes a this-month change into the sheet's row (registered by life-hub.tsx, which holds the sheet model). */
+export type SheetChange = { key: string; amount?: number; date?: string };
+let sheetWriter: ((c: SheetChange) => Promise<string>) | undefined;
+export function setSheetWriter(fn: ((c: SheetChange) => Promise<string>) | undefined) {
+  sheetWriter = fn;
+}
 
 const shortDay = (k: string) => fromDayKey(k).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
@@ -126,7 +134,7 @@ export function BillPinButton({ due, className = 'row-action ghost' }: { due: Bi
  * Change one due date of a bill: pay as usual, skip it this time, or move it — plus an amount for
  * this time and a note. Saved on Life Hub (synced), not in the sheet.
  */
-export function BillChangeForm({ due, onDone, onGone, hideFlags }: { due: BillDue; onDone: () => void; onGone?: () => void; hideFlags?: boolean }) {
+export function BillChangeForm({ due, onDone, onGone, hideFlags, onSaved }: { due: BillDue; onDone: () => void; onGone?: () => void; hideFlags?: boolean; /** What was saved and where (shown under the form after Save) */ onSaved?: (msg: string) => void }) {
   const saved = loadBillEdits()[due.key];
   const original = due.orig || due.due;
   const [mode, setMode] = useState<'usual' | 'skip' | 'move'>(saved?.skip ? 'skip' : saved?.moveTo ? 'move' : 'usual');
@@ -139,6 +147,8 @@ export function BillChangeForm({ due, onDone, onGone, hideFlags }: { due: BillDu
   const everyMonth = scope === 'all';
   const amountOnward = scope === 'all';
   const name = due.bill.name;
+  const sheetName = due.bill.origName ?? due.bill.name;
+  const [newName, setNewName] = useState(name);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -156,7 +166,23 @@ export function BillChangeForm({ due, onDone, onGone, hideFlags }: { due: BillDu
       amount: ok && !onward ? n : undefined,
       note,
     });
+    const nm = newName.trim();
+    if (nm && nm !== name) setBillName(ruleKey, nm === sheetName ? null : nm);
+    // What changed, said back in plain words, and the sheet row updated to match (this month's row).
+    const newDay = mode === 'move' && moveTo && moveTo !== original ? moveTo : undefined;
+    const newAmt = ok && mode !== 'skip' && n !== due.bill.amount ? n : undefined;
+    const parts = [
+      nm && nm !== name ? `name → ${nm}` : '',
+      newDay ? `due ${shortDay(original)} → ${shortDay(newDay)}${repeat ? ' (every month)' : ''}` : '',
+      newAmt !== undefined ? `${money(due.bill.amount) || '?'} → ${money(newAmt)}${onward ? ' (every payment)' : ''}` : '',
+      mode === 'skip' ? 'skipped this one' : '',
+    ].filter(Boolean);
+    const said = parts.length ? `Saved: ${parts.join(' · ')}.` : 'Saved.';
     onDone();
+    if (sheetWriter && (newDay || newAmt !== undefined)) {
+      onSaved?.(`${said} Writing it to the sheet…`);
+      void sheetWriter({ key: due.key, amount: newAmt, date: newDay }).then(m => onSaved?.(`${said} ${m}`));
+    } else onSaved?.(said);
   };
 
   return (
@@ -178,7 +204,7 @@ export function BillChangeForm({ due, onDone, onGone, hideFlags }: { due: BillDu
           [
             ['usual', 'Pay as usual'],
             ['skip', 'Skip this one'],
-            ['move', 'Move to another day'],
+            ['move', 'Change the due date'],
           ] as const
         ).map(([id, label]) => (
           <label key={id} className={mode === id ? 'is-on' : ''}>
@@ -202,6 +228,25 @@ export function BillChangeForm({ due, onDone, onGone, hideFlags }: { due: BillDu
             </label>
           ))}
         </div>
+      ) : null}
+      <label className="bill-change-field is-wide">
+        <span>Name (every payment, on Life Hub)</span>
+        <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={sheetName} />
+      </label>
+      {due.bill.origName ? (
+        <p className="bill-change-rule">
+          Renamed on Life Hub — the sheet calls it “{sheetName}”.{' '}
+          <button
+            type="button"
+            className="row-action ghost"
+            onClick={() => {
+              setBillName(ruleKey, null);
+              onDone();
+            }}
+          >
+            Back to the sheet’s name
+          </button>
+        </p>
       ) : null}
       {mode === 'move' ? (
         <>

@@ -41,6 +41,9 @@ export type MetaEntry = {
   payX?: number;
   payPlan?: Array<{ date: string; amount: number }>;
   payTarget?: string;
+  /** paid:<due key> → amount / name above, plus the due day and kind, recorded when Mark paid is tapped */
+  paidDue?: string;
+  paidKind?: string;
   /** Update Figures: chosen cell ids */
   picks?: string[];
 };

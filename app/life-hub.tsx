@@ -124,7 +124,9 @@ import { useMoneyMeta } from '../lib/moneyMeta';
 import { payPlanDues, usePayPlans } from '../lib/payPlans';
 import { usePriorityPins } from '../lib/priorityPins';
 import { applyBillEdits, useBillEdits } from '../lib/billEdits';
-import { crossOffEdit, loadCachedMoney, moneyBillDues, parseMoney, pullMoneySnapshot, saveMoneyEdits, type CellEdit, type MoneySnapshot } from '../lib/money';
+import { crossOffEdit, loadCachedMoney, moneyBillDues, parseMoney, pullMoneySnapshot, rowChangeEdits, saveMoneyEdits, type CellEdit, type MoneySnapshot } from '../lib/money';
+import { setSheetWriter } from './components/BillControls';
+import { setMeta as setMoneyMetaEntry } from '../lib/moneyMeta';
 import { MoneyPage, MoneyPanelHost } from './components/MoneyPage';
 
 const starterFocus: FocusItem[] = [
@@ -242,6 +244,8 @@ export function LifeHub() {
   // Paid on Life Hub: logged here (synced), and a sheet row is crossed off in the sheet too.
   const payBill = (due: BillDue) => {
     setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }));
+    // Keep what was paid, so the pop-outs' history can show last time's amount after the row is gone.
+    if (due.bill.amount !== undefined) setMoneyMetaEntry(`paid:${due.key}`, { amount: due.bill.amount, name: due.bill.origName ?? due.bill.name, paidKind: due.bill.kind || 'bill', paidDue: due.orig || due.due });
     const edit = crossOffEdit(moneyModel?.items.find(i => i.id === due.key));
     if (!edit) return;
     void saveMoneyEdits([edit]).then(res => {
@@ -249,6 +253,22 @@ export function LifeHub() {
       if (!res.ok || res.results.some(r => !r.ok)) console.warn('Sheet cross-off failed', due.bill.name, res.error || res.results);
     });
   };
+  // A this-month change in a Money pop-out (amount / due date) is also written into that sheet row.
+  useEffect(() => {
+    setSheetWriter(async ({ key, amount, date }) => {
+      const item = moneyModel?.items.find(i => i.id === key);
+      if (!item) return 'Saved on Life Hub (it isn’t a row in the sheet).';
+      if (item.projected) return 'Saved on Life Hub (this month isn’t typed in the sheet yet, so there’s no row to change).';
+      const edits = rowChangeEdits(item, { amount, date });
+      if (!edits.length) return 'Saved on Life Hub (the sheet cell is a formula or a shared date, so it was left alone).';
+      const res = await saveMoneyEdits(edits);
+      if (res.snapshot) setMoneySnap(res.snapshot);
+      const bad = res.results.filter(r => !r.ok);
+      if (res.ok && !bad.length) return 'Written to the sheet too ✓';
+      return `Saved on Life Hub, but the sheet write failed (${res.error || bad.map(r => r.error).filter(Boolean).join('; ') || 'unknown error'}).`;
+    });
+    return () => setSheetWriter(undefined);
+  }, [moneyModel]);
   const [completionStats, setCompletionStats] = useState<CompletionStats>(emptyStats());
   const [focusConfig, setFocusConfig] = useState<FocusAreaConfig | null>(null);
   const [habitSchedule, setHabitSchedule] = useState<HabitSchedule[] | null>(null);

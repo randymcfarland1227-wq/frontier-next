@@ -2842,5 +2842,5 @@
 .sk-app .sk-fcard-lists b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; letter-spacing: .02em; min-width: 0; }
 .sk-app .sk-fcard-lists b svg { vertical-align: -1px; margin-right: 3px; }
 /* Keep card content below the corner ring: the header block is at least ring-tall. */
-.sk-app .sk-fcard > .sk-fcard-t { min-height: 38px; }
+.sk-app .sk-fcard > .sk-fcard-t { min-height: 48px; }
 .sk-app .sk-fcard > .sk-fcard-tags + .sk-fcard-t { min-height: 0; }

@@ -40,6 +40,7 @@ import {
   type MetaEntry,
 } from "../../lib/moneyMeta";
 import { isOverdue } from "../../lib/billEdits";
+import { minOnlyPlan, monthYear } from "./CardPayoff";
 import { hubCardPrefix, loadExtraCards, type ExtraCard } from "../../lib/extraCards";
 import { loadLifeSubs, updateLifeSub, type LifeSub } from "../../lib/lifeSubs";
 import { isLedgerPaid, ledgerMonthRows } from "../../lib/moneyLedger";
@@ -657,6 +658,25 @@ export function cardRows(
   }), ...extra];
 }
 
+function MinPayoff({ row, paid }: { row: CardRow; paid: boolean }) {
+  const { get } = useMoneyMeta();
+  if (!row.bal || row.bal <= 0) return <span className="mb-dim">—</span>;
+  const plan = minOnlyPlan(row, get(row.key), paid);
+  if (!plan) return <span className="mb-dim">no minimum</span>;
+  if (plan.neverPays && !plan.hit0)
+    return (
+      <span className="mb-late" title="The minimum doesn't cover interest + fees">
+        never
+      </span>
+    );
+  return (
+    <span title={plan.hit0 ? `${plan.hit0.n} payments` : undefined}>
+      {plan.hit0 ? monthYear(plan.hit0.date) : "—"}
+      {row.apr === undefined ? <small className="mb-dim"> (no APR)</small> : null}
+    </span>
+  );
+}
+
 export function CardsTable({
   model,
   monthDues,
@@ -689,13 +709,22 @@ export function CardsTable({
               className="num"
               title="Interest this month at the APR on the current balance"
             >
-              Monthly carry
+              Interest/mo
             </th>
             <th
               className="num"
               title="Extra monthly fee (Milestone, Indigo, Destiny)"
             >
               Fee
+            </th>
+            <th
+              className="num"
+              title="What the card costs each month right now: interest + fee"
+            >
+              Carry/mo
+            </th>
+            <th title="Paying only the minimum, no new purchases: when it reaches $0">
+              Min-only payoff
             </th>
             <th className="num">Avail</th>
             <th className="num">Util</th>
@@ -752,6 +781,16 @@ export function CardsTable({
                   <span className="mb-dim">—</span>
                 )}
               </td>
+              <td className="num">
+                {r.carry !== undefined || r.fee ? (
+                  <b>{usd((r.carry || 0) + (r.fee || 0))}</b>
+                ) : (
+                  <span className="mb-dim">—</span>
+                )}
+              </td>
+              <td>
+                <MinPayoff row={r} paid={!!r.due && isPaid(r.due, paidAt)} />
+              </td>
               <td className="num">{usd(r.avail)}</td>
               <td
                 className={`num${r.util !== undefined && r.util >= 90 ? " mb-late" : ""}`}
@@ -779,6 +818,8 @@ export function CardsTable({
               {noApr === rows.filter((r) => r.bal).length ? "—" : usd(carry)}
             </td>
             <td className="num">{fees ? usd(fees) : "—"}</td>
+            <td className="num">{carry + fees ? usd(carry + fees) : "—"}</td>
+            <td />
             <td className="num">{usd(sumOf(rows.map((r) => r.avail)))}</td>
             <td
               className="num"

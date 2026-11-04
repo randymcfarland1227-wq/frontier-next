@@ -6,6 +6,7 @@
  *   loan:<name>  → { principal, paymentsLeft, closed, apr, since } loan terms; balance / min / due stay in the sheet
  *   sale:<id>    → { platform, name, amount, state, availOn } one eBay / Poshmark sale
  *   figures:picks → { picks }                 which cells the Update Figures tool lists (ids from UpdateFigures.tsx); none = every checking balance
+ *   card:<name>  → { payX, payPlan, payTarget }     payoff models B and C inputs (CardPayoff.tsx)
  *   from:<src>   → { acct }                           which account or card pays a bill / sub / pay later
  * A removed entry keeps `gone: true` so the removal syncs too.
  */
@@ -36,6 +37,10 @@ export type MetaEntry = {
   state?: 'pend' | 'avail';
   availOn?: string;
   acct?: string;
+  /** Card payoff models (CardPayoff.tsx): B's fixed monthly amount, C's planned payments + target date */
+  payX?: number;
+  payPlan?: Array<{ date: string; amount: number }>;
+  payTarget?: string;
   /** Update Figures: chosen cell ids */
   picks?: string[];
 };

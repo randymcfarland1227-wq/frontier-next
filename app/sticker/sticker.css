@@ -2948,3 +2948,24 @@
 
 /* To purchase add button + Finance task add: room so they never overlap the folds below */
 .sk-app .tp-add, .sk-app .fin-task-add { margin: 10px 0 14px; }
+
+/* Card pop-out: wider for the carrying-cost & payoff section (CardPayoff.tsx) */
+.sk-app .bal-dlg.skm-dlg.mb-dlg-wide { width: min(940px, 100%); }
+.sk-app .mb-po { display: grid; gap: var(--sk-s2); }
+.sk-app .mb-po-now, .sk-app .mb-po-ans { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--sk-s2); }
+.sk-app .mb-po-now > span, .sk-app .mb-po-ans > span { display: grid; gap: 2px; padding: 10px 12px; border: 2px solid var(--sk-edge); border-radius: 12px; background: var(--sk-paper); }
+.sk-app .mb-po-now > span.is-lead { background: var(--sk-tint); box-shadow: 3px 3px 0 var(--sk-edge); }
+.sk-app .mb-po-now small, .sk-app .mb-po-ans small { color: var(--sk-ink-2); font: var(--sk-caption); }
+.sk-app .mb-po-now b, .sk-app .mb-po-ans b { font: var(--sk-figure); font-size: 22px; line-height: 1.15; }
+.sk-app .mb-po-flag { margin: 0; padding: 8px 12px; border: 2px solid var(--sk-alert-ink); border-radius: 10px; background: var(--sk-paper); color: var(--sk-alert-ink); }
+.sk-app .mb-po-tabs { margin-top: var(--sk-s2); }
+.sk-app .mb-po-how { margin: 0; font: var(--sk-caption); }
+.sk-app .mb-po-lead { margin: 0; font-weight: 600; }
+.sk-app .mb-po-inputs { display: flex; flex-wrap: wrap; align-items: end; gap: var(--sk-s2) var(--sk-s3); }
+.sk-app .mb-po-plan { display: grid; gap: 6px; justify-items: start; }
+.sk-app .mb-po-pay { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sk-app .mb-po-pay input { font: var(--sk-body); padding: 4px 8px; border: 2px solid var(--sk-edge); border-radius: 8px; background: var(--sk-paper); color: var(--sk-ink); }
+.sk-app .mb-po-pay input[type="number"] { width: 110px; }
+.sk-app .mb-po-fold > summary + * { padding: 0 var(--sk-s2) var(--sk-s2); }
+.sk-app .mb-po-table td, .sk-app .mb-po-table th { padding: 4px 6px; }
+.sk-app .mb-po-table tr.mb-po-under td { background: color-mix(in srgb, var(--sk-done) 18%, transparent); }

@@ -10,6 +10,7 @@ import { debtOptions, purchaseAddEdits, purchaseDeleteEdits } from '../../lib/mo
 import { MoneySelector } from './MoneySelector';
 import { isLedgerPaid, ledgerMonthRows } from '../../lib/moneyLedger';
 import { DebtFile } from './DebtFile';
+import { CardPayoff } from './CardPayoff';
 import { AccountsBoard, CardsTable, LoansTable, MoneyDash, PaySources, WeekBoard, cardRows, loanRows, nearest, type CellView, type DashCredit } from './MoneyBoards';
 import { outstandingParts, ticketTotals } from './OutstandingView';
 import { useOwedDone } from '../../lib/owedComplete';
@@ -2305,7 +2306,7 @@ function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week'
   );
 }
 
-function Modal({ label, onClose, onBack, children }: { label: string; onClose: () => void; onBack?: () => void; children: React.ReactNode }) {
+function Modal({ label, onClose, onBack, wide, children }: { label: string; onClose: () => void; onBack?: () => void; wide?: boolean; children: React.ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -2313,7 +2314,7 @@ function Modal({ label, onClose, onBack, children }: { label: string; onClose: (
   }, [onClose]);
   return (
     <div className="bal-dlg-backdrop skm-dlg-wrap" onClick={onClose}>
-      <div className="bal-dlg skm-dlg" role="dialog" aria-modal="true" aria-label={label} onClick={e => e.stopPropagation()}>
+      <div className={`bal-dlg skm-dlg${wide ? ' mb-dlg-wide' : ''}`} role="dialog" aria-modal="true" aria-label={label} onClick={e => e.stopPropagation()}>
         <div className="skm-dlg-bar">
           {onBack ? (
             <button type="button" className="sk-btn is-small" onClick={onBack}>
@@ -2832,7 +2833,7 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
   const keep = (patch: Partial<Omit<MetaEntry, 'at'>>) => setMeta(c.key, patch);
   const num = (v: string) => (v.trim() === '' ? undefined : Number(v));
   return (
-    <Modal label={c.name} onClose={onClose} onBack={onBack}>
+    <Modal label={c.name} onClose={onClose} onBack={onBack} wide>
       <h3>{c.name}</h3>
       {c.due ? <BillFlagsFields due={c.due} /> : null}
       <div className="mb-cp-figs">
@@ -2842,6 +2843,7 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
         <span><small>used</small><b className={c.util !== undefined && c.util >= 90 ? 'mb-late' : ''}>{c.util !== undefined ? `${Math.round(c.util)}%` : '—'}</b></span>
         <span><small>minimum</small><b>{c.min !== undefined ? money(c.min) : '—'}</b></span>
       </div>
+      <CardPayoff key={c.key} c={c} m={m} paid={!!c.due && PAID_STATES.includes(monthState(c.due, paidAt))} />
       <h4 className="mb-cp-h">Upcoming &amp; this month</h4>
       {c.due ? (
         <>
@@ -2881,7 +2883,6 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
           </div>
         </>
       ) : null}
-      {c.carry ? <p className="mb-dim">Interest carrying this balance ≈ {money(c.carry)}/mo.</p> : null}
       <SinceField metaKey={c.key} label="Opened" />
       {c.due ? <ChangeThisOne due={c.due} onGone={onClose} /> : null}
       <PaidHistory list={dues.filter(d => d.bill.kind === 'card' && nearest(d.bill.name, cardRows(model, monthDues, get), r => r.name)?.key === c.key)} paidAt={paidAt} />

@@ -176,13 +176,20 @@ export function FocusDrawer({
   const { plan, catalog } = usePlan(snapshots, bills);
   const brief = useBrief(snapshots, bills);
 
+  // Focus moves in once when the sheet opens. `close` is a new function on every parent render
+  // (each saved keystroke re-renders it), so it lives in a ref: re-running this effect would put
+  // focus on the close button mid-typing, and the next space would close the sheet.
+  const closeNow = useRef(close);
+  useEffect(() => {
+    closeNow.current = close;
+  });
   useEffect(() => {
     if (!open) return;
     closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeNow.current();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, close]);
+  }, [open]);
 
   // Everything you can pick from, by where it lives.
   const pool = useMemo<Pick[]>(() => {

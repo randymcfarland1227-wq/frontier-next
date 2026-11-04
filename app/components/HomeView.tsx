@@ -408,7 +408,6 @@ export function HomeView({
 
   return (
     <>
-      <LinkDevicePrompt compact />
       <HomeTop
         snapshots={snapshots}
         bills={bills}
@@ -530,6 +529,7 @@ export function HomeView({
         <p>11 sources · completion ledger · cloud backup</p>
         <span>Est. 2026</span>
       </footer>
+      <LinkDevicePrompt compact />
     </>
   );
 }

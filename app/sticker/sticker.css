@@ -2678,3 +2678,22 @@
   .sk-app :is(.sk-weather, .sk-link, .sk-foldbtn, .sk-brief-clear, .sk-brief-open)::before { content: ""; position: absolute; inset: -12px -6px; }
   .sk-app .sk-brief-clear::before { inset: -10px -10px; }
 }
+
+/* Day ribbon: the sunset marker uses .sk-moon (the old rules only named .sk-sky-moon), so it sat unpositioned on top of the sunrise. */
+.sk-app .sk-moon { position: absolute; top: 0; transform: translateX(-50%); display: grid; justify-items: center; gap: 1px; white-space: nowrap; }
+.sk-app .sk-moon .sk-icon { width: 24px; height: 24px; padding: 3px; border: 2px solid var(--sk-edge); border-radius: 50%; background: var(--sk-sched); color: var(--sk-on-fill, #16141f); }
+.sk-app .sk-moon small { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .sk-ribbon :is(.sk-moon) small { color: inherit; opacity: .8; }
+.sk-app .sk-ribbon.is-compact .sk-moon .sk-icon { width: 15px; height: 15px; padding: 2px; border-width: 1.5px; }
+.sk-app .sk-ribbon.is-compact .sk-moon small { font-size: 9.5px; line-height: 1; }
+.sk-app .sk-top .sk-ribbon.is-compact :is(.sk-sun, .sk-moon) { grid-auto-flow: column; align-items: center; gap: 3px; }
+.sk-app .sk-top .sk-ribbon.is-compact .sk-moon .sk-icon { width: 13px; height: 13px; padding: 1px; }
+
+/* Phone: shrink everything ~40% (page zoom, same mechanism as the zoom control). */
+@media (max-width: 520px) {
+  html { zoom: .6; --page-zoom: .6; }
+  .sk-app .sk-tabbar button { min-height: 72px; }
+  .sk-app .sk-circle::before { inset: -20px; }
+  .sk-app .sk-seg button::before { inset: -14px -4px; }
+  .sk-app .ldp { margin-top: 18px; }
+}

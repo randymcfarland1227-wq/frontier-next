@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import type { SelfItem } from '../../lib/adapters/self';
+import { openTaskPanel, pinKey } from '../../lib/priorityPins';
 
 export function SelfInbox({
   items,
@@ -53,7 +54,11 @@ export function SelfInbox({
               <div className="ledger-dot" />
               <div>
                 <span>{item.starred ? '★ Starred' : 'Self'}{item.done ? ' · done' : ''}</span>
-                <h3>{item.title}</h3>
+                <h3>
+                  <button type="button" className="origin-link task-open" onClick={() => openTaskPanel(pinKey('self', item.id))} title="Open details, subtasks and plan">
+                    {item.title}
+                  </button>
+                </h3>
                 {item.detail ? <p>{item.detail}</p> : null}
               </div>
               <div className="task-actions">

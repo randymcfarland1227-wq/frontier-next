@@ -104,6 +104,7 @@ export async function pullTickTickDone(): Promise<CompletionLedger | null> {
     habits?: DoneHabit[];
     schedule?: HabitSchedule[];
     skipped?: Array<{ id: string; stamp: string }>;
+    notDone?: Array<{ id: string; stamp: string }>;
     wontDo?: Array<{ id: string; title?: string; closedAt?: string }>;
   };
   try {
@@ -116,7 +117,7 @@ export async function pullTickTickDone(): Promise<CompletionLedger | null> {
   if (Array.isArray(body.schedule) && body.schedule.length) {
     // A habit marked "won't do" for a day is off that day: not on the to-do list, not counted
     // as available work. Treated like TickTick's own skipped dates (exDates).
-    const skipped = Array.isArray(body.skipped) ? body.skipped : [];
+    const skipped = [...(Array.isArray(body.skipped) ? body.skipped : []), ...(Array.isArray(body.notDone) ? body.notDone : [])];
     lastSchedule = body.schedule.map(h => {
       const off = skipped.filter(s => s.id === h.id).map(s => s.stamp);
       return off.length ? { ...h, exDates: [...(h.exDates || []), ...off] } : h;
@@ -125,6 +126,7 @@ export async function pullTickTickDone(): Promise<CompletionLedger | null> {
   saveDayLog({
     day: stamp(end),
     skippedHabits: (body.skipped || []).filter(s => s.stamp === stamp(end)).map(s => s.id),
+    notDoneHabits: (body.notDone || []).filter(s => s.stamp === stamp(end)).map(s => s.id),
     wontDoTasks: (body.wontDo || []).filter(t => t.closedAt && stamp(new Date(t.closedAt)) === stamp(end)).map(t => t.id),
   });
   let ledger = loadLedger();
@@ -184,7 +186,7 @@ export function checkInTickTickHabit(habitId: string) {
  * Today's "won't do" log from TickTick (habits marked not done, tasks closed as won't do), for the
  * logged-today chart. Kept for this browser only; refreshed on every TickTick pull.
  */
-export type TickTickDayLog = { day: string; skippedHabits: string[]; wontDoTasks: string[] };
+export type TickTickDayLog = { day: string; skippedHabits: string[]; notDoneHabits?: string[]; wontDoTasks: string[] };
 export const TICKTICK_DAYLOG_EVENT = 'lifehub:ticktick-daylog';
 const DAYLOG_KEY = 'lifehub-ticktick-daylog';
 

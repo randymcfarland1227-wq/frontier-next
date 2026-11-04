@@ -373,8 +373,10 @@ async function handleTickTickDone(request: Request, env: Env): Promise<Response>
   }
 
   const habits: Array<Record<string, unknown>> = [];
-  // Habits marked "won't do" (check-in status 1) for a day — not done, but no longer to do that day.
+  // TickTick keeps two different marks: Skip (the day goes into the habit's exDates) and
+  // Uncompleted (check-in status 1). Both take the habit off that day's to-do list.
   const skipped: Array<{ id: string; stamp: string }> = [];
+  const notDone: Array<{ id: string; stamp: string }> = [];
   // Each habit's schedule, so Life Hub knows which habits are due on a given day.
   let schedule: Array<Record<string, unknown>> = [];
   try {
@@ -389,6 +391,10 @@ async function handleTickTickDone(request: Request, env: Env): Promise<Response>
         targetStartDate: h.targetStartDate,
         exDates: Array.isArray(h.exDates) ? h.exDates : [],
       }));
+    for (const h of schedule) for (const d of h.exDates as unknown[]) {
+      const s = String(d);
+      if (stampRe.test(s) && s >= from && s <= to) skipped.push({ id: h.id as string, stamp: s });
+    }
     if (byId.size) {
       const checkins = ((await ttFetch(
         env,
@@ -401,7 +407,7 @@ async function handleTickTickDone(request: Request, env: Env): Promise<Response>
           const goal = Number(c.goal) || Number(habit?.goal) || 1;
           const done = c.status === 2 || (c.status == null && value >= goal && value > 0);
           if (!stampRe.test(String(c.stamp))) continue;
-          if (c.status === 1) skipped.push({ id: `habit-${doc.habitId}`, stamp: String(c.stamp) });
+          if (c.status === 1) notDone.push({ id: `habit-${doc.habitId}`, stamp: String(c.stamp) });
           if (!done) continue;
           habits.push({
             id: `habit-${doc.habitId}`,
@@ -416,7 +422,7 @@ async function handleTickTickDone(request: Request, env: Env): Promise<Response>
     errors.push(`habits:${(e as Error).message}`);
   }
 
-  return jsonResponse({ ok: errors.length < 2, tasks, habits, schedule, skipped, wontDo, errors }, 200, origin);
+  return jsonResponse({ ok: errors.length < 2, tasks, habits, schedule, skipped, notDone, wontDo, errors }, 200, origin);
 }
 
 /**
@@ -607,6 +613,41 @@ async function handleHabitCheckin(request: Request, env: Env): Promise<Response>
       body: JSON.stringify({ stamp: Number(stamp), value: status === 2 ? goal : 0, goal, status }),
     });
     return jsonResponse({ ok: true }, 200, origin);
+  } catch (e) {
+    return jsonResponse({ ok: false, error: (e as Error).message }, 502, origin);
+  }
+}
+
+/**
+ * POST /api/ticktick/habit-skip {habitId, stamp, skip} — TickTick's own Skip: adds the day to the
+ * habit's exDates (skip: false takes it back out). Different from Uncompleted (check-in status 1).
+ */
+async function handleHabitSkip(request: Request, env: Env): Promise<Response> {
+  const origin = request.headers.get("Origin");
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  if (origin && !CORS_ALLOW_ORIGINS.has(origin)) return jsonResponse({ ok: false, error: "cors_denied" }, 403, origin);
+  if (request.method !== "POST") return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, origin);
+  if (!env.TICKTICK_ACCESS_TOKEN) return jsonResponse({ ok: false, error: "token_not_configured" }, 503, origin);
+  if (!(await syncKeyAllowed(request, env))) return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
+  let body: { habitId?: unknown; stamp?: unknown; skip?: unknown };
+  try {
+    body = (await request.json()) as { habitId?: unknown; stamp?: unknown; skip?: unknown };
+  } catch {
+    return jsonResponse({ ok: false, error: "invalid_json" }, 400, origin);
+  }
+  const habitId = typeof body.habitId === "string" ? body.habitId.replace(/^habit-/, "").trim() : "";
+  const stamp = String(body.stamp || "");
+  if (!/^[0-9a-f]{12,40}$/i.test(habitId) || !stampRe.test(stamp)) return jsonResponse({ ok: false, error: "bad_input" }, 400, origin);
+  try {
+    const habit = (await ttFetch(env, `/habit/${habitId}`)) as { exDates?: unknown } | null;
+    const cur = Array.isArray(habit?.exDates) ? (habit!.exDates as unknown[]).map(String) : [];
+    const next = body.skip === false ? cur.filter(d => d !== stamp) : [...new Set([...cur, stamp])];
+    if (next.length !== cur.length) await ttFetch(env, `/habit/${habitId}`, { method: "POST", body: JSON.stringify({ exDates: next }) });
+    // A skip replaces any "uncompleted" mark for that day, like the app.
+    if (body.skip !== false) {
+      await ttFetch(env, `/habit/${habitId}/checkin`, { method: "POST", body: JSON.stringify({ stamp: Number(stamp), value: 0, goal: 1, status: 0 }) }).catch(() => undefined);
+    }
+    return jsonResponse({ ok: true, exDates: next }, 200, origin);
   } catch (e) {
     return jsonResponse({ ok: false, error: (e as Error).message }, 502, origin);
   }
@@ -1005,6 +1046,8 @@ export default {
     }
 
     if (pathname === "/api/ticktick/wontdo") return handleTaskWontDo(request, env);
+
+    if (pathname === "/api/ticktick/habit-skip") return handleHabitSkip(request, env);
 
     if (pathname === "/api/ticktick/habit-checkin") {
       return handleHabitCheckin(request, env);

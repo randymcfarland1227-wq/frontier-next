@@ -14,7 +14,7 @@ export function TickLogMenu({ task, onDone }: { task: TaskItem; onDone?: () => v
     ? [
         { label: 'Done', run: () => onDone?.() },
         { label: 'Skip today', run: () => void write('skipped') },
-        { label: 'Not done', run: () => void write('notdone') },
+        { label: 'Uncompleted', run: () => void write('notdone') },
       ]
     : [
         { label: 'Done', run: () => onDone?.() },

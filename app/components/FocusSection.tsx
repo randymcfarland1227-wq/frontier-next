@@ -315,7 +315,8 @@ function TickTickHabits({
   }, []);
   const [shutGroups, setShutGroups] = useState<Record<string, boolean>>({ optional: true, night: true });
   const [msg, setMsg] = useState("");
-  const skippedIds = new Set([...Object.keys(logged), ...dayLog.skippedHabits]);
+  const skippedIds = new Set([...Object.keys(logged), ...dayLog.skippedHabits, ...(dayLog.notDoneHabits || [])]);
+  const offLabel = (id: string) => (logged[id] ? logged[id] === 'notdone' : (dayLog.notDoneHabits || []).includes(id) && !dayLog.skippedHabits.includes(id)) ? 'uncompleted' : 'skipped';
   const all = (ticktick?.tasks || []).filter((t) => isHabit(t) && t.status !== "done");
   const open = all.filter((t) => !skippedIds.has(t.id));
   const titleOf = (id: string) => all.find((t) => t.id === id)?.title || HABIT_NAMES.get(id) || "Habit";
@@ -339,6 +340,9 @@ function TickTickHabits({
   };
   const skip = async (t: TaskItem) => {
     if (!(await logTickTick(t, "skipped"))) say("Skip wasn’t saved to TickTick");
+  };
+  const notDone = async (t: TaskItem) => {
+    if (!(await logTickTick(t, "notdone"))) say("Uncompleted wasn’t saved to TickTick");
   };
   const unskip = async (id: string) => {
     if (!(await clearTickTickLog(id))) say("Undo wasn’t saved to TickTick");
@@ -370,8 +374,11 @@ function TickTickHabits({
                   <li key={t.id}>
                     {complete ? <Circle onDone={() => complete(t)} label={`Check in: ${t.title}`} /> : <Icon name="minus" size={12} />}
                     <span>{t.title}</span>
-                    <button type="button" className="sk-habit-act" onClick={() => void skip(t)} title="Skip today (like TickTick)">
+                    <button type="button" className="sk-habit-act" onClick={() => void skip(t)} title="Skip today: you're choosing not to do it (TickTick Skip)">
                       Skip
+                    </button>
+                    <button type="button" className="sk-habit-act" onClick={() => void notDone(t)} title="Uncompleted: you didn't get it done (TickTick Uncompleted)">
+                      Uncompleted
                     </button>
                   </li>
                 ))}
@@ -394,8 +401,9 @@ function TickTickHabits({
                   <li key={t.id} className="is-skipped">
                     <Icon name="minus" size={12} />
                     <span>{t.title}</span>
-                    <button type="button" className="sk-habit-act" onClick={() => void unskip(t.id)} title="Undo the skip">
-                      Undo skip
+                    <em className="sk-habit-tag">{offLabel(t.id)}</em>
+                    <button type="button" className="sk-habit-act" onClick={() => void unskip(t.id)} title="Take back the skip / uncompleted mark">
+                      Undo
                     </button>
                   </li>
                 ))}

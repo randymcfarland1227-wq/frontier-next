@@ -14,7 +14,7 @@ const WORKER =
   'https://frontier-work-room.randymcfarland1227.workers.dev';
 
 export type LogOutcome = 'skipped' | 'notdone' | 'wontdo';
-export const LOG_LABEL: Record<LogOutcome, string> = { skipped: 'skipped', notdone: 'not done', wontdo: "won't do" };
+export const LOG_LABEL: Record<LogOutcome, string> = { skipped: 'skipped', notdone: 'uncompleted', wontdo: "won't do" };
 
 const KEY = 'lifehub-ticktick-logged';
 const EVENT = 'lifehub:ticktick-logged';
@@ -63,8 +63,9 @@ export async function logTickTick(task: Pick<TaskItem, 'id' | 'kind' | 'projectI
   let body: Record<string, unknown>;
   let path: string;
   if (habit) {
-    path = '/api/ticktick/habit-checkin';
-    body = { habitId: task.id, stamp: stampOfToday(), status: 1 };
+    // TickTick's Skip lives in the habit's skipped dates; Uncompleted is a check-in with status 1.
+    path = outcome === 'skipped' ? '/api/ticktick/habit-skip' : '/api/ticktick/habit-checkin';
+    body = outcome === 'skipped' ? { habitId: task.id, stamp: stampOfToday(), skip: true } : { habitId: task.id, stamp: stampOfToday(), status: 1 };
   } else {
     const projectId = projectIdFromTask(task);
     if (!projectId) return false;
@@ -75,7 +76,8 @@ export async function logTickTick(task: Pick<TaskItem, 'id' | 'kind' | 'projectI
   const cur = load();
   save({ ...cur, map: { ...cur.map, [task.id]: outcome } });
   const log = loadDayLog();
-  if (habit) saveDayLog({ ...log, skippedHabits: [...new Set([...log.skippedHabits, task.id])] });
+  if (habit && outcome === 'skipped') saveDayLog({ ...log, skippedHabits: [...new Set([...log.skippedHabits, task.id])], notDoneHabits: (log.notDoneHabits || []).filter(id => id !== task.id) });
+  else if (habit) saveDayLog({ ...log, notDoneHabits: [...new Set([...(log.notDoneHabits || []), task.id])], skippedHabits: log.skippedHabits.filter(id => id !== task.id) });
   else saveDayLog({ ...log, wontDoTasks: [...new Set([...log.wontDoTasks, task.id])] });
   try {
     const res = await fetch(`${WORKER}${path}`, { method: 'POST', headers, body: JSON.stringify(body) });
@@ -94,10 +96,22 @@ export async function logTickTick(task: Pick<TaskItem, 'id' | 'kind' | 'projectI
 /** Take back today's skip / not-done on a habit (here and on TickTick). */
 export async function clearTickTickLog(habitId: string): Promise<boolean> {
   const cur = load();
+  const log0 = loadDayLog();
+  const wasSkip = cur.map[habitId] === 'skipped' || (cur.map[habitId] === undefined && log0.skippedHabits.includes(habitId));
   const { [habitId]: _gone, ...rest } = cur.map;
   void _gone;
   save({ ...cur, map: rest });
   const log = loadDayLog();
-  saveDayLog({ ...log, skippedHabits: log.skippedHabits.filter((id) => id !== habitId) });
-  return unmarkTickTickHabit(habitId);
+  saveDayLog({ ...log, skippedHabits: log.skippedHabits.filter((id) => id !== habitId), notDoneHabits: (log.notDoneHabits || []).filter((id) => id !== habitId) });
+  if (!wasSkip) return unmarkTickTickHabit(habitId);
+  try {
+    const res = await fetch(`${WORKER}/api/ticktick/habit-skip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...syncKeyHeader() },
+      body: JSON.stringify({ habitId, stamp: stampOfToday(), skip: false }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

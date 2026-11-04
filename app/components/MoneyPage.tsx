@@ -1125,6 +1125,7 @@ function SubAdd({ onDone, kind = 'sub' }: { onDone: () => void; kind?: 'sub' | '
           </select>
         </label>
       ) : null}
+      {kind === 'sub' ? (
       <label>
         <span>Status</span>
         <select value={status} onChange={e => setStatus(e.target.value as 'active' | 'trial')}>
@@ -1132,6 +1133,7 @@ function SubAdd({ onDone, kind = 'sub' }: { onDone: () => void; kind?: 'sub' | '
           <option value="trial">Free trial</option>
         </select>
       </label>
+      ) : null}
       <label className="sub-form-wide">
         <span>Note</span>
         <input value={note} onChange={e => setNote(e.target.value)} placeholder={kind === 'sub' ? 'Optional — e.g. cancel before the trial ends' : 'Optional'} />
@@ -1148,22 +1150,82 @@ function SubAdd({ onDone, kind = 'sub' }: { onDone: () => void; kind?: 'sub' | '
   );
 }
 
-/** "+ Add bill / loan / card" with the same recurring form as subscriptions (cards just need a name). */
+const numIn = (v: string) => (v.trim() === '' ? undefined : Number(v.replace(/[$,%\s]/g, '')));
+
+/** A loan added on Life Hub: a row in the Loans table with its balance, rate and payments, and a monthly payment on every list. */
+function LoanAdd({ onDone }: { onDone: () => void }) {
+  const [f, setF] = useState({ name: '', what: '', bal: '', principal: '', apr: '', payment: '', day: '', left: '' });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const day = Number(f.day);
+    if (!f.name.trim() || !(day >= 1 && day <= 31)) return;
+    setBillEnd(billRuleKey({ name: f.name.trim(), kind: 'bill' }), null);
+    addLifeSub({ name: f.name, kind: 'loan', amount: numIn(f.payment), day, cycle: 'monthly', status: 'active', note: f.what.trim() || undefined });
+    setMeta(`loan:${metaName(f.name)}`, { bal: numIn(f.bal), principal: numIn(f.principal), apr: numIn(f.apr), paymentsLeft: numIn(f.left) });
+    onDone();
+  };
+  return (
+    <form className="sub-form" onSubmit={submit} onKeyDown={e => e.key === 'Escape' && onDone()}>
+      <label className="sub-form-wide"><span>Loan</span><input autoFocus value={f.name} onChange={set('name')} placeholder="e.g. Car loan" required /></label>
+      <label className="sub-form-wide"><span>Lender / what it’s for</span><input value={f.what} onChange={set('what')} placeholder="Optional" /></label>
+      <label><span>Balance left</span><input inputMode="decimal" value={f.bal} onChange={set('bal')} placeholder="$" /></label>
+      <label><span>Principal</span><input inputMode="decimal" value={f.principal} onChange={set('principal')} placeholder="$ original" /></label>
+      <label><span>Rate (APR %)</span><input inputMode="decimal" value={f.apr} onChange={set('apr')} placeholder="%" /></label>
+      <label><span>Monthly payment</span><input inputMode="decimal" value={f.payment} onChange={set('payment')} placeholder="$" /></label>
+      <label><span>Due day</span><input type="number" min={1} max={31} value={f.day} onChange={set('day')} required /></label>
+      <label><span>Payments left</span><input type="number" min={0} value={f.left} onChange={set('left')} /></label>
+      <div className="sub-form-actions">
+        <button type="submit" className="sk-btn is-small is-prominent">Add loan</button>
+        <button type="button" className="sk-btn is-small" onClick={onDone}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+/** A card added on Life Hub: a row in the card list with balance / limit / APR, and its payment on its due day each month. */
+function CardAdd({ onDone }: { onDone: () => void }) {
+  const [f, setF] = useState({ name: '', bal: '', limit: '', apr: '', min: '', day: '' });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const day = numIn(f.day);
+    if (!f.name.trim() || (day !== undefined && !(day >= 1 && day <= 31))) return;
+    setBillEnd(billRuleKey({ name: f.name.trim(), kind: 'card' }), null);
+    addExtraCard({ name: f.name, balance: numIn(f.bal), limit: numIn(f.limit), min: numIn(f.min), dueDay: day });
+    if (numIn(f.apr) !== undefined) setMeta(`card:${metaName(f.name)}`, { apr: numIn(f.apr) });
+    onDone();
+  };
+  return (
+    <form className="sub-form" onSubmit={submit} onKeyDown={e => e.key === 'Escape' && onDone()}>
+      <label className="sub-form-wide"><span>Card</span><input autoFocus value={f.name} onChange={set('name')} placeholder="e.g. Discover It" required /></label>
+      <label><span>Balance</span><input inputMode="decimal" value={f.bal} onChange={set('bal')} placeholder="$" /></label>
+      <label><span>Limit</span><input inputMode="decimal" value={f.limit} onChange={set('limit')} placeholder="$" /></label>
+      <label><span>APR %</span><input inputMode="decimal" value={f.apr} onChange={set('apr')} placeholder="%" /></label>
+      <label><span>Minimum payment</span><input inputMode="decimal" value={f.min} onChange={set('min')} placeholder="$" /></label>
+      <label><span>Due day</span><input type="number" min={1} max={31} value={f.day} onChange={set('day')} placeholder="1–31" /></label>
+      <div className="sub-form-actions">
+        <button type="submit" className="sk-btn is-small is-prominent">Add card</button>
+        <button type="button" className="sk-btn is-small" onClick={onDone}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+/** "+ Add bill / loan / card" above each list. */
 function AddBar({ kind }: { kind: 'bill' | 'loan' | 'card' }) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
+  const done = () => setOpen(false);
   return (
     <div className="subs-top">
-      {open && kind === 'card' ? (
-        <form onSubmit={e => { e.preventDefault(); if (!name.trim()) return; addExtraCard({ name }); setName(''); setOpen(false); }}>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Card name" aria-label="Card name" autoFocus />
-          <button type="submit" className="sk-btn is-small is-prominent">Add card</button>
-          <button type="button" className="sk-btn is-small" onClick={() => setOpen(false)}>Cancel</button>
-        </form>
-      ) : open ? (
-        <SubAdd kind={kind as 'bill' | 'loan'} onDone={() => setOpen(false)} />
-      ) : (
+      {!open ? (
         <button type="button" className="sk-btn is-small is-prominent" onClick={() => setOpen(true)}>+ Add {kind}</button>
+      ) : kind === 'card' ? (
+        <CardAdd onDone={done} />
+      ) : kind === 'loan' ? (
+        <LoanAdd onDone={done} />
+      ) : (
+        <SubAdd kind="bill" onDone={done} />
       )}
     </div>
   );
@@ -2507,7 +2569,7 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
     return (
       <Modal label="Loan" onClose={onClose} onBack={onBack}>
         <h3>{name}</h3>
-        <p className="mny-empty">This loan isn’t in the sheet’s credit accounts.</p>
+        <p className="mny-empty">This loan isn’t in the sheet’s credit accounts or the loans added here.</p>
       </Modal>
     );
   const m = get(l.key);
@@ -2537,11 +2599,22 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
         <label>Payments left<input type="number" step="1" defaultValue={m?.paymentsLeft ?? ''} onBlur={e => setMeta(l.key, { paymentsLeft: num(e.target.value) })} /></label>
         <label>Rate (APR %)<input type="number" step="0.01" defaultValue={m?.apr ?? ''} onBlur={e => setMeta(l.key, { apr: num(e.target.value) })} /></label>
       </div>
+      {l.hub ? (
+        <div className="mb-cp-edit">
+          <label>Balance left $<input type="number" step="0.01" defaultValue={m?.bal ?? ''} onBlur={e => setMeta(l.key, { bal: num(e.target.value) })} /></label>
+          <label>Monthly payment $<input type="number" step="0.01" defaultValue={l.hub.amount ?? ''} onBlur={e => updateLifeSub(l.hub!.id, { amount: num(e.target.value) })} /></label>
+          <label>Due day each month<input type="number" min={1} max={31} defaultValue={l.hub.day} onBlur={e => { const n = Number(e.target.value); if (n >= 1 && n <= 31) updateLifeSub(l.hub!.id, { day: n }); }} /></label>
+          <label className="is-wide">Lender / what it’s for<input type="text" defaultValue={l.hub.note || ''} onBlur={e => updateLifeSub(l.hub!.id, { note: e.target.value.trim() || undefined })} /></label>
+        </div>
+      ) : null}
       <SinceField metaKey={l.key} label="Loan started" />
       <PaidHistory list={history} paidAt={paidAt} />
       {l.due ? <ChangeThisOne due={l.due} onGone={onClose} /> : null}
       <div className="bal-dlg-actions">
-        <button type="button" className="sk-btn is-small" onClick={() => setMeta(l.key, { closed: l.closed ? undefined : true })}>{l.closed ? 'Reopen' : 'Mark closed'}</button>
+        <button type="button" className="sk-btn is-small" onClick={() => { setMeta(l.key, { closed: l.closed ? undefined : true }); if (l.hub) updateLifeSub(l.hub.id, { status: l.closed ? 'active' : 'cancelled' }); }}>{l.closed ? 'Reopen' : 'Mark closed'}</button>
+        {l.hub ? (
+          <button type="button" className="sk-btn is-small is-danger" onClick={() => { if (window.confirm(`Delete ${l.name}? It comes off the Loans table and every list.`)) { updateLifeSub(l.hub!.id, { removed: true }); onClose(); } }}>Delete loan</button>
+        ) : null}
         {l.due && state && !PAID_STATES.includes(state) ? <button type="button" className="sk-btn is-small is-prominent" onClick={() => { onPaid(l.due!); onClose(); }}>Mark paid</button> : null}
       </div>
     </Modal>
@@ -2664,10 +2737,35 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
         <label>Monthly fee<input type="number" step="0.01" defaultValue={m?.fee ?? ''} onBlur={e => keep({ fee: num(e.target.value) })} /></label>
         <label className="is-wide">Pay-off rule<input type="text" placeholder="e.g. pay in full every 1st; never above 30%" defaultValue={rule} onBlur={e => keep({ rule: e.target.value.trim() || undefined })} /></label>
       </div>
+      {c.hub ? (
+        <>
+          <h4 className="mb-cp-h">Card details</h4>
+          <div className="mb-cp-edit">
+            <label>Balance $<input type="number" step="0.01" defaultValue={c.hub.balance ?? ''} onBlur={e => updateExtraCard(c.hub!.id, { balance: num(e.target.value) })} /></label>
+            <label>Limit $<input type="number" step="0.01" defaultValue={c.hub.limit ?? ''} onBlur={e => updateExtraCard(c.hub!.id, { limit: num(e.target.value) })} /></label>
+            <label>Minimum payment $<input type="number" step="0.01" defaultValue={c.hub.min ?? ''} onBlur={e => updateExtraCard(c.hub!.id, { min: num(e.target.value) })} /></label>
+            <label>Due day each month<input type="number" min={1} max={31} defaultValue={c.hub.dueDay ?? ''} onBlur={e => { const n = num(e.target.value); if (n === undefined || (n >= 1 && n <= 31)) updateExtraCard(c.hub!.id, { dueDay: n }); }} /></label>
+          </div>
+        </>
+      ) : c.noSheetDue ? (
+        <>
+          <h4 className="mb-cp-h">Due date</h4>
+          <p className="mb-dim">The sheet has no due date for this card — set one here and it shows every month.</p>
+          <div className="mb-cp-edit">
+            <label>Due day each month<input type="number" min={1} max={31} defaultValue={m?.dueDay ?? ''} onBlur={e => { const n = num(e.target.value); if (n === undefined || (n >= 1 && n <= 31)) keep({ dueDay: n }); }} /></label>
+            <label>Minimum payment $<input type="number" step="0.01" defaultValue={m?.min ?? c.min ?? ''} onBlur={e => keep({ min: num(e.target.value) })} /></label>
+          </div>
+        </>
+      ) : null}
       {c.carry ? <p className="mb-dim">Interest carrying this balance ≈ {money(c.carry)}/mo.</p> : null}
       <SinceField metaKey={c.key} label="Opened" />
       {c.due ? <ChangeThisOne due={c.due} onGone={onClose} /> : null}
       <PaidHistory list={dues.filter(d => d.bill.kind === 'card' && nearest(d.bill.name, cardRows(model, monthDues, get), r => r.name)?.key === c.key)} paidAt={paidAt} />
+      {c.hub ? (
+        <div className="bal-dlg-actions">
+          <button type="button" className="sk-btn is-small is-danger" onClick={() => { if (window.confirm(`Delete ${c.name}? It comes off the card list and its payments stop.`)) { updateExtraCard(c.hub!.id, { removed: true }); onClose(); } }}>Delete card</button>
+        </div>
+      ) : null}
     </Modal>
   );
 }
@@ -3485,6 +3583,7 @@ export function MoneyPage({
               hint="Monthly carry = the month's interest at each card's APR on today's balance. Type APRs and fees once; they stay on Life Hub."
               href={link('Randy')}
             >
+              <AddBar kind="card" />
               <CardsTable model={model} monthDues={monthDues} paidAt={paidAt} onOpen={panelApi.openCard} />
               <Fold title="Card tiles" meta="pay, limits, details">
                 <CardTiles model={model} dues={dues} paidAt={paidAt} onPaid={onPaid} onSave={save} />

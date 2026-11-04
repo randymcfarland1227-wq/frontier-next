@@ -118,6 +118,8 @@ import { NeedsSorting } from './components/NeedsSorting';
 import { backfillFocusAreas, loadFocusAreas, type FocusAreaConfig } from '../lib/focusAreas';
 import { billDues, fromDayKey, loadCachedSchedule, paidBillKeys, pullScheduleSnapshot, type BillDue, type CalTask, type ScheduleSnapshot } from '../lib/schedule';
 import { lifeSubDues, useLifeSubs, withoutSheetTwins } from '../lib/lifeSubs';
+import { hubCardDues, useExtraCards } from '../lib/extraCards';
+import { useMoneyMeta } from '../lib/moneyMeta';
 import { payPlanDues, usePayPlans } from '../lib/payPlans';
 import { usePriorityPins } from '../lib/priorityPins';
 import { applyBillEdits, useBillEdits } from '../lib/billEdits';
@@ -803,12 +805,14 @@ export function LifeHub() {
   // Skip / move / amount changes logged on Life Hub apply on top (lib/billEdits.ts).
   const billEdits = useBillEdits();
   const lifeSubs = useLifeSubs();
+  const extraCards = useExtraCards();
+  const { meta: moneyMeta } = useMoneyMeta();
   const moneyDues = useMemo(
     () => {
       const sheet = moneyBillDues(moneyModel, paidKeys);
-      return applyBillEdits([...sheet, ...payPlanDues(payPlans, paidKeys), ...withoutSheetTwins(lifeSubDues(lifeSubs, paidKeys), moneyBillDues(moneyModel, new Set<string>()))], billEdits);
+      return applyBillEdits([...sheet, ...payPlanDues(payPlans, paidKeys), ...withoutSheetTwins(lifeSubDues(lifeSubs, paidKeys), moneyBillDues(moneyModel, new Set<string>())), ...hubCardDues(moneyModel, moneyMeta, extraCards, paidKeys)], billEdits);
     },
-    [moneyModel, payPlans, paidKeys, billEdits, lifeSubs],
+    [moneyModel, payPlans, paidKeys, billEdits, lifeSubs, extraCards, moneyMeta],
   );
   // Today's List badge: the Doing Now action list plus what you've added from Today / Focus / Sites.
   const unfinished = useTodayListCount(focus, visibleSnapshots, moneyDues.filter(b => !b.skipped));
@@ -831,10 +835,11 @@ export function LifeHub() {
       ...moneyBillDues(moneyModel, none),
       ...payPlanDues(payPlans, none),
       ...withoutSheetTwins(lifeSubDues(lifeSubs, none, now, 45, 120, true), moneyBillDues(moneyModel, none)),
+      ...hubCardDues(moneyModel, moneyMeta, extraCards, none, now, 45, 120, true),
       ...(schedule?.bills || []).flatMap(b => billDues(b, none, now, 45)),
     ];
     return applyBillEdits(all, billEdits).filter(inMonth);
-  }, [moneyModel, payPlans, lifeSubs, schedule, billEdits]);
+  }, [moneyModel, payPlans, lifeSubs, schedule, billEdits, extraCards, moneyMeta]);
 
   // Dated tasks for the calendar: Self tasks with a day, and Priority items given a day there
   // (that day stays in Priority — it never goes back to the task's own site).

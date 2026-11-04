@@ -22,6 +22,11 @@ export type MetaEntry = {
   rule?: string;
   principal?: number;
   paymentsLeft?: number;
+  /** Balance left, typed on Life Hub (loans added here; the sheet's Bal cell wins for sheet loans) */
+  bal?: number;
+  /** Card due day each month (1–31) and minimum payment, typed on Life Hub for a sheet card with no due date */
+  dueDay?: number;
+  min?: number;
   closed?: boolean;
   /** When he started it (YYYY-MM-DD): card opened, subscription started, loan taken */
   since?: string;

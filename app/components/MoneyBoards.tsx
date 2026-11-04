@@ -40,6 +40,8 @@ import {
   type MetaEntry,
 } from "../../lib/moneyMeta";
 import { isOverdue } from "../../lib/billEdits";
+import { hubCardPrefix, loadExtraCards, type ExtraCard } from "../../lib/extraCards";
+import { loadLifeSubs, updateLifeSub, type LifeSub } from "../../lib/lifeSubs";
 import { isLedgerPaid, ledgerMonthRows } from "../../lib/moneyLedger";
 import { MenuRow } from "./RowMenu";
 import { Icon } from "../sticker/Icon";
@@ -128,7 +130,7 @@ export function MetaNum({
   title,
 }: {
   id: string;
-  field: "apr" | "fee" | "principal" | "paymentsLeft" | "amount";
+  field: "apr" | "fee" | "principal" | "paymentsLeft" | "amount" | "bal";
   value?: number;
   placeholder?: string;
   prefix?: string;
@@ -577,6 +579,10 @@ export type CardRow = {
   apr?: number;
   fee?: number;
   carry?: number;
+  /** Added on Life Hub (not in the sheet) */
+  hub?: ExtraCard;
+  /** The sheet gives this card no due date (one can be typed on Life Hub) */
+  noSheetDue?: boolean;
 };
 
 export function cardRows(
@@ -590,8 +596,32 @@ export function cardRows(
   );
   const sums = cardSummaries(model);
   // Each payment belongs to the one card its name is closest to (Cap 1 S → Cap 1 Sec, not Cap 1 Savor).
+  const hubDue = (name: string) => cardDues.find((d) => d.key.startsWith(hubCardPrefix(name)));
+  const sheetDues = cardDues.filter((d) => !d.key.startsWith("money:hubcard:"));
   const ownerOf = (d: BillDue) => nearest(d.bill.name, sums, (x) => x.name);
-  return sums.map((c) => {
+  const sheetNames = new Set(sums.map((c) => metaName(c.name)));
+  const extra: CardRow[] = loadExtraCards()
+    .filter((c) => !c.removed && !sheetNames.has(metaName(c.name)))
+    .map((c) => {
+      const key = `card:${metaName(c.name)}`;
+      const m = get(key);
+      const bal = c.balance;
+      return {
+        name: c.name,
+        key,
+        bal,
+        avail: c.limit !== undefined ? c.limit - (bal || 0) : undefined,
+        limit: c.limit,
+        util: c.limit ? ((bal || 0) / c.limit) * 100 : undefined,
+        min: c.min,
+        due: hubDue(c.name),
+        apr: m?.apr,
+        fee: c.fee ?? m?.fee,
+        carry: monthlyCarry(bal || 0, m?.apr),
+        hub: c,
+      };
+    });
+  return [...sums.map((c) => {
     const bal = num(c.balance);
     const avail = num(c.available);
     const limit =
@@ -600,9 +630,10 @@ export function cardRows(
     const m = get(key);
     const day = c.minDate?.text ? parseSheetDate(c.minDate.text) : undefined;
     const due =
-      cardDues.find((d) => ownerOf(d) === c) ||
+      sheetDues.find((d) => ownerOf(d) === c) ||
+      hubDue(c.name) ||
       (day
-        ? cardDues.find(
+        ? sheetDues.find(
             (d) =>
               !ownerOf(d) &&
               (d.orig || d.due) === day &&
@@ -621,8 +652,9 @@ export function cardRows(
       apr: m?.apr,
       fee: m?.fee,
       carry: monthlyCarry(bal || 0, m?.apr),
+      noSheetDue: !c.minDate?.text?.trim(),
     };
-  });
+  }), ...extra];
 }
 
 export function CardsTable({
@@ -777,6 +809,8 @@ export type LoanRow = {
   closed?: boolean;
   due?: BillDue;
   payment?: number;
+  /** Added on Life Hub (not in the sheet's credit accounts) */
+  hub?: LifeSub;
 };
 
 export function loanRows(
@@ -787,8 +821,27 @@ export function loanRows(
   const bills = ledgerMonthRows(monthDues, model.items, new Date()).filter(
     (d) => (d.bill.kind || "bill") === "bill",
   );
-  return (model.creditAccounts?.rows || [])
-    .filter((r) => r[0]?.text.trim())
+  const sheet = (model.creditAccounts?.rows || []).filter((r) => r[0]?.text.trim());
+  const sheetNames = new Set(sheet.map((r) => metaName(r[0].text)));
+  const hub: LoanRow[] = loadLifeSubs()
+    .filter((x) => !x.removed && x.kind === "loan" && !sheetNames.has(metaName(x.name)))
+    .map((x) => {
+      const key = `loan:${metaName(x.name)}`;
+      const m = get(key);
+      return {
+        name: x.name,
+        what: x.note || "added on Life Hub",
+        key,
+        bal: m?.bal,
+        principal: m?.principal,
+        paymentsLeft: m?.paymentsLeft,
+        closed: m?.closed,
+        due: bills.find((d) => d.key.startsWith(`money:lhsub:${x.id}:`)),
+        payment: x.amount,
+        hub: x,
+      };
+    });
+  return [...sheet
     .map((r) => {
       const name = r[0].text.trim();
       const key = `loan:${metaName(name)}`;
@@ -806,7 +859,7 @@ export function loanRows(
         due,
         payment: due?.bill.amount ?? num(r[4]),
       };
-    });
+    }), ...hub];
 }
 
 export function LoansTable({
@@ -872,7 +925,13 @@ export function LoansTable({
                     )}{" "}
                     <small className="mb-dim">{r.what}</small>
                   </td>
-                  <td className="num">{cell(r.balCell, "add")}</td>
+                  <td className="num">
+                    {r.hub ? (
+                      <MetaNum id={r.key} field="bal" value={r.bal} placeholder="balance" prefix="$" title={`${r.name} balance left`} />
+                    ) : (
+                      cell(r.balCell, "add")
+                    )}
+                  </td>
                   <td className="num">
                     <MetaNum
                       id={r.key}
@@ -916,9 +975,10 @@ export function LoansTable({
                     <button
                       type="button"
                       className="mb-x is-word"
-                      onClick={() =>
-                        setMeta(r.key, { closed: r.closed ? undefined : true })
-                      }
+                      onClick={() => {
+                        setMeta(r.key, { closed: r.closed ? undefined : true });
+                        if (r.hub) updateLifeSub(r.hub.id, { status: r.closed ? "active" : "cancelled" });
+                      }}
                     >
                       {r.closed ? "reopen" : "closed?"}
                     </button>

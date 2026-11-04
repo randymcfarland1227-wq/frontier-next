@@ -438,7 +438,7 @@ function SiteTasks({
       </button>
     ) : null;
 
-  if (split) {
+  if (split && habitTotal) {
     return (
       <>
         <div

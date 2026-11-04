@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Group, ListHead, Section } from "../sticker/kit";
+import { Circle, Group, ListHead, Section } from "../sticker/kit";
 import { FocusCards, type LinkItem, type OpenFinance } from "./FocusCards";
 import type { BillDue } from "../../lib/schedule";
 import { Icon } from "../sticker/Icon";
-import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
+import type { SourceId, SourceSnapshot, SpaceId, TaskItem } from "../../lib/types";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { FOCUS_LIST_EVENT, ONGOING_KEY } from "../../lib/ongoingGoals";
 import { stampChanges } from "../../lib/focusSync";
@@ -260,6 +260,53 @@ const FITNESS_RE =
   /workout|gym|lift|run\b|walk|stretch|fitness|exercise|cardio|steps|mobility|posture|abs\b|strength|squat|push.?up|yoga|recovery|physical therapy|\bpt\b/i;
 const notMarvel = (t: { title: string }) => !/marvel/i.test(t.title);
 
+const isHabit = (t: TaskItem) => t.kind === "habit" || t.id.startsWith("habit-");
+
+/**
+ * Every TickTick habit for today (moved here from Doing Now and the TickTick tab, 2026-11-04):
+ * open ones to check in, then the ones already checked in today (struck through).
+ */
+function TickTickHabits({
+  ticktick,
+  ledger,
+  day,
+  complete,
+}: {
+  ticktick?: SourceSnapshot;
+  ledger?: CompletionLedger;
+  day: string;
+  complete?: (t: TaskItem) => void;
+}) {
+  const open = (ticktick?.tasks || []).filter((t) => isHabit(t) && t.status !== "done");
+  const openIds = new Set(open.map((t) => t.id));
+  const done = Object.entries(ledger?.entries || {})
+    .filter(
+      ([k, e]) =>
+        e.source === "ticktick" &&
+        (k.split("::").length === 3 || e.taskId.startsWith("habit-")) &&
+        !openIds.has(e.taskId) &&
+        localDayKey(new Date(e.completedAt)) === day,
+    )
+    .map(([k, e]) => ({ key: k, title: e.title || "Habit" }));
+  if (!open.length && !done.length) return <p className="sk-empty">No TickTick habits today.</p>;
+  return (
+    <ul className="sk-daytasks sk-habits" aria-label="TickTick habits today">
+      {open.map((t) => (
+        <li key={t.id}>
+          {complete ? <Circle onDone={() => complete(t)} label={`Check in: ${t.title}`} /> : <Icon name="minus" size={13} />}
+          <span>{t.title}</span>
+        </li>
+      ))}
+      {done.map((t) => (
+        <li key={t.key} className="is-done">
+          <Icon name="check" size={13} />
+          <span>{t.title}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** Today's Marvel tasks and habits from TickTick, above the menu, each marked done or not. */
 function MarvelToday({ tasks }: { tasks: { title: string; done: boolean }[] }) {
   const [shut, toggle] = useShut("focus-marvel-today");
@@ -439,7 +486,10 @@ export function FocusSection({
   events = [],
   bills = [],
   openFinance,
+  completeHabit,
 }: {
+  /** Check in a TickTick habit (same path as the TickTick tab used) */
+  completeHabit?: (t: TaskItem) => void;
   focus: ReturnType<typeof useShortTermFocus>;
   events?: LinkItem[];
   bills?: BillDue[];
@@ -471,10 +521,11 @@ export function FocusSection({
     day,
   ).filter(notMarvel);
   const marvelDone = MARVEL_MENU.filter((g) => picks[g.id]?.done).length;
+  const habitsOpen = (snapshots?.ticktick?.tasks || []).filter((t) => isHabit(t) && t.status !== "done").length;
   const summary = `${water} of ${BOTTLES} bottles · Marvel ${marvelDone} of ${MARVEL_MENU.length}`;
   return (
-    <Section id="focus" title="Daily Rhythm" summary={summary}>
-      <div className="sk-trio is-duo" data-day={day}>
+    <Section id="focus" title="Daily Rhythm & Routine" summary={summary}>
+      <div className="sk-trio sk-rhythm" data-day={day}>
         <Group
           tone="habit"
           icon="apple"
@@ -530,6 +581,15 @@ export function FocusSection({
           <FocusCards list={marvelLists[5]} extra={marvelLists.filter((_, i) => i !== 5)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'marvel', ongoing: true }} label="Add a Marvel focus" empty="Add what you’re working on with Marvel right now." />
           <ListHead title="This or that" />
           <MarvelMenu st={picks} setSt={setPicks} />
+        </Group>
+
+        <Group
+          tone="habit"
+          icon="repeat"
+          title="TickTick habits"
+          meta={`${habitsOpen} left today`}
+        >
+          <TickTickHabits ticktick={snapshots?.ticktick} ledger={ledger} day={day} complete={completeHabit} />
         </Group>
       </div>
     </Section>

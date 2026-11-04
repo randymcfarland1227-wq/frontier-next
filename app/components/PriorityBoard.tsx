@@ -616,7 +616,18 @@ export function PriorityBoard({
                         </span>
                       </button>
                       <span className="sk-rv" />
-                      <Icon name="chevron" className="sk-rchev" size={14} />
+                      <button
+                        type="button"
+                        className="sk-rchev sk-mix-toggle"
+                        aria-label={openMix === step.id ? `Collapse ${step.name}` : `Expand ${step.name}`}
+                        aria-expanded={openMix === step.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMix(openMix === step.id ? null : step.id);
+                        }}
+                      >
+                        <Icon name="chevron" size={14} />
+                      </button>
                       {openMix === step.id ? (
                         <ul className="sk-list sk-mix-items">
                           {step.items.map((item) => (

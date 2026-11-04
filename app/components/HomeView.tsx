@@ -2,7 +2,7 @@
 
 import { inFocusPlan, useFocusLinks } from "../../lib/focusLinks";
 import { LinkDevicePrompt } from "./LinkDevicePrompt";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type {
   FeaturedItem,
   SourceId,
@@ -300,6 +300,19 @@ export function HomeView({
   const ttTasks = snapshots.ticktick?.tasks || [];
   const isHabitTask = (t: TaskItem) =>
     t.kind === "habit" || t.id.startsWith("habit-");
+  // TickTick habits live in Daily Rhythm & Routine now: not in Doing Now or the site tabs.
+  const noHabits = useMemo(() => {
+    const tt = snapshots.ticktick;
+    if (!tt) return snapshots;
+    return {
+      ...snapshots,
+      ticktick: {
+        ...tt,
+        tasks: tt.tasks.filter((t) => !isHabitTask(t)),
+        featured: tt.featured.filter((f) => !f.id.startsWith("habit-")),
+      },
+    };
+  }, [snapshots]);
   const ticktickRings = (
     <div className="sk-rings">
       <TickTickRings
@@ -479,7 +492,7 @@ export function HomeView({
         )}
       </Section>
 
-      <FocusSection snapshots={snapshots} ledger={ledger} enter={enter} focus={shortTerm} events={linkItems} bills={bills} openFinance={(id, tab) => { requestOpenDebt(id, tab); enter("money"); }} />
+      <FocusSection snapshots={snapshots} ledger={ledger} completeHabit={(t) => onCompleteTask("ticktick", t)} enter={enter} focus={shortTerm} events={linkItems} bills={bills} openFinance={(id, tab) => { requestOpenDebt(id, tab); enter("money"); }} />
 
       <Section
         id="priority"
@@ -487,13 +500,13 @@ export function HomeView({
         summary={<PrioritySummary />}
       >
         <PriorityBoard
-          snapshots={snapshots}
+          snapshots={noHabits}
           enter={(id) => enter(id)}
           onComplete={payFromPriority}
           bills={bills.filter((b) => !b.skipped)}
         >
         <SitesTabs
-          snapshots={snapshots}
+          snapshots={noHabits}
           enter={enter}
           openSource={openSource}
           onCompleteFeatured={onCompleteFeatured}

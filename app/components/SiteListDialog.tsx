@@ -6,7 +6,7 @@ import { Circle } from "../sticker/kit";
 import { Icon } from "../sticker/Icon";
 import { SearchPick } from "../sticker/SearchPick";
 import { sourceById } from "../../lib/sources";
-import { loadLanes, openTaskPanel, pinKey } from "../../lib/priorityPins";
+import { PLAN, loadLanes, openTaskPanel, pinKey, placePin, unpin, usePriorityPins } from "../../lib/priorityPins";
 import {
   addToSiteList,
   deleteSiteList,
@@ -43,6 +43,9 @@ function ListDialog({ list, close }: { list: SiteList; close: () => void }) {
   const { store, snapshots, complete } = useSiteLists();
   const { open, total, done } = viewOfList(list, snapshots);
   const site = sourceById[list.site];
+  const { lanes } = usePriorityPins();
+  const deckKey = pinKey(list.site, `list:${list.id}`);
+  const inDoing = Boolean(lanes[deckKey]?.lane);
   // Pool tasks of this site that aren't in any list yet, to add.
   const pool = (snapshots[list.site]?.tasks || [])
     .filter(
@@ -73,6 +76,20 @@ function ListDialog({ list, close }: { list: SiteList; close: () => void }) {
       <p className="sk-sec">
         {site.name} · {done} of {total} done · counts as one task in {site.shortName}
       </p>
+      <div className="sk-listdlg-doing">
+        {inDoing ? (
+          <>
+            <span className="sk-cap">✓ In Doing Now</span>
+            <button type="button" className="sk-btn is-small is-quiet" onClick={() => unpin(deckKey)}>
+              Take off Doing Now
+            </button>
+          </>
+        ) : (
+          <button type="button" className="sk-btn is-small" onClick={() => placePin(deckKey, PLAN)}>
+            ＋ Add list to Doing Now
+          </button>
+        )}
+      </div>
       <ul className="sk-listdlg-tasks">
         {open.map((t) => (
           <li key={t.id}>

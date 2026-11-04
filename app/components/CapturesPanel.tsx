@@ -418,7 +418,7 @@ export function CapturesPanel({
       {tab === 'tasks' ? (
         <div className="sk-list" role="tabpanel" aria-label="Tasks">
           {openTasks.length === 0 && myLists.length === 0 ? <p className="sk-empty">No Self tasks yet.</p> : null}
-          {myLists.map(l => {
+          {myLists.filter(l => !isPinned('self', `list:${l.id}`)).map(l => {
             const open = l.tasks.filter(id => selfItems.some(i => i.id === id && !i.done)).length;
             return (
               <Row

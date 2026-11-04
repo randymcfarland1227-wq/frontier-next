@@ -2773,3 +2773,6 @@
 
 /* Task pop-out: Add to Doing Now sits up top, next to the level marks. */
 .plan-panel-marks .plan-panel-add { margin-left: auto; padding: 5px 12px; border-radius: 999px; font-weight: 700; }
+
+/* List pop-out: Add to Doing Now line under the count. */
+.sk-listdlg-doing { display: flex; align-items: center; gap: 10px; margin: 2px 0 10px; }

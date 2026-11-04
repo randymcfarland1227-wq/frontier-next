@@ -31,7 +31,7 @@ import { MenuRow } from "./RowMenu";
 import { countdown, fromDayKey, money, type BillDue } from "../../lib/schedule";
 import { Circle, Dot, ListHead, Tag } from "../sticker/kit";
 import { Icon } from "../sticker/Icon";
-import { useSiteLists } from "../../lib/siteLists";
+import { openSiteList, useSiteLists } from "../../lib/siteLists";
 
 /** Self's stand-in detail for starred items with no note — not worth a subtext line. */
 const FILLER_DETAIL = "Captured in Self inbox";
@@ -335,7 +335,11 @@ export function PriorityBoard({
         <button
           type="button"
           className="sk-rmain"
-          onClick={() => setOpenKey(item.key)}
+          onClick={() =>
+            item.id.startsWith("list:")
+              ? openSiteList(item.id.slice(5))
+              : setOpenKey(item.key)
+          }
           title={[item.title, item.detail, entry?.note]
             .filter(Boolean)
             .join(" — ")}

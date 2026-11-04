@@ -2844,3 +2844,14 @@
 /* Keep card content below the corner ring: the header block is at least ring-tall. */
 .sk-app .sk-fcard > .sk-fcard-t { min-height: 48px; }
 .sk-app .sk-fcard > .sk-fcard-tags + .sk-fcard-t { min-height: 0; }
+
+/* Focus corner % ring: small, tucked into the very top-right; short-term cards only. */
+.sk-app .sk-fcard-corner { top: 8px; right: 8px; }
+.sk-app .sk-fcard-corner .sk-ring { --d: 29px; }
+.sk-app .sk-fcard-corner .sk-ring b { font-size: 9.5px; }
+.sk-app .sk-fcard > :is(.sk-fcard-t, .sk-fcard-tags, .sk-focus-rank) { padding-right: 34px; }
+.sk-app .sk-fcard > .sk-fcard-t { min-height: 0; }
+/* Daily Brief Action List: numbered rows (not in Doing Now). */
+.sk-app .sk-brief-section.is-numbered .sk-brief-items { counter-reset: briefn; }
+.sk-app .sk-brief-section.is-numbered .sk-brief-entry { counter-increment: briefn; }
+.sk-app .sk-brief-section.is-numbered .sk-brief-title::before { content: counter(briefn) ". "; font-weight: 700; opacity: .7; }

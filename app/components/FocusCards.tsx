@@ -344,9 +344,11 @@ function Card({
           {item.ongoing ? <span className="sk-fcard-ongoing">Ongoing</span> : null}
         </span>
       ) : null}
-      <span className={`sk-fcard-corner${(p.pct ?? 0) >= 100 ? " is-full" : ""}`} aria-label={`${p.pct ?? 0}% complete`} title={p.total ? `${p.done} of ${p.total} done` : "No sub-tasks yet"}>
-        <Ring pct={p.pct ?? 0} />
-      </span>
+      {item.ongoing || item.section ? null : (
+        <span className={`sk-fcard-corner${(p.pct ?? 0) >= 100 ? " is-full" : ""}`} aria-label={`${p.pct ?? 0}% complete`} title={p.total ? `${p.done} of ${p.total} done` : "No sub-tasks yet"}>
+          <Ring pct={p.pct ?? 0} />
+        </span>
+      )}
       <h4 className="sk-fcard-t">{item.title}</h4>
       {item.priority ? <span className="sk-focus-rank">{FOCUS_PRIORITY_LABEL[item.priority]}</span> : null}
       {item.note ? <p className="sk-fcard-scope">{item.note}</p> : null}

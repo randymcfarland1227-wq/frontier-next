@@ -167,7 +167,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
       <button type="button" className="sk-link" onClick={() => window.dispatchEvent(new Event(REFRESH_EVENT))} title="Pull the latest available source feeds"><Icon name="refresh" size={14} />Refresh Sources</button>
     </>}>
       <div className="sk-brief-sections">
-        {cols.map(s => <section key={s.id} className={`sk-brief-section${s.compact ? ' is-compact' : ''}`} aria-label={s.title}>
+        {cols.map(s => <section key={s.id} className={`sk-brief-section${s.compact ? ' is-compact' : ''}${s.id === 'doing' ? ' is-numbered' : ''}`} aria-label={s.title}>
           <ListHead title={s.title} meta={s.rows.length} shut={Boolean(folds[s.id])} onToggle={() => toggle(s.id)} />
           {folds[s.id] ? null : <>
             {s.rows.length ? <ul className="sk-brief-items">{s.rows.map(r => {

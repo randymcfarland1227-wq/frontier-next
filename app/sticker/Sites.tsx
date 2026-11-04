@@ -16,6 +16,7 @@ import type {
 } from "../../lib/types";
 import { sourceById, isMusicTask, MUSIC_HUB_URL } from "../../lib/sources";
 import { isConnectorSource } from "../../lib/connectors";
+import { useFocusLinks } from "../../lib/focusLinks";
 import { shownMetric } from "../../lib/actionable";
 import { metricValue } from "../../lib/protocol";
 import {
@@ -178,7 +179,9 @@ function TaskRow({
   const habit = showHabit && isHabit(task);
   // Side-by-side columns are narrow: the due text joins the subtitle instead of the right edge.
   const narrow = !showHabit;
-  const facts = starred || habit || task.tag || due || (narrow && when.text);
+  // Focus cards / ongoing goals this task or list is linked into.
+  const goals = useFocusLinks().get(key) || [];
+  const facts = starred || habit || task.tag || due || (narrow && when.text) || goals.length;
   return (
     <div
       className={`sk-row${task.status === "done" ? " is-done" : ""}${select?.picked ? " is-picked" : ""}${isList ? " is-list" : ""}`}
@@ -250,6 +253,15 @@ function TaskRow({
               </span>
             ) : null}
             {habit ? <span className="sk-fact">Habit</span> : null}
+            {goals.map((g) => (
+              <span
+                key={g.title}
+                className={`sk-goalchip${g.ongoing ? " is-ongoing" : ""}`}
+                title={`In your ${g.ongoing ? "ongoing goal" : "short-term focus"}: ${g.title}`}
+              >
+                ◎ {g.title}
+              </span>
+            ))}
             {task.tag ? (
               <span className={`sk-tag kind-${tagTone(task.tag)}`}>
                 {task.tag}

@@ -9,7 +9,7 @@ import { Icon } from "../sticker/Icon";
 import { openTaskPanel, pinKey } from "../../lib/priorityPins";
 import { openDebtPop } from "./DebtPop";
 import { latestLine, useGroupLog } from "../../lib/groupLog";
-import { openSiteList, useSiteLists, viewOfList, type SiteListsContextValue } from "../../lib/siteLists";
+import { openSiteList, renameSiteList, useSiteLists, viewOfList, type SiteListsContextValue } from "../../lib/siteLists";
 import { Dialog } from "../sticker/Dialog";
 import { SearchPick, type Opt } from "../sticker/SearchPick";
 import { sourceById } from "../../lib/sources";
@@ -665,7 +665,14 @@ function Detail({
                 <header>
                   <b>
                     <Icon name="steps" size={13} />
-                    {l.name}
+                    <input
+                      className="sk-fd-listname"
+                      value={l.name}
+                      onChange={(e) => renameSiteList(l.id, e.target.value)}
+                      aria-label="List name"
+                      title="Rename this list (it renames on its site too)"
+                      maxLength={60}
+                    />
                   </b>
                   <button
                     type="button"

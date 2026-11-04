@@ -2783,3 +2783,12 @@
 .sk-app .sk-fd-sitetasks li small { color: var(--sk-ink-2); }
 .sk-app .sk-fd-sitetasks li.is-done .sk-fd-taskopen { text-decoration: line-through; opacity: .6; }
 .sk-app .sk-fd-tools { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+/* Site rows: which focus / ongoing goal a task or list is planned under. */
+.sk-app .sk-goalchip { display: inline-flex; align-items: center; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 8px; border-radius: 999px; font: 700 11px/1.5 "DM Sans", system-ui, sans-serif; color: var(--sk-ink); background: color-mix(in srgb, var(--sk-plan, #7c5cff) 26%, transparent); border: 1px solid color-mix(in srgb, var(--sk-plan, #7c5cff) 55%, transparent); }
+.sk-app .sk-goalchip.is-ongoing { background: color-mix(in srgb, var(--sk-done, #2f9e6b) 24%, transparent); border-color: color-mix(in srgb, var(--sk-done, #2f9e6b) 55%, transparent); }
+/* Focus pop-out: linked site-list names are editable in place. */
+.sk-app .sk-fd-listname { flex: 1; min-width: 0; padding: 2px 4px; margin: -2px 0; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; font: inherit; }
+.sk-app .sk-fd-listname:hover { border-color: color-mix(in srgb, var(--sk-ink) 25%, transparent); }
+.sk-app .sk-fd-listname:focus-visible { outline: 2px solid var(--sk-focus, currentColor); outline-offset: 1px; }
+.sk-app .sk-fd-sitelist header b { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }

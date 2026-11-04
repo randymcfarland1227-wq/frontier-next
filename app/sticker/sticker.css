@@ -2792,3 +2792,35 @@
 .sk-app .sk-fd-listname:hover { border-color: color-mix(in srgb, var(--sk-ink) 25%, transparent); }
 .sk-app .sk-fd-listname:focus-visible { outline: 2px solid var(--sk-focus, currentColor); outline-offset: 1px; }
 .sk-app .sk-fd-sitelist header b { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+
+/* Focus pop-out: Plan / Link & add as two matching cards with one field style. */
+.sk-app .sk-fd-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 14px; margin-top: 14px; }
+.sk-app .sk-fd-panel { display: grid; align-content: start; gap: 12px; padding: 14px 16px 16px; border: 1px solid color-mix(in srgb, var(--sk-ink) 14%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--sk-ink) 4%, transparent); }
+.sk-app .sk-fd-panelh { display: flex; align-items: center; gap: 8px; margin: 0; padding-bottom: 10px; border-bottom: 1px solid color-mix(in srgb, var(--sk-ink) 12%, transparent); font: 800 13px/1.2 "DM Sans", system-ui, sans-serif; text-transform: uppercase; color: var(--sk-ink); }
+.sk-app .sk-fd-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; align-items: start; }
+.sk-app .sk-fd-fields > * { display: grid; gap: 6px; min-width: 0; }
+.sk-app .sk-fd-fields > .sk-fd-wide, .sk-app .sk-fd-fields > .sk-fd-finpick { grid-column: 1 / -1; }
+.sk-app .sk-fd-fields .sk-cap { font: 700 11.5px/1.3 "DM Sans", system-ui, sans-serif; color: var(--sk-ink-2); }
+.sk-app .sk-fd-fields :is(select, input[type="date"], input[type="search"], input[type="text"], .sk-fd-search input) { width: 100%; min-height: 40px; box-sizing: border-box; border-radius: 10px; }
+.sk-app .sk-fd-finpick { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); column-gap: 10px; }
+.sk-app .sk-fd-finpick > .sk-cap { grid-column: 1 / -1; }
+.sk-app .sk-fd-datepick { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+.sk-app .sk-fd-panel > .sk-fd-hint { margin: 0; }
+@media (max-width: 520px) { .sk-app .sk-fd-fields, .sk-app .sk-fd-finpick, .sk-app .sk-fd-datepick { grid-template-columns: 1fr; } }
+
+/* Focus checklist rows: name opens a pop-out; due day as a quiet chip. */
+.sk-app .sk-fd-list .sk-fd-taskopen { display: inline-flex; align-items: center; gap: 6px; text-align: left; }
+.sk-app .sk-fd-hasnote { opacity: .55; }
+.sk-app .sk-fd-due { padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--sk-ink) 10%, transparent); color: var(--sk-ink); font: 700 10.5px/1.5 "DM Sans", system-ui, sans-serif; white-space: nowrap; }
+
+/* Checklist task pop-out, layered over the focus card. */
+.sk-subpop-back { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / .45); }
+.sk-subpop { width: min(460px, 100%); display: grid; gap: 12px; padding: 18px; border-radius: 16px; background: var(--sk-card, var(--sk-paper)); color: var(--sk-ink); border: 1px solid color-mix(in srgb, var(--sk-ink) 16%, transparent); box-shadow: 0 20px 50px rgb(0 0 0 / .4); }
+.sk-subpop-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.sk-subpop-title { min-width: 0; padding: 6px 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: inherit; font: 800 18px/1.3 "DM Sans", system-ui, sans-serif; }
+.sk-subpop-title:hover, .sk-subpop-title:focus { border-color: color-mix(in srgb, var(--sk-ink) 25%, transparent); outline: none; }
+.sk-subpop-from { margin: -6px 0 0 38px; font: 400 12px/1.3 "DM Sans", system-ui, sans-serif; color: var(--sk-ink-2); }
+.sk-subpop-field { display: grid; gap: 6px; }
+.sk-subpop-field textarea, .sk-subpop-field input { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--sk-ink) 18%, transparent); background: color-mix(in srgb, var(--sk-ink) 5%, transparent); color: inherit; font: 400 14px/1.45 "DM Sans", system-ui, sans-serif; }
+.sk-subpop-row { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
+.sk-subpop-row .sk-subpop-field { flex: 1; min-width: 160px; }

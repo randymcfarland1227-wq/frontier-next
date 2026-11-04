@@ -53,6 +53,10 @@ export type SubTask = {
   id: string;
   text: string;
   done: boolean;
+  /** Sub-details typed in its pop-out */
+  note?: string;
+  /** Optional due day (YYYY-MM-DD) */
+  due?: string;
   /** A read-only Finance reference, rendered as one row in this list. */
   fin?: { key: string; label: string };
 };

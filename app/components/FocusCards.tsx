@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  useEffect,
+  useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
@@ -446,6 +448,8 @@ function Detail({
   const [listName, setListName] = useState("");
   const [financeListId, setFinanceListId] = useState("");
   const [taskText, setTaskText] = useState<Record<string, string>>({});
+  // Checklist task whose pop-out (notes + due day) is open
+  const [subOpen, setSubOpen] = useState<{ list: string; task: string } | null>(null);
   const lists = item.lists || [];
   const setLists = (next: SubList[]) => update({ lists: next });
   const patchList = (id: string, patch: Partial<SubList>) =>
@@ -604,7 +608,18 @@ function Detail({
                       >
                         {t.text}
                       </button>
-                    ) : <span>{t.text}</span>}
+                    ) : (
+                      <button
+                        type="button"
+                        className="sk-fd-taskopen"
+                        title="Open its notes and due day"
+                        onClick={() => setSubOpen({ list: l.id, task: t.id })}
+                      >
+                        {t.text}
+                        {t.note ? <Icon name="pencil" size={12} className="sk-fd-hasnote" /> : null}
+                      </button>
+                    )}
+                    {!t.fin && t.due ? <small className="sk-fd-due">{shortDate(new Date(`${t.due}T12:00`))}</small> : null}
                     {t.fin ? <small>{(() => {
                       const rows = finRows(t.fin, ctx);
                       if (!rows.length) return "Not loaded";
@@ -838,53 +853,10 @@ function Detail({
           </form>
         </div>
 
-        <div className="sk-fd-tools">
-          <div>
-            <span className="sk-cap">Link a single task (search every site)</span>
-            <SearchPick
-              options={Object.entries(ctx.sl?.snapshots || {}).flatMap(([site, snap]) =>
-                (snap?.tasks || [])
-                  .filter(
-                    (t) =>
-                      t.status !== "done" &&
-                      t.kind !== "list" &&
-                      t.kind !== "habit" &&
-                      !t.id.startsWith("habit-") &&
-                      !(item.siteTasks || []).includes(pinKey(site as SourceId, t.id)),
-                  )
-                  .map((t) => ({
-                    key: pinKey(site as SourceId, t.id),
-                    label: t.title,
-                    sub: sourceById[site as SourceId]?.shortName,
-                    group: sourceById[site as SourceId]?.name,
-                  })),
-              )}
-              label="Link a single task"
-              placeholder="Search tasks on any site…"
-              onPick={(o) => update({ siteTasks: [...(item.siteTasks || []), o.key] })}
-            />
-          </div>
-          <div>
-            <span className="sk-cap">Link a site list (it stays in the pool too)</span>
-            <SearchPick
-              options={Object.values(ctx.sl?.store || {})
-                .filter((l) => l && !l.gone && !(item.siteLists || []).includes(l.id))
-                .map((l) => ({
-                  key: l.id,
-                  label: l.name,
-                  sub: `${sourceById[l.site].shortName} · ${viewOfList(l, ctx.sl!.snapshots).open.length} left`,
-                  group: sourceById[l.site].name,
-                }))}
-              label="Add a site list"
-              placeholder={Object.values(ctx.sl?.store || {}).some((l) => l && !l.gone) ? "Search your site lists…" : "No site lists yet (make one from a site task’s menu)"}
-              disabled={!Object.values(ctx.sl?.store || {}).some((l) => l && !l.gone)}
-              onPick={(o) => update({ siteLists: [...(item.siteLists || []), o.key] })}
-            />
-          </div>
-          {item.section === 'fitness' || item.push !== undefined ? <>
-            <label><span className="sk-cap">Effort</span><select aria-label="Fitness effort" value={item.push || 2} onChange={e => update({ push: Number(e.target.value) })}><option value={1}>Steady</option><option value={2}>More</option><option value={3}>All in</option></select></label>
-            <label><span className="sk-cap">Started</span><input type="date" aria-label="Fitness start date" value={item.since || ''} max={dayKey(new Date())} onChange={e => update({ since: e.target.value || undefined })} /></label>
-          </> : null}
+        <div className="sk-fd-panels">
+          <section className="sk-fd-panel" aria-label="Plan">
+            <h3 className="sk-fd-panelh"><Icon name="calendar" size={14} />Plan</h3>
+            <div className="sk-fd-fields">
           <label>
             <span className="sk-cap">Priority</span>
             <select
@@ -897,7 +869,7 @@ function Detail({
             </select>
           </label>
           <label>
-            <span className="sk-cap">Destination — ongoing goal</span>
+            <span className="sk-cap">Ongoing goal</span>
             <select
               value={item.section ? `section:${item.section}` : item.site || ""}
               aria-label="Focus destination"
@@ -916,31 +888,12 @@ function Detail({
               ))}
             </select>
           </label>
-          <div>
-            <span className="sk-cap">Link Finance to a list</span>
-            <select
-              aria-label="List for Finance item"
-              value={financeList?.id || ""}
-              onChange={(e) => setFinanceListId(e.target.value)}
-              disabled={!lists.length}
-            >
-              {!lists.length ? <option value="">Create a list first</option> : null}
-              {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-            <SearchPick
-              options={finOpts}
-              label="Search Finance"
-              placeholder="Search every bill, ticket, card, loan…"
-              disabled={!finOpts.length || !financeList}
-              onPick={(o) => {
-                if (financeList) addFinance(financeList, { key: o.key, label: o.label });
-              }}
-            />
-          </div>
-          <div>
-            <span className="sk-cap">
-              Date — {target ? "linked" : "search the calendar"}
-            </span>
+          {item.section === 'fitness' || item.push !== undefined ? <>
+            <label><span className="sk-cap">Effort</span><select aria-label="Fitness effort" value={item.push || 2} onChange={e => update({ push: Number(e.target.value) })}><option value={1}>Steady</option><option value={2}>More</option><option value={3}>All in</option></select></label>
+            <label><span className="sk-cap">Started</span><input type="date" aria-label="Fitness start date" value={item.since || ''} max={dayKey(new Date())} onChange={e => update({ since: e.target.value || undefined })} /></label>
+          </> : null}
+          <div className="sk-fd-wide">
+            <span className="sk-cap">Date {target ? "· linked" : "· calendar or pick a day"}</span>
             {target ? (
               <div className="sk-fd-linked">
                 <Icon name="calendar" size={13} />
@@ -989,12 +942,83 @@ function Detail({
               </div>
             )}
           </div>
-        </div>
+            </div>
         {!target && added ? (
           <p className="sk-fd-hint">
             No date linked, so this counts days since it was added ({shortDate(added)}).
           </p>
         ) : null}
+          </section>
+          <section className="sk-fd-panel" aria-label="Link and add">
+            <h3 className="sk-fd-panelh"><Icon name="plus" size={14} />Link &amp; add</h3>
+            <div className="sk-fd-fields">
+          <div>
+            <span className="sk-cap">Task from any site</span>
+            <SearchPick
+              options={Object.entries(ctx.sl?.snapshots || {}).flatMap(([site, snap]) =>
+                (snap?.tasks || [])
+                  .filter(
+                    (t) =>
+                      t.status !== "done" &&
+                      t.kind !== "list" &&
+                      t.kind !== "habit" &&
+                      !t.id.startsWith("habit-") &&
+                      !(item.siteTasks || []).includes(pinKey(site as SourceId, t.id)),
+                  )
+                  .map((t) => ({
+                    key: pinKey(site as SourceId, t.id),
+                    label: t.title,
+                    sub: sourceById[site as SourceId]?.shortName,
+                    group: sourceById[site as SourceId]?.name,
+                  })),
+              )}
+              label="Link a single task"
+              placeholder="Search tasks on any site…"
+              onPick={(o) => update({ siteTasks: [...(item.siteTasks || []), o.key] })}
+            />
+          </div>
+          <div>
+            <span className="sk-cap">Site list</span>
+            <SearchPick
+              options={Object.values(ctx.sl?.store || {})
+                .filter((l) => l && !l.gone && !(item.siteLists || []).includes(l.id))
+                .map((l) => ({
+                  key: l.id,
+                  label: l.name,
+                  sub: `${sourceById[l.site].shortName} · ${viewOfList(l, ctx.sl!.snapshots).open.length} left`,
+                  group: sourceById[l.site].name,
+                }))}
+              label="Add a site list"
+              placeholder={Object.values(ctx.sl?.store || {}).some((l) => l && !l.gone) ? "Search your site lists…" : "No site lists yet (make one from a site task’s menu)"}
+              disabled={!Object.values(ctx.sl?.store || {}).some((l) => l && !l.gone)}
+              onPick={(o) => update({ siteLists: [...(item.siteLists || []), o.key] })}
+            />
+          </div>
+          <div className="sk-fd-finpick">
+            <span className="sk-cap">Finance item → into a checklist</span>
+            <select
+              aria-label="List for Finance item"
+              value={financeList?.id || ""}
+              onChange={(e) => setFinanceListId(e.target.value)}
+              disabled={!lists.length}
+            >
+              {!lists.length ? <option value="">Create a list first</option> : null}
+              {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+            <SearchPick
+              options={finOpts}
+              label="Search Finance"
+              placeholder="Search every bill, ticket, card, loan…"
+              disabled={!finOpts.length || !financeList}
+              onPick={(o) => {
+                if (financeList) addFinance(financeList, { key: o.key, label: o.label });
+              }}
+            />
+          </div>
+            </div>
+            <p className="sk-fd-hint">Linked tasks and lists stay on their sites too.</p>
+          </section>
+        </div>
 
         <footer className="sk-fd-foot">
           {item.ongoing ? (
@@ -1029,6 +1053,14 @@ function Detail({
             Remove this focus
           </button>
         </footer>
+      {(() => {
+        const sl = subOpen ? lists.find((x) => x.id === subOpen.list) : undefined;
+        const st = sl?.tasks.find((x) => x.id === subOpen?.task);
+        if (!sl || !st) return null;
+        const patch = (p: Partial<SubTask>) =>
+          patchList(sl.id, { tasks: sl.tasks.map((x) => (x.id === st.id ? { ...x, ...p } : x)) });
+        return <SubTaskPop task={st} listName={sl.name} patch={patch} close={() => setSubOpen(null)} />;
+      })()}
     </Dialog>
   );
 }
@@ -1162,5 +1194,76 @@ export function FocusCards({
         />
       ) : null}
     </>
+  );
+}
+
+/** A focus checklist task's own pop-out: rename it, jot sub-details, give it an optional due day. */
+function SubTaskPop({ task, listName, patch, close }: { task: SubTask; listName: string; patch: (p: Partial<SubTask>) => void; close: () => void }) {
+  const closeNow = useRef(close);
+  useEffect(() => {
+    closeNow.current = close;
+  });
+  useEffect(() => {
+    // Escape closes just this pop-out, not the focus card behind it.
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      closeNow.current();
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, []);
+  return (
+    <div className="sk-subpop-back" onClick={(e) => e.target === e.currentTarget && close()}>
+      <div className="sk-subpop" role="dialog" aria-modal="true" aria-label={task.text}>
+        <header className="sk-subpop-head">
+          <button
+            type="button"
+            className={`sk-circle${task.done ? " is-on" : ""}`}
+            aria-pressed={task.done}
+            aria-label={`Mark ${task.text} ${task.done ? "not done" : "done"}`}
+            onClick={() => patch({ done: !task.done })}
+          >
+            <Icon name="check" size={12} />
+          </button>
+          <input
+            className="sk-subpop-title"
+            value={task.text}
+            onChange={(e) => patch({ text: e.target.value })}
+            onBlur={(e) => patch({ text: e.target.value.trim() || task.text })}
+            aria-label="Task name"
+            maxLength={160}
+            data-autofocus
+          />
+          <button type="button" className="sk-btn is-small is-icon is-quiet" onClick={close} aria-label="Close">
+            <Icon name="close" size={16} />
+          </button>
+        </header>
+        <p className="sk-subpop-from">In checklist · {listName}</p>
+        <label className="sk-subpop-field">
+          <span className="sk-cap">Details</span>
+          <textarea
+            value={task.note || ""}
+            onChange={(e) => patch({ note: e.target.value || undefined })}
+            rows={5}
+            placeholder="Sub-details, steps, numbers, who to call…"
+          />
+        </label>
+        <div className="sk-subpop-row">
+          <label className="sk-subpop-field">
+            <span className="sk-cap">Due day (optional)</span>
+            <input type="date" value={task.due || ""} onChange={(e) => patch({ due: e.target.value || undefined })} />
+          </label>
+          {task.due ? (
+            <button type="button" className="sk-btn is-small is-quiet" onClick={() => patch({ due: undefined })}>
+              Clear date
+            </button>
+          ) : null}
+          <button type="button" className="sk-btn is-small" onClick={close}>
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

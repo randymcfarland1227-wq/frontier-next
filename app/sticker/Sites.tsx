@@ -355,7 +355,10 @@ function SiteTasks({
   const { lanes } = usePriorityPins();
 
   const openTasks = snapshot.tasks.filter(
-    (t) => t.status !== "done" && !exclude?.has(t.id),
+    (t) =>
+      t.status !== "done" &&
+      !exclude?.has(t.id) &&
+      !lanes[pinKey(sourceId, t.id)]?.lane,
   );
   const starFirst = (list: TaskItem[]) =>
     starred?.size
@@ -640,8 +643,9 @@ function SiteStarred({
 }) {
   const copy = sourceById[sourceId];
   const { levelOf, isCritical } = useFeaturedLevels();
+  const { lanes } = usePriorityPins();
   const sorted = byLevel(
-    snapshot.featured,
+    snapshot.featured.filter((f) => !lanes[pinKey(sourceId, f.id)]?.lane),
     (f) => levelOf(sourceId, f.id),
     (f) => isCritical(sourceId, f.id),
   );
@@ -1174,11 +1178,17 @@ function AllTasks({
   onCompleteTask: (source: SourceId, task: TaskItem) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
+  const { lanes } = usePriorityPins();
   const ids = SITE_ROWS.flatMap((r) => r.ids);
   const rows = ids
     .flatMap((sid, order) =>
       (snapshots[sid]?.tasks || [])
-        .filter((t) => t.status !== "done" && !isHabit(t))
+        .filter(
+          (t) =>
+            t.status !== "done" &&
+            !isHabit(t) &&
+            !lanes[pinKey(sid, t.id)]?.lane,
+        )
         .map((t) => ({ sid, t, order })),
     )
     .sort((a, b) => {

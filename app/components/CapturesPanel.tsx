@@ -211,7 +211,7 @@ export function CapturesPanel({
   // Tasks moved to another site live in that site's card now.
   const mine = selfItems.filter(i => !i.home);
   const allOpen = mine
-    .filter(i => !i.done && !listOfTask(listStore, 'self', i.id))
+    .filter(i => !i.done && !listOfTask(listStore, 'self', i.id) && !isPinned('self', i.id))
     .map((t, i) => ({ t, i }))
     .sort((a, b) => (a.t.due && b.t.due ? a.t.due.localeCompare(b.t.due) : a.t.due ? -1 : b.t.due ? 1 : a.i - b.i))
     .map(x => x.t);

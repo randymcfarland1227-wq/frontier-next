@@ -77,7 +77,7 @@ export function TaskList({
   const [showAllState, setShowAll] = useState(false);
   const showAll = fill || showAllState;
 
-  const openTasks = snapshot.tasks.filter(t => t.status !== 'done' && !exclude?.has(t.id));
+  const openTasks = snapshot.tasks.filter(t => t.status !== 'done' && !exclude?.has(t.id) && !lanes[pinKey(sourceId, t.id)]?.lane);
   const starFirst = (list: TaskItem[]) => (starred?.size ? [...list.filter(t => starred.has(t.id)), ...list.filter(t => !starred.has(t.id))] : list);
   const habits = starFirst(openTasks.filter(isHabit));
   const tasks = starFirst(openTasks.filter(t => !isHabit(t)));

@@ -33,8 +33,10 @@ export function FeaturedList({
   const sorted = byLevel(snapshot.featured, f => levelOf(sourceId, f.id), f => isCritical(sourceId, f.id));
   const [showAll, setShowAll] = useState(false);
   const PREVIEW = compact ? 4 : 12;
-  const items = showAll ? sorted : sorted.slice(0, PREVIEW);
   const { addPin, removePin, isPinned, lanes } = usePriorityPins();
+  // Anything already in Doing Now leaves the site's list (it lives up there until it's done or taken off).
+  const live = sorted.filter(f => !lanes[pinKey(sourceId, f.id)]?.lane);
+  const items = showAll ? live : live.slice(0, PREVIEW);
   // Row whose Pin menu (pin / give it a day) is open
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const dueOf = (id: string) => {

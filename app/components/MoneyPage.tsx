@@ -5,7 +5,6 @@ import { LinkDevicePrompt } from './LinkDevicePrompt';
 import { MoneyZoom } from './MoneyZoom';
 import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PayPlanner } from './PayPlanner';
-import { usePayPlans } from '../../lib/payPlans';
 import { debtOptions } from '../../lib/money';
 import { MoneySelector } from './MoneySelector';
 import { isLedgerPaid, ledgerMonthRows } from '../../lib/moneyLedger';
@@ -2918,7 +2917,7 @@ function LedgerByCategory({ dues, paidAt, model, onPaid, hidePaid }: { dues: Bil
 
 const NEEDED_OPTIONS = ['Yes', 'Y Low', 'No', 'Ordered'];
 type TabId = 'plan' | 'overview' | 'flow' | 'accounts' | 'spend' | 'owed' | 'debts' | 'save';
-const TAB_IDS: TabId[] = ['overview', 'flow', 'accounts', 'spend', 'debts', 'owed', 'save', 'plan'];
+const TAB_IDS: TabId[] = ['overview', 'flow', 'accounts', 'spend', 'debts', 'owed', 'save'];
 /** Old saved tabs → the merged container they now live in */
 const LEGACY_TAB: Record<string, TabId> = { week: 'flow', month: 'flow', due: 'flow', cards: 'accounts', bills: 'spend', subs: 'spend', shop: 'spend' };
 const FLOW_IDS = ['week', 'month', 'ledger'] as const;
@@ -3039,8 +3038,6 @@ export function MoneyPage({
     [book, dues, monthDues, model, metaGet],
   );
 
-  const payPlans = usePayPlans();
-  const livePlan = payPlans.find(p => !p.archived);
   const sheetDues = dues.filter(d => d.bill.kind !== 'plan' && !d.skipped);
   const today = startOfDay(new Date());
   const monthRe = new RegExp(`^(${today.toLocaleDateString('en-US', { month: 'long' })}|${today.toLocaleDateString('en-US', { month: 'short' })})[- ]?(${today.getFullYear()})?$`, 'i');
@@ -3197,7 +3194,6 @@ export function MoneyPage({
     { id: 'debts', tone: 'owed', label: 'Credit', figure: 'collections · past due · scores' },
     { id: 'owed', tone: 'owed', label: 'Current liabilities', figure: money(dashOwed.reduce((t, o) => t + o.sum, 0)) },
     { id: 'save', tone: 'save', label: 'Savings & move', figure: '' },
-    { id: 'plan', tone: 'plan', label: 'Plan', figure: livePlan ? livePlan.title : 'New' },
   ];
 
   return (

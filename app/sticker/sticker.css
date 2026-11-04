@@ -2993,3 +2993,10 @@
 .fc-habit-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
 .fc-habit-row label { display: grid; gap: 2px; font-size: 12px; }
 .fc-habit-row input[type=number] { width: 70px; }
+
+/* Habit rows: name takes the free space; Skip / Uncompleted sit together at the right edge.
+   Skipped and uncompleted habits are struck through like done ones (they're logged). */
+.sk-app .sk-habits li > span:not(.sk-circle) { flex: 1 1 auto; min-width: 0; }
+.sk-app .sk-habits li .sk-habit-act { margin-left: 0; flex: none; white-space: nowrap; }
+.sk-app .sk-habits li .sk-habit-tag { margin-left: 0; flex: none; }
+.sk-app .sk-habits li.is-skipped span { text-decoration: line-through; text-decoration-thickness: 2px; font-style: normal; }

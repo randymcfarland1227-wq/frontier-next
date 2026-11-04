@@ -343,7 +343,11 @@ export function HomeTop({
   const needs = brief.reduce((n, s) => n + s.rows.length, 0);
   const tt = snapshots.ticktick;
   const day = useTickTickDay(ledger);
-  const openHabits = Number(tt?.metrics?.habits) || 0;
+  // Habits still open: the feed's open habits minus the ones marked skipped / uncompleted today.
+  const habitTasks = (tt?.tasks || []).filter((t) => (t.kind === "habit" || t.id.startsWith("habit-")) && t.status !== "done");
+  const openHabits = habitTasks.length
+    ? habitTasks.filter((t) => !day.offIds.has(t.id)).length
+    : Math.max(0, (Number(tt?.metrics?.habits) || 0) - day.skippedHabits);
   const habitsLogged = day.habitsDone + day.skippedHabits;
   const habitsTotal = habitsLogged + openHabits;
   const openTasks = (tt?.tasks || []).filter(

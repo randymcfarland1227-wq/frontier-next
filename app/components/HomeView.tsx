@@ -321,6 +321,7 @@ export function HomeView({
           ttTasks.filter((t) => t.status !== "done" && !isHabitTask(t)).length
         }
         openHabits={Number(snapshots.ticktick?.metrics?.habits) || 0}
+        habitIds={ttTasks.some(isHabitTask) ? ttTasks.filter((t) => t.status !== "done" && isHabitTask(t)).map((t) => t.id) : undefined}
       />
     </div>
   );

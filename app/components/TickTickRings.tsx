@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { CompletionLedger } from '../../lib/completions';
 import { loadDayLog, TICKTICK_DAYLOG_EVENT } from '../../lib/ticktickDone';
+import { useLoggedToday } from '../../lib/ticktickLog';
 
 type Counts = { done: number; skipped: number; open: number };
 
@@ -45,6 +46,7 @@ function Ring({ label, counts }: { label: string; counts: Counts }) {
 /** TickTick today: done (from the ledger) and won't do / skipped (from TickTick's last pull). */
 export function useTickTickDay(ledger: CompletionLedger) {
   const [log, setLog] = useState(loadDayLog);
+  const logged = useLoggedToday();
   useEffect(() => {
     const reload = () => setLog(loadDayLog());
     window.addEventListener(TICKTICK_DAYLOG_EVENT, reload);
@@ -63,7 +65,13 @@ export function useTickTickDay(ledger: CompletionLedger) {
     if (e.taskId.startsWith('habit-')) habitsDone++;
     else tasksDone++;
   }
-  return { tasksDone, habitsDone, wontDoTasks: log.wontDoTasks.length, skippedHabits: log.skippedHabits.length };
+  // Skipped and uncompleted habits are both logged (marked) for today, whether marked here or in the app.
+  const offIds = new Set([
+    ...log.skippedHabits,
+    ...(log.notDoneHabits || []),
+    ...Object.entries(logged).filter(([id, o]) => o !== 'wontdo' && id.startsWith('habit-')).map(([id]) => id),
+  ]);
+  return { tasksDone, habitsDone, wontDoTasks: log.wontDoTasks.length, skippedHabits: offIds.size, offIds };
 }
 
 /**
@@ -71,8 +79,10 @@ export function useTickTickDay(ledger: CompletionLedger) {
  * won't do — versus still open. Open counts are the card's own numbers; done comes from the
  * completion ledger (today); won't do comes from TickTick's last pull.
  */
-export function TickTickRings({ ledger, openTasks, openHabits }: { ledger: CompletionLedger; openTasks: number; openHabits: number }) {
-  const { tasksDone, habitsDone, wontDoTasks, skippedHabits } = useTickTickDay(ledger);
+export function TickTickRings({ ledger, openTasks, openHabits: openIn, habitIds }: { ledger: CompletionLedger; openTasks: number; openHabits: number; habitIds?: string[] }) {
+  const { tasksDone, habitsDone, wontDoTasks, skippedHabits, offIds } = useTickTickDay(ledger);
+  // Open habits from the feed, minus the ones marked skipped / uncompleted today (they're logged).
+  const openHabits = habitIds ? habitIds.filter((id) => !offIds.has(id)).length : Math.max(0, openIn - skippedHabits);
   return (
     <>
       <Ring label="Tasks" counts={{ done: tasksDone, skipped: wontDoTasks, open: openTasks }} />

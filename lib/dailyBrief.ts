@@ -42,8 +42,9 @@ function tasksDue(snaps: Record<SourceId, SourceSnapshot>, now: Date): BriefRow[
   const rows: BriefRow[] = [];
   for (const id of Object.keys(snaps) as SourceId[]) {
     for (const t of snaps[id]?.tasks || []) {
-      if (t.status === 'done' || isHabit(t) || !t.due) continue;
-      const due = t.due.slice(0, 10);
+      if (t.status === 'done' || isHabit(t) || !(t.scheduled || t.due)) continue;
+      // A scheduled ("do on") day decides when it shows; otherwise its due date.
+      const due = (t.scheduled || t.due)!.slice(0, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(due) || due > today) continue;
       const late = Math.round((new Date(`${today}T00:00:00`).getTime() - new Date(`${due}T00:00:00`).getTime()) / DAY);
       rows.push({
@@ -110,7 +111,21 @@ function saleRows(snap?: SourceSnapshot): BriefRow[] {
     .map(t => ({ id: `sale:${t.id}`, title: t.title, note: t.tag || 'Resale', go: 'resale' as const, pin: `resale:${t.id}` }));
 }
 
-export function buildBrief(snaps: Record<SourceId, SourceSnapshot>, bills: BillDue[], now = new Date()): BriefSection[] {
+/** Tasks scheduled for a later day are left out of the brief until that day. */
+export function withoutLater(snaps: Record<SourceId, SourceSnapshot>, now = new Date()): Record<SourceId, SourceSnapshot> {
+  const today = dayKey(now);
+  const out = { ...snaps };
+  for (const id of Object.keys(snaps) as SourceId[]) {
+    const s = snaps[id];
+    if (!s?.tasks?.some(t => t.scheduled && t.scheduled.slice(0, 10) > today)) continue;
+    const later = new Set(s.tasks.filter(t => t.scheduled && t.scheduled.slice(0, 10) > today).map(t => t.id));
+    out[id] = { ...s, tasks: s.tasks.filter(t => !later.has(t.id)), featured: (s.featured || []).filter(f => !later.has(f.id)) };
+  }
+  return out;
+}
+
+export function buildBrief(snapsIn: Record<SourceId, SourceSnapshot>, bills: BillDue[], now = new Date()): BriefSection[] {
+  const snaps = withoutLater(snapsIn, now);
   const mail = mailRows(snaps);
   return [
     { id: 'money', label: 'Money · overdue or due today', rows: money_(bills) },

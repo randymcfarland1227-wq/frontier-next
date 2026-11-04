@@ -45,6 +45,8 @@ export type TaskItem = {
   detail?: string;
   status?: 'open' | 'done' | 'blocked' | string;
   due?: string;
+  /** The day it's planned for (Role Hub "Do on", YYYY-MM-DD): kept out of the Daily Brief until then */
+  scheduled?: string;
   starred?: boolean;
   originUrl?: string;
   /** Optional badge: habit vs task vs mail */

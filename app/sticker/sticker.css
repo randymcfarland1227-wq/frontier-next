@@ -2776,3 +2776,10 @@
 
 /* List pop-out: Add to Doing Now line under the count. */
 .sk-listdlg-doing { display: flex; align-items: center; gap: 10px; margin: 2px 0 10px; }
+
+/* Focus pop-out: labelled checklist maker, linked single tasks, and a 2-up grid for the link searches. */
+.sk-app .sk-fd-newlist.sk-fd-box { gap: 8px; }
+.sk-app .sk-fd-sitetasks li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
+.sk-app .sk-fd-sitetasks li small { color: var(--sk-ink-2); }
+.sk-app .sk-fd-sitetasks li.is-done .sk-fd-taskopen { text-decoration: line-through; opacity: .6; }
+.sk-app .sk-fd-tools { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }

@@ -200,6 +200,16 @@ function taskDone(task: SubTask, ctx: FinCtx) {
 }
 
 /** % done across the hand-made sub-tasks and every linked finance item. */
+/** A single site task linked into a focus by its pin key (`source:id`). */
+function linkedTask(key: string, ctx: FinCtx) {
+  const at = key.indexOf(":");
+  if (at < 0) return null;
+  const site = key.slice(0, at) as SourceId;
+  const id = key.slice(at + 1);
+  const task = ctx.sl?.snapshots[site]?.tasks.find((t) => t.id === id);
+  return task ? { site, task } : null;
+}
+
 function progressOf(i: Entry, ctx: FinCtx) {
   const all = (i.lists || []).flatMap((l) => l.tasks);
   let total = all.length;
@@ -215,6 +225,12 @@ function progressOf(i: Entry, ctx: FinCtx) {
     const v = viewOfList(l, ctx.sl!.snapshots);
     total += v.total;
     done += v.done;
+  }
+  for (const k of i.siteTasks || []) {
+    const t = linkedTask(k, ctx);
+    if (!t) continue;
+    total += 1;
+    if (t.task.status === "done") done += 1;
   }
   if (!total) return { pct: i.done ? 100 : null, done: 0, total: 0 } as const;
   return { pct: Math.round((done / total) * 100), done, total };
@@ -689,6 +705,46 @@ function Detail({
             );
           })}
 
+          {(item.siteTasks || []).length ? (
+            <section className="sk-fd-box sk-fd-list sk-fd-sitetasks">
+              <header>
+                <b>
+                  <Icon name="check" size={13} />
+                  Linked tasks
+                </b>
+              </header>
+              <p className="sk-fd-hint">Single tasks from your sites; they stay on their site too.</p>
+              <ul>
+                {(item.siteTasks || []).map((k) => {
+                  const hit = linkedTask(k, ctx);
+                  const unlink = () => update({ siteTasks: (item.siteTasks || []).filter((x) => x !== k) });
+                  if (!hit) return null;
+                  const isDone = hit.task.status === "done";
+                  return (
+                    <li key={k} className={isDone ? "is-done" : ""}>
+                      <button
+                        type="button"
+                        className="sk-circle"
+                        aria-label={isDone ? `${hit.task.title} is done` : `Mark ${hit.task.title} done`}
+                        disabled={isDone}
+                        onClick={() => ctx.sl?.complete(hit.site, hit.task.id)}
+                      >
+                        <Icon name="check" size={12} />
+                      </button>
+                      <button type="button" className="sk-fd-taskopen" title="Open its notes, questions and findings" onClick={() => openTaskPanel(k)}>
+                        {hit.task.title}
+                      </button>
+                      <small>{sourceById[hit.site].shortName}</small>
+                      <button type="button" className="sk-btn is-small is-icon is-quiet" aria-label={`Unlink ${hit.task.title}`} title="Unlink (the task stays on its site)" onClick={unlink}>
+                        <Icon name="close" size={13} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+
           {(item.fin || []).map((l) => {
             const rows = finRows(l, ctx);
             const s = finStats(rows);
@@ -755,6 +811,7 @@ function Detail({
           })}
 
           <form className="sk-fd-box sk-fd-newlist" onSubmit={addList}>
+            <span className="sk-cap">New checklist for this focus</span>
             <input
               value={listName}
               onChange={(e) => setListName(e.target.value)}
@@ -775,7 +832,32 @@ function Detail({
 
         <div className="sk-fd-tools">
           <div>
-            <span className="sk-cap">Add a list from a site (it stays in the pool too)</span>
+            <span className="sk-cap">Link a single task (search every site)</span>
+            <SearchPick
+              options={Object.entries(ctx.sl?.snapshots || {}).flatMap(([site, snap]) =>
+                (snap?.tasks || [])
+                  .filter(
+                    (t) =>
+                      t.status !== "done" &&
+                      t.kind !== "list" &&
+                      t.kind !== "habit" &&
+                      !t.id.startsWith("habit-") &&
+                      !(item.siteTasks || []).includes(pinKey(site as SourceId, t.id)),
+                  )
+                  .map((t) => ({
+                    key: pinKey(site as SourceId, t.id),
+                    label: t.title,
+                    sub: sourceById[site as SourceId]?.shortName,
+                    group: sourceById[site as SourceId]?.name,
+                  })),
+              )}
+              label="Link a single task"
+              placeholder="Search tasks on any site…"
+              onPick={(o) => update({ siteTasks: [...(item.siteTasks || []), o.key] })}
+            />
+          </div>
+          <div>
+            <span className="sk-cap">Link a site list (it stays in the pool too)</span>
             <SearchPick
               options={Object.values(ctx.sl?.store || {})
                 .filter((l) => l && !l.gone && !(item.siteLists || []).includes(l.id))
@@ -786,7 +868,7 @@ function Detail({
                   group: sourceById[l.site].name,
                 }))}
               label="Add a site list"
-              placeholder="Search your site lists…"
+              placeholder={Object.values(ctx.sl?.store || {}).some((l) => l && !l.gone) ? "Search your site lists…" : "No site lists yet (make one from a site task’s menu)"}
               disabled={!Object.values(ctx.sl?.store || {}).some((l) => l && !l.gone)}
               onPick={(o) => update({ siteLists: [...(item.siteLists || []), o.key] })}
             />

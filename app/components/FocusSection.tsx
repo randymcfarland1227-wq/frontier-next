@@ -89,6 +89,8 @@ export type Entry = {
   unassigned?: boolean;
   /** Site lists (tasks grouped in one site) linked into this goal; they stay in the pool too (lib/siteLists.ts) */
   siteLists?: string[];
+  /** Single site tasks linked in by search, as pin keys (`source:id`); they stay in their site too */
+  siteTasks?: string[];
   /** An ongoing goal also shown in the Short-term focus view at the top of Today (same record, so edits mirror) */
   inFocus?: boolean;
   /** An ongoing goal: a direction, not a one-time task (made from Self) */

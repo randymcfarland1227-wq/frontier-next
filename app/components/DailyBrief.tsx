@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildBrief, type BriefSection } from '../../lib/dailyBrief';
 import { REFRESH_EVENT } from '../../lib/syncNow';
-import { groupSteps, openTaskPanel, requestOpenMix } from '../../lib/priorityPins';
+import { doneInMix, endMix, groupSteps, openTaskPanel, requestOpenMix, unpin } from '../../lib/priorityPins';
+import { useFeaturedLevels } from '../../lib/featuredLevels';
+import type { PriorityItem } from './PriorityPanel';
 import { LOCAL_WRITE_EVENT, readSaved, writeSaved } from '../../lib/storage';
 import { eventEnd, eventStart, type BillDue, type ScheduleSnapshot } from '../../lib/schedule';
 import { usePlan } from './FocusDrawer';
 import type { SourceId, SourceSnapshot, SpaceId } from '../../lib/types';
-import { Dot, Group, ListHead } from '../sticker/kit';
+import { Circle, Dot, Group, ListHead } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
 import { useDayKey } from '../../lib/dayKey';
 import { FOCUS_PRIORITY_LABEL, type FocusPriority } from '../../lib/focusPriority';
@@ -101,10 +103,10 @@ const whenLabel = (d: Date) => {
   const n = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime()) / 86400000);
   return n <= 0 ? 'Today' : n === 1 ? 'Tomorrow' : `in ${n} days`;
 };
-type BRow = { id: string; title: string; note: string; tone?: string; pin?: string; go?: SpaceId; mix?: string; focusId?: string; priority?: FocusPriority; marker?: string; when?: string };
+type BRow = { id: string; title: string; note: string; tone?: string; pin?: string; go?: SpaceId; mix?: string; focusId?: string; priority?: FocusPriority; marker?: string; when?: string; finish?: () => void };
 type BCol = { id: string; title: string; rows: BRow[]; compact?: boolean; keepAll?: boolean; empty: string };
 
-export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, openFinance }: {
+export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, openFinance, complete }: {
   snapshots: Record<SourceId, SourceSnapshot>;
   bills: BillDue[];
   schedule: ScheduleSnapshot | null;
@@ -112,10 +114,25 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
   focus: ReturnType<typeof useShortTermFocus>;
   events: LinkItem[];
   openFinance: OpenFinance;
+  /** Mark an Action List item done (same as its circle in Doing Now). */
+  complete?: (source: SourceId, item: PriorityItem) => void;
 }) {
   const sections = useBrief(snapshots, bills);
   const gone = useDismissed();
   const { plan, lanes } = usePlan(snapshots, bills);
+  const { isCritical, toggleCritical } = useFeaturedLevels();
+  // Same as the circle in Doing Now: done on its site, off the list; a mix member stays struck through in its mix.
+  const finishPlan = (item: PriorityItem) => {
+    if (!complete) return;
+    complete(item.source, item);
+    unpin(item.key);
+    if (isCritical(item.source, item.id)) toggleCritical(item.source, item.id);
+    const mix = lanes[item.key]?.mix;
+    if (!mix) return;
+    const left = plan.filter(i => lanes[i.key]?.mix === mix).length;
+    if (left <= 1) endMix(mix);
+    else doneInMix(item.key, item.title);
+  };
   const hidden = Object.keys(gone).length;
   const [folds, setFolds] = useState<Record<string, boolean>>(() => readSaved(FOLDS_KEY, {}));
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -151,7 +168,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
     .sort((a, b) => eventStart(a).getTime() - eventStart(b).getTime());
   const cols: BCol[] = [
     { id: 'doing', title: 'Action List', keepAll: true, empty: 'Nothing selected in your Action List yet.', rows: groupSteps(plan, lanes).map((st): BRow => st.kind === 'one'
-      ? { id: `plan:${st.item.key}`, title: st.item.title, note: sourceById[st.item.source].shortName, pin: st.item.key }
+      ? { id: `plan:${st.item.key}`, title: st.item.title, note: sourceById[st.item.source].shortName, pin: st.item.key, finish: complete ? () => finishPlan(st.item) : undefined }
       : { id: `mix:${st.id}`, title: st.name, mix: st.id, note: [st.done.length ? `${st.done.length} of ${st.items.length + st.done.length} done` : `${st.items.length} items`, [...new Set(st.items.map(i => sourceById[i.source].shortName))].join(' · ')].join(' · ') }) },
     { id: 'mail', title: 'Mail', empty: 'Nothing waiting in the current feed.', rows: (['roles', 'sales', 'mail'] as const).flatMap(id => (sections.find(s => s.id === id)?.rows || []).map(r => ({ ...r, marker: id === 'roles' ? 'Role reply' : id === 'sales' ? 'Sales / shipping' : 'Other mail' }))) },
     { id: 'money', title: HEADS.money, compact: true, empty: 'Nothing due today or overdue.', rows: sections.find(s => s.id === 'money')?.rows || [] },
@@ -180,6 +197,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
                   <span className="sk-brief-title">{isNew && !s.compact ? <Dot tone="needs" hint="New since you last looked" /> : null}{r.marker ? <span className="sk-brief-kind">{r.marker}</span> : null}{r.title}{r.when ? <em className="sk-brief-when">{r.when}</em> : null}</span>
                   {r.note ? <small>{r.note}</small> : null}
                 </button> : <span className="sk-brief-open"><span className="sk-brief-title">{r.title}{r.when ? <em className="sk-brief-when">{r.when}</em> : null}</span><small>{r.note}</small></span>}
+                {r.finish ? <span className="sk-brief-done"><Circle onDone={r.finish} label={`Done: ${r.title}`} /></span> : null}
                 {s.keepAll ? null : <button type="button" className="sk-brief-clear" aria-label={`Clear ${r.title} from today’s brief`} title="Clear from today’s brief (it can come back tomorrow)" onClick={() => dismissIds([r.id])}><Icon name="close" size={12} /></button>}
               </li>;
             })}</ul> : <p className="sk-brief-empty">{s.empty}</p>}

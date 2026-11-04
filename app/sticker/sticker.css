@@ -2914,3 +2914,6 @@
 .sk-app .sk-seg.sk-today-sheettabs { margin: 0 auto 0 8px; }
 .sk-app .sk-seg.sk-today-sheettabs button { font-size: 13px; padding: 4px 10px; }
 .sk-app .sk-sheetside .sk-dialog-head .sk-title { flex: 0 0 auto; }
+/* Daily Brief Action List: a done circle on the right of each row */
+.sk-app .sk-brief-entry:has(> .sk-brief-done) { grid-template-columns: minmax(0, 1fr) auto; }
+.sk-app .sk-brief-done { display: grid; place-items: center; padding: 0 8px; }

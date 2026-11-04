@@ -408,6 +408,7 @@ export function HomeView({
           />
         ) : (
           <DailyBrief
+            complete={payFromPriority}
             snapshots={snapshots}
             bills={bills}
             schedule={schedule}

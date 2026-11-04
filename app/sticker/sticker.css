@@ -2827,3 +2827,5 @@
 /* Checklist rows with a due chip get a 4th column so the × stays on the line. */
 .sk-app .sk-fd-list li:has(> .sk-fd-due) { grid-template-columns: auto minmax(0, 1fr) auto auto; }
 .sk-app .sk-fd-list li.is-done .sk-fd-taskopen { text-decoration: line-through; color: var(--sk-ink-2); }
+/* Sub-task pop-out uses the same paper + edge as the focus card it sits on. */
+.sk-subpop { background: var(--sk-paper); border: 2px solid var(--sk-edge); }

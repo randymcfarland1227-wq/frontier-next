@@ -960,7 +960,7 @@ function SiteBlock({
             <Icon name="external" size={14} />
           </button>
         ) : null}
-        {source.id ? (
+        {source.id !== "self" ? (
           <button
             type="button"
             className="sk-ricon"
@@ -1003,7 +1003,7 @@ function SiteBlock({
         <div className="sk-srcbody">
           {/* Self's body is the Self tool itself; other sites' extras (Radall's money due) go below the tasks */}
           {source.id === "self" || source.id === "ticktick" ? extra : null}
-          {extra && source.id === "self" && !grouping ? null : (
+          {extra && source.id === "self" ? null : (
             <>
               {featuredAbove.length ? (
                 <SiteStarred

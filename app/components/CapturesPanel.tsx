@@ -14,6 +14,7 @@ import { Circle, ListHead, Row, Tag } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
 import { openTaskPanel, pinDragProps, pinKey, usePriorityPins } from '../../lib/priorityPins';
 import { addOngoingGoal } from '../../lib/ongoingGoals';
+import { addToSiteList, createSiteList, listOfTask, openSiteList, useSiteListStore } from '../../lib/siteLists';
 
 /** Where a Self task can be moved (it then shows in that site's card). */
 const MOVE_TO: Array<[string, string]> = [
@@ -188,7 +189,15 @@ export function CapturesPanel({
     return localDay(d);
   };
   /** Everything a Self task row used to show as buttons — star, pin, day, move — lives in its right-click / long-press menu. */
+  const listStore = useSiteListStore();
+  const myLists = Object.values(listStore).filter(l => l && !l.gone && l.site === 'self');
+  const newList = (t: SelfItem) => {
+    const name = window.prompt('Name the new list (e.g. Storefront)');
+    if (name && name.trim()) createSiteList('self', name, [t.id]);
+  };
   const taskMenu = (t: SelfItem): RowMenuItem[] => [
+    ...(t.done ? [] : [{ label: 'Add to new list…', onSelect: () => newList(t) }]),
+    ...(t.done ? [] : myLists.map(l => ({ label: `Add to list: ${l.name}`, onSelect: () => addToSiteList(l.id, [t.id]) }))),
     { label: t.starred ? 'Unstar' : 'Star', onSelect: () => onTaskStar(t.id), hidden: t.done },
     { label: 'Pin to Priority', onSelect: () => addPin('self', t.id), hidden: t.done || !t.starred || isPinned('self', t.id) },
     { label: 'Take off Priority', onSelect: () => removePin('self', t.id), hidden: t.done || !isPinned('self', t.id) },
@@ -202,7 +211,7 @@ export function CapturesPanel({
   // Tasks moved to another site live in that site's card now.
   const mine = selfItems.filter(i => !i.home);
   const allOpen = mine
-    .filter(i => !i.done)
+    .filter(i => !i.done && !listOfTask(listStore, 'self', i.id))
     .map((t, i) => ({ t, i }))
     .sort((a, b) => (a.t.due && b.t.due ? a.t.due.localeCompare(b.t.due) : a.t.due ? -1 : b.t.due ? 1 : a.i - b.i))
     .map(x => x.t);
@@ -211,7 +220,7 @@ export function CapturesPanel({
   const openTasks = allOpen.filter(t => !t.starred);
   // Finished ones are kept on the Self page, not on the Daily Ops card.
   const counts: Record<Tab, number> = Object.fromEntries(
-    TABS.map(t => [t.id, t.id === 'tasks' ? openTasks.length : captures.filter(c => c.status === t.id).length]),
+    TABS.map(t => [t.id, t.id === 'tasks' ? openTasks.length + myLists.length : captures.filter(c => c.status === t.id).length]),
   ) as Record<Tab, number>;
   const visible = tab === 'tasks' ? [] : captures.filter(c => c.status === tab);
 
@@ -408,7 +417,19 @@ export function CapturesPanel({
 
       {tab === 'tasks' ? (
         <div className="sk-list" role="tabpanel" aria-label="Tasks">
-          {openTasks.length === 0 ? <p className="sk-empty">No Self tasks yet.</p> : null}
+          {openTasks.length === 0 && myLists.length === 0 ? <p className="sk-empty">No Self tasks yet.</p> : null}
+          {myLists.map(l => {
+            const open = l.tasks.filter(id => selfItems.some(i => i.id === id && !i.done)).length;
+            return (
+              <Row
+                key={l.id}
+                title={l.name}
+                sub={<span className="sk-facts"><span className="sk-fact"><Icon name="steps" size={14} />List · {open} open</span></span>}
+                onOpen={() => openSiteList(l.id)}
+                hint="Open this list"
+              />
+            );
+          })}
           {openTasks.map(t => (
             <SelfTaskRow
               key={t.id}

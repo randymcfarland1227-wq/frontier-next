@@ -3,7 +3,7 @@
    Rules it keeps:
    1. Controls look different from content: a hard shadow = something you press.
       Content boxes are flat with a 2px outline and a tinted background.
-   2. One prominent button per view (Update Today).
+   2. One prominent button per view (Today).
    3. Blue text = tappable text, nothing else.
    4. One row anatomy: [lead check/dot] [title / subtitle] [trailing value] [chevron if it opens].
    5. Text styles, one job each (sizes at 100% page zoom; HIG large-text ramp, 16px web body floor):
@@ -2898,3 +2898,9 @@
 .sk-app .sk-habit-group .sk-daytasks { margin: 0; padding: 0; }
 .sk-app .sk-habits li { min-height: 26px; gap: 8px; font-size: 12.5px; }
 .sk-app .sk-habits li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Today's Parking Lot (Today sheet, second tab) */
+.sk-app .sk-sheetside > .sk-seg { margin: 4px 0 10px; }
+.sk-app .sk-parking { display: grid; gap: 8px; }
+.sk-app .sk-parking-text, .sk-app .sk-parking-attach textarea { width: 100%; box-sizing: border-box; padding: 10px; font: var(--sk-body); line-height: 1.5; color: var(--sk-ink); background: color-mix(in srgb, var(--sk-paper, #fff) 55%, transparent); border: 1px solid var(--sk-edge); border-radius: 8px; resize: vertical; }
+.sk-app .sk-parking-attach { display: grid; gap: 6px; justify-items: start; }

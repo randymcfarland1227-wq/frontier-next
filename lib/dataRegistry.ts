@@ -46,6 +46,7 @@ export const SAVED_KEYS: SavedKey[] = [
   { key: 'lifehub-focus-weeks2', backup: 'cloud' },
   { key: 'lifehub-goal-links', backup: 'cloud' },
   { key: 'lifehub-goal-modes', backup: 'cloud', note: "Goals marked active / passive — cloud-synced" },
+  { key: 'lifehub-parking-lot', backup: 'device', note: "Today's Parking Lot: one scratch note per day (not backed up yet)" },
   { key: 'lifehub-grounding-affirmations', backup: 'device' },
   { key: 'lifehub-hidden-items', backup: 'cloud', note: "Items removed from Life Hub (not done) — cloud-synced" },
   { key: 'lifehub-hub-stars', backup: 'cloud', note: "Stars Life Hub keeps for sources without their own (TickTick) — cloud-synced" },

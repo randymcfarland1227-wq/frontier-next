@@ -392,7 +392,7 @@ export function HomeTop({
           title="Today: what you said you'd do today"
         >
           <Icon name="sparkles" />
-          Update Today
+          Today
           {unfinished ? (
             <span className="sk-btn-count">{unfinished}</span>
           ) : null}

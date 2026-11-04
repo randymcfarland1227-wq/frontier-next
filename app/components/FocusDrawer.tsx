@@ -9,9 +9,11 @@ import type {
   SpaceId,
 } from "../../lib/types";
 import { sourceById } from "../../lib/sources";
-import { readSaved } from "../../lib/storage";
+import { readSaved, writeSaved } from "../../lib/storage";
+import { useDayKey } from "../../lib/dayKey";
+import { SearchPick } from "../sticker/SearchPick";
 import { onDay, type BillDue, type ScheduleSnapshot } from "../../lib/schedule";
-import { PLAN, usePriorityPins } from "../../lib/priorityPins";
+import { PLAN, loadLanes, updatePinDetails, usePriorityPins } from "../../lib/priorityPins";
 import { Row } from "../sticker/kit";
 import { Icon } from "../sticker/Icon";
 import { SITE_GROUPS } from "../sticker/StickerShell";
@@ -31,6 +33,76 @@ type Pick = {
   from: "site" | "focus" | "today";
   sub: string;
 };
+
+const PARKING_KEY = "lifehub-parking-lot";
+
+/** Today's Parking Lot: one scratch note for the day's work, plus a way to pin a note onto an existing task. */
+function ParkingLot({ catalog }: { catalog: Map<string, PriorityItem> }) {
+  const day = useDayKey();
+  const [text, setText] = useState(() => readSaved<Record<string, string>>(PARKING_KEY, {})[day] || "");
+  const [target, setTarget] = useState<{ key: string; label: string } | null>(null);
+  const [attach, setAttach] = useState("");
+  const [done, setDone] = useState("");
+  const save = (v: string) => {
+    setText(v);
+    const all = readSaved<Record<string, string>>(PARKING_KEY, {});
+    // Keep a week of days; older ones fall away.
+    const next = { ...all, [day]: v };
+    const keep = Object.keys(next).sort().slice(-7);
+    writeSaved(PARKING_KEY, Object.fromEntries(keep.map((d) => [d, next[d]])));
+  };
+  const options = [...catalog.entries()].map(([key, item]) => ({
+    key,
+    label: item.title,
+    sub: sourceById[item.source]?.name || item.source,
+  }));
+  const attachNow = () => {
+    if (!target || !attach.trim()) return;
+    const prev = loadLanes()[target.key]?.note?.trim();
+    updatePinDetails(target.key, { note: `${prev ? `${prev}\n\n` : ""}${attach.trim()}` });
+    setDone(`Added to “${target.label}” — it shows in that task's details.`);
+    setAttach("");
+    setTarget(null);
+  };
+  return (
+    <div className="sk-parking">
+      <p className="sk-sec">A scratch page for today’s work. Stays with the day; a new day starts clean.</p>
+      <textarea
+        className="sk-parking-text"
+        value={text}
+        onChange={(e) => save(e.target.value)}
+        placeholder="Park thoughts, links, ideas and loose ends here…"
+        aria-label="Today's Parking Lot"
+        rows={9}
+      />
+      <h3 className="sk-cap sk-todayh">Attach a note to a task</h3>
+      <SearchPick
+        options={options}
+        label="Search tasks to attach a note to"
+        placeholder={target ? `Task: ${target.label}` : "Search for the task…"}
+        onPick={(o) => {
+          setTarget({ key: o.key, label: o.label });
+          setDone("");
+        }}
+      />
+      {target ? (
+        <div className="sk-parking-attach">
+          <textarea
+            value={attach}
+            onChange={(e) => setAttach(e.target.value)}
+            placeholder={`Note for “${target.label}”…`}
+            aria-label="Note to attach"
+            rows={3}
+          />
+          <button type="button" className="sk-btn is-small" disabled={!attach.trim()} onClick={attachNow}>
+            Attach to task
+          </button>
+        </div>
+      ) : null}
+      {done ? <p className="sk-cap" role="status">{done}</p> : null}
+    </div>
+  );
+}
 
 /** The Doing Now action list, in your order — live, so what's finished elsewhere drops out. */
 export function usePlan(
@@ -99,6 +171,7 @@ export function FocusDrawer({
 }) {
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<Scope>("all");
+  const [tab, setTab] = useState<"list" | "parking">("list");
   const closeRef = useRef<HTMLButtonElement>(null);
   const { plan, catalog } = usePlan(snapshots, bills);
   const brief = useBrief(snapshots, bills);
@@ -239,7 +312,7 @@ export function FocusDrawer({
       >
         <header className="sk-dialog-head">
           <Icon name="checks" size={20} />
-          <h2 className="sk-title">Today&apos;s List</h2>
+          <h2 className="sk-title">Today</h2>
           <button
             ref={closeRef}
             type="button"
@@ -250,6 +323,15 @@ export function FocusDrawer({
             <Icon name="close" size={16} />
           </button>
         </header>
+        <div className="sk-seg" role="group" aria-label="Today">
+          <button type="button" aria-pressed={tab === "list"} onClick={() => setTab("list")}>
+            Today&apos;s list
+          </button>
+          <button type="button" aria-pressed={tab === "parking"} onClick={() => setTab("parking")}>
+            Today&apos;s Parking Lot
+          </button>
+        </div>
+        {tab === "parking" ? <ParkingLot catalog={catalog} /> : (<>
         <p className="sk-sec">
           {total ? `${left} of ${total} left · ` : ""}Your Doing Now action
           list, plus anything you search for and add below.
@@ -384,6 +466,7 @@ export function FocusDrawer({
             </p>
           ) : null}
         </div>
+        </>)}
       </aside>
     </div>,
     host,

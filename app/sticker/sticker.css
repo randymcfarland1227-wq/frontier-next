@@ -2707,3 +2707,22 @@
 .sk-app .sk-sitetabs-bar > :first-child { flex: 1; min-width: 0; }
 .sk-app .sk-sitefold svg { transition: transform .15s ease-out; }
 .sk-app .sk-sitefold[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+/* Split view Money: the whole page at 60% (layout, figures, padding) with type bumped back up so it
+   reads like the rest of Today (~11px body, ~10px captions). Box tables show again instead of blank space. */
+.sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab {
+  zoom: .6;
+  --sk-title: 600 30px/1.2 "Unbounded", system-ui, sans-serif; --sk-headline: 600 21px/1.3 "DM Sans", system-ui, sans-serif;
+  --sk-body: 400 19px/1.4 "DM Sans", system-ui, sans-serif; --sk-label: 600 18px/1.3 "DM Sans", system-ui, sans-serif;
+  --sk-secondary: 400 18px/1.4 "DM Sans", system-ui, sans-serif; --sk-caption: 600 16px/1.3 "DM Sans", system-ui, sans-serif;
+}
+@container today-pane (max-width: 900px) {
+  .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dash-cols { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dc-body > .skm-grid { display: grid; }
+  .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dc-body > :is(.skm-dc-stamp, .skm-dim) { display: block; }
+}
+.sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dash .skm-grid { font-size: 18px; }
+.sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dash :is(.skm-grid > small, .skm-dim, .skm-sums small) { font-size: 16px; }
+.sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dash :is(.skm-sums b, .mb-dc-scores b) { font-size: 19px; }
+.sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dash-cols { overflow: visible; }
+.sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dc-head .sk-hl { font-size: 21px; }

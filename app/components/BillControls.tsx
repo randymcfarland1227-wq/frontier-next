@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { fromDayKey, type BillDue } from '../../lib/schedule';
-import { billRuleKey, loadBillDays, loadBillEdits, setBillAmount, setBillDay, setBillEdit, setBillEnd, setBillFlags, setBillLevel, setBillName, billLevel, useBillEdits } from '../../lib/billEdits';
+import { billRuleKey, loadBillDays, loadBillEdits, setBillAmount, setBillDay, setBillEdit, setBillEnd, setBillFlags, setBillName, billLevel, useBillEdits } from '../../lib/billEdits';
 import { money } from '../../lib/schedule';
 import { loadLifeSubs, updateLifeSub } from '../../lib/lifeSubs';
 import { pinKey, updatePinDetails, usePriorityPins } from '../../lib/priorityPins';
@@ -45,11 +45,10 @@ const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 =
  * suspension; it still counts as overdue after the due date). Saved on Life Hub right away (synced);
  * the sheet's "Item Flags" block on the Randy tab sets the starting values.
  */
-export function BillFlagsFields({ due, dueKeys }: { due: BillDue; dueKeys?: string[] }) {
+export function BillFlagsFields({ due }: { due: BillDue; dueKeys?: string[] }) {
   const saved = useBillEdits()[due.key];
   const level = billLevel(due.bill);
   const payBy = saved?.payBy !== undefined ? saved.payBy : due.bill.payBy || '';
-  const ruleKey = billRuleKey(due.bill);
   return (
     <div className="bill-flags" role="group" aria-label={`Flags for ${due.bill.name}`}>
       <div className="bill-change-modes bill-level" role="radiogroup" aria-label={`${due.bill.name} level`}>
@@ -61,12 +60,12 @@ export function BillFlagsFields({ due, dueKeys }: { due: BillDue; dueKeys?: stri
           ] as const
         ).map(([id, label]) => (
           <label key={id} className={`is-${id}${level === id ? ' is-on' : ''}`}>
-            <input type="radio" name={`level-${due.key}`} checked={level === id} onChange={() => setBillLevel(ruleKey, id, [due.key, ...(dueKeys || [])])} />
+            <input type="radio" name={`level-${due.key}`} checked={level === id} onChange={() => setBillFlags(due.key, { nonCritical: id === 'noncritical', priority: id === 'priority' })} />
             {label}
           </label>
         ))}
       </div>
-      <small className="bill-level-hint">Every payment of {due.bill.name}: non critical shows orange; priority shows red and goes first.</small>
+      <small className="bill-level-hint">This payment only ({shortDay(due.orig || due.due)}): non critical shows orange; priority shows red and goes first. Next month starts normal.</small>
       <label className="bill-change-field">
         <span>Pay by</span>
         <input type="date" value={payBy} min={due.orig || due.due} onChange={e => setBillFlags(due.key, { payBy: e.target.value })} aria-label={`Pay by date for ${due.bill.name}`} />

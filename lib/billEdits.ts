@@ -21,6 +21,8 @@ export type BillEdit = {
   note?: string;
   /** Non Critical set on Life Hub (overrides the sheet's Item Flags): orange when overdue, not red */
   nonCritical?: boolean;
+  /** Priority for this one payment only (red, first) */
+  priority?: boolean;
   /** Pay-by day set on Life Hub (YYYY-MM-DD; '' = cleared, overriding the sheet) */
   payBy?: string;
   at: string;
@@ -161,6 +163,7 @@ export function setBillEdit(key: string, edit: Omit<BillEdit, 'at'> | null) {
   const prev = all[key];
   const flags = {
     ...(prev?.nonCritical !== undefined ? { nonCritical: prev.nonCritical } : {}),
+    ...(prev?.priority !== undefined ? { priority: prev.priority } : {}),
     ...(prev?.payBy !== undefined ? { payBy: prev.payBy } : {}),
   };
   // A cleared change is kept as an empty, newer entry so other devices drop theirs too.
@@ -170,7 +173,7 @@ export function setBillEdit(key: string, edit: Omit<BillEdit, 'at'> | null) {
 }
 
 /** Set Non Critical / Pay by for one due (keeps any skip / move / amount / note). */
-export function setBillFlags(key: string, flags: { nonCritical?: boolean; payBy?: string }) {
+export function setBillFlags(key: string, flags: { nonCritical?: boolean; priority?: boolean; payBy?: string }) {
   const all = loadBillEdits();
   all[key] = { ...(all[key] || {}), ...flags, at: new Date().toISOString() };
   writeSaved(STORAGE_KEYS.billEdits, all);
@@ -179,9 +182,10 @@ export function setBillFlags(key: string, flags: { nonCritical?: boolean; payBy?
 
 /** Life Hub's Non Critical / Pay by on top of the sheet's Item Flags. */
 export function withBillFlags(d: BillDue, e?: BillEdit): BillDue {
-  if (!e || (e.nonCritical === undefined && e.payBy === undefined)) return d;
+  if (!e || (e.nonCritical === undefined && e.priority === undefined && e.payBy === undefined)) return d;
   const bill = { ...d.bill };
   if (e.nonCritical !== undefined) bill.nonCritical = e.nonCritical || undefined;
+  if (e.priority !== undefined) bill.priority = e.priority || undefined;
   if (e.payBy !== undefined) bill.payBy = e.payBy || undefined;
   return { ...d, bill };
 }
@@ -236,7 +240,8 @@ export function applyBillEdits(dues: BillDue[], edits: BillEdits, today = new Da
       const ruled = withBillDay(d.due, rule);
       if (ruled !== d.due) d = { ...d, due: ruled, days: daysBetween(t, fromDayKey(ruled)), everyMonth: rule!.day! };
       if (rule?.amount !== undefined && rule.amountFrom && d.due.slice(0, 7) >= rule.amountFrom) d = { ...d, bill: { ...d.bill, amount: rule.amount } };
-      if (rule && (rule.nonCritical !== undefined || rule.priority !== undefined)) d = { ...d, bill: { ...d.bill, nonCritical: rule.priority ? undefined : rule.nonCritical ?? d.bill.nonCritical, priority: rule.priority || undefined } };
+      // Levels are per payment now; an older bill-wide level only covers payments already due when it was set.
+      if (rule && (rule.nonCritical !== undefined || rule.priority !== undefined) && (!rule.at || d.due <= rule.at.slice(0, 10))) d = { ...d, bill: { ...d.bill, nonCritical: rule.priority ? undefined : rule.nonCritical ?? d.bill.nonCritical, priority: rule.priority || undefined } };
       if (rule?.rename && rule.rename !== d.bill.name) d = { ...d, bill: { ...d.bill, name: rule.rename, origName: d.bill.origName ?? d.bill.name } };
       const e = edits[d.key];
       d = withBillFlags(d, e);

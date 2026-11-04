@@ -17,7 +17,7 @@ import { addOngoingGoal } from '../../lib/ongoingGoals';
 import { addToSiteList, createSiteList, listOfTask, openSiteList, useSiteListStore } from '../../lib/siteLists';
 
 /** Where a Self task can be moved (it then shows in that site's card). */
-const MOVE_TO: Array<[string, string]> = [
+export const MOVE_TO: Array<[string, string]> = [
   ['radall', 'Finances'],
   ['repair', 'Repair Log'],
   ['role', 'Role Hub'],

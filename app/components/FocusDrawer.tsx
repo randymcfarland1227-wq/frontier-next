@@ -20,6 +20,8 @@ import { SITE_GROUPS } from "../sticker/StickerShell";
 import { buildCatalog } from "./PriorityBoard";
 import type { PriorityItem } from "./PriorityPanel";
 import { useBrief } from "./DailyBrief";
+import { MOVE_TO } from "./CapturesPanel";
+import { addSelfItem, setSelfHome, SELF_ITEMS_EVENT } from "../../lib/adapters/self";
 
 const toneOf = (id: SourceId) =>
   SITE_GROUPS.find((g) => g.ids.includes(id))?.tone || "ops";
@@ -49,6 +51,8 @@ function ParkingLot({ catalog }: { catalog: Map<string, PriorityItem> }) {
   const [target, setTarget] = useState<{ key: string; label: string } | null>(null);
   const [attach, setAttach] = useState("");
   const [done, setDone] = useState("");
+  const [mode, setMode] = useState<"new" | "attach">("attach");
+  const [home, setHome] = useState("");
   const save = (list: ParkNote[]) => {
     setNotes(list);
     const all = readSaved<ParkStore>(PARKING_KEY, {});
@@ -70,11 +74,23 @@ function ParkingLot({ catalog }: { catalog: Map<string, PriorityItem> }) {
   }));
   const attachNow = () => {
     if (!target || !attach.trim()) return;
-    const prev = loadLanes()[target.key]?.note?.trim();
-    updatePinDetails(target.key, { note: `${prev ? `${prev}\n\n` : ""}${attach.trim()}` });
-    setDone(`Added to “${target.label}” — it shows in that task's details.`);
+    // Attached as a subtask of the existing task (shows under it, in its details).
+    const prev = loadLanes()[target.key]?.subs || [];
+    updatePinDetails(target.key, { subs: [...prev, { id: `s${Date.now()}`, text: attach.trim(), done: false }] });
+    setDone(`Added to “${target.label}” as a subtask.`);
     setAttach("");
     setTarget(null);
+  };
+  /** A brand-new task on the site you pick (Self when none is picked). */
+  const newTaskNow = () => {
+    const t = attach.trim();
+    if (!t) return;
+    const [made] = addSelfItem(t);
+    if (home) setSelfHome(made.id, home);
+    else window.dispatchEvent(new CustomEvent(SELF_ITEMS_EVENT));
+    const site = MOVE_TO.find(([id]) => id === home)?.[1] || "Self";
+    setDone(`New task “${t}” added to ${site}.`);
+    setAttach("");
   };
   return (
     <div className="sk-parking">
@@ -102,7 +118,7 @@ function ParkingLot({ catalog }: { catalog: Map<string, PriorityItem> }) {
               <button
                 type="button"
                 className="sk-link"
-                title="Put this note on a task's details"
+                title="Make this note a task, or a subtask of one"
                 onClick={() => {
                   setAttach(n.text);
                   setDone("");
@@ -124,8 +140,33 @@ function ParkingLot({ catalog }: { catalog: Map<string, PriorityItem> }) {
       ) : (
         <p className="sk-empty">Nothing parked yet today.</p>
       )}
-      <h3 className="sk-cap sk-todayh">Attach a note to a task</h3>
-      <SearchPick
+      <h3 className="sk-cap sk-todayh">Turn a note into a task</h3>
+      <div className="bill-change-modes" role="radiogroup" aria-label="New task or attach">
+        {([["attach", "Attach to a task"], ["new", "New task"]] as const).map(([id, label]) => (
+          <label key={id} className={mode === id ? "is-on" : ""}>
+            <input type="radio" name="parking-mode" checked={mode === id} onChange={() => { setMode(id); setDone(""); }} />
+            {label}
+          </label>
+        ))}
+      </div>
+      {mode === "new" ? (
+        <div className="sk-parking-attach">
+          <label className="bill-change-field">
+            <span>Site</span>
+            <select value={home} onChange={(e) => setHome(e.target.value)} aria-label="Site for the new task">
+              <option value="">Self</option>
+              {MOVE_TO.map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
+              ))}
+            </select>
+          </label>
+          <textarea value={attach} onChange={(e) => setAttach(e.target.value)} placeholder="The task…" aria-label="New task" rows={2} />
+          <button type="button" className="sk-btn is-small" disabled={!attach.trim()} onClick={newTaskNow}>
+            Add as a new task{home ? ` on ${MOVE_TO.find(([id]) => id === home)?.[1]}` : ""}
+          </button>
+        </div>
+      ) : null}
+      {mode === "attach" ? <SearchPick
         options={options}
         label="Search tasks to attach a note to"
         placeholder={target ? `Task: ${target.label}` : "Search for the task…"}
@@ -133,8 +174,8 @@ function ParkingLot({ catalog }: { catalog: Map<string, PriorityItem> }) {
           setTarget({ key: o.key, label: o.label });
           setDone("");
         }}
-      />
-      {target || attach ? (
+      /> : null}
+      {mode === "attach" && (target || attach) ? (
         <div className="sk-parking-attach">
           <textarea
             value={attach}

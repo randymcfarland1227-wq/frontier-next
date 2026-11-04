@@ -65,6 +65,7 @@ function ListDialog({ list, close }: { list: SiteList; close: () => void }) {
           className="sk-fd-title"
           value={list.name}
           onChange={(e) => renameSiteList(list.id, e.target.value)}
+          onBlur={(e) => renameSiteList(list.id, e.target.value.trim())}
           aria-label="List name"
           maxLength={60}
           data-autofocus

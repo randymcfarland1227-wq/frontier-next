@@ -669,6 +669,7 @@ function Detail({
                       className="sk-fd-listname"
                       value={l.name}
                       onChange={(e) => renameSiteList(l.id, e.target.value)}
+                      onBlur={(e) => renameSiteList(l.id, e.target.value.trim())}
                       aria-label="List name"
                       title="Rename this list (it renames on its site too)"
                       maxLength={60}

@@ -64,7 +64,7 @@ export function removeFromSiteList(id: string, taskId: string) {
 
 export function renameSiteList(id: string, name: string) {
   const store = loadSiteLists();
-  if (store[id]) put({ ...store, [id]: { ...store[id], name: name.trim() || store[id].name, at: now() } });
+  if (store[id]) put({ ...store, [id]: { ...store[id], name: name.trim() ? name.trimStart() : store[id].name, at: now() } });
 }
 
 /** Deleting a list puts all its tasks back in the pool. */

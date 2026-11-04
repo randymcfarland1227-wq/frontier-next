@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from "react";
+import { Dialog } from "../sticker/Dialog";
 import { tagTone } from "../../lib/tagTone";
 import type { FeaturedItem, SourceId, SourceSnapshot } from "../../lib/types";
 import { SOURCE_IDS, sourceById } from "../../lib/sources";
@@ -8,6 +9,7 @@ import {
   DECK,
   PLAN,
   OPEN_TASK_EVENT,
+  openTaskPanel,
   arrangeDeck,
   deckSlotKey,
   openBefore,
@@ -218,11 +220,10 @@ export function PriorityBoard({
   const mixes = useMemo(() => liveMixes(lanes), [lanes]);
   const steps = useMemo(() => groupSteps(plan, lanes), [plan, lanes]);
   const [openMix, setOpenMix] = useState<string | null>(null);
+  // The Daily Brief opens a mix in a pop-out: its items, tick them off, open each one's details.
+  const [dlgMix, setDlgMix] = useState<string | null>(null);
   useEffect(() => {
-    const onOpen = (e: Event) => {
-      setOpenMix(String((e as CustomEvent).detail));
-      window.setTimeout(() => document.querySelector(".sk-plan .sk-mix.is-open")?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
-    };
+    const onOpen = (e: Event) => setDlgMix(String((e as CustomEvent).detail));
     window.addEventListener(OPEN_MIX_EVENT, onOpen);
     return () => window.removeEventListener(OPEN_MIX_EVENT, onOpen);
   }, []);
@@ -860,6 +861,69 @@ export function PriorityBoard({
         {children}
       </div>
 
+      {(() => {
+        const st = dlgMix ? steps.find((x) => x.kind === "mix" && x.id === dlgMix) : undefined;
+        if (!st || st.kind !== "mix") return null;
+        return (
+          <Dialog label={st.name} onClose={() => setDlgMix(null)} className="sk-listdlg">
+            <header className="sk-dialog-head">
+              <Icon name="steps" size={18} />
+              <input
+                className="sk-fd-title"
+                defaultValue={st.name}
+                onBlur={(e) => {
+                  const n = e.target.value.trim();
+                  if (n && n !== st.name) renameMix(st.id, n);
+                }}
+                aria-label="List name"
+                maxLength={60}
+              />
+              <button type="button" className="sk-btn is-small is-icon" onClick={() => setDlgMix(null)} aria-label="Close">
+                <Icon name="close" size={16} />
+              </button>
+            </header>
+            <p className="sk-sec">
+              {st.done.length} of {st.items.length + st.done.length} done · across{" "}
+              {[...new Set(st.items.map((i) => sourceById[i.source].shortName))].join(", ") || "sites"}
+            </p>
+            <ul className="sk-listdlg-tasks">
+              {st.items.map((item) => (
+                <li key={item.key}>
+                  {onComplete ? (
+                    <Circle onDone={() => finishMember(st.id, item, st.items.length)} label={`Done: ${item.title}`} />
+                  ) : (
+                    <span />
+                  )}
+                  <button type="button" className="sk-fd-taskopen" title="Open its details" onClick={() => setOpenKey(item.key)}>
+                    {item.title}
+                    <small> · {sourceById[item.source].shortName}</small>
+                  </button>
+                  <span />
+                </li>
+              ))}
+              {st.done.map((d) => (
+                <li key={d.key} className="is-done">
+                  <button
+                    type="button"
+                    className="sk-circle is-done"
+                    aria-label={`Uncheck ${d.title}`}
+                    disabled={d.key.startsWith("ticktick:")}
+                    title={d.key.startsWith("ticktick:") ? "Done in TickTick — reopen it there" : "Uncheck (back on the list)"}
+                    onClick={() => reopenMember(d.key)}
+                  >
+                    <Icon name="check" size={12} />
+                  </button>
+                  <button type="button" className="sk-fd-taskopen" onClick={() => openTaskPanel(d.key)}>
+                    {d.title}
+                  </button>
+                  <span />
+                </li>
+              ))}
+              {!st.items.length ? <li className="sk-empty">Everything in this list is done.</li> : null}
+            </ul>
+          </Dialog>
+        );
+      })()}
       {openItem ? (
         <PriorityPanel
           item={openItem}

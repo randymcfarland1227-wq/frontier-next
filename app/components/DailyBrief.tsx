@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildBrief, type BriefSection } from '../../lib/dailyBrief';
 import { REFRESH_EVENT } from '../../lib/syncNow';
-import { openTaskPanel } from '../../lib/priorityPins';
+import { groupSteps, openTaskPanel, requestOpenMix } from '../../lib/priorityPins';
 import { LOCAL_WRITE_EVENT, readSaved, writeSaved } from '../../lib/storage';
 import { eventEnd, eventStart, type BillDue, type ScheduleSnapshot } from '../../lib/schedule';
 import { usePlan } from './FocusDrawer';
@@ -101,7 +101,7 @@ const whenLabel = (d: Date) => {
   const n = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime()) / 86400000);
   return n <= 0 ? 'Today' : n === 1 ? 'Tomorrow' : `in ${n} days`;
 };
-type BRow = { id: string; title: string; note: string; tone?: string; pin?: string; go?: SpaceId; focusId?: string; priority?: FocusPriority; marker?: string; when?: string };
+type BRow = { id: string; title: string; note: string; tone?: string; pin?: string; go?: SpaceId; mix?: string; focusId?: string; priority?: FocusPriority; marker?: string; when?: string };
 type BCol = { id: string; title: string; rows: BRow[]; compact?: boolean; keepAll?: boolean; empty: string };
 
 export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, openFinance }: {
@@ -115,7 +115,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
 }) {
   const sections = useBrief(snapshots, bills);
   const gone = useDismissed();
-  const { plan } = usePlan(snapshots, bills);
+  const { plan, lanes } = usePlan(snapshots, bills);
   const hidden = Object.keys(gone).length;
   const [folds, setFolds] = useState<Record<string, boolean>>(() => readSaved(FOLDS_KEY, {}));
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -150,7 +150,9 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
     .filter(e => (e.myStatus === 'owner' || e.myStatus === 'yes') && eventEnd(e).getTime() > nowMs && eventStart(e).getTime() < nowMs + WEEKS_AHEAD * 7 * 86400000)
     .sort((a, b) => eventStart(a).getTime() - eventStart(b).getTime());
   const cols: BCol[] = [
-    { id: 'doing', title: 'Action List', keepAll: true, empty: 'Nothing selected in your Action List yet.', rows: plan.map(i => ({ id: `plan:${i.key}`, title: i.title, note: sourceById[i.source].shortName, pin: i.key })) },
+    { id: 'doing', title: 'Action List', keepAll: true, empty: 'Nothing selected in your Action List yet.', rows: groupSteps(plan, lanes).map((st): BRow => st.kind === 'one'
+      ? { id: `plan:${st.item.key}`, title: st.item.title, note: sourceById[st.item.source].shortName, pin: st.item.key }
+      : { id: `mix:${st.id}`, title: st.name, mix: st.id, note: [st.done.length ? `${st.done.length} of ${st.items.length + st.done.length} done` : `${st.items.length} items`, [...new Set(st.items.map(i => sourceById[i.source].shortName))].join(' · ')].join(' · ') }) },
     { id: 'mail', title: 'Mail', empty: 'Nothing waiting in the current feed.', rows: (['roles', 'sales', 'mail'] as const).flatMap(id => (sections.find(s => s.id === id)?.rows || []).map(r => ({ ...r, marker: id === 'roles' ? 'Role reply' : id === 'sales' ? 'Sales / shipping' : 'Other mail' }))) },
     { id: 'money', title: HEADS.money, compact: true, empty: 'Nothing due today or overdue.', rows: sections.find(s => s.id === 'money')?.rows || [] },
     ...((sections.find(s => s.id === 'tasks')?.rows.length || 0) ? [{ id: 'tasks', title: HEADS.tasks, compact: true, empty: 'Nothing due today.', rows: sections.find(s => s.id === 'tasks')!.rows }] : []),
@@ -172,7 +174,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
           {folds[s.id] ? null : <>
             {s.rows.length ? <ul className="sk-brief-items">{s.rows.map(r => {
               const isNew = !s.keepAll && !seen.includes(r.id);
-              const open = r.focusId ? () => setOpenFocusId(r.focusId!) : r.pin ? () => openTaskPanel(r.pin!) : r.go ? () => enter(r.go!) : undefined;
+              const open = r.mix ? () => requestOpenMix(r.mix!) : r.focusId ? () => setOpenFocusId(r.focusId!) : r.pin ? () => openTaskPanel(r.pin!) : r.go ? () => enter(r.go!) : undefined;
               return <li key={r.id} className="sk-brief-entry" data-focus-priority={r.priority}>
                 {open ? <button type="button" className="sk-brief-open" onClick={open} title={[r.title, r.note, r.priority ? FOCUS_PRIORITY_LABEL[r.priority] : ''].filter(Boolean).join(' · ')}>
                   <span className="sk-brief-title">{isNew && !s.compact ? <Dot tone="needs" hint="New since you last looked" /> : null}{r.marker ? <span className="sk-brief-kind">{r.marker}</span> : null}{r.title}{r.when ? <em className="sk-brief-when">{r.when}</em> : null}</span>

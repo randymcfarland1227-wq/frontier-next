@@ -246,6 +246,40 @@ export function liveMixes(map: LaneMap): Mix[] {
     .map(([k, e]) => ({ id: k.slice(4), name: e.name! }));
 }
 
+export type PlanStep<T extends { key: string }> =
+  | { kind: 'one'; item: T }
+  | { kind: 'mix'; id: string; name: string; items: T[]; done: Array<{ key: string; title: string }> };
+
+/** Action List rows as steps: a mix takes the place of its first member; the rest fold into it. Shared by Doing Now and the Daily Brief. */
+export function groupSteps<T extends { key: string }>(plan: T[], lanes: LaneMap): PlanStep<T>[] {
+  const names = new Map(liveMixes(lanes).map((m) => [m.id, m.name]));
+  const out: PlanStep<T>[] = [];
+  const seen = new Map<string, Extract<PlanStep<T>, { kind: 'mix' }>>();
+  for (const item of plan) {
+    const id = lanes[item.key]?.mix;
+    const name = id ? names.get(id) : undefined;
+    if (!id || !name) {
+      out.push({ kind: 'one', item });
+      continue;
+    }
+    const got = seen.get(id);
+    if (got) got.items.push(item);
+    else {
+      const done = Object.entries(lanes)
+        .filter(([, e]) => e?.mix === id && e.doneTitle && !e.lane)
+        .map(([key, e]) => ({ key, title: e.doneTitle! }));
+      const step = { kind: 'mix' as const, id, name, items: [item], done };
+      seen.set(id, step);
+      out.push(step);
+    }
+  }
+  return out;
+}
+
+/** Ask Doing Now to expand a mix and scroll to it (the Daily Brief uses this). */
+export const OPEN_MIX_EVENT = 'lifehub:open-mix';
+export const requestOpenMix = (id: string) => window.dispatchEvent(new CustomEvent(OPEN_MIX_EVENT, { detail: id }));
+
 /** New mix holding `keys`, which go on the Action List if they aren't already. */
 export function createMix(name: string, keys: string[]): string {
   const id = Date.now().toString(36);

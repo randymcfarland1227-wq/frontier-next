@@ -17,6 +17,8 @@ import {
   updatePinDetails,
   unpin,
   liveMixes,
+  groupSteps,
+  OPEN_MIX_EVENT,
   createMix,
   addToMix,
   leaveMix,
@@ -214,34 +216,16 @@ export function PriorityBoard({
   // Action List steps: a mix (items from different sites made into one list) takes the place of
   // its first member; the rest of its members fold into it.
   const mixes = useMemo(() => liveMixes(lanes), [lanes]);
-  type Step =
-    | { kind: "one"; item: PriorityItem }
-    | { kind: "mix"; id: string; name: string; items: PriorityItem[]; done: Array<{ key: string; title: string }> };
-  const steps = useMemo(() => {
-    const names = new Map(mixes.map((m) => [m.id, m.name]));
-    const out: Step[] = [];
-    const seen = new Map<string, Step & { kind: "mix" }>();
-    for (const item of plan) {
-      const id = lanes[item.key]?.mix;
-      const name = id ? names.get(id) : undefined;
-      if (!id || !name) {
-        out.push({ kind: "one", item });
-        continue;
-      }
-      const got = seen.get(id);
-      if (got) got.items.push(item);
-      else {
-        const done = Object.entries(lanes)
-          .filter(([, e]) => e?.mix === id && e.doneTitle && !e.lane)
-          .map(([key, e]) => ({ key, title: e.doneTitle! }));
-        const step = { kind: "mix" as const, id, name, items: [item], done };
-        seen.set(id, step);
-        out.push(step);
-      }
-    }
-    return out;
-  }, [plan, lanes, mixes]);
+  const steps = useMemo(() => groupSteps(plan, lanes), [plan, lanes]);
   const [openMix, setOpenMix] = useState<string | null>(null);
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      setOpenMix(String((e as CustomEvent).detail));
+      window.setTimeout(() => document.querySelector(".sk-plan .sk-mix.is-open")?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    };
+    window.addEventListener(OPEN_MIX_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_MIX_EVENT, onOpen);
+  }, []);
   const newMix = (item: PriorityItem) => {
     const name = window.prompt("Name the new list (e.g. Digital declutter)")?.trim();
     if (!name) return;

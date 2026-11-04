@@ -50,7 +50,7 @@ export function usePlan(
         .filter((i): i is PriorityItem => Boolean(i)),
     [pins, lanes, catalog],
   );
-  return { plan, catalog };
+  return { plan, catalog, lanes };
 }
 
 /** Is an added item finished? Site items count as done once the site no longer lists them. */

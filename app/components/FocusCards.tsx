@@ -31,6 +31,8 @@ import {
 } from "../../lib/debtFile";
 import { mdSources, oosSources } from "./OutstandingView";
 import type { Entry, SubList, SubTask } from "./FocusSection";
+import { habitOptions, todayIso, useHabitCounts } from "../../lib/locks";
+import { addSelfItem, SELF_ITEMS_EVENT } from "../../lib/adapters/self";
 import { FOCUS_PRIORITY_LABEL, orderFocus, type FocusPriority } from "../../lib/focusPriority";
 import { FOCUS_SECTION_LABELS, type FocusSectionId } from "../../lib/focusRouting";
 
@@ -46,7 +48,7 @@ export type LinkItem = {
 
 type CardList = readonly [Entry[], (next: Entry[]) => void];
 /** What a finance link needs to be read live. */
-type FinCtx = { file: DebtFile | null; marks: DebtMarks; bills: BillDue[]; sl?: SiteListsContextValue };
+type FinCtx = { file: DebtFile | null; marks: DebtMarks; bills: BillDue[]; sl?: SiteListsContextValue; habitCount?: (habitId: string, from: string) => number | undefined };
 export type OpenFinance = (itemId?: string, tab?: "owed" | "flow") => void;
 
 const DAY = 86400000;
@@ -237,6 +239,11 @@ function progressOf(i: Entry, ctx: FinCtx) {
     total += 1;
     if (t.task.status === "done") done += 1;
   }
+  if (i.habitGoal) {
+    const n = ctx.habitCount?.(i.habitGoal.habitId, i.habitGoal.from) ?? 0;
+    total += i.habitGoal.count;
+    done += Math.min(n, i.habitGoal.count);
+  }
   if (!total) return { pct: i.done ? 100 : null, done: 0, total: 0 } as const;
   return { pct: Math.round((done / total) * 100), done, total };
 }
@@ -355,6 +362,19 @@ function Card({
       <h4 className="sk-fcard-t">{item.title}</h4>
       {item.priority ? <span className="sk-focus-rank">{FOCUS_PRIORITY_LABEL[item.priority]}</span> : null}
       {item.note ? <p className="sk-fcard-scope">{item.note}</p> : null}
+      {item.habitGoal ? (() => {
+        const n = ctx.habitCount?.(item.habitGoal.habitId, item.habitGoal.from);
+        return (
+          <div className="fc-habit" title="Counts TickTick check-ins">
+            <span>
+              <b>{item.habitGoal.title}</b> · {n ?? "?"} of {item.habitGoal.count} done{(n ?? 0) >= item.habitGoal.count ? " ✓" : ""}
+            </span>
+            <div className="fc-habit-bar" aria-hidden="true">
+              <span style={{ width: `${Math.min(100, ((n ?? 0) / item.habitGoal.count) * 100)}%` }} />
+            </div>
+          </div>
+        );
+      })() : null}
       {item.why ? (
         <p className="sk-fcard-why">
           <b>Why</b> {item.why}
@@ -557,6 +577,8 @@ function Detail({
             />
           </label>
         </div>
+
+        <HabitGoalBox item={item} update={update} count={ctx.habitCount} />
 
         <div className="sk-fd-three">
           {lists.map((l) => (
@@ -1114,7 +1136,24 @@ export function FocusCards({
 }) {
   const { file, marks } = useDebtFile();
   const sl = useSiteLists();
-  const ctx: FinCtx = { file, marks, bills, sl };
+  const lists0 = [list, ...extra];
+  const goals = lists0.flatMap(([items]) => items.flatMap((x) => (x.habitGoal ? [{ habitId: x.habitGoal.habitId, from: x.habitGoal.from }] : [])));
+  const habitCount = useHabitCounts(goals);
+  const ctx: FinCtx = { file, marks, bills, sl, habitCount };
+  // A habit goal reached: the card finishes itself and a task to delete the TickTick habit is added (once).
+  useEffect(() => {
+    for (const [items, save] of lists0) {
+      const hit = items.filter((x) => x.habitGoal && !x.done && !x.habitGoal.cleanupTaskId && (habitCount(x.habitGoal.habitId, x.habitGoal.from) ?? 0) >= x.habitGoal.count);
+      if (!hit.length) continue;
+      const ids = new Map<string, string>();
+      for (const x of hit) {
+        const [made] = addSelfItem(`Delete the TickTick habit “${x.habitGoal!.title}”`, `${x.title} is done: ${x.habitGoal!.count} check-ins reached. The habit isn't needed any more.`);
+        ids.set(x.id, made.id);
+      }
+      window.dispatchEvent(new CustomEvent(SELF_ITEMS_EVENT));
+      save(items.map((x) => (ids.has(x.id) ? { ...x, done: true, habitGoal: { ...x.habitGoal!, cleanupTaskId: ids.get(x.id) } } : x)));
+    }
+  });
   // The MD registration renewal date is a date a focus can count down to, too.
   const events: LinkItem[] = file?.registration
     ? [
@@ -1271,5 +1310,60 @@ function SubTaskPop({ task, listName, patch, close }: { task: SubTask; listName:
         </div>
       </div>
     </div>
+  );
+}
+
+/** "Done after a TickTick habit is checked in N times" for a focus card. */
+function HabitGoalBox({ item, update, count }: { item: Entry; update: (patch: Partial<Entry>) => void; count?: (habitId: string, from: string) => number | undefined }) {
+  const g = item.habitGoal;
+  const [habitId, setHabitId] = useState(g?.habitId || "");
+  const [times, setTimes] = useState(String(g?.count || 5));
+  const [from, setFrom] = useState(g?.from || todayIso());
+  const [editing, setEditing] = useState(false);
+  const habits = habitOptions();
+  const save = () => {
+    const h = habits.find((x) => x.id === habitId);
+    const n = Math.round(Number(times));
+    if (!h || !(n > 0)) return;
+    update({ habitGoal: { habitId: h.id, title: h.title, count: n, from: from || todayIso() } });
+    setEditing(false);
+  };
+  const n = g ? count?.(g.habitId, g.from) : undefined;
+  return (
+    <section className="sk-fd-box fc-habit">
+      <span><b>Done after a TickTick habit</b></span>
+      {g && !editing ? (
+        <>
+          <span>
+            {g.title}: {n ?? "?"} of {g.count} check-ins since {g.from}
+            {g.cleanupTaskId ? " · finished, and a task to delete the habit was added" : ""}
+          </span>
+          <div className="fc-habit-row">
+            <button type="button" className="sk-btn is-small is-quiet" onClick={() => setEditing(true)}>Change</button>
+            <button type="button" className="sk-btn is-small is-quiet" onClick={() => update({ habitGoal: undefined })}>Remove</button>
+          </div>
+        </>
+      ) : (
+        <div className="fc-habit-row">
+          <select value={habitId} onChange={(e) => setHabitId(e.target.value)} aria-label="TickTick habit">
+            <option value="">Pick a TickTick habit…</option>
+            {habits.map((h) => (
+              <option key={h.id} value={h.id}>{h.title}</option>
+            ))}
+          </select>
+          <label>
+            <span>Times</span>
+            <input type="number" min={1} max={365} value={times} onChange={(e) => setTimes(e.target.value)} />
+          </label>
+          <label>
+            <span>Counting from</span>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </label>
+          <button type="button" className="sk-btn is-small" disabled={!habitId || !(Number(times) > 0)} onClick={save}>Save</button>
+          {g ? <button type="button" className="sk-btn is-small is-quiet" onClick={() => setEditing(false)}>Cancel</button> : null}
+          <small>When it&apos;s checked in that many times, this card is marked done and a task to delete the habit is added.</small>
+        </div>
+      )}
+    </section>
   );
 }

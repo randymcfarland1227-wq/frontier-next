@@ -619,6 +619,37 @@ async function handleHabitCheckin(request: Request, env: Env): Promise<Response>
 }
 
 /**
+ * GET /api/ticktick/habit-count?habitId=…&from=YYYYMMDD — how many days the habit was checked in
+ * (completed) from `from` through today, for "done after 5 sessions" goals and task locks.
+ */
+async function handleHabitCount(request: Request, env: Env): Promise<Response> {
+  const origin = request.headers.get("Origin");
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  if (origin && !CORS_ALLOW_ORIGINS.has(origin)) return jsonResponse({ ok: false, error: "cors_denied" }, 403, origin);
+  if (!env.TICKTICK_ACCESS_TOKEN) return jsonResponse({ ok: false, error: "token_not_configured" }, 503, origin);
+  if (!(await syncKeyAllowed(request, env))) return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
+  const q = new URL(request.url).searchParams;
+  const habitId = (q.get("habitId") || "").replace(/^habit-/, "").trim();
+  const from = q.get("from") || "";
+  if (!/^[0-9a-f]{12,40}$/i.test(habitId) || !stampRe.test(from)) return jsonResponse({ ok: false, error: "bad_input" }, 400, origin);
+  const d = new Date(Date.now() + 86400000);
+  const to = `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`;
+  try {
+    const habit = (await ttFetch(env, `/habit/${habitId}`)) as { goal?: number; name?: string; status?: number } | null;
+    const goal = Number(habit?.goal) || 1;
+    const docs = ((await ttFetch(env, `/habit/checkins?habitIds=${habitId}&from=${from}&to=${to}`)) as Array<{ checkins?: Array<Record<string, unknown>> }> | null) || [];
+    const days = new Set<string>();
+    for (const doc of docs) for (const c of doc.checkins || []) {
+      const value = Number(c.value) || 0;
+      if (c.status === 2 || (c.status == null && value >= goal && value > 0)) days.add(String(c.stamp));
+    }
+    return jsonResponse({ ok: true, count: days.size, days: [...days].sort(), title: habit?.name, archived: habit?.status === 1 }, 200, origin);
+  } catch (e) {
+    return jsonResponse({ ok: false, error: (e as Error).message }, 502, origin);
+  }
+}
+
+/**
  * POST /api/ticktick/habit-skip {habitId, stamp, skip} — TickTick's own Skip: adds the day to the
  * habit's exDates (skip: false takes it back out). Different from Uncompleted (check-in status 1).
  */
@@ -1048,6 +1079,7 @@ export default {
     if (pathname === "/api/ticktick/wontdo") return handleTaskWontDo(request, env);
 
     if (pathname === "/api/ticktick/habit-skip") return handleHabitSkip(request, env);
+    if (pathname === "/api/ticktick/habit-count") return handleHabitCount(request, env);
 
     if (pathname === "/api/ticktick/habit-checkin") {
       return handleHabitCheckin(request, env);

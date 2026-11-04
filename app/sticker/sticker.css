@@ -2980,3 +2980,16 @@
 /* Payment history range tabs */
 .mb-hist-range { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
 .mb-hist-range .sk-btn.is-on { background: var(--ink, #111); color: #fff; }
+
+/* Task locks (PriorityPanel "Locked until") and habit-count goals */
+.plan-lock-state { margin: 4px 0; font-weight: 600; }
+.plan-lock-state.is-open { color: var(--ok, #2f7d32); }
+.plan-lock-bar, .fc-habit-bar { height: 6px; border-radius: 3px; background: rgba(0,0,0,.08); overflow: hidden; margin: 4px 0 8px; }
+.plan-lock-bar > span, .fc-habit-bar > span { display: block; height: 100%; background: var(--ink, #111); }
+.plan-lock-habit { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.plan-lock-habit label { display: grid; gap: 2px; font-size: 12px; }
+.plan-lock-habit input[type=number] { width: 70px; }
+.fc-habit { display: grid; gap: 4px; margin: 6px 0; font-size: 13px; }
+.fc-habit-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.fc-habit-row label { display: grid; gap: 2px; font-size: 12px; }
+.fc-habit-row input[type=number] { width: 70px; }

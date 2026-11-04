@@ -8,6 +8,7 @@ import { Icon } from "../sticker/Icon";
 import type { SourceId, SourceSnapshot, SpaceId, TaskItem } from "../../lib/types";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { FOCUS_LIST_EVENT, ONGOING_KEY } from "../../lib/ongoingGoals";
+import type { HabitGoal } from "../../lib/locks";
 import { stampChanges } from "../../lib/focusSync";
 import { dayRecord, localDayKey, useDayKey } from "../../lib/dayKey";
 import type { CompletionLedger } from "../../lib/completions";
@@ -105,6 +106,8 @@ export type Entry = {
   ongoing?: boolean;
   /** Finance lists linked in as sub-task lists (key says which debt-file items: see lib/finLinks) */
   fin?: Array<{ key: string; label: string }>;
+  /** Finished by itself once a TickTick habit is checked in N times (then a "delete the habit" task is added) */
+  habitGoal?: HabitGoal;
 };
 
 const mondayKey = () => {

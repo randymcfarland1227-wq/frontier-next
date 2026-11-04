@@ -125,6 +125,7 @@ import { payPlanDues, usePayPlans } from '../lib/payPlans';
 import { usePriorityPins } from '../lib/priorityPins';
 import { applyBillEdits, useBillEdits } from '../lib/billEdits';
 import { crossOffEdit, loadCachedMoney, moneyBillDues, parseMoney, pullMoneySnapshot, renameEdits, rowChangeEdits, saveMoneyEdits, type CellEdit, type MoneySnapshot } from '../lib/money';
+import { lockNow } from '../lib/locks';
 import { setSheetWriter } from './components/BillControls';
 import { setMeta as setMoneyMetaEntry } from '../lib/moneyMeta';
 import { MoneyPage, MoneyPanelHost } from './components/MoneyPage';
@@ -968,6 +969,12 @@ export function LifeHub() {
     if (id.startsWith('list:')) return openSiteList(id.slice(5));
     // A Self task shown on another site's card is still a Self task.
     if (source !== 'self' && id.startsWith('self:')) return completeOnHub('self', id.slice(5), chosenArea);
+    // Locked (waiting on a list, a task or N habit check-ins): it can't be checked off yet.
+    const lock = lockNow(source, id);
+    if (lock && !lock.open) {
+      window.alert(`${lock.text}.`);
+      return;
+    }
     const snapNow = snapshotsRef.current[source];
     const taskNow = snapNow?.tasks?.find(t => t.id === id);
     const featuredNow = snapNow?.featured?.find(f => f.id === id);

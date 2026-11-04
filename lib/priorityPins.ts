@@ -11,6 +11,7 @@
  * The old flat pin list (`lifehub-priority-pins`) is folded into On deck once.
  */
 
+import type { Lock } from './locks';
 import { useCallback, useEffect, useState, type DragEvent } from 'react';
 import type { SourceId } from './types';
 import { readSaved, writeSaved, STORAGE_KEYS } from './storage';
@@ -68,6 +69,8 @@ export type LaneEntry = {
   before?: BeforeStep[];
   /** Subtasks: the pieces an umbrella task is made of. Never counted in any task total. */
   subs?: BeforeStep[];
+  /** Locked until a list / task is done or a habit is checked in N times (lib/locks.ts) */
+  lock?: Lock;
   /** A day for it (YYYY-MM-DD) — Priority + calendar only, never sent back to its site */
   due?: string;
   /** Action List mix it belongs to (id of a `mix:<id>` entry) */
@@ -169,7 +172,7 @@ export function unpin(key: string) {
 }
 
 /** Change an item's note / "Before this" list (kept even if it's taken off the plan). */
-export function updatePinDetails(key: string, patch: Partial<Pick<LaneEntry, 'note' | 'before' | 'subs' | 'due' | 'title' | 'doneTitle' | 'lane'>>) {
+export function updatePinDetails(key: string, patch: Partial<Pick<LaneEntry, 'note' | 'before' | 'subs' | 'lock' | 'due' | 'title' | 'doneTitle' | 'lane'>>) {
   const map = loadLanes();
   const prev = map[key] || { lane: null, order: 0, at: '' };
   map[key] = { ...prev, ...patch, at: new Date().toISOString() };

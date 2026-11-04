@@ -88,6 +88,8 @@ export const SAVED_KEYS: SavedKey[] = [
   { key: 'lifehub-task-rules', backup: 'cloud', note: "Task sorting: bucket + goal per task name — cloud-synced" },
   { key: 'lifehub-task-tags', backup: 'cloud', note: "Task type labels (\"Items to buy\"…) per task — cloud-synced" },
   { key: 'lifehub-theme', backup: 'device' },
+  { key: 'lifehub-habit-counts', backup: 'cache', note: 'TickTick check-in counts for habit goals / locks' },
+  { key: 'lifehub-habit-options', backup: 'cache', note: 'TickTick habit list for pickers' },
   { key: 'lifehub-ticktick-daylog', backup: 'cache' },
   { key: 'lifehub-ticktick-logged', backup: 'cache' },
   { key: 'lifehub-vault', backup: 'device' },

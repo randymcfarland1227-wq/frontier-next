@@ -9,6 +9,10 @@ import { LEVEL_LABEL, type Level } from '../../lib/featuredLevels';
 import { LevelDot } from './LevelDot';
 import { CriticalFlag } from './CriticalFlag';
 import { SiteIcon } from './SiteIcon';
+import { SearchPick } from '../sticker/SearchPick';
+import { habitOptions, todayIso, type Lock, type LockState } from '../../lib/locks';
+
+type PickOpt = { key: string; label: string; sub?: string };
 
 export type PriorityItem = FeaturedItem & { source: SourceId; key: string };
 
@@ -33,7 +37,13 @@ export function PriorityPanel({
   onDelete,
   enter,
   close,
+  lock,
+  lockOptions,
 }: {
+  /** Its lock, worked out (open or not, and what it waits on) */
+  lock?: LockState;
+  /** What a lock can wait on: other tasks and site lists */
+  lockOptions?: { tasks: PickOpt[]; lists: PickOpt[] };
   /** New name for the task everywhere it shows ('' = back to the site's own name) */
   onRename?: (title: string) => void;
   /** Delete it from Life Hub (every list, card and count) */
@@ -221,6 +231,8 @@ export function PriorityPanel({
           </div>
         </section>
 
+        <LockSection itemKey={item.key} saved={entry?.lock} state={lock} options={lockOptions} />
+
         <section className="plan-panel-sec" aria-labelledby="plan-before">
           <h3 id="plan-before">Before this</h3>
           <p className="plan-panel-hint">Anything in the way, or that has to happen first.</p>
@@ -346,8 +358,8 @@ export function PriorityPanel({
             </button>
           )}
           {onDone ? (
-            <button type="button" className="row-action" onClick={onDone}>
-              Done
+            <button type="button" className="row-action" onClick={onDone} disabled={lock?.open === false} title={lock?.open === false ? lock.text : undefined}>
+              {lock?.open === false ? 'Locked' : 'Done'}
             </button>
           ) : null}
           {lane ? (
@@ -370,5 +382,90 @@ export function PriorityPanel({
       </aside>
     </div>,
     host,
+  );
+}
+
+/**
+ * "Locked until": a task can wait on (A) a site list being finished, (B) another task being done, or
+ * (C) a TickTick habit checked in N times. Saved on the task's priority entry (cloud-synced).
+ */
+function LockSection({ itemKey, saved, state, options }: { itemKey: string; saved?: Lock; state?: LockState; options?: { tasks: PickOpt[]; lists: PickOpt[] } }) {
+  const [kind, setKind] = useState<'task' | 'list' | 'habit'>(saved?.kind || 'task');
+  const [habitId, setHabitId] = useState(saved?.kind === 'habit' ? saved.habitId : '');
+  const [count, setCount] = useState(saved?.kind === 'habit' ? String(saved.count) : '5');
+  const [from, setFrom] = useState(saved?.kind === 'habit' ? saved.from : todayIso());
+  const [editing, setEditing] = useState(!saved);
+  const habits = habitOptions();
+  const set = (lock: Lock | undefined) => {
+    updatePinDetails(itemKey, { lock });
+    setEditing(!lock);
+  };
+  const saveHabit = () => {
+    const h = habits.find(x => x.id === habitId);
+    const n = Math.round(Number(count));
+    if (!h || !(n > 0)) return;
+    set({ kind: 'habit', habitId: h.id, title: h.title, count: n, from: from || todayIso() });
+  };
+  return (
+    <section className="plan-panel-sec" aria-labelledby="plan-lock">
+      <h3 id="plan-lock">Locked until</h3>
+      {saved && !editing ? (
+        <>
+          <p className={`plan-lock-state${state?.open ? ' is-open' : ''}`} role="status">
+            {state?.open ? '🔓' : '🔒'} {state?.text || 'Locked'}
+          </p>
+          {state?.progress ? (
+            <div className="plan-lock-bar" aria-hidden="true">
+              <span style={{ width: `${Math.min(100, (state.progress[0] / Math.max(1, state.progress[1])) * 100)}%` }} />
+            </div>
+          ) : null}
+          <div className="plan-due-row">
+            <button type="button" className="row-action ghost" onClick={() => setEditing(true)}>Change</button>
+            <button type="button" className="row-action ghost" onClick={() => set(undefined)}>Remove lock</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="plan-panel-hint">Optional. The task can&apos;t be checked off until this happens.</p>
+          <div className="bill-change-modes" role="radiogroup" aria-label="Lock kind">
+            {([['task', 'A task is done'], ['list', 'A list is finished'], ['habit', 'A habit is done N times']] as const).map(([id, label]) => (
+              <label key={id} className={kind === id ? 'is-on' : ''}>
+                <input type="radio" name={`lock-${itemKey}`} checked={kind === id} onChange={() => setKind(id)} />
+                {label}
+              </label>
+            ))}
+          </div>
+          {kind === 'task' ? (
+            <SearchPick options={options?.tasks || []} label="Task it waits on" placeholder="Search for the task…" onPick={o => set({ kind: 'task', key: o.key, label: o.label })} />
+          ) : kind === 'list' ? (
+            options?.lists.length ? (
+              <SearchPick options={options.lists} label="List it waits on" placeholder="Search your lists…" onPick={o => set({ kind: 'list', listId: o.key, label: o.label })} />
+            ) : (
+              <p className="plan-panel-hint">No site lists yet. Make one on a site first.</p>
+            )
+          ) : (
+            <div className="plan-lock-habit">
+              <select value={habitId} onChange={e => setHabitId(e.target.value)} aria-label="TickTick habit">
+                <option value="">Pick a TickTick habit…</option>
+                {habits.map(h => (
+                  <option key={h.id} value={h.id}>{h.title}</option>
+                ))}
+              </select>
+              <label>
+                <span>Times</span>
+                <input type="number" min={1} max={365} value={count} onChange={e => setCount(e.target.value)} />
+              </label>
+              <label>
+                <span>Counting from</span>
+                <input type="date" value={from} onChange={e => setFrom(e.target.value)} />
+              </label>
+              <button type="button" className="row-action" disabled={!habitId || !(Number(count) > 0)} onClick={saveHabit}>Lock</button>
+              {!habits.length ? <small className="plan-panel-hint">Habits show up here after the TickTick pull (open the Habits tab once).</small> : null}
+            </div>
+          )}
+          {saved ? <button type="button" className="row-action ghost" onClick={() => setEditing(false)}>Cancel</button> : null}
+        </>
+      )}
+    </section>
   );
 }

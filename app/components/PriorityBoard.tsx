@@ -38,6 +38,8 @@ import {
 } from "../../lib/featuredLevels";
 import { SiteIcon } from "./SiteIcon";
 import { PriorityPanel, type PriorityItem } from "./PriorityPanel";
+import { lockState, useHabitCounts, type LockState } from "../../lib/locks";
+import { loadLedger } from "../../lib/completions";
 import { DayMenu } from "./DayMenu";
 import { MenuRow } from "./RowMenu";
 import { countdown, fromDayKey, money, type BillDue } from "../../lib/schedule";
@@ -186,6 +188,14 @@ export function PriorityBoard({
   const [dayFor, setDayFor] = useState<string | null>(null);
 
   const sl = useSiteLists();
+  // Locks: re-read the completion log whenever the feeds or the plan change.
+  const ledgerNow = useMemo(() => loadLedger(), [snapshots, lanes]); // eslint-disable-line react-hooks/exhaustive-deps
+  const habitLocks = Object.values(lanes).flatMap((e) => (e?.lock?.kind === "habit" ? [{ habitId: e.lock.habitId, from: e.lock.from }] : []));
+  const habitCount = useHabitCounts(habitLocks);
+  const lockOf = (key: string): LockState | undefined => {
+    const l = lanes[key]?.lock;
+    return l ? lockState(l, { ledger: ledgerNow, lists: sl.store, count: habitCount }) : undefined;
+  };
   // Tasks inside a site list leave the pool but keep their own panel (notes, questions, findings).
   const catalog = useMemo(() => {
     const withMembers = { ...snapshots } as Record<SourceId, SourceSnapshot>;
@@ -331,6 +341,8 @@ export function PriorityBoard({
     : [];
 
   const finish = (item: PriorityItem) => {
+    // A locked task can't be checked off until its lock opens.
+    if (lockOf(item.key)?.open === false) return;
     onComplete?.(item.source, item);
     unpin(item.key);
     if (isCritical(item.source, item.id)) toggleCritical(item.source, item.id);
@@ -378,12 +390,13 @@ export function PriorityBoard({
   const rowBody = (item: PriorityItem, showSite: boolean) => {
     const entry = lanes[item.key];
     const blocked = openBefore(entry);
+    const lock = lockOf(item.key);
     const critical = isCritical(item.source, item.id);
     const level = levelOf(item.source, item.id);
     const subTotal = entry?.subs?.length || 0;
     const day = entry?.due ? dueChip(entry.due) : "";
     const hasSub = Boolean(
-      level || showSite || item.tag || blocked || entry?.note || subTotal,
+      level || showSite || item.tag || blocked || entry?.note || subTotal || lock,
     );
     return (
       <>
@@ -421,6 +434,12 @@ export function PriorityBoard({
                 >
                   <Icon name="clock" size={12} />
                   Waiting · {blocked}
+                </span>
+              ) : null}
+              {lock && !lock.open ? (
+                <span className="sk-fact is-wait" title={lock.text}>
+                  <Icon name="clock" size={12} />
+                  Locked{lock.progress ? ` · ${lock.progress[0]}/${lock.progress[1]}` : ""}
                 </span>
               ) : null}
               {subTotal ? (
@@ -928,6 +947,11 @@ export function PriorityBoard({
         <PriorityPanel
           item={openItem}
           entry={lanes[openItem.key]}
+          lock={lockOf(openItem.key)}
+          lockOptions={{
+            tasks: [...catalog.values()].filter((c) => c.key !== openItem.key).map((c) => ({ key: c.key, label: c.title, sub: sourceById[c.source]?.shortName })),
+            lists: Object.values(sl.store).filter((l) => l && !l.gone).map((l) => ({ key: l.id, label: l.name, sub: sourceById[l.site]?.shortName })),
+          }}
           lane={openLane}
           level={levelOf(openItem.source, openItem.id)}
           critical={isCritical(openItem.source, openItem.id)}

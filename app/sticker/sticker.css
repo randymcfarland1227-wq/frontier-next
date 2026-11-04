@@ -2755,3 +2755,18 @@
 }
 .frontier-shell[data-color-mode="dark"] .sk-app[data-page="home"] :is(.sk-top, .sk-hero) { background: linear-gradient(115deg, #1f1448, #36103a 55%, #142846); }
 .frontier-shell[data-color-mode="dark"] .sk-app[data-page="home"] .sk-hero .sk-top { background: none; }
+
+/* Daily Brief hierarchy: list headers read as labels, items read as cards. */
+.sk-app .sk-brief-section .sk-listh { padding: 6px 2px 6px 10px; margin: 0 0 8px; border-left: 3px solid var(--sk-needs); border-bottom: 0; background: color-mix(in srgb, var(--sk-ink) 7%, transparent); border-radius: 0 6px 6px 0; }
+.sk-app .sk-brief-section .sk-hl { font: 800 11.5px/1.2 "DM Sans", system-ui, sans-serif; text-transform: uppercase; color: var(--sk-ink); }
+.sk-app .sk-brief-section .sk-listh .sk-sec { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--sk-ink) 14%, transparent); color: var(--sk-ink); font: 700 11px/1.4 "DM Sans", system-ui, sans-serif; text-align: center; font-variant-numeric: tabular-nums; }
+.sk-app .sk-brief-section .sk-foldbtn.is-shut + .sk-sec, .sk-app .sk-brief-section:has(.sk-foldbtn.is-shut) .sk-listh { opacity: .85; }
+.sk-app .sk-brief-items { gap: 6px; }
+.sk-app .sk-brief-entry, .sk-app .sk-brief-section.is-compact .sk-brief-entry { border: 1px solid color-mix(in srgb, var(--sk-ink) 12%, transparent); border-left: 3px solid color-mix(in srgb, var(--sk-ink) 35%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--sk-paper, #fff) 55%, transparent); }
+.sk-app .sk-brief-open { gap: 2px; padding: 7px 10px; }
+.sk-app .sk-brief-title { font: 600 13.5px/1.35 "DM Sans", system-ui, sans-serif; color: var(--sk-ink); }
+.sk-app .sk-brief-open small { font-size: 11px; opacity: .8; }
+.sk-app .sk-brief-section.is-compact .sk-brief-open { padding-block: 6px; font-size: 12.5px; }
+.sk-app .sk-brief-entry:hover { border-left-color: var(--sk-needs); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-brief-entry { background: color-mix(in srgb, #000 28%, transparent); border-color: color-mix(in srgb, var(--sk-ink) 16%, transparent); border-left-color: color-mix(in srgb, var(--sk-ink) 45%, transparent); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-brief-section .sk-listh { background: color-mix(in srgb, #fff 6%, transparent); }

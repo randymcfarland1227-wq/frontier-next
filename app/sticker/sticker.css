@@ -2829,3 +2829,15 @@
 .sk-app .sk-fd-list li.is-done .sk-fd-taskopen { text-decoration: line-through; color: var(--sk-ink-2); }
 /* Sub-task pop-out uses the same paper + edge as the focus card it sits on. */
 .sk-subpop { background: var(--sk-paper); border: 2px solid var(--sk-edge); }
+
+/* Focus cards: % complete sits in the top-right corner; the title and tags leave room for it. */
+.sk-app .sk-fcard { position: relative; }
+.sk-app .sk-fcard-corner { position: absolute; top: 12px; right: 12px; }
+.sk-app .sk-fcard-corner .sk-ring { --d: 42px; }
+.sk-app .sk-fcard-corner .sk-ring b { font-size: 11px; }
+.sk-app .sk-fcard > :is(.sk-fcard-t, .sk-fcard-tags, .sk-focus-rank) { padding-right: 50px; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-ring { background: conic-gradient(#3fd29a calc(var(--p) * 1%), #ffffff26 0); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-ring::before { background: #1d1a29; }
+/* Linked-list labels on cards wrap inside their column instead of spilling over. */
+.sk-app .sk-fcard-lists b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; letter-spacing: .02em; min-width: 0; }
+.sk-app .sk-fcard-lists b svg { vertical-align: -1px; margin-right: 3px; }

@@ -25,6 +25,8 @@ function build(): Map<string, FocusLink[]> {
     for (const c of items) {
       if (!c || c.done || !c.title) continue;
       const link = { title: c.title, ongoing: k === ONGOING_KEY || Boolean(c.ongoing) };
+      // A task with the same name as a focus card was organized into it (e.g. a Self task made into a focus).
+      add(titleKey(c.title), link);
       for (const id of c.siteLists || []) {
         const l = lists[id];
         if (l && !l.gone) add(`${l.site}:list:${id}`, link);
@@ -34,6 +36,12 @@ function build(): Map<string, FocusLink[]> {
   }
   return out;
 }
+
+export const titleKey = (title: string) => `title:${title.trim().toLowerCase()}`;
+
+/** Is this site task / list organized into an open focus card or ongoing goal? */
+export const inFocusPlan = (links: Map<string, FocusLink[]>, key: string, title: string) =>
+  links.has(key) || links.has(titleKey(title));
 
 /** Pin key (`source:id`, lists as `source:list:<id>`) → the goals it's linked into. */
 export function useFocusLinks(): Map<string, FocusLink[]> {

@@ -16,7 +16,7 @@ import type {
 } from "../../lib/types";
 import { sourceById, isMusicTask, MUSIC_HUB_URL } from "../../lib/sources";
 import { isConnectorSource } from "../../lib/connectors";
-import { useFocusLinks } from "../../lib/focusLinks";
+import { inFocusPlan, useFocusLinks } from "../../lib/focusLinks";
 import { shownMetric } from "../../lib/actionable";
 import { metricValue } from "../../lib/protocol";
 import {
@@ -915,7 +915,8 @@ function SiteBlock({
   };
 
   const { lanes } = usePriorityPins();
-  const { base, deduct, value } = shownMetric(source.id, snapshot, lanes);
+  const focusLinks = useFocusLinks();
+  const { base, deduct, value } = shownMetric(source.id, snapshot, lanes, (k, t) => inFocusPlan(focusLinks, k, t));
   const mainLabel = deduct
     ? `${base.label} · ${deduct} in Doing now`
     : base.label;
@@ -1102,9 +1103,10 @@ export function SitesSection({
   extra?: Partial<Record<SourceId, ReactNode>>;
 }) {
   const { lanes } = usePriorityPins();
+  const focusLinks = useFocusLinks();
   const all = SITE_ROWS.flatMap((r) => r.ids);
   const counts = Object.fromEntries(
-    all.map((id) => [id, shownMetric(id, snapshots[id], lanes).value || 0]),
+    all.map((id) => [id, shownMetric(id, snapshots[id], lanes, (k, t) => inFocusPlan(focusLinks, k, t)).value || 0]),
   ) as Record<string, number>;
   const total = all.reduce((sum, id) => sum + counts[id], 0);
   const sites = all.filter((id) => counts[id]).length;
@@ -1307,6 +1309,7 @@ export function SitesTabs({
   extra?: Partial<Record<SourceId, ReactNode>>;
 }) {
   const { lanes } = usePriorityPins();
+  const focusLinks = useFocusLinks();
   const all = SITE_ROWS.flatMap((r) => r.ids);
   const [saved, setSaved] = useState(() =>
     readSaved<string>("sk-sites-tab", "all"),
@@ -1314,9 +1317,16 @@ export function SitesTabs({
   const id: SourceId | "all" = (all as string[]).includes(saved)
     ? (saved as SourceId)
     : "all";
+  // Same rule as each site's count: what's in Doing Now or organized into a focus isn't counted again.
   const allCount = all
-    .flatMap((sid) => snapshots[sid]?.tasks || [])
-    .filter((t) => t.status !== "done" && !isHabit(t)).length;
+    .flatMap((sid) => (snapshots[sid]?.tasks || []).map((t) => ({ sid, t })))
+    .filter(
+      ({ sid, t }) =>
+        t.status !== "done" &&
+        !isHabit(t) &&
+        !lanes[pinKey(sid, t.id)]?.lane &&
+        !inFocusPlan(focusLinks, pinKey(sid, t.id), t.title),
+    ).length;
   // Fold just the open site away (Doing Now above stays); picking a tab opens it again.
   const [shut, setShut] = useState(() => readSaved<boolean>("sk-sites-shut", false));
   const setShutSaved = (v: boolean) => {
@@ -1340,7 +1350,7 @@ export function SitesTabs({
           ...all.map((sid) => ({
             id: sid as SourceId | "all",
             label: sourceById[sid].shortName,
-            count: shownMetric(sid, snapshots[sid], lanes).value || 0,
+            count: shownMetric(sid, snapshots[sid], lanes, (k, t) => inFocusPlan(focusLinks, k, t)).value || 0,
           })),
         ]}
       />

@@ -1,5 +1,6 @@
 'use client';
 
+import { inFocusPlan, useFocusLinks } from '../../lib/focusLinks';
 import { useState } from 'react';
 import { readSaved, writeSaved, STORAGE_KEYS } from '../../lib/storage';
 import type { FeaturedItem, SourceDefinition, SourceSnapshot, TaskItem } from '../../lib/types';
@@ -58,7 +59,8 @@ export function SourceCard({
   const links = source.relatedLinks || [];
 
   const { lanes } = usePriorityPins();
-  const { base, deduct, value } = shownMetric(source.id, snapshot, lanes);
+  const focusLinks = useFocusLinks();
+  const { base, deduct, value } = shownMetric(source.id, snapshot, lanes, (k, t) => inFocusPlan(focusLinks, k, t));
   const actionable = deduct ? { ...base, value, label: `${base.label} · ${deduct} in Doing now` } : base;
   const consumed = new Set(actionable.consumes || [actionable.key]);
   // Only stats that have a value — a row of "— applied today" placeholders is noise.

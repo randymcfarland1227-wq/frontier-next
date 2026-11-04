@@ -165,10 +165,13 @@ export function metricsAfterLocalComplete(
  * The count a card or bar shows: the actionable number minus open items already pinned to
  * Doing now (they stay in the card's list). TickTick's "to do" is a due-today sum, so it keeps its own.
  */
-export function shownMetric(id: SourceId, snapshot: SourceSnapshot, lanes: LaneMap) {
+export function shownMetric(id: SourceId, snapshot: SourceSnapshot, lanes: LaneMap, planned?: (key: string, title: string) => boolean) {
   const base = getActionableMetric(id, snapshot);
+  // Already handled elsewhere: in Doing Now, or organized into a focus card / ongoing goal.
   const inDoingNow = new Set(
-    [...snapshot.tasks.filter(t => t.status !== 'done').map(t => t.id), ...snapshot.featured.map(f => f.id)].filter(x => lanes[pinKey(id, x)]?.lane),
+    [...snapshot.tasks.filter(t => t.status !== 'done'), ...snapshot.featured]
+      .filter(x => lanes[pinKey(id, x.id)]?.lane || planned?.(pinKey(id, x.id), x.title))
+      .map(x => x.id),
   ).size;
   const deduct = id !== 'ticktick' && Number.isFinite(base.value) ? Math.min(inDoingNow, base.value) : 0;
   return { base, deduct, value: base.value - deduct };

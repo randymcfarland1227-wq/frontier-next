@@ -1,5 +1,6 @@
 "use client";
 
+import { inFocusPlan, useFocusLinks } from "../../lib/focusLinks";
 import { useEffect, useState, type ReactNode } from "react";
 import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import { sourceById } from "../../lib/sources";
@@ -103,8 +104,9 @@ export function StickerShell({
   const [more, setMore] = useState(false);
   const { iconFor } = useSiteIcons();
   const { lanes } = usePriorityPins();
+  const focusLinks = useFocusLinks();
   const openOf = (id: SourceId) =>
-    shownMetric(id, snapshots[id], lanes).value || 0;
+    shownMetric(id, snapshots[id], lanes, (k, t) => inFocusPlan(focusLinks, k, t)).value || 0;
   // Sidebar colour: brown to start, changeable at the bottom of the sidebar, remembered per device.
   const [tint, setTint] = useState<string>(() =>
     readSaved("sk-side-tint", "brown"),

@@ -1,5 +1,6 @@
 "use client";
 
+import { inFocusPlan, useFocusLinks } from "../../lib/focusLinks";
 import { LinkDevicePrompt } from "./LinkDevicePrompt";
 import { useEffect, useState, type ReactNode } from "react";
 import type {
@@ -177,12 +178,13 @@ export function HomeView({
   openFocus: () => void;
 }) {
   const { lanes } = usePriorityPins();
+  const focusLinks = useFocusLinks();
   // Open to-dos per site — the same blue numbers each card shows.
   const openBySite = SITE_ROWS.flatMap((r) => r.ids)
     .map((id) => ({
       id,
       name: sourceById[id].shortName,
-      count: shownMetric(id, snapshots[id], lanes).value || 0,
+      count: shownMetric(id, snapshots[id], lanes, (k, t) => inFocusPlan(focusLinks, k, t)).value || 0,
     }))
     .filter((site) => site.count > 0)
     .sort((a, b) => b.count - a.count);

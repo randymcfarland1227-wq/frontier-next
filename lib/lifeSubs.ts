@@ -21,6 +21,8 @@ export type LifeSub = {
   /** For yearly ones: the month it charges (0–11) */
   month?: number;
   status: SubStatus;
+  /** What it is: a subscription (default), a recurring bill, or a loan payment added on Life Hub */
+  kind?: 'sub' | 'bill' | 'loan';
   /** First charge day (YYYY-MM-DD); nothing is due before it */
   start?: string;
   note?: string;
@@ -145,7 +147,7 @@ export function lifeSubDues(subs: LifeSub[], paid: Set<string>, today = new Date
       const key = `money:lhsub:${s.id}:${due}`;
       if (!keepPaid && paid.has(key)) continue;
       out.push({
-        bill: { id: key, name: s.name, amount: s.amount, kind: 'sub', notes: ['Subscription', s.status === 'trial' ? 'Trial' : '', 'added on Life Hub'].filter(Boolean).join(' · ') },
+        bill: { id: key, name: s.name, amount: s.amount, kind: s.kind && s.kind !== 'sub' ? 'bill' : 'sub', notes: [s.kind === 'loan' ? 'Loan' : s.kind === 'bill' ? 'Bill' : 'Subscription', s.status === 'trial' ? 'Trial' : '', 'added on Life Hub'].filter(Boolean).join(' · ') },
         due,
         days: daysBetween(t, fromDayKey(due)),
         key,

@@ -1074,7 +1074,8 @@ type SubRow = {
   sub?: LifeSub;
 };
 
-function SubAdd({ onDone }: { onDone: () => void }) {
+function SubAdd({ onDone, kind = 'sub' }: { onDone: () => void; kind?: 'sub' | 'bill' | 'loan' }) {
+  const noun = kind === 'loan' ? 'loan' : kind === 'bill' ? 'bill' : 'subscription';
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [day, setDay] = useState(String(new Date().getDate()));
@@ -1087,15 +1088,15 @@ function SubAdd({ onDone }: { onDone: () => void }) {
     const d = Number(day);
     if (!name.trim() || !(d >= 1 && d <= 31)) return;
     const amt = amountOf(amount);
-    setBillEnd(billRuleKey({ name: name.trim(), kind: 'sub' }), null);
-    addLifeSub({ name, amount: amt, day: d, cycle, month: cycle === 'yearly' ? month : undefined, status, note: note.trim() || undefined });
+    setBillEnd(billRuleKey({ name: name.trim(), kind: kind === 'sub' ? 'sub' : 'bill' }), null);
+    addLifeSub({ name, kind: kind === 'sub' ? undefined : kind, amount: amt, day: d, cycle, month: cycle === 'yearly' ? month : undefined, status, note: note.trim() || undefined });
     onDone();
   };
   return (
     <form className="sub-form" onSubmit={submit} onKeyDown={e => e.key === 'Escape' && onDone()}>
       <label className="sub-form-wide">
-        <span>Subscription</span>
-        <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Netflix" required />
+        <span>{kind === 'sub' ? 'Subscription' : kind === 'loan' ? 'Loan' : 'Bill'}</span>
+        <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder={kind === 'sub' ? 'e.g. Netflix' : kind === 'loan' ? 'e.g. Car loan' : 'e.g. Water bill'} required />
       </label>
       <label>
         <span>Amount</span>
@@ -1133,11 +1134,11 @@ function SubAdd({ onDone }: { onDone: () => void }) {
       </label>
       <label className="sub-form-wide">
         <span>Note</span>
-        <input value={note} onChange={e => setNote(e.target.value)} placeholder="Optional — e.g. cancel before the trial ends" />
+        <input value={note} onChange={e => setNote(e.target.value)} placeholder={kind === 'sub' ? 'Optional — e.g. cancel before the trial ends' : 'Optional'} />
       </label>
       <div className="sub-form-actions">
         <button type="submit" className="sk-btn is-small is-prominent">
-          Add subscription
+          Add {noun}
         </button>
         <button type="button" className="sk-btn is-small" onClick={onDone}>
           Cancel
@@ -1147,9 +1148,31 @@ function SubAdd({ onDone }: { onDone: () => void }) {
   );
 }
 
-function SubsView({ model, lifeSubs, paidAt, dues, onSave }: { model: MoneyModel; lifeSubs: LifeSub[]; paidAt: Record<string, string>; dues: BillDue[]; onSave: Save }) {
+/** "+ Add bill / loan / card" with the same recurring form as subscriptions (cards just need a name). */
+function AddBar({ kind }: { kind: 'bill' | 'loan' | 'card' }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  return (
+    <div className="subs-top">
+      {open && kind === 'card' ? (
+        <form onSubmit={e => { e.preventDefault(); if (!name.trim()) return; addExtraCard({ name }); setName(''); setOpen(false); }}>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Card name" aria-label="Card name" autoFocus />
+          <button type="submit" className="sk-btn is-small is-prominent">Add card</button>
+          <button type="button" className="sk-btn is-small" onClick={() => setOpen(false)}>Cancel</button>
+        </form>
+      ) : open ? (
+        <SubAdd kind={kind as 'bill' | 'loan'} onDone={() => setOpen(false)} />
+      ) : (
+        <button type="button" className="sk-btn is-small is-prominent" onClick={() => setOpen(true)}>+ Add {kind}</button>
+      )}
+    </div>
+  );
+}
+
+function SubsView({ model, lifeSubs: allLifeSubs, paidAt, dues, onSave }: { model: MoneyModel; lifeSubs: LifeSub[]; paidAt: Record<string, string>; dues: BillDue[]; onSave: Save }) {
   const [adding, setAdding] = useState(false);
   const panels = useMoneyPanels();
+  const lifeSubs = allLifeSubs.filter(x => !x.kind || x.kind === 'sub');
   const today = startOfDay(new Date());
   const [, bump] = useState(0);
   const endRules = loadBillDays();
@@ -3486,6 +3509,7 @@ export function MoneyPage({
         {tab === 'spend' && spendView === 'bills' ? (
           <div className="mny-stack">
             <Section tone="due" title={`Bills · ${monthName}`} hint="Bills and card minimums." figure={money(weekLeft(['bill', 'card']))} figureLabel="left this week" href={link('Randy')}>
+              <AddBar kind="bill" />
               <MonthView dues={monthDues} carry={carryDues} paidAt={paidAt} model={model} onPaid={onPaid} kinds={['bill', 'card']} />
             </Section>
             {model.bills ? (
@@ -3608,9 +3632,11 @@ export function MoneyPage({
               sheet={
                 <div className="mny-stack">
                   <Section tone="card" title="Loans · active & closed" figure={money(activeLoans.reduce((t, l) => t + (l.bal || 0), 0))} figureLabel="balance left" hint="Balance is the sheet's Bal cell; principal and payments left are typed on Life Hub." href={link('Credit Matrix')}>
+                    <AddBar kind="loan" />
                     <LoansTable model={model} monthDues={monthDues} paidAt={paidAt} cell={cell} onOpen={panelApi.openLoan} />
                   </Section>
                   <Section tone="card" title="Credit cards" figure={model.cards?.total?.[1]?.text} figureLabel={cardsUsed !== undefined ? `${cardsUsed}% used` : ''} href={link('Randy')}>
+                    <AddBar kind="card" />
                     <CardsTable model={model} monthDues={monthDues} paidAt={paidAt} onOpen={panelApi.openCard} />
                   </Section>
                 </div>

@@ -2945,3 +2945,6 @@
 .sk-app .bill-level label.is-noncritical.is-on { background: #f08a24; color: #16141f; }
 .sk-app .bill-level label.is-priority.is-on { background: #c62828; color: #fff; }
 .sk-app .bill-level-hint { display: block; opacity: .7; font-size: .78em; margin: 2px 0 6px; }
+
+/* To purchase add button + Finance task add: room so they never overlap the folds below */
+.sk-app .tp-add, .sk-app .fin-task-add { margin: 10px 0 14px; }

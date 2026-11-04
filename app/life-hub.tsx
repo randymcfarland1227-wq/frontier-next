@@ -119,6 +119,7 @@ import { backfillFocusAreas, loadFocusAreas, type FocusAreaConfig } from '../lib
 import { billDues, fromDayKey, loadCachedSchedule, paidBillKeys, pullScheduleSnapshot, type BillDue, type CalTask, type ScheduleSnapshot } from '../lib/schedule';
 import { lifeSubDues, useLifeSubs, withoutSheetTwins } from '../lib/lifeSubs';
 import { hubCardDues, useExtraCards } from '../lib/extraCards';
+import { FinanceTaskAdd } from './components/FinanceTaskAdd';
 import { useMoneyMeta } from '../lib/moneyMeta';
 import { payPlanDues, usePayPlans } from '../lib/payPlans';
 import { usePriorityPins } from '../lib/priorityPins';
@@ -1122,6 +1123,7 @@ goalsData ? (
               onCompleteFeatured={item => completeOnHub('radall', item.id)}
               onCompleteTask={task => completeOnHub('radall', task.id)}
               onStarTask={task => starOnHub('radall', task)}
+              extra={<FinanceTaskAdd />}
             />
           }
         />

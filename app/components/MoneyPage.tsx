@@ -289,7 +289,9 @@ function ToPurchase({ table, onSave }: { table: Table; onSave: Save }) {
           </div>
         </form>
       ) : (
-        <button type="button" className="sk-btn is-small is-prominent" onClick={() => setAdding(true)}>+ Add item</button>
+        <div className="tp-add">
+          <button type="button" className="sk-btn is-small is-prominent" onClick={() => setAdding(true)}>+ Add item</button>
+        </div>
       )}
       {err ? <p className="mb-late">{err}</p> : null}
       {bought.length ? (

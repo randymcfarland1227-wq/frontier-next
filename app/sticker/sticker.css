@@ -2740,22 +2740,18 @@
 .sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab :is(.sk-group, .skm-sec) { min-width: 0; max-width: 100%; }
 .sk-app .sk-splitwrap[data-cap="split"] .sk-splitpane:has(.sk-money-tab) { overflow-x: auto; }
 
-/* Night: black sidebar (whatever swatch is picked for day) and a deeper purple page */
+/* Night: black sidebar (whatever swatch is picked for day); the purple accents darker, the black space stays */
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-side,
 .frontier-shell[data-color-mode="dark"] .sk-app .sk-side[data-tint] { --sk-sidebg: #050408; --sk-sidetx: #f1eefa; }
 .frontier-shell[data-color-mode="dark"] .sk-app[data-side="slim"] .sk-side { background: #050408; border-color: #ffffff1f; box-shadow: 0 16px 36px #00000066, inset 0 1px 0 #ffffff14; }
-.frontier-shell[data-color-mode="dark"] .sk-app { --sk-page: #100820; --sk-grid: #22174a; }
-.frontier-shell[data-color-mode="dark"] .sk-app[data-page="home"],
-.frontier-shell[data-color-mode="dark"] .sk-app[data-page="money"] .sk-main,
-.frontier-shell[data-color-mode="dark"] .sk-app[data-page="site"] .sk-main { background-color: #100820; }
 .frontier-shell[data-color-mode="dark"] .sk-app[data-page="home"] {
   background-image:
-    radial-gradient(620px 460px at 8% 260px, #6a1f7a66, transparent 70%),
-    radial-gradient(700px 520px at 92% 820px, #3a2a9a66, transparent 70%),
-    radial-gradient(640px 480px at 10% 1500px, #4a1f6a55, transparent 70%),
-    radial-gradient(720px 520px at 90% 2200px, #4b2aa866, transparent 70%),
-    radial-gradient(640px 480px at 12% 2900px, #3a1f7a55, transparent 70%),
+    radial-gradient(620px 460px at 8% 260px, #4a124f44, transparent 70%),
+    radial-gradient(700px 520px at 92% 820px, #2d4f9a44, transparent 70%),
+    radial-gradient(640px 480px at 10% 1500px, #8a6a1e33, transparent 70%),
+    radial-gradient(720px 520px at 90% 2200px, #2f1c6e44, transparent 70%),
+    radial-gradient(640px 480px at 12% 2900px, #1f7a5a33, transparent 70%),
     linear-gradient(var(--sk-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sk-grid) 1px, transparent 1px);
 }
-.frontier-shell[data-color-mode="dark"] .sk-app[data-page="home"] :is(.sk-top, .sk-hero) { background: linear-gradient(115deg, #2a1a63, #4a1650 55%, #1a2f5e); }
+.frontier-shell[data-color-mode="dark"] .sk-app[data-page="home"] :is(.sk-top, .sk-hero) { background: linear-gradient(115deg, #1f1448, #36103a 55%, #142846); }
 .frontier-shell[data-color-mode="dark"] .sk-app[data-page="home"] .sk-hero .sk-top { background: none; }

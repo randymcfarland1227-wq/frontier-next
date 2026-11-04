@@ -2711,7 +2711,7 @@
 /* Split view Money: the whole page at 60% (layout, figures, padding) with type bumped back up so it
    reads like the rest of Today (~11px body, ~10px captions). Box tables show again instead of blank space. */
 .sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab {
-  zoom: .6;
+  zoom: var(--money-zoom, .6);
   --sk-title: 600 30px/1.2 "Unbounded", system-ui, sans-serif; --sk-headline: 600 21px/1.3 "DM Sans", system-ui, sans-serif;
   --sk-body: 400 19px/1.4 "DM Sans", system-ui, sans-serif; --sk-label: 600 18px/1.3 "DM Sans", system-ui, sans-serif;
   --sk-secondary: 400 18px/1.4 "DM Sans", system-ui, sans-serif; --sk-caption: 600 16px/1.3 "DM Sans", system-ui, sans-serif;
@@ -2726,3 +2726,11 @@
 .sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dash :is(.skm-sums b, .mb-dc-scores b) { font-size: 19px; }
 .sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dash-cols { overflow: visible; }
 .sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-dc-head .sk-hl { font-size: 21px; }
+
+/* Money size − / + : only in split view */
+.sk-app .skm-zoom { display: none; }
+.sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-zoom { display: inline-flex; align-items: center; border: 2px solid var(--sk-edge); border-radius: 12px; overflow: hidden; background: var(--sk-paper); margin-right: 8px; vertical-align: middle; }
+.sk-app .skm-zoom button { border: 0; background: none; color: var(--sk-ink); font: 700 22px/1 "DM Sans", system-ui, sans-serif; min-width: 52px; min-height: 52px; padding: 0 10px; cursor: pointer; }
+.sk-app .skm-zoom button:hover:not(:disabled) { background: var(--sk-hover); }
+.sk-app .skm-zoom button:disabled { opacity: .35; cursor: default; }
+.sk-app .skm-zoom .skm-zoom-val { font-size: 17px; min-width: 70px; border-inline: 2px solid var(--sk-edge); }

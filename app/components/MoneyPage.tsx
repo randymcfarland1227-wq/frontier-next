@@ -2,6 +2,7 @@
 
 import { hasSyncKey } from '../../lib/cloudSync';
 import { LinkDevicePrompt } from './LinkDevicePrompt';
+import { MoneyZoom } from './MoneyZoom';
 import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PayPlanner } from './PayPlanner';
 import { usePayPlans } from '../../lib/payPlans';
@@ -3214,6 +3215,7 @@ export function MoneyPage({
         onOpenCard={panelApi.openCard}
         top={
           <>
+            <MoneyZoom />
             <span className="mny-stand-meta">
               Radall sheet · {new Date(model.refreshedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · {model.cashOnHand?.text || '—'} on hand · {money(dueWeek)} due this week
               <UpdateFiguresButton model={model} monthDues={monthDues} onSave={save} />

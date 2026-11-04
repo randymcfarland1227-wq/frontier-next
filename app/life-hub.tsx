@@ -124,7 +124,7 @@ import { useMoneyMeta } from '../lib/moneyMeta';
 import { payPlanDues, usePayPlans } from '../lib/payPlans';
 import { usePriorityPins } from '../lib/priorityPins';
 import { applyBillEdits, useBillEdits } from '../lib/billEdits';
-import { crossOffEdit, loadCachedMoney, moneyBillDues, parseMoney, pullMoneySnapshot, rowChangeEdits, saveMoneyEdits, type CellEdit, type MoneySnapshot } from '../lib/money';
+import { crossOffEdit, loadCachedMoney, moneyBillDues, parseMoney, pullMoneySnapshot, renameEdits, rowChangeEdits, saveMoneyEdits, type CellEdit, type MoneySnapshot } from '../lib/money';
 import { setSheetWriter } from './components/BillControls';
 import { setMeta as setMoneyMetaEntry } from '../lib/moneyMeta';
 import { MoneyPage, MoneyPanelHost } from './components/MoneyPage';
@@ -258,11 +258,11 @@ export function LifeHub() {
   };
   // A this-month change in a Money pop-out (amount / due date) is also written into that sheet row.
   useEffect(() => {
-    setSheetWriter(async ({ key, amount, date }) => {
+    setSheetWriter(async ({ key, amount, date, rename }) => {
       const item = moneyModel?.items.find(i => i.id === key);
       if (!item) return 'Saved on Life Hub (it isn’t a row in the sheet).';
-      if (item.projected) return 'Saved on Life Hub (this month isn’t typed in the sheet yet, so there’s no row to change).';
-      const edits = rowChangeEdits(item, { amount, date });
+      if (item.projected && !rename) return 'Saved on Life Hub (this month isn’t typed in the sheet yet, so there’s no row to change).';
+      const edits = [...rowChangeEdits(item, { amount, date }), ...(rename ? renameEdits(moneyModel?.items || [], item, rename) : [])];
       if (!edits.length) return 'Saved on Life Hub (the sheet cell is a formula or a shared date, so it was left alone).';
       const res = await saveMoneyEdits(edits);
       if (res.snapshot) setMoneySnap(res.snapshot);

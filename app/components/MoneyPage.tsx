@@ -38,11 +38,11 @@ import {
 } from '../../lib/money';
 import { addDays, dayKey, dayName, daysBetween, fromDayKey, money, startOfDay, startOfWeek, type BillDue } from '../../lib/schedule';
 import { readSaved, writeSaved, STORAGE_KEYS } from '../../lib/storage';
-import { billRuleKey, isEnded, loadBillDays, setBillEnd, isOverdue, loadBillEdits } from '../../lib/billEdits';
+import { billRuleKey, isEnded, loadBillDays, setBillEnd, isOverdue, loadBillEdits, useBillEdits } from '../../lib/billEdits';
 import { deleteForGood, BillChangeForm, BillFlagsFields, BillPinButton, FlagBadges, billChangeText } from './BillControls';
 import { addExtraCard, updateExtraCard, useExtraCards, type ExtraCard } from '../../lib/extraCards';
 import { addLifeSub, loadLifeSubs, updateLifeSub, type LifeSub } from '../../lib/lifeSubs';
-import { addCustomItem, METHOD_LABEL, mondayOf, setBalancePicks, setPickLanded, srcKey, updatePick, useBalancePicks, type BalancePlan, type CustomItem, type PayMethod } from '../../lib/balancePicks';
+import { addCustomItem, METHOD_LABEL, mondayOf, setBalancePicks, setPickLanded, srcKey, paySrc, NO_ACCT, updatePick, useBalancePicks, type BalancePlan, type CustomItem, type PayMethod } from '../../lib/balancePicks';
 import { addIncoming, incomingDues, updateIncoming, useIncoming, type Incoming, type IncomingDue } from '../../lib/incoming';
 
 type Save = (edits: CellEdit[]) => Promise<{ ok: boolean; results: EditResult[]; error?: string }>;
@@ -1666,7 +1666,7 @@ function payLine(d: BillDue, paidAt: Record<string, string>): BalanceLine {
     payBy: d.bill.payBy,
     open: !d.skipped && !paidAt[d.key] && (d.days >= 0 || isOverdue(d)),
     paid: paidAt[d.key],
-    src: srcKey('pay', d.bill.origName ?? d.bill.name),
+    src: paySrc(d.bill),
   };
 }
 function inLine(d: IncomingDue): BalanceLine {
@@ -1889,17 +1889,23 @@ function usePayFrom() {
   const { get } = useMoneyMeta();
   const plan = useBalancePicks();
   return (d: BillDue) => {
-    const src = srcKey('pay', d.bill.origName ?? d.bill.name);
-    return get(`from:${src}`)?.acct || plan.entries[d.key]?.acct || plan.remembered.get(src)?.acct || '';
+    const src = paySrc(d.bill);
+    const own = get(`from:${src}`)?.acct;
+    if (own) return own === NO_ACCT ? '' : own;
+    return plan.entries[d.key]?.acct || plan.remembered.get(src)?.acct || '';
   };
 }
 
 /** Gmail-sourced pay-by dates, applied to unpaid bill rows whose name matches and that have no pay-by yet. */
-function withPayBy(list: BillDue[], rules?: Array<{ match: string; kinds?: string[]; date: string; why: string }>): BillDue[] {
+function withPayBy(list: BillDue[], rules?: Array<{ match: string; kinds?: string[]; date: string; why: string }>, edits: Record<string, { payBy?: string }> = {}): BillDue[] {
   if (!rules?.length) return list;
   return list.map(d => {
     if (d.bill.payBy) return d;
-    const r = rules.find(x => normName(d.bill.name).includes(normName(x.match)) && (!x.kinds || x.kinds.includes(d.bill.kind || 'bill')));
+    // A pay-by you set or cleared on Life Hub is final for that payment.
+    if (edits[d.key]?.payBy !== undefined) return d;
+    // A notice's pay-by belongs to the one payment it follows (due on or just before it), never later months.
+    const r = rules.find(x => normName(d.bill.name).includes(normName(x.match)) && (!x.kinds || x.kinds.includes(d.bill.kind || 'bill'))
+      && d.due <= x.date && daysBetween(fromDayKey(d.due), fromDayKey(x.date)) <= 45);
     return r ? { ...d, bill: { ...d.bill, payBy: r.date, notes: [d.bill.notes, r.why].filter(Boolean).join(' · ') } } : d;
   });
 }
@@ -2658,6 +2664,7 @@ function SinceField({ metaKey, label }: { metaKey: string; label: string }) {
  */
 function PaidHistory({ list, paidAt, model, current }: { list: BillDue[]; paidAt: Record<string, string>; model?: MoneyModel; current?: BillDue }) {
   const { meta } = useMoneyMeta();
+  const [range, setRange] = useState<3 | 12>(3);
   const base = current || list[0];
   if (!base) return null;
   const h = billHistory(base.bill, list, model?.items || [], paidAt, meta);
@@ -2665,6 +2672,10 @@ function PaidHistory({ list, paidAt, model, current }: { list: BillDue[]; paidAt
   const day = (iso: string) => fromDayKey(iso.slice(0, 10)).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
   const now = current?.bill.amount;
   const diff = now !== undefined && h.usual !== undefined ? now - h.usual : 0;
+  const cutoff = (() => { const c = new Date(); c.setMonth(c.getMonth() - range); return dayKey(c); })();
+  const shown = h.rows.filter(r => r.due >= cutoff);
+  const paidShown = shown.filter(r => r.state === 'paid' || r.state === 'crossed');
+  const paidTotal = paidShown.reduce((t, r) => t + (r.amount ?? 0), 0);
   const stateText = (r: (typeof h.rows)[number]) =>
     r.state === 'paid' ? `paid ${r.paidOn ? day(r.paidOn) : ''}` : r.state === 'crossed' ? 'crossed off in the sheet' : r.state === 'skipped' ? 'skipped' : r.due < dayKey(new Date()) ? 'not paid' : 'coming up';
   return (
@@ -2677,10 +2688,15 @@ function PaidHistory({ list, paidAt, model, current }: { list: BillDue[]; paidAt
           <span><small>this one</small><b className={diff > 0 ? 'mb-late' : diff < 0 ? 'mb-ok' : ''}>{money(now)}</b><small>{diff > 0 ? `${money(diff)} more than usual` : diff < 0 ? `${money(-diff)} less than usual` : 'same as usual'}</small></span>
         ) : null}
       </div>
-      <details className="skm-fold mb-hist-fold">
-        <summary><Icon name="chevron" className="skm-fchev" /><span className="skm-ftitle">Every payment</span><span className="sk-sec skm-fmeta">{h.rows.length}</span></summary>
+      <div className="mb-hist-range" role="tablist" aria-label="History range">
+        {([[3, 'Past 3 months'], [12, 'Past year']] as const).map(([n, label]) => (
+          <button key={n} type="button" role="tab" aria-selected={range === n} className={`sk-btn is-small${range === n ? ' is-on' : ''}`} onClick={() => setRange(n)}>{label}</button>
+        ))}
+        <span className="mb-dim">{paidShown.length} paid · {money(paidTotal) || '$0'} total</span>
+      </div>
+      {shown.length ? (
         <ul className="mb-cp-list">
-          {h.rows.map(r => (
+          {shown.map(r => (
             <li key={r.key}>
               <span>{day(r.due)}</span>
               <b className={h.usual !== undefined && r.amount !== undefined && r.amount > h.usual ? 'mb-late' : ''}>{r.amount !== undefined ? money(r.amount) : '?'}</b>
@@ -2688,7 +2704,7 @@ function PaidHistory({ list, paidAt, model, current }: { list: BillDue[]; paidAt
             </li>
           ))}
         </ul>
-      </details>
+      ) : <p className="mb-dim">Nothing recorded in the past {range === 3 ? '3 months' : 'year'}.</p>}
     </>
   );
 }
@@ -2795,7 +2811,7 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
   const hubSub = loadLifeSubs().find(x => !x.removed && x.name.trim().toLowerCase() === orig.toLowerCase());
   const src = srcKey('pay', orig);
   const pick = (acct: string) => {
-    setMeta(`from:${src}`, { acct: acct || undefined });
+    setMeta(`from:${src}`, { acct: acct || NO_ACCT });
     const bank = banks.find(b => b.name === acct);
     updatePick(`src:${src}`, { mark: null, acct: bank ? bank.name : undefined });
   };
@@ -2944,11 +2960,11 @@ function ItemPanel({ id, dues, model, paidAt, onPaid, onBack, onClose }: { id: s
         <p className="mny-empty">This item isn’t in the schedule any more.</p>
       </Modal>
     );
-  const src = srcKey('pay', d.bill.name);
+  const src = paySrc(d.bill);
   const same = dues.filter(x => x.bill.name === d.bill.name && x.key !== d.key).sort((a, b) => b.due.localeCompare(a.due)).slice(0, 6);
   const state = monthState(d, paidAt);
   const pick = (acct: string) => {
-    setMeta(`from:${src}`, { acct: acct || undefined });
+    setMeta(`from:${src}`, { acct: acct || NO_ACCT });
     const bank = banks.find(b => b.name === acct);
     updatePick(`src:${src}`, { mark: null, acct: bank ? bank.name : undefined });
   };
@@ -3283,9 +3299,10 @@ export function MoneyPage({
   financeTasks?: ReactNode;
 }) {
   const debtFile = useDebtFile();
+  const billEditsNow = useBillEdits();
   // Pay-by dates read from Gmail notices (e.g. Verizon's suspension date) fill in where the sheet / Life Hub has none.
-  const dues = useMemo(() => withPayBy(duesIn, debtFile.file?.payby), [duesIn, debtFile.file?.payby]);
-  const monthDues = useMemo(() => withPayBy(monthDuesIn, debtFile.file?.payby), [monthDuesIn, debtFile.file?.payby]);
+  const dues = useMemo(() => withPayBy(duesIn, debtFile.file?.payby, billEditsNow), [duesIn, debtFile.file?.payby, billEditsNow]);
+  const monthDues = useMemo(() => withPayBy(monthDuesIn, debtFile.file?.payby, billEditsNow), [monthDuesIn, debtFile.file?.payby, billEditsNow]);
   // Unpaid from before this month (the month lists only show this month's rows)
   const carryDues = useMemo(() => {
     const now = new Date();

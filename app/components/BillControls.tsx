@@ -8,7 +8,7 @@ import { loadLifeSubs, updateLifeSub } from '../../lib/lifeSubs';
 import { pinKey, updatePinDetails, usePriorityPins } from '../../lib/priorityPins';
 
 /** Writes a this-month change into the sheet's row (registered by life-hub.tsx, which holds the sheet model). */
-export type SheetChange = { key: string; amount?: number; date?: string };
+export type SheetChange = { key: string; amount?: number; date?: string; rename?: string };
 let sheetWriter: ((c: SheetChange) => Promise<string>) | undefined;
 export function setSheetWriter(fn: ((c: SheetChange) => Promise<string>) | undefined) {
   sheetWriter = fn;
@@ -167,7 +167,8 @@ export function BillChangeForm({ due, onDone, onGone, hideFlags, onSaved }: { du
       note,
     });
     const nm = newName.trim();
-    if (nm && nm !== name) setBillName(ruleKey, nm === sheetName ? null : nm);
+    const renamed = Boolean(nm && nm !== name);
+    if (renamed) setBillName(ruleKey, nm === sheetName ? null : nm, sheetName);
     // What changed, said back in plain words, and the sheet row updated to match (this month's row).
     const newDay = mode === 'move' && moveTo && moveTo !== original ? moveTo : undefined;
     const newAmt = ok && mode !== 'skip' && n !== due.bill.amount ? n : undefined;
@@ -179,9 +180,9 @@ export function BillChangeForm({ due, onDone, onGone, hideFlags, onSaved }: { du
     ].filter(Boolean);
     const said = parts.length ? `Saved: ${parts.join(' · ')}.` : 'Saved.';
     onDone();
-    if (sheetWriter && (newDay || newAmt !== undefined)) {
+    if (sheetWriter && (newDay || newAmt !== undefined || renamed)) {
       onSaved?.(`${said} Writing it to the sheet…`);
-      void sheetWriter({ key: due.key, amount: newAmt, date: newDay }).then(m => onSaved?.(`${said} ${m}`));
+      void sheetWriter({ key: due.key, amount: newAmt, date: newDay, rename: renamed ? nm : undefined }).then(m => onSaved?.(`${said} ${m}`));
     } else onSaved?.(said);
   };
 

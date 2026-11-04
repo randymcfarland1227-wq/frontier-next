@@ -30,6 +30,11 @@ export type BalancePick = {
 export type BalancePicks = Record<string, BalancePick>;
 export type Remembered = { acct?: string; method?: PayMethod };
 
+/** Pay-from key of a bill: its sheet name (not a Life Hub rename), plus its day when two bills share a name. */
+export const paySrc = (b: { name: string; origName?: string; ruleDay?: string }) => srcKey('pay', (b.origName ?? b.name) + (b.ruleDay ? `@${b.ruleDay}` : ''));
+/** Pay-from deliberately left empty: stops a remembered account from coming back. */
+export const NO_ACCT = '(none)';
+
 /** Key that remembers the account for every date of one bill / income source. */
 export const srcKey = (kind: 'pay' | 'in', name: string) => `${kind}:${name.trim().toLowerCase()}`;
 export const BALANCE_PICKS_EVENT = 'lifehub:balance-picks';

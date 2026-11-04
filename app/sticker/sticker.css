@@ -2976,3 +2976,7 @@
 .sk-app .mb-hist-fold > summary + * { padding: 0 var(--sk-s2) var(--sk-s2); }
 .sk-app .mb-saved.is-fail { border-color: var(--sk-alert); }
 .sk-app .fin-task-hint { margin: 0; font: var(--sk-caption); color: var(--sk-ink-2); }
+
+/* Payment history range tabs */
+.mb-hist-range { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
+.mb-hist-range .sk-btn.is-on { background: var(--ink, #111); color: #fff; }

@@ -50,14 +50,16 @@ export type BillDay = {
   endName?: string;
   /** Renamed on Life Hub: every payment shows this name (the sheet keeps its own) */
   rename?: string;
+  /** The sheet's name before the rename (the rule key is built from it) */
+  renamedFrom?: string;
   /** Every payment of this bill: Non critical (orange) or Priority (red, first). Set on Life Hub. */
   nonCritical?: boolean;
   priority?: boolean;
 };
 export type BillDays = Record<string, BillDay>;
 
-export function billRuleKey(bill: { name: string; kind?: string; origName?: string }): string {
-  return `${bill.kind || 'bill'}:${(bill.origName ?? bill.name).toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
+export function billRuleKey(bill: { name: string; kind?: string; origName?: string; ruleDay?: string }): string {
+  return `${bill.kind || 'bill'}:${(bill.origName ?? bill.name).toLowerCase().replace(/[^a-z0-9]+/g, '')}${bill.ruleDay ? `@${bill.ruleDay}` : ''}`;
 }
 
 export function loadBillDays(): BillDays {
@@ -95,11 +97,11 @@ export function setBillLevel(ruleKey: string, level: 'normal' | 'noncritical' | 
 }
 
 /** Rename every payment of a bill on Life Hub; `null` / '' goes back to the sheet's name. */
-export function setBillName(ruleKey: string, name: string | null) {
+export function setBillName(ruleKey: string, name: string | null, sheetName?: string) {
   const all = loadBillDays();
   const prev = all[ruleKey] || { day: null, from: '' };
   const n = name?.trim();
-  all[ruleKey] = { ...prev, rename: n || undefined, at: new Date().toISOString() };
+  all[ruleKey] = { ...prev, rename: n || undefined, renamedFrom: n ? sheetName ?? prev.renamedFrom : undefined, at: new Date().toISOString() };
   writeSaved(STORAGE_KEYS.billDays, all);
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BILL_DAYS_EVENT));
 }
@@ -215,6 +217,17 @@ export function hasEdit(e?: BillEdit): boolean {
  */
 export function applyBillEdits(dues: BillDue[], edits: BillEdits, today = new Date(), days: BillDays = loadBillDays()): BillDue[] {
   const t = startOfDay(today);
+  // A rename already written to the sheet: those rows carry the new name, but the rule is still keyed by the old one.
+  const alias = new Map<string, string>();
+  for (const [k, r] of Object.entries(days)) if (r.rename && r.renamedFrom) alias.set(`${k.split(':')[0]}:${r.rename.toLowerCase().replace(/[^a-z0-9]+/g, '')}`, k);
+  if (alias.size) {
+    dues = dues.map(d => {
+      if (d.bill.origName || days[billRuleKey(d.bill)]) return d;
+      const k = alias.get(billRuleKey(d.bill));
+      const r = k ? days[k] : undefined;
+      return k && r ? { ...d, bill: { ...d.bill, origName: r.renamedFrom, ruleDay: k.split('@')[1] ?? d.bill.ruleDay } } : d;
+    });
+  }
   return dues
     .filter(d => !edits[d.key]?.removed && !isEnded(d.due, days[billRuleKey(d.bill)]))
     .map(d => {

@@ -27,7 +27,8 @@ import {
 } from "../../lib/schedule";
 import {
   mondayOf,
-  srcKey,
+  paySrc,
+  NO_ACCT,
   updatePick,
   useBalancePicks,
 } from "../../lib/balancePicks";
@@ -1353,17 +1354,14 @@ export function PaySources({
     )
     .sort((a, b) => a.due.localeCompare(b.due));
   const fromOf = (d: BillDue) => {
-    const src = srcKey("pay", d.bill.name);
-    return (
-      get(`from:${src}`)?.acct ||
-      plan.entries[d.key]?.acct ||
-      plan.remembered.get(src)?.acct ||
-      ""
-    );
+    const src = paySrc(d.bill);
+    const own = get(`from:${src}`)?.acct;
+    if (own) return own === NO_ACCT ? "" : own;
+    return plan.entries[d.key]?.acct || plan.remembered.get(src)?.acct || "";
   };
   const pick = (d: BillDue, acct: string) => {
-    const src = srcKey("pay", d.bill.name);
-    setMeta(`from:${src}`, { acct: acct || undefined });
+    const src = paySrc(d.bill);
+    setMeta(`from:${src}`, { acct: acct || NO_ACCT });
     // A bank account also becomes the balancing sheet's remembered account; a card leaves the bank alone.
     const bank = banks.find((b) => b.name === acct);
     updatePick(`src:${src}`, {

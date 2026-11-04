@@ -835,11 +835,31 @@ export function moneyDues(model: MoneyModel | null, paid: Set<string>, today = n
 }
 
 /** Money dues in the calendar's bill shape (Paid, countdown and the calendar all reuse it). */
+/** Kind+name keys the sheet lists twice in one month (two "Verizon" bills): their rules must stay separate. */
+export function sameNameTwice(items: MoneyItem[]): Set<string> {
+  const seen = new Set<string>();
+  const dup = new Set<string>();
+  for (const i of items) {
+    if (!i.date || i.skipped) continue;
+    const k = `${i.kind}:${i.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+    const m = `${k}|${i.date.slice(0, 7)}`;
+    if (seen.has(m)) dup.add(k);
+    seen.add(m);
+  }
+  return dup;
+}
+
+export function ruleDayOf(item: { kind: string; name: string; date?: string }, dup: Set<string>): string | undefined {
+  return item.date && dup.has(`${item.kind}:${item.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`) ? item.date.slice(8, 10) : undefined;
+}
+
 export function moneyBillDues(model: MoneyModel | null, paid: Set<string>, today = new Date()): BillDue[] {
+  const dup = sameNameTwice(model?.items || []);
   return moneyDues(model, paid, today).map(d => ({
     bill: {
       id: d.item.id,
       name: d.item.name,
+      ruleDay: ruleDayOf(d.item, dup),
       amount: d.item.amount,
       kind: d.item.kind,
       notes: [MONEY_KINDS[d.item.kind].label, d.item.provider, d.item.installment].filter(Boolean).join(' · '),
@@ -900,6 +920,29 @@ export function rowChangeEdits(item: MoneyItem | undefined, change: { amount?: n
   const dc = item.cells.date;
   if (change.date && change.date !== item.date && dc && !dc.formula && dc.tab === item.cells.name.tab && dc.r === item.cells.name.r)
     out.push({ tab: dc.tab, r: dc.r, c: dc.c, expect: dc.text, value: sheetDateText(change.date, dc.text) });
+  return out;
+}
+
+/**
+ * The sheet edits that rename a bill: this month's row and every later typed row of the same bill
+ * (same kind + name, and the same day when two bills share a name). Earlier months keep their name.
+ */
+export function renameEdits(items: MoneyItem[], item: MoneyItem | undefined, newName: string): CellEdit[] {
+  const nm = newName.trim();
+  if (!item || !nm) return [];
+  const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const dup = sameNameTwice(items);
+  const day = ruleDayOf(item, dup);
+  const month = item.date?.slice(0, 7) || '';
+  const out: CellEdit[] = [];
+  for (const i of items) {
+    if (i.projected || i.skipped || i.kind !== item.kind || slug(i.name) !== slug(item.name)) continue;
+    if (i.date && month && i.date.slice(0, 7) < month) continue;
+    if (day && i.date?.slice(8, 10) !== day) continue;
+    const c = i.cells.name;
+    if (c.formula || c.text.trim() === nm) continue;
+    out.push({ tab: c.tab, r: c.r, c: c.c, expect: c.text, value: nm });
+  }
   return out;
 }
 

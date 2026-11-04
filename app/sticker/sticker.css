@@ -2926,3 +2926,6 @@
 /* delete-for-good buttons */
 .sk-btn.is-danger,.row-action.is-danger{color:#b3261e}
 .subs-deleted{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+
+/* bill change: "Apply to" label inside the scope row */
+.bill-change-scope{font-size:.8em;opacity:.75;align-self:center;margin-right:2px}

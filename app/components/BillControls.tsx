@@ -174,6 +174,22 @@ export function BillChangeForm({ due, onDone, onGone }: { due: BillDue; onDone: 
           </label>
         ))}
       </div>
+      {mode !== 'skip' ? (
+        <div className="bill-change-modes" role="radiogroup" aria-label="Apply the amount and day to">
+          <span className="bill-change-scope">Apply to:</span>
+          {(
+            [
+              ['one', 'This payment only'],
+              ['all', 'Every payment from now on'],
+            ] as const
+          ).map(([id, label]) => (
+            <label key={id} className={scope === id ? 'is-on' : ''}>
+              <input type="radio" name={`scope-${due.key}`} checked={scope === id} onChange={() => setScope(id)} />
+              {label}
+            </label>
+          ))}
+        </div>
+      ) : null}
       {mode === 'move' ? (
         <>
           <label className="bill-change-field">
@@ -199,24 +215,9 @@ export function BillChangeForm({ due, onDone, onGone }: { due: BillDue; onDone: 
       ) : null}
       {mode !== 'skip' ? (
         <label className="bill-change-field">
-          <span>Amount this time</span>
+          <span>{scope === 'all' ? 'New amount (every payment from now on)' : 'Amount this time'}</span>
           <input inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} placeholder={due.bill.amount !== undefined ? String(due.bill.amount) : 'Same as usual'} />
         </label>
-      ) : null}
-      {mode === 'move' || (mode !== 'skip' && amount.trim() !== '') ? (
-        <div className="bill-change-modes" role="radiogroup" aria-label="Apply to">
-          {(
-            [
-              ['one', 'This payment only'],
-              ['all', 'This and every later payment'],
-            ] as const
-          ).map(([id, label]) => (
-            <label key={id} className={scope === id ? 'is-on' : ''}>
-              <input type="radio" name={`scope-${due.key}`} checked={scope === id} onChange={() => setScope(id)} />
-              {label}
-            </label>
-          ))}
-        </div>
       ) : null}
       {rule?.amount !== undefined ? (
         <p className="bill-change-rule">

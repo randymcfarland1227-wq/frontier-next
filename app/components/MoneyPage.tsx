@@ -2556,7 +2556,7 @@ function ChangeThisOne({ due, onGone }: { due: BillDue; onGone?: () => void }) {
           {changed ? 'Edit change' : 'Change amount / due day / note'}
         </button>
       )}
-      <p className="mb-dim">Pick “this payment only” or “every later payment” when you change the amount or day.</p>
+      
     </div>
   );
 }

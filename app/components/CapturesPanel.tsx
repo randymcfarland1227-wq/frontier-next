@@ -12,7 +12,7 @@ import type { SelfItem } from '../../lib/adapters/self';
 import { useRowMenu, type RowMenuItem } from './RowMenu';
 import { Circle, ListHead, Row, Tag } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
-import { pinDragProps, pinKey, usePriorityPins } from '../../lib/priorityPins';
+import { openTaskPanel, pinDragProps, pinKey, usePriorityPins } from '../../lib/priorityPins';
 import { addOngoingGoal } from '../../lib/ongoingGoals';
 
 /** Where a Self task can be moved (it then shows in that site's card). */
@@ -529,7 +529,8 @@ function SelfTaskRow({
         sub={sub}
         value={t.due ? dueLabel(t.due) : undefined}
         valueTone={late ? 'late' : undefined}
-        hint={[t.title, t.detail, 'Right-click or long-press to star, pin, set a day or move'].filter(Boolean).join(' — ')}
+        onOpen={() => openTaskPanel(pinKey('self', t.id))}
+        hint={[t.title, t.detail, 'Click for details, subtasks and plan · right-click or long-press to star, pin, set a day or move'].filter(Boolean).join(' — ')}
       >
         {t.done ? (
           <div className="sk-ract">

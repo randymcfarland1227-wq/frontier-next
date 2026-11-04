@@ -1003,7 +1003,7 @@ function SiteBlock({
         <div className="sk-srcbody">
           {/* Self's body is the Self tool itself; other sites' extras (Radall's money due) go below the tasks */}
           {source.id === "self" || source.id === "ticktick" ? extra : null}
-          {(
+          {extra && source.id === "self" && !grouping ? null : (
             <>
               {featuredAbove.length ? (
                 <SiteStarred

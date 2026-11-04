@@ -733,6 +733,7 @@ function MonthView({
   onPaid,
   kinds,
   hidePaid = false,
+  foldPaid = false,
   carry = [],
 }: {
   dues: BillDue[];
@@ -744,6 +745,8 @@ function MonthView({
   /** Only these kinds (the Bills tab shows just bills) */
   kinds?: string[];
   hidePaid?: boolean;
+  /** Paid / crossed-off rows leave the week lists and sit in a folded "Paid this month" list at the bottom */
+  foldPaid?: boolean;
 }) {
   const today = startOfDay(new Date());
   const [flat, setFlat] = useState(() => readSaved<boolean>('lifehub-money-still-to-pay', false));
@@ -857,13 +860,29 @@ function MonthView({
             </summary>
             <ul>
               {hidePaid && list.every(d => isLedgerPaid(d, paidAt)) ? <li className="mny-empty">Paid items hidden.</li> : null}
-              {list.filter(d => !hidePaid || !isLedgerPaid(d, paidAt)).map(d => (
+              {foldPaid && list.every(d => isLedgerPaid(d, paidAt)) ? <li className="mny-empty">All paid — see Paid this month below.</li> : null}
+              {list.filter(d => !(hidePaid || foldPaid) || !isLedgerPaid(d, paidAt)).map(d => (
                 <MonthRow key={d.key} d={d} paidAt={paidAt} onPaid={onPaid} />
               ))}
             </ul>
           </details>
         );
       })}
+      {foldPaid && all.some(d => isLedgerPaid(d, paidAt)) ? (
+        <details className="mm-week is-done mm-paidfold">
+          <summary>
+            <span className="mny-fold-chev" aria-hidden="true" />
+            <span className="mm-week-name">Paid this month</span>
+            <span className="mm-donechip">✓ {all.filter(d => isLedgerPaid(d, paidAt)).length}</span>
+            <span className="mm-week-sum">{money(all.filter(d => isLedgerPaid(d, paidAt)).reduce((t, d) => t + (d.bill.amount || 0), 0))}</span>
+          </summary>
+          <ul>
+            {all.filter(d => isLedgerPaid(d, paidAt)).sort((a, b) => a.due.localeCompare(b.due)).map(d => (
+              <MonthRow key={d.key} d={d} paidAt={paidAt} onPaid={onPaid} fullDate />
+            ))}
+          </ul>
+        </details>
+      ) : null}
     </div>
   );
 }
@@ -3543,14 +3562,14 @@ export function MoneyPage({
 
         {tab === 'spend' && spendView === 'cash' ? (
           <Section tone="due" title={`Cash advances · ${monthName}`} hint="Dave, MoneyLion, Cleo… from the Cash Advances block on the Randy tab. Nothing counts as paid until you tap Paid." figure={money(weekLeft(['cash']))} figureLabel="left this week" href={link('Randy')}>
-            <MonthView dues={monthDues} paidAt={paidAt} model={model} onPaid={onPaid} kinds={['cash']} />
+            <MonthView dues={monthDues} paidAt={paidAt} model={model} onPaid={onPaid} kinds={['cash']} foldPaid />
           </Section>
         ) : null}
 
         {tab === 'spend' && spendView === 'paylater' ? (
           <div className="mny-stack">
             <Section tone="due" title={`Pay later · ${monthName}`} hint="Affirm, Afterpay, Klarna, Zip. Nothing counts as paid until you tap Paid." figure={money(weekLeft(['paylater']))} figureLabel="left this week" href={link('Randy')}>
-              <MonthView dues={monthDues} paidAt={paidAt} model={model} onPaid={onPaid} kinds={['paylater']} />
+              <MonthView dues={monthDues} paidAt={paidAt} model={model} onPaid={onPaid} kinds={['paylater']} foldPaid />
             </Section>
             {plSeen.length ? (
               <Section tone="due" title="Seen in your email" hint="Payment emails from Klarna, Afterpay, Zip and Affirm. Paid ones are marked on the matching row above; anything without a row is listed here to tick by hand.">
@@ -3632,7 +3651,7 @@ export function MoneyPage({
         {tab === 'spend' && spendView === 'out' ? (
           <div className="mny-stack">
             <Section tone="due" title={`Outgoing · ${monthName}`} hint="Bills, card minimums, Pay Later, cash advances and subscriptions together." figure={money(weekLeft(OUT_KINDS))} figureLabel="left this week" href={link('Randy')}>
-              <MonthView dues={monthDues} carry={carryDues} paidAt={paidAt} model={model} onPaid={onPaid} kinds={OUT_KINDS} />
+              <MonthView dues={monthDues} carry={carryDues} paidAt={paidAt} model={model} onPaid={onPaid} kinds={OUT_KINDS} foldPaid />
             </Section>
           </div>
         ) : null}
@@ -3641,7 +3660,7 @@ export function MoneyPage({
           <div className="mny-stack">
             <Section tone="due" title={`Bills · ${monthName}`} hint="Bills and card minimums." figure={money(weekLeft(['bill', 'card']))} figureLabel="left this week" href={link('Randy')}>
               <AddBar kind="bill" />
-              <MonthView dues={monthDues} carry={carryDues} paidAt={paidAt} model={model} onPaid={onPaid} kinds={['bill', 'card']} />
+              <MonthView dues={monthDues} carry={carryDues} paidAt={paidAt} model={model} onPaid={onPaid} kinds={['bill', 'card']} foldPaid />
             </Section>
             {model.bills ? (
               <Section tone="due" title="In the sheet" hint="Click any amount or date to change it in the sheet." href={link('Randy')}>

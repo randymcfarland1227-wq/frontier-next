@@ -40,7 +40,7 @@ function hasNotes(site: string, id: string) {
 }
 
 function ListDialog({ list, close }: { list: SiteList; close: () => void }) {
-  const { store, snapshots, complete, doneOf } = useSiteLists();
+  const { store, snapshots, complete, doneOf, reopen } = useSiteLists();
   const { open, total, done, items } = viewOfList(list, snapshots, doneOf);
   const site = sourceById[list.site];
   const { lanes } = usePriorityPins();
@@ -94,7 +94,16 @@ function ListDialog({ list, close }: { list: SiteList; close: () => void }) {
       <ul className="sk-listdlg-tasks">
         {items.map((t) => t.done ? (
           <li key={t.id} className="is-done">
-            <span className="sk-circle is-done" aria-hidden="true"><Icon name="check" size={12} /></span>
+            <button
+              type="button"
+              className="sk-circle is-done"
+              aria-label={`Uncheck ${t.title}`}
+              title={list.site === "ticktick" ? "Done in TickTick — reopen it there" : "Uncheck (not done yet)"}
+              disabled={list.site === "ticktick" || !reopen}
+              onClick={() => reopen?.(list.site, t.id)}
+            >
+              <Icon name="check" size={12} />
+            </button>
             <button type="button" className="sk-fd-taskopen" title="Done — open its notes" onClick={() => openTaskPanel(pinKey(list.site, t.id))}>
               {t.title}
             </button>

@@ -11,6 +11,9 @@ export type CompletionEntry = {
   taskId: string;
   completedAt: string; // ISO
   title?: string;
+  /** Unchecked on the hub after it was done: the entry stays (so sync can't bring it back) but no
+   *  longer counts, unless it was completed again after this. */
+  reopenedAt?: string;
   /** origin-done = the source reported it done; origin-snapshot = legacy "disappeared" (dropped) */
   via: 'hub' | 'origin-done' | 'origin-snapshot' | 'connector-diff' | 'self';
   /** Resolved via focus-areas.json at record time; persisted so history stays stable if maps change. */
@@ -67,6 +70,9 @@ function hasSameDay(ledger: CompletionLedger, source: SourceId, taskId: string, 
   );
 }
 
+/** Done, or unchecked since (and not done again)? */
+export const isReopened = (e: CompletionEntry) => Boolean(e.reopenedAt && e.reopenedAt >= e.completedAt);
+
 export function loadLedger(): CompletionLedger {
   const saved = readSaved<CompletionLedger>(STORAGE_KEYS.completions, { entries: {} });
   const entries = collapseTickTickCopies(
@@ -75,11 +81,28 @@ export function loadLedger(): CompletionLedger {
   if (Object.keys(entries).length !== Object.keys(saved.entries || {}).length) {
     saveLedger({ entries });
   }
-  return { entries };
+  // Unchecked items stay stored as markers but aren't completions.
+  return { entries: Object.fromEntries(Object.entries(entries).filter(([, e]) => !isReopened(e))) };
 }
 
 export function saveLedger(ledger: CompletionLedger) {
-  writeSaved(STORAGE_KEYS.completions, ledger);
+  // Keep the "unchecked" markers loadLedger leaves out, so a sync never revives those completions.
+  const saved = readSaved<CompletionLedger>(STORAGE_KEYS.completions, { entries: {} }).entries || {};
+  const entries = { ...ledger.entries };
+  for (const [k, e] of Object.entries(saved)) if (!entries[k] && e && isReopened(e)) entries[k] = e;
+  writeSaved(STORAGE_KEYS.completions, { entries });
+}
+
+/** Uncheck a task done on the hub: every completion of it (any day) stops counting. */
+export function reopenCompletion(source: SourceId, taskId: string): CompletionLedger {
+  const saved = readSaved<CompletionLedger>(STORAGE_KEYS.completions, { entries: {} }).entries || {};
+  const at = new Date().toISOString();
+  const entries = { ...saved };
+  for (const [k, e] of Object.entries(saved)) {
+    if (e?.source === source && e.taskId === taskId && !isReopened(e)) entries[k] = { ...e, reopenedAt: at };
+  }
+  writeSaved(STORAGE_KEYS.completions, { entries });
+  return loadLedger();
 }
 
 /** Record a completion; dedupes by source+taskId (keeps earliest completedAt). */

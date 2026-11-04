@@ -74,3 +74,15 @@ test('finished members stay in the list view (struck), titled from the completio
   assert.equal(v.done, 1);
   assert.equal(v.open.length, 2);
 });
+
+test('unchecking survives sync, and a later re-check wins over it', () => {
+  const done = { source: 'radall', taskId: 'xf', completedAt: '2026-11-04T09:00:00.000Z', title: 'Call Xfinity', via: 'hub' };
+  const reopened = { ...done, reopenedAt: '2026-11-04T10:00:00.000Z' };
+  const k = 'radall::xf';
+  const m1 = mergeState({ completions: { entries: { [k]: done } } }, { completions: { entries: { [k]: reopened } } });
+  assert.equal(m1.completions.entries[k].reopenedAt, '2026-11-04T10:00:00.000Z');
+  assert.ok(m1.completions.entries[k].completedAt <= m1.completions.entries[k].reopenedAt!);
+  const again = { ...done, completedAt: '2026-11-04T11:00:00.000Z' };
+  const m2 = mergeState({ completions: { entries: { [k]: reopened } } }, { completions: { entries: { [k]: again } } });
+  assert.equal(m2.completions.entries[k].completedAt, '2026-11-04T11:00:00.000Z');
+});

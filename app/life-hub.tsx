@@ -56,6 +56,7 @@ import {
   emptyStats,
   type CompletionLedger,
   saveLedger,
+  reopenCompletion,
   type CompletionStats,
 } from '../lib/completions';
 import { addCapture, loadCaptures, markPromoted, setCaptureStatus, type Capture } from '../lib/captures';
@@ -507,10 +508,23 @@ export function LifeHub() {
   }, []);
 
   // Same for what's listed: reminders / reference notes never show, wherever they came from.
+  const { lanes: titleLanes } = usePriorityPins();
   const baseSnapshots = useMemo(() => {
     const out = { ...snapshots };
     for (const id of HUB_STAR_SOURCES) {
       if (out[id]) out[id] = applyHubStars(id, out[id], hubStars);
+    }
+    // Renamed in a task's pop-out: one name everywhere the task shows.
+    for (const id of Object.keys(out) as SourceId[]) {
+      const snap = out[id];
+      if (!snap) continue;
+      const named = (x: { id: string }) => titleLanes[`${id}:${x.id}`]?.title;
+      if (![...snap.tasks, ...snap.featured].some(named)) continue;
+      out[id] = {
+        ...snap,
+        tasks: snap.tasks.map(t => (named(t) ? { ...t, title: named(t)! } : t)),
+        featured: snap.featured.map(f => (named(f) ? { ...f, title: named(f)! } : f)),
+      };
     }
     if (!focusConfig?.ignore) return out;
     for (const id of Object.keys(out) as SourceId[]) {
@@ -538,7 +552,7 @@ export function LifeHub() {
       };
     }
     return out;
-  }, [snapshots, focusConfig, hubStars]);
+  }, [snapshots, focusConfig, hubStars, titleLanes]);
 
   // Self tasks moved to another site show in that site's card (id "self:<id>"), and task type
   // labels set on Life Hub ("Items to buy") show as each task's tag.
@@ -877,6 +891,23 @@ export function LifeHub() {
     sendStar(sourceWindows.current[source], source, id, starred, origin);
   };
 
+  /** Uncheck something finished on the hub (lists keep it, struck through). TickTick can't be reopened from here. */
+  const reopenOnHub = (source: SourceId, id: string): void => {
+    if (source !== 'self' && id.startsWith('self:')) return reopenOnHub('self', id.slice(5));
+    if (source === 'self') {
+      if (loadSelfItems().find(i => i.id === id)?.done) syncSelf(toggleSelfComplete(id));
+    } else {
+      // Iframe sites keep the row as done locally: open it again (connectors come back on refresh).
+      setSnapshots(current => {
+        const snap = current[source];
+        if (!snap?.tasks.some(t => t.id === id && t.status === 'done')) return current;
+        return { ...current, [source]: { ...snap, tasks: snap.tasks.map(t => (t.id === id ? { ...t, status: 'open' } : t)) } };
+      });
+    }
+    setLedger(reopenCompletion(source, id));
+    if (source !== 'self') window.dispatchEvent(new Event(REFRESH_EVENT));
+  };
+
   const completeOnHub = (source: SourceId, id: string, chosenArea?: string): void => {
     // A list is finished by finishing its tasks: open it instead.
     if (id.startsWith('list:')) return openSiteList(id.slice(5));
@@ -1075,7 +1106,7 @@ goalsData ? (
   );
 
   return (
-    <SiteListsContext.Provider value={{ store: siteListStore, snapshots: baseSnapshots, complete: (site, taskId) => completeOnHub(site, taskId), doneOf: (site, taskId) => { const e = ledger.entries[`${site}::${taskId}`]; return e?.title ? { title: e.title, at: e.completedAt } : undefined; } }}>
+    <SiteListsContext.Provider value={{ store: siteListStore, snapshots: baseSnapshots, complete: (site, taskId) => completeOnHub(site, taskId), reopen: (site, taskId) => reopenOnHub(site, taskId), doneOf: (site, taskId) => { const e = ledger.entries[`${site}::${taskId}`]; return e?.title ? { title: e.title, at: e.completedAt } : undefined; } }}>
     <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' ? 'home' : active}`} data-color-mode={theme}>
       <StickerShell
         active={active}

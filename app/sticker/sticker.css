@@ -2882,3 +2882,10 @@
 .sk-app .sk-habits li.is-done span { text-decoration: line-through; color: var(--sk-ink-2); }
 /* Action List mix: the chevron is the collapse button */
 .sk-app .sk-mix-toggle { padding: 6px; margin: -6px; border: 0; background: none; color: inherit; cursor: pointer; display: grid; place-items: center; }
+
+/* Task pop-out: the title is the rename box; Delete removes it from Life Hub. */
+.plan-panel-titlebox { margin: 0; }
+.plan-panel-name { width: 100%; padding: 4px 6px; margin: 0 -6px; border: 1px solid transparent; border-radius: 8px; background: none; color: inherit; font: inherit; }
+.plan-panel-name:hover { border-color: color-mix(in srgb, currentColor 20%, transparent); }
+.plan-panel-name:focus { outline: none; border-color: var(--card-accent, currentColor); background: color-mix(in srgb, currentColor 6%, transparent); }
+.plan-panel-delete { color: var(--sk-alert-ink, #c0392b); }

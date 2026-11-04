@@ -14,6 +14,7 @@ import {
   pinKey,
   placePin,
   setDeckSlot,
+  updatePinDetails,
   unpin,
   liveMixes,
   createMix,
@@ -39,6 +40,8 @@ import { countdown, fromDayKey, money, type BillDue } from "../../lib/schedule";
 import { Circle, Dot, ListHead, Tag } from "../sticker/kit";
 import { Icon } from "../sticker/Icon";
 import { openSiteList, useSiteLists } from "../../lib/siteLists";
+import { removeItem } from "../../lib/siteMoves";
+import { renameSelfItem } from "../../lib/adapters/self";
 
 /** Self's stand-in detail for starred items with no note — not worth a subtext line. */
 const FILLER_DETAIL = "Captured in Self inbox";
@@ -253,6 +256,11 @@ export function PriorityBoard({
     finish(item);
     if (openLeft <= 1) endMix(id);
     else doneInMix(item.key, item.title);
+  };
+  const reopenMember = (key: string) => {
+    const at = key.indexOf(":");
+    sl.reopen?.(key.slice(0, at) as SourceId, key.slice(at + 1));
+    updatePinDetails(key, { doneTitle: undefined, lane: PLAN });
   };
   const finishMix = (id: string, items: PriorityItem[]) => {
     items.forEach(finish);
@@ -658,9 +666,16 @@ export function PriorityBoard({
                           {step.done.map((d) => (
                             <li key={d.key} className="sk-row is-done">
                               <span className="sk-rlead">
-                                <span className="sk-circle is-done" aria-hidden="true">
+                                <button
+                                  type="button"
+                                  className="sk-circle is-done"
+                                  aria-label={`Uncheck ${d.title}`}
+                                  title={d.key.startsWith("ticktick:") ? "Done in TickTick — reopen it there" : "Uncheck (back on the list)"}
+                                  disabled={d.key.startsWith("ticktick:")}
+                                  onClick={() => reopenMember(d.key)}
+                                >
                                   <Icon name="check" size={12} />
-                                </span>
+                                </button>
                               </span>
                               <span className="sk-rmain">
                                 <span className="sk-rt">{d.title}</span>
@@ -884,6 +899,26 @@ export function PriorityBoard({
             remove(openItem);
             setOpenKey(null);
           }}
+          onRename={
+            openItem.id.startsWith("list:")
+              ? undefined
+              : (title) => {
+                  if (openItem.source === "self") renameSelfItem(openItem.id, title);
+                  else if (openItem.id.startsWith("self:")) renameSelfItem(openItem.id.slice(5), title);
+                  else updatePinDetails(openItem.key, { title });
+                }
+          }
+          onDelete={
+            openItem.id.startsWith("list:")
+              ? undefined
+              : () => {
+                  if (openItem.id.startsWith("self:")) removeItem("self", openItem.id.slice(5));
+                  else removeItem(openItem.source, openItem.id);
+                  if (lanes[openItem.key]?.mix) leaveMix(openItem.key);
+                  remove(openItem);
+                  setOpenKey(null);
+                }
+          }
           enter={(id) => {
             setOpenKey(null);
             enter(id);

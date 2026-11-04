@@ -113,6 +113,15 @@ export function toggleSelfComplete(id: string): SelfItem[] {
   return updated;
 }
 
+/** Rename a Self task (from its pop-out). */
+export function renameSelfItem(id: string, title: string): SelfItem[] {
+  const at = new Date().toISOString();
+  const updated = loadSelfItems().map(i => (i.id === id ? { ...i, title, updatedAt: at } : i));
+  saveSelfItems(updated);
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(SELF_ITEMS_EVENT));
+  return updated;
+}
+
 /** Set or clear a Self task's day. */
 export function setSelfDue(id: string, due?: string): SelfItem[] {
   const at = new Date().toISOString();

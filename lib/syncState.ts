@@ -234,8 +234,13 @@ function mergeEntry(a: CompletionEntry, b: CompletionEntry): CompletionEntry {
   const area = (other.focusUpdatedAt || '') !== (first.focusUpdatedAt || '')
     ? ((other.focusUpdatedAt || '') > (first.focusUpdatedAt || '') ? other : first)
     : rank(other) > rank(first) ? other : first;
+  // Unchecked on one device: newest uncheck wins, unless it was completed again after that.
+  const reopenedAt = [a.reopenedAt, b.reopenedAt].filter(Boolean).sort().pop();
+  const latest = other.completedAt;
   return {
     ...first,
+    ...(reopenedAt ? { reopenedAt } : {}),
+    ...(reopenedAt && latest > reopenedAt ? { completedAt: latest } : {}),
     title: first.title ?? other.title,
     focusAreaId: area.focusAreaId,
     focusRules: area.focusRules,

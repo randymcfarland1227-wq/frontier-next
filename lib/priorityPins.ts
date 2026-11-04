@@ -67,6 +67,8 @@ export type LaneEntry = {
   name?: string;
   /** On a `mix:<id>` entry: deleted / finished */
   gone?: boolean;
+  /** Renamed on the hub (its pop-out): shown everywhere in place of the site's own title */
+  title?: string;
   /** A mix member already checked off: shown struck through until the whole mix is done */
   doneTitle?: string;
 };
@@ -158,7 +160,7 @@ export function unpin(key: string) {
 }
 
 /** Change an item's note / "Before this" list (kept even if it's taken off the plan). */
-export function updatePinDetails(key: string, patch: Partial<Pick<LaneEntry, 'note' | 'before' | 'subs' | 'due'>>) {
+export function updatePinDetails(key: string, patch: Partial<Pick<LaneEntry, 'note' | 'before' | 'subs' | 'due' | 'title' | 'doneTitle' | 'lane'>>) {
   const map = loadLanes();
   const prev = map[key] || { lane: null, order: 0, at: '' };
   map[key] = { ...prev, ...patch, at: new Date().toISOString() };

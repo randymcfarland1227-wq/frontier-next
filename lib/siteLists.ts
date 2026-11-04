@@ -175,6 +175,8 @@ export type SiteListsContextValue = {
   snapshots: Partial<Record<SourceId, SourceSnapshot>>;
   complete: (site: SourceId, taskId: string) => void;
   doneOf?: DoneOf;
+  /** Uncheck a finished task (not TickTick: reopen those in TickTick) */
+  reopen?: (site: SourceId, taskId: string) => void;
 };
 export const SiteListsContext = createContext<SiteListsContextValue>({ store: {}, snapshots: {}, complete: () => {} });
 export const useSiteLists = () => useContext(SiteListsContext);

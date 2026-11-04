@@ -29,9 +29,15 @@ export function PriorityPanel({
   onMove,
   onDone,
   onRemove,
+  onRename,
+  onDelete,
   enter,
   close,
 }: {
+  /** New name for the task everywhere it shows ('' = back to the site's own name) */
+  onRename?: (title: string) => void;
+  /** Delete it from Life Hub (every list, card and count) */
+  onDelete?: () => void;
   item: PriorityItem;
   entry?: LaneEntry;
   lane: Lane | null;
@@ -48,6 +54,18 @@ export function PriorityPanel({
   close: () => void;
 }) {
   const def = sourceById[item.source];
+  const [name, setName] = useState(item.title);
+  // A rename (here or elsewhere) changes item.title: follow it.
+  const [shownTitle, setShownTitle] = useState(item.title);
+  if (shownTitle !== item.title) {
+    setShownTitle(item.title);
+    setName(item.title);
+  }
+  const saveName = () => {
+    const next = name.trim();
+    if (!next) return setName(item.title);
+    if (next !== item.title) onRename?.(next);
+  };
   const closeRef = useRef<HTMLButtonElement>(null);
   const [note, setNote] = useState(entry?.note || '');
   const [newStep, setNewStep] = useState('');
@@ -130,7 +148,28 @@ export function PriorityPanel({
           </button>
         </div>
 
-        <h2 id="plan-panel-title">{item.title}</h2>
+        {onRename ? (
+          <h2 id="plan-panel-title" className="plan-panel-titlebox">
+            <input
+              className="plan-panel-name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onBlur={saveName}
+              onKeyDown={e => {
+                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                if (e.key === 'Escape') {
+                  e.stopPropagation();
+                  setName(item.title);
+                }
+              }}
+              aria-label="Task name (renames it everywhere on Life Hub)"
+              title="Rename — it changes everywhere this task shows"
+              maxLength={160}
+            />
+          </h2>
+        ) : (
+          <h2 id="plan-panel-title">{item.title}</h2>
+        )}
         <div className="plan-panel-marks">
           {onSetLevel ? (
             <span className="plan-levels" role="radiogroup" aria-label="Priority">
@@ -311,9 +350,22 @@ export function PriorityPanel({
               Done
             </button>
           ) : null}
-          <button type="button" className="row-action ghost plan-panel-remove" onClick={onRemove}>
-            Take off the plan
-          </button>
+          {lane ? (
+            <button type="button" className="row-action ghost plan-panel-remove" onClick={onRemove}>
+              Take off the plan
+            </button>
+          ) : null}
+          {onDelete ? (
+            <button
+              type="button"
+              className="row-action ghost plan-panel-delete"
+              onClick={() => {
+                if (window.confirm(`Delete “${item.title}” from Life Hub? It leaves every list, card and count.`)) onDelete();
+              }}
+            >
+              Delete
+            </button>
+          ) : null}
         </div>
       </aside>
     </div>,

@@ -712,9 +712,10 @@ function Detail({
                       <button
                         type="button"
                         className="sk-circle"
-                        aria-label={t.done ? `${t.title} is done` : `Mark ${t.title} done`}
-                        disabled={t.done}
-                        onClick={() => ctx.sl?.complete(l.site, t.id)}
+                        aria-label={t.done ? `Uncheck ${t.title}` : `Mark ${t.title} done`}
+                        title={t.done ? (l.site === "ticktick" ? "Done in TickTick — reopen it there" : "Uncheck (not done yet)") : undefined}
+                        disabled={t.done && (l.site === "ticktick" || !ctx.sl?.reopen)}
+                        onClick={() => (t.done ? ctx.sl?.reopen?.(l.site, t.id) : ctx.sl?.complete(l.site, t.id))}
                       >
                         <Icon name="check" size={12} />
                       </button>
@@ -752,9 +753,10 @@ function Detail({
                       <button
                         type="button"
                         className="sk-circle"
-                        aria-label={isDone ? `${hit.task.title} is done` : `Mark ${hit.task.title} done`}
-                        disabled={isDone}
-                        onClick={() => ctx.sl?.complete(hit.site, hit.task.id)}
+                        aria-label={isDone ? `Uncheck ${hit.task.title}` : `Mark ${hit.task.title} done`}
+                        title={isDone ? (hit.site === "ticktick" ? "Done in TickTick — reopen it there" : "Uncheck (not done yet)") : undefined}
+                        disabled={isDone && (hit.site === "ticktick" || !ctx.sl?.reopen)}
+                        onClick={() => (isDone ? ctx.sl?.reopen?.(hit.site, hit.task.id) : ctx.sl?.complete(hit.site, hit.task.id))}
                       >
                         <Icon name="check" size={12} />
                       </button>

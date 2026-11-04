@@ -9,6 +9,7 @@
 export type SavedKey = { key: string; backup: 'cloud' | 'device' | 'cache'; note?: string };
 
 export const SAVED_KEYS: SavedKey[] = [
+  { key: 'lifehub-finance-group-log', backup: 'cloud', note: 'Group-level log on a Finance link (asked about a plan, terms, who/when) — cloud-synced' },
   { key: 'lifehub-site-lists', backup: 'cloud', note: 'Tasks grouped into lists inside one site (members leave the pool; a list is one task)' },
   { key: 'lifehub-balance-offer-view', backup: 'device' },
   { key: 'lifehub-balance-open-groups', backup: 'device' },
@@ -87,6 +88,7 @@ export const SAVED_KEYS: SavedKey[] = [
   { key: 'lifehub-task-tags', backup: 'cloud', note: "Task type labels (\"Items to buy\"…) per task — cloud-synced" },
   { key: 'lifehub-theme', backup: 'device' },
   { key: 'lifehub-ticktick-daylog', backup: 'cache' },
+  { key: 'lifehub-ticktick-logged', backup: 'cache' },
   { key: 'lifehub-vault', backup: 'device' },
   { key: 'lifehub-weather', backup: 'device' },
   { key: 'lifehub-why-tab', backup: 'device' },

@@ -13,6 +13,7 @@ import { readSaved, writeSaved, STORAGE_KEYS, LOCAL_WRITE_EVENT } from './storag
 import { requestPersistentStorage, vaultCookieRead, vaultIdbRead, vaultWrite } from './keyVault';
 import { mergeState, normalizeState, stateCounts, type LocalGoalLinks, type SyncedState } from './syncState';
 import { SITE_LISTS_KEY } from './siteLists';
+import { GROUP_LOG_KEY } from './groupLog';
 import { FOCUS_LIST_KEYS, FOCUS_TOMBS_KEY, readFocusState, writeFocusState } from './focusSync';
 
 const WORKER_BASE =
@@ -54,6 +55,7 @@ const SYNCED_KEYS: string[] = [
   ...FOCUS_LIST_KEYS,
   FOCUS_TOMBS_KEY,
   SITE_LISTS_KEY,
+  GROUP_LOG_KEY,
 ];
 
 export type SyncStatus = {
@@ -81,6 +83,11 @@ export function getSyncStatus(): SyncStatus {
 }
 
 /** Header for private Worker endpoints once backup is on (TickTick feed). */
+/** True when this device is linked to the backup (has the sync key). */
+export function hasSyncKey(): boolean {
+  return Boolean(getKey());
+}
+
 export function syncKeyHeader(): Record<string, string> {
   const key = getKey();
   return key ? { 'X-Sync-Key': key } : {};
@@ -169,6 +176,7 @@ export function readLocalState(): SyncedState {
     owedDone: readSaved(STORAGE_KEYS.owedDone, {}),
     focus: readFocusState(),
     siteLists: readSaved(SITE_LISTS_KEY, {}),
+    groupLog: readSaved(GROUP_LOG_KEY, {}),
   });
 }
 
@@ -203,6 +211,7 @@ function writeLocalState(next: SyncedState): boolean {
     [STORAGE_KEYS.moneyMeta, current.moneyMeta, next.moneyMeta],
     [STORAGE_KEYS.owedDone, current.owedDone, next.owedDone],
     [SITE_LISTS_KEY, current.siteLists, next.siteLists],
+    [GROUP_LOG_KEY, current.groupLog, next.groupLog],
   ];
   let changed = false;
   applying = true;

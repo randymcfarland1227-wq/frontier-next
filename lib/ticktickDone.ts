@@ -174,7 +174,10 @@ export type TickTickDayLog = { day: string; skippedHabits: string[]; wontDoTasks
 export const TICKTICK_DAYLOG_EVENT = 'lifehub:ticktick-daylog';
 const DAYLOG_KEY = 'lifehub-ticktick-daylog';
 
-function saveDayLog(log: TickTickDayLog) {
+/** Today's TickTick day stamp, YYYYMMDD. */
+export const stampOfToday = () => stamp(new Date());
+
+export function saveDayLog(log: TickTickDayLog) {
   try {
     localStorage.setItem(DAYLOG_KEY, JSON.stringify(log));
     window.dispatchEvent(new CustomEvent(TICKTICK_DAYLOG_EVENT));

@@ -2619,3 +2619,62 @@
 .sk-app .sk-fd-taskopen:hover{text-decoration:underline}
 .sk-app .sk-fd-taskopen:focus-visible{outline:2px solid var(--sk-ink);outline-offset:2px}
 .drawer-wrap.plan-panel-wrap{z-index:70}
+
+/* TickTick log menu (done / skip / not done / won't do) */
+.sk-app .tlm { position: relative; display: inline-flex; align-items: center; }
+.sk-app .tlm-btn { min-width: 32px; min-height: 32px; font-size: 16px; line-height: 1; }
+.sk-app .tlm-pop { position: absolute; right: 0; top: 100%; z-index: 30; display: flex; flex-direction: column; min-width: 130px; padding: 4px; border-radius: 10px; background: #fff; color: #1b1830; border: 1px solid rgb(0 0 0 / 0.18); box-shadow: 0 8px 24px rgb(0 0 0 / 0.35); }
+.sk-app .tlm-item { text-align: left; min-height: 36px; padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; }
+.sk-app .tlm-item:hover, .sk-app .tlm-item:focus-visible { background: rgb(0 0 0 / 0.08); }
+.frontier-shell[data-color-mode="dark"] .tlm-pop { background: #1d1830; color: #f3f0ff; border-color: rgb(255 255 255 / 0.16); }
+.frontier-shell[data-color-mode="dark"] .tlm-item:hover, .frontier-shell[data-color-mode="dark"] .tlm-item:focus-visible { background: rgb(255 255 255 / 0.12); }
+.sk-app .tlm-msg { position: absolute; right: 0; top: 100%; white-space: nowrap; font-size: 11px; color: #ffb4a8; }
+@media (pointer: coarse) { .sk-app .tlm-btn { min-width: 44px; min-height: 44px; } .sk-app .tlm-item { min-height: 44px; } }
+
+/* Finance group log (DebtPop) */
+.sk-app .gl, .gl { margin: 8px 0 10px; padding: 8px 10px; border-radius: 12px; background: color-mix(in srgb, currentColor 7%, transparent); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+.gl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.gl-head h4 { margin: 0; font-size: 13px; }
+.gl-form { display: grid; gap: 6px; margin-top: 8px; }
+.gl-form select, .gl-form input, .gl-form textarea { min-height: 40px; padding: 6px 8px; border-radius: 8px; border: 1px solid color-mix(in srgb, currentColor 30%, transparent); background: color-mix(in srgb, currentColor 6%, transparent); color: inherit; font: inherit; font-size: 16px; }
+.gl-actions { display: flex; gap: 8px; }
+.gl-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.gl-list li { position: relative; display: grid; gap: 1px; padding: 6px 30px 6px 8px; border-radius: 8px; background: color-mix(in srgb, currentColor 8%, transparent); font-size: 12px; }
+.gl-meta { opacity: 0.75; font-size: 11px; }
+.gl-del { position: absolute; top: 2px; right: 2px; min-width: 32px; min-height: 32px; border: 0; background: transparent; color: inherit; opacity: 0.6; cursor: pointer; }
+.sk-app .sk-fin-log { opacity: 0.8; font-style: italic; }
+
+/* Link-this-device prompt (phone without the backup key) */
+.ldp { margin: 8px 0; padding: 10px 12px; border-radius: 12px; border: 1px dashed rgb(255 190 80 / 0.7); background: rgb(255 190 80 / 0.1); font-size: 12.5px; }
+.ldp p { margin: 0 0 6px; }
+.ldp-row { display: flex; gap: 8px; }
+.ldp-row input { flex: 1; min-width: 0; min-height: 44px; padding: 6px 10px; border-radius: 10px; border: 1px solid color-mix(in srgb, currentColor 30%, transparent); background: color-mix(in srgb, currentColor 6%, transparent); color: inherit; font-size: 16px; }
+.ldp-row .sk-btn { min-height: 44px; }
+.ldp-msg { color: #ffb4a8; margin-top: 6px !important; }
+
+/* Phone pass (≤520px): everything one notch smaller, tabs in one scrolling row, gutters tighter.
+   Tap targets stay ≥44px through an invisible hit area (::before) — the visible control stays small. */
+@media (max-width: 520px) {
+  .sk-app .sk-greet { font-size: 26px; }
+  .sk-app .sk-top .sk-large { font-size: 17px; }
+  .sk-app .sk-status { font-size: 12px; }
+  .sk-app .sk-figure { font-size: 17px; }
+  .sk-app .sk-section { padding: 8px 8px 12px; }
+  .sk-app .sk-title { font-size: 16px; }
+  .sk-app .sk-seg button { font-size: 12px; min-height: 28px; padding: 3px 9px; position: relative; white-space: nowrap; }
+  .sk-app .sk-seg button::before { content: ""; position: absolute; inset: -8px -2px; }
+  .sk-app .sk-seg.sk-today-tabs { display: flex; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .sk-app .sk-seg.sk-today-tabs::-webkit-scrollbar { display: none; }
+  .sk-app .sk-seg.sk-today-tabs button { flex: 0 0 auto; }
+  .sk-app :is(#sk-brief, #sk-focus, .sk-src, .sk-dense) { --sk-body: 400 12px/1.35 "DM Sans", system-ui, sans-serif; --sk-secondary: 400 11px/1.35 "DM Sans", system-ui, sans-serif; }
+  .sk-app :is(#sk-brief, #sk-focus) .sk-group { padding-inline: 8px; }
+  .sk-app :is(#sk-brief, #sk-focus) .sk-row > .sk-rmain { min-height: 26px; }
+  .sk-app .task-actions .row-action, .sk-app .row-check { min-height: 32px; position: relative; }
+  .sk-app .task-actions .row-action::before, .sk-app .row-check::before { content: ""; position: absolute; inset: -6px; }
+  .sk-app .sk-circle { position: relative; }
+  .sk-app .sk-circle::before { content: ""; position: absolute; inset: -13px; }
+  .sk-app .sk-top .sk-seg { flex-wrap: nowrap; }
+  .sk-app :is(.sk-weather, .sk-link, .sk-foldbtn, .sk-brief-clear, .sk-brief-open) { position: relative; }
+  .sk-app :is(.sk-weather, .sk-link, .sk-foldbtn, .sk-brief-clear, .sk-brief-open)::before { content: ""; position: absolute; inset: -12px -6px; }
+  .sk-app .sk-brief-clear::before { inset: -10px -10px; }
+}

@@ -11,6 +11,87 @@ import { LetterStory, Story, TicketRow } from "./DebtFile";
 import { mdSources, oosSources } from "./OutstandingView";
 import { debtItems } from "./FocusCards";
 import { isSettled, useDebtFile } from "../../lib/debtFile";
+import { addGroupLog, entriesFor, GROUP_LOG_KINDS, kindLabel, removeGroupLog, useGroupLog, type GroupLogKind } from "../../lib/groupLog";
+
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+/** Group-level log: what you did about the whole group (asked about a plan, terms, who/when, a note). */
+export function GroupLog({ group }: { group: string }) {
+  const store = useGroupLog();
+  const rows = entriesFor(store, group);
+  const [adding, setAdding] = useState(false);
+  const [kind, setKind] = useState<GroupLogKind>("asked");
+  const [date, setDate] = useState(todayStr);
+  const [who, setWho] = useState("");
+  const [terms, setTerms] = useState("");
+  const [note, setNote] = useState("");
+  const save = () => {
+    addGroupLog(group, { kind, date, who, terms, note });
+    setWho("");
+    setTerms("");
+    setNote("");
+    setDate(todayStr());
+    setAdding(false);
+  };
+  return (
+    <section className="gl" aria-label="Group log">
+      <div className="gl-head">
+        <h4>Group log</h4>
+        {adding ? null : (
+          <button type="button" className="sk-btn is-small" onClick={() => setAdding(true)}>
+            + Log
+          </button>
+        )}
+      </div>
+      {adding ? (
+        <div className="gl-form">
+          <select value={kind} onChange={(e) => setKind(e.target.value as GroupLogKind)} aria-label="What happened">
+            {GROUP_LOG_KINDS.map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date" />
+          <input value={who} onChange={(e) => setWho(e.target.value)} placeholder="Who (MVA, city office, name…)" aria-label="Who" />
+          <input value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="Plan terms (e.g. $50/mo × 12)" aria-label="Plan terms" />
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note" rows={2} aria-label="Note" />
+          <div className="gl-actions">
+            <button type="button" className="sk-btn is-small" onClick={save}>
+              Save
+            </button>
+            <button type="button" className="sk-btn is-small ghost" onClick={() => setAdding(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {rows.length ? (
+        <ul className="gl-list">
+          {rows.map((e) => (
+            <li key={e.id}>
+              <b>{kindLabel(e.kind)}</b>
+              <span className="gl-meta">
+                {e.date}
+                {e.who ? ` · ${e.who}` : ""}
+              </span>
+              {e.terms ? <span className="gl-terms">Terms: {e.terms}</span> : null}
+              {e.note ? <span className="gl-note">{e.note}</span> : null}
+              <button type="button" className="gl-del" onClick={() => removeGroupLog(e.id)} aria-label={`Delete log entry ${kindLabel(e.kind)} ${e.date}`}>
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : adding ? null : (
+        <p className="dbt-muted">Nothing logged for the group yet — e.g. asked about a payment plan.</p>
+      )}
+    </section>
+  );
+}
 
 export const OPEN_DEBT_POP_EVENT = "lifehub:open-debt-pop";
 /** Open a Finance link (`src:city`, `tix:md`, `item:<id>`) as a pop-out, in place. */
@@ -70,6 +151,7 @@ function DebtPop({ req, close }: { req: { key: string; label?: string }; close: 
               </div>
             </header>
             {src?.how ? <p className="dbt-muted">{src.how}</p> : null}
+            <GroupLog group={req.key} />
             <div className="dbt-tk-grid" style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
               {items.map((i) => (
                 <TicketRow key={i.id} item={i} marks={marks} onOpen={(id) => setDlg({ kind: "item", id })} />

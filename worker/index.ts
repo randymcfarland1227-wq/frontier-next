@@ -585,9 +585,9 @@ async function handleHabitCheckin(request: Request, env: Env): Promise<Response>
   if (!env.TICKTICK_ACCESS_TOKEN) return jsonResponse({ ok: false, error: "token_not_configured" }, 503, origin);
   if (!(await syncKeyAllowed(request, env))) return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
 
-  let body: { habitId?: unknown; stamp?: unknown };
+  let body: { habitId?: unknown; stamp?: unknown; status?: unknown };
   try {
-    body = (await request.json()) as { habitId?: unknown; stamp?: unknown };
+    body = (await request.json()) as { habitId?: unknown; stamp?: unknown; status?: unknown };
   } catch {
     return jsonResponse({ ok: false, error: "invalid_json" }, 400, origin);
   }
@@ -600,9 +600,39 @@ async function handleHabitCheckin(request: Request, env: Env): Promise<Response>
     // Count habits ("Drink 5 bottles") need value = goal to register as complete.
     const habit = (await ttFetch(env, `/habit/${habitId}`)) as { goal?: number } | null;
     const goal = Number(habit?.goal) || 1;
+    // status: 2 done (default), 1 not completed / skipped, 0 unmarked (undo)
+    const status = body.status === 1 || body.status === 0 ? body.status : 2;
     await ttFetch(env, `/habit/${habitId}/checkin`, {
       method: "POST",
-      body: JSON.stringify({ stamp: Number(stamp), value: goal, goal, status: 2 }),
+      body: JSON.stringify({ stamp: Number(stamp), value: status === 2 ? goal : 0, goal, status }),
+    });
+    return jsonResponse({ ok: true }, 200, origin);
+  } catch (e) {
+    return jsonResponse({ ok: false, error: (e as Error).message }, 502, origin);
+  }
+}
+
+/** POST /api/ticktick/wontdo — close a task as "won't do" (status -1). Backup key required. */
+async function handleTaskWontDo(request: Request, env: Env): Promise<Response> {
+  const origin = request.headers.get("Origin");
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  if (origin && !CORS_ALLOW_ORIGINS.has(origin)) return jsonResponse({ ok: false, error: "cors_denied" }, 403, origin);
+  if (request.method !== "POST") return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, origin);
+  if (!env.TICKTICK_ACCESS_TOKEN) return jsonResponse({ ok: false, error: "token_not_configured" }, 503, origin);
+  if (!(await syncKeyAllowed(request, env))) return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
+  let body: { taskId?: unknown; projectId?: unknown };
+  try {
+    body = (await request.json()) as { taskId?: unknown; projectId?: unknown };
+  } catch {
+    return jsonResponse({ ok: false, error: "invalid_json" }, 400, origin);
+  }
+  const taskId = typeof body.taskId === "string" ? body.taskId.trim() : "";
+  const projectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
+  if (!/^[0-9a-f]{12,40}$/i.test(taskId) || !projectId) return jsonResponse({ ok: false, error: "bad_input" }, 400, origin);
+  try {
+    await ttFetch(env, `/task/${encodeURIComponent(taskId)}`, {
+      method: "POST",
+      body: JSON.stringify({ id: taskId, projectId, status: -1 }),
     });
     return jsonResponse({ ok: true }, 200, origin);
   } catch (e) {
@@ -973,6 +1003,8 @@ export default {
     if (pathname === "/api/ticktick/open") {
       return handleTickTickOpen(request, env);
     }
+
+    if (pathname === "/api/ticktick/wontdo") return handleTaskWontDo(request, env);
 
     if (pathname === "/api/ticktick/habit-checkin") {
       return handleHabitCheckin(request, env);

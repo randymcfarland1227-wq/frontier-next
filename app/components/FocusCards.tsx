@@ -8,6 +8,7 @@ import {
 import { Icon } from "../sticker/Icon";
 import { openTaskPanel, pinKey } from "../../lib/priorityPins";
 import { openDebtPop } from "./DebtPop";
+import { latestLine, useGroupLog } from "../../lib/groupLog";
 import { openSiteList, useSiteLists, viewOfList, type SiteListsContextValue } from "../../lib/siteLists";
 import { Dialog } from "../sticker/Dialog";
 import { SearchPick, type Opt } from "../sticker/SearchPick";
@@ -290,6 +291,7 @@ function Card({
 }) {
   const p = progressOf(item, ctx);
   const w = whenOf(item, events);
+  const glog = useGroupLog();
   const lists = (item.lists || []).slice(0, 3);
   const fins = (item.fin || []).map((l) => ({
     ...l,
@@ -362,6 +364,7 @@ function Card({
                 <li className={f.open ? "" : "is-all"}>
                   {f.open ? `${f.open} open · ${usd(f.owed)}` : "All cleared"}
                 </li>
+                {latestLine(glog, f.key) ? <li className="sk-fin-log">{latestLine(glog, f.key)}</li> : null}
               </ul>
             </div>
           ))}
@@ -423,6 +426,7 @@ function Detail({
   remove: () => void;
   close: () => void;
 }) {
+  const glog = useGroupLog();
   const [listName, setListName] = useState("");
   const [financeListId, setFinanceListId] = useState("");
   const [taskText, setTaskText] = useState<Record<string, string>>({});
@@ -709,7 +713,7 @@ function Detail({
                 </header>
                 <p className="sk-fd-hint">
                   {s.total
-                    ? `${s.done} of ${s.total} cleared · ${usd(s.owed)} still owed`
+                    ? `${s.done} of ${s.total} cleared · ${usd(s.owed)} still owed${latestLine(glog, l.key) ? ` · ${latestLine(glog, l.key)}` : ""}`
                     : ctx.file || l.key.startsWith("bill:")
                       ? "Nothing to show"
                       : "Finance data isn’t loaded here yet."}

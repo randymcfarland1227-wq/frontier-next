@@ -1,5 +1,7 @@
 'use client';
 
+import { hasSyncKey } from '../../lib/cloudSync';
+import { LinkDevicePrompt } from './LinkDevicePrompt';
 import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PayPlanner } from './PayPlanner';
 import { usePayPlans } from '../../lib/payPlans';
@@ -3075,9 +3077,10 @@ export function MoneyPage({
           <header className="sk-ghead skm-head">
             <div className="skm-titles">
               <h2 className="sk-hl">Money</h2>
-              <p className="sk-sec">Waiting for the Radall sheet. It arrives with Google’s next sync (every 10 minutes) — or press Refresh at the top.</p>
+              <p className="sk-sec">{hasSyncKey() ? 'Waiting for the Radall sheet. It arrives with Google’s next sync (every 10 minutes) — or press Refresh at the top.' : 'The Radall sheet comes through your backup, and this device isn’t linked to it yet.'}</p>
             </div>
           </header>
+          <LinkDevicePrompt />
         </section>
       </div>
     );

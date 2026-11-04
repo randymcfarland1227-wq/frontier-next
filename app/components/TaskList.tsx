@@ -7,6 +7,8 @@ import type { SourceId, SourceSnapshot, TaskItem } from '../../lib/types';
 import { openTaskPanel, pinKey, usePriorityPins } from '../../lib/priorityPins';
 import { DayMenu, shortDue } from './DayMenu';
 import { GestureRow } from './RowMenu';
+import { TickLogMenu } from './TickLogMenu';
+import { LOG_LABEL, useLoggedToday } from '../../lib/ticktickLog';
 import { setTaskTag, TAG_SUGGESTIONS, TAGGABLE } from '../../lib/taskTags';
 import { setSelfHome } from '../../lib/adapters/self';
 import { moveItem, removeItem } from '../../lib/siteMoves';
@@ -60,6 +62,7 @@ export function TaskList({
   /** List everything (the card scrolls) instead of a short preview + Show more */
   fill?: boolean;
 }) {
+  const logged = useLoggedToday();
   const [expandedState, setExpanded] = useState(false);
   // Row whose ☆ menu (star / give it a day) is open
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -114,7 +117,7 @@ export function TaskList({
                   as="article"
                   key={task.id}
                   onOpen={() => (dayMenus && onStar ? setMenuFor(task.id) : undefined)}
-                  className={`task-row one-line ${task.status === 'done' ? 'done' : ''} ${isHabit(task) ? 'habit' : ''}${starred?.has(task.id) ? ' is-starred' : ''}${whenLabel(task) === 'overdue' ? ' is-overdue' : ''}${menuFor === task.id ? ' has-menu' : ''}`}
+                  className={`task-row one-line ${task.status === 'done' || logged[task.id] ? 'done' : ''} ${isHabit(task) ? 'habit' : ''}${starred?.has(task.id) ? ' is-starred' : ''}${whenLabel(task) === 'overdue' ? ' is-overdue' : ''}${menuFor === task.id ? ' has-menu' : ''}`}
                   title={[task.title, whenLabel(task), task.detail].filter(Boolean).join(' — ')}
                 >
                   <div className="task-main">
@@ -130,7 +133,11 @@ export function TaskList({
                       </a>
                     ) : null}
                     {due ? <span className="row-day">{shortDue(due)}</span> : null}
-                    <span className={`task-when${whenLabel(task) === 'overdue' ? ' is-overdue' : ''}`}>{whenLabel(task)}</span>
+                    {logged[task.id] ? (
+                      <span className="task-tag tone-open" title="Logged in TickTick">{LOG_LABEL[logged[task.id]]}</span>
+                    ) : (
+                      <span className={`task-when${whenLabel(task) === 'overdue' ? ' is-overdue' : ''}`}>{whenLabel(task)}</span>
+                    )}
                   </div>
                   <div className="task-actions">
                     {onStar && !dayMenus ? (
@@ -145,7 +152,10 @@ export function TaskList({
                         {task.starred ? '★' : '☆'}
                       </button>
                     ) : null}
-                    {onComplete && task.status !== 'done' ? (
+                    {sourceId === 'ticktick' && task.status !== 'done' && !logged[task.id] ? (
+                      <TickLogMenu task={task} onDone={onComplete ? () => onComplete(task) : undefined} />
+                    ) : null}
+                    {onComplete && task.status !== 'done' && !logged[task.id] ? (
                       <button
                         type="button"
                         className={checkDone ? 'row-check' : 'row-action'}

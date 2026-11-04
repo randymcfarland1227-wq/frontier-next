@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkDevicePrompt } from "./LinkDevicePrompt";
 import { useEffect, useState, type ReactNode } from "react";
 import type {
   FeaturedItem,
@@ -407,6 +408,7 @@ export function HomeView({
 
   return (
     <>
+      <LinkDevicePrompt compact />
       <HomeTop
         snapshots={snapshots}
         bills={bills}

@@ -14,6 +14,7 @@ import type { CompletionLedger } from "../../lib/completions";
 import { tickTickToday } from "../../lib/tickTickToday";
 import type { FocusPriority } from "../../lib/focusPriority";
 import { assignedFocusLists, focusListView, type FocusSectionId } from "../../lib/focusRouting";
+import flowMap from "../../public/data/flow-map.json";
 
 type Snaps = Record<SourceId, SourceSnapshot>;
 
@@ -262,6 +263,28 @@ const notMarvel = (t: { title: string }) => !/marvel/i.test(t.title);
 
 const isHabit = (t: TaskItem) => t.kind === "habit" || t.id.startsWith("habit-");
 
+// TickTick's own habit sections, folded into the four times of day Randy sorts them by.
+const HABIT_GROUPS = [
+  { id: "pregym", label: "Pre-gym" },
+  { id: "day", label: "Daytime" },
+  { id: "optional", label: "Optional" },
+  { id: "night", label: "Night" },
+] as const;
+const HABIT_SECTIONS = new Map<string, string>();
+const HABIT_TITLES = new Map<string, string>();
+for (const r of (flowMap as { records?: Array<{ id: string; title?: string; name?: string; sectionName?: string; executionType?: string }> }).records || []) {
+  if (r.executionType !== "Habit" || !r.sectionName) continue;
+  HABIT_SECTIONS.set(r.id, r.sectionName);
+  HABIT_TITLES.set((r.title || r.name || "").toLowerCase(), r.sectionName);
+}
+function habitGroupOf(id: string, title: string): (typeof HABIT_GROUPS)[number]["id"] {
+  const sec = HABIT_SECTIONS.get(id) || HABIT_TITLES.get(title.toLowerCase()) || "";
+  if (/gym/i.test(sec)) return "pregym";
+  if (/night/i.test(sec)) return "night";
+  if (/optional/i.test(sec)) return "optional";
+  return "day";
+}
+
 /**
  * Every TickTick habit for today (moved here from Doing Now and the TickTick tab, 2026-11-04):
  * open ones to check in, then the ones already checked in today (struck through).
@@ -288,22 +311,52 @@ function TickTickHabits({
         localDayKey(new Date(e.completedAt)) === day,
     )
     .map(([k, e]) => ({ key: k, title: e.title || "Habit" }));
+  const [shutGroups, setShutGroups] = useState<Record<string, boolean>>({ optional: true, night: true });
   if (!open.length && !done.length) return <p className="sk-empty">No TickTick habits today.</p>;
+  const byGroup = (id: string, title: string) => {
+    const g = habitGroupOf(id, title);
+    return g;
+  };
+  const doneIdOf = (key: string) => key.split("::")[0];
   return (
-    <ul className="sk-daytasks sk-habits" aria-label="TickTick habits today">
-      {open.map((t) => (
-        <li key={t.id}>
-          {complete ? <Circle onDone={() => complete(t)} label={`Check in: ${t.title}`} /> : <Icon name="minus" size={13} />}
-          <span>{t.title}</span>
-        </li>
-      ))}
-      {done.map((t) => (
-        <li key={t.key} className="is-done">
-          <Icon name="check" size={13} />
-          <span>{t.title}</span>
-        </li>
-      ))}
-    </ul>
+    <div className="sk-habits" aria-label="TickTick habits today">
+      {HABIT_GROUPS.map((g) => {
+        const mine = open.filter((t) => byGroup(t.id, t.title) === g.id);
+        const fin = done.filter((t) => byGroup(doneIdOf(t.key), t.title) === g.id);
+        if (!mine.length && !fin.length) return null;
+        const shut = shutGroups[g.id] ?? false;
+        return (
+          <div key={g.id} className={`sk-habit-group${shut ? " is-shut" : ""}`}>
+            <button
+              type="button"
+              className="sk-habit-head"
+              aria-expanded={!shut}
+              onClick={() => setShutGroups({ ...shutGroups, [g.id]: !shut })}
+            >
+              <Icon name={shut ? "chevron" : "chevronDown"} size={12} />
+              <strong>{g.label}</strong>
+              <em>{mine.length ? `${mine.length} left` : "all done"}</em>
+            </button>
+            {shut ? null : (
+              <ul className="sk-daytasks">
+                {mine.map((t) => (
+                  <li key={t.id}>
+                    {complete ? <Circle onDone={() => complete(t)} label={`Check in: ${t.title}`} /> : <Icon name="minus" size={12} />}
+                    <span>{t.title}</span>
+                  </li>
+                ))}
+                {fin.map((t) => (
+                  <li key={t.key} className="is-done">
+                    <Icon name="check" size={12} />
+                    <span>{t.title}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

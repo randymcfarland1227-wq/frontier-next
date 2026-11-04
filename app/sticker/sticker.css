@@ -2889,3 +2889,12 @@
 .plan-panel-name:hover { border-color: color-mix(in srgb, currentColor 20%, transparent); }
 .plan-panel-name:focus { outline: none; border-color: var(--card-accent, currentColor); background: color-mix(in srgb, currentColor 6%, transparent); }
 .plan-panel-delete { color: var(--sk-alert-ink, #c0392b); }
+
+/* TickTick habits: grouped by time of day, small rows */
+.sk-app .sk-habits { display: grid; gap: 6px; }
+.sk-app .sk-habit-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 4px 2px; border: 0; background: none; color: inherit; cursor: pointer; font: inherit; font-size: 12px; text-align: left; }
+.sk-app .sk-habit-head strong { font-weight: 700; letter-spacing: .02em; }
+.sk-app .sk-habit-head em { margin-left: auto; font-style: normal; color: var(--sk-ink-2); }
+.sk-app .sk-habit-group .sk-daytasks { margin: 0; padding: 0; }
+.sk-app .sk-habits li { min-height: 26px; gap: 8px; font-size: 12.5px; }
+.sk-app .sk-habits li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

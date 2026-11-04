@@ -209,7 +209,10 @@ function linkedTask(key: string, ctx: FinCtx) {
   const site = key.slice(0, at) as SourceId;
   const id = key.slice(at + 1);
   const task = ctx.sl?.snapshots[site]?.tasks.find((t) => t.id === id);
-  return task ? { site, task } : null;
+  if (task) return { site, task };
+  // Finished tasks drop out of the site feed: keep them (done) from the completion log.
+  const gone = ctx.sl?.doneOf?.(site, id);
+  return gone ? { site, task: { id, title: gone.title, status: "done" as const } } : null;
 }
 
 function progressOf(i: Entry, ctx: FinCtx) {
@@ -224,7 +227,7 @@ function progressOf(i: Entry, ctx: FinCtx) {
   for (const id of i.siteLists || []) {
     const l = ctx.sl?.store[id];
     if (!l || l.gone) continue;
-    const v = viewOfList(l, ctx.sl!.snapshots);
+    const v = viewOfList(l, ctx.sl!.snapshots, ctx.sl!.doneOf);
     total += v.total;
     done += v.done;
   }
@@ -318,7 +321,7 @@ function Card({
   const linked = (item.siteLists || [])
     .map((id) => ctx.sl?.store[id])
     .filter((l): l is NonNullable<typeof l> => Boolean(l && !l.gone))
-    .map((l) => ({ l, ...viewOfList(l, ctx.sl!.snapshots) }));
+    .map((l) => ({ l, ...viewOfList(l, ctx.sl!.snapshots, ctx.sl!.doneOf) }));
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -674,7 +677,7 @@ function Detail({
           {(item.siteLists || []).map((id) => {
             const l = ctx.sl?.store[id];
             if (!l || l.gone) return null;
-            const v = viewOfList(l, ctx.sl!.snapshots);
+            const v = viewOfList(l, ctx.sl!.snapshots, ctx.sl!.doneOf);
             return (
               <section key={id} className="sk-fd-box sk-fd-list sk-fd-sitelist" data-site={l.site}>
                 <header>
@@ -704,12 +707,13 @@ function Detail({
                   {sourceById[l.site].shortName} · {v.done} of {v.total} done
                 </p>
                 <ul>
-                  {v.open.map((t) => (
-                    <li key={t.id}>
+                  {v.items.map((t) => (
+                    <li key={t.id} className={t.done ? "is-done" : ""}>
                       <button
                         type="button"
                         className="sk-circle"
-                        aria-label={`Mark ${t.title} done`}
+                        aria-label={t.done ? `${t.title} is done` : `Mark ${t.title} done`}
+                        disabled={t.done}
                         onClick={() => ctx.sl?.complete(l.site, t.id)}
                       >
                         <Icon name="check" size={12} />
@@ -985,7 +989,7 @@ function Detail({
                 .map((l) => ({
                   key: l.id,
                   label: l.name,
-                  sub: `${sourceById[l.site].shortName} · ${viewOfList(l, ctx.sl!.snapshots).open.length} left`,
+                  sub: `${sourceById[l.site].shortName} · ${viewOfList(l, ctx.sl!.snapshots, ctx.sl!.doneOf).open.length} left`,
                   group: sourceById[l.site].name,
                 }))}
               label="Add a site list"

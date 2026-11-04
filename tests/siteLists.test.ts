@@ -60,3 +60,17 @@ test('a benchmark mirrors a list into another site, uncounted, and shows done wh
   const done = applySiteLists({ radall: snap([task('a', { status: 'done' }), task('b', { status: 'done' })]), move: mv }, store);
   assert.equal(done.move!.tasks.find(t => t.id === 'list:sl-1')!.status, 'done');
 });
+
+test('finished members stay in the list view (struck), titled from the completion log', () => {
+  // Xfinity was checked off: the connector feed dropped it, the log still has its title.
+  const v = viewOfList(list(['a', 'xf', 'c']), { radall: snap([task('a'), task('c')]) }, (site, id) =>
+    site === 'radall' && id === 'xf' ? { title: 'Call Xfinity', at: '2026-11-04T09:00:00.000Z' } : undefined,
+  );
+  assert.deepEqual(v.items, [
+    { id: 'a', title: 'a', done: false },
+    { id: 'xf', title: 'Call Xfinity', done: true },
+    { id: 'c', title: 'c', done: false },
+  ]);
+  assert.equal(v.done, 1);
+  assert.equal(v.open.length, 2);
+});

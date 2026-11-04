@@ -2866,3 +2866,10 @@
 .sk-app .sk-row.sk-mix.is-open > .sk-rchev { transform: rotate(90deg); opacity: 1; }
 .sk-app .sk-row.sk-mix > .sk-mix-items { grid-column: 2 / -1; margin: 6px 0 0; padding-left: 10px; border-left: 2px solid var(--sk-line); }
 .sk-app .sk-mix-items > .sk-row { min-height: 40px; padding-block: 6px; }
+
+/* Finished members stay in their list, struck through (list dialog + Action List mixes). */
+.sk-app .sk-listdlg-tasks li.is-done .sk-fd-taskopen,
+.sk-app .sk-mix-items > .sk-row.is-done .sk-rt { text-decoration: line-through; color: var(--sk-ink-2); }
+.sk-app .sk-circle.is-done, .sk-app li.is-done > .sk-circle:disabled { background: var(--sk-done); }
+.sk-app .sk-circle.is-done .sk-icon, .sk-app li.is-done > .sk-circle:disabled .sk-icon { opacity: 1; }
+.sk-app li.is-done > .sk-circle:disabled { cursor: default; }

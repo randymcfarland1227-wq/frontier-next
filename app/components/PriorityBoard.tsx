@@ -19,6 +19,7 @@ import {
   createMix,
   addToMix,
   leaveMix,
+  doneInMix,
   renameMix,
   endMix,
   usePriorityPins,
@@ -212,7 +213,7 @@ export function PriorityBoard({
   const mixes = useMemo(() => liveMixes(lanes), [lanes]);
   type Step =
     | { kind: "one"; item: PriorityItem }
-    | { kind: "mix"; id: string; name: string; items: PriorityItem[] };
+    | { kind: "mix"; id: string; name: string; items: PriorityItem[]; done: Array<{ key: string; title: string }> };
   const steps = useMemo(() => {
     const names = new Map(mixes.map((m) => [m.id, m.name]));
     const out: Step[] = [];
@@ -227,7 +228,10 @@ export function PriorityBoard({
       const got = seen.get(id);
       if (got) got.items.push(item);
       else {
-        const step = { kind: "mix" as const, id, name, items: [item] };
+        const done = Object.entries(lanes)
+          .filter(([, e]) => e?.mix === id && e.doneTitle && !e.lane)
+          .map(([key, e]) => ({ key, title: e.doneTitle! }));
+        const step = { kind: "mix" as const, id, name, items: [item], done };
         seen.set(id, step);
         out.push(step);
       }
@@ -243,6 +247,12 @@ export function PriorityBoard({
   const nameMix = (id: string, now: string) => {
     const name = window.prompt("Rename this list", now)?.trim();
     if (name && name !== now) renameMix(id, name);
+  };
+  // One member checked off: it stays in the list, struck through, until the last one is done.
+  const finishMember = (id: string, item: PriorityItem, openLeft: number) => {
+    finish(item);
+    if (openLeft <= 1) endMix(id);
+    else doneInMix(item.key, item.title);
   };
   const finishMix = (id: string, items: PriorityItem[]) => {
     items.forEach(finish);
@@ -598,7 +608,10 @@ export function PriorityBoard({
                           <Icon name="steps" size={13} /> {step.name}
                         </span>
                         <span className="sk-rs">
-                          {step.items.length} item{step.items.length === 1 ? "" : "s"} ·{" "}
+                          {step.done.length
+                            ? `${step.done.length} of ${step.done.length + step.items.length} done`
+                            : `${step.items.length} item${step.items.length === 1 ? "" : "s"}`}{" "}
+                          ·{" "}
                           {[...new Set(step.items.map((x) => sourceById[x.source].shortName))].join(", ")}
                         </span>
                       </button>
@@ -618,9 +631,30 @@ export function PriorityBoard({
                               ]}
                               className="sk-row"
                             >
-                              <span className="sk-rlead">{check(item)}</span>
+                              <span className="sk-rlead">
+                                {onComplete ? (
+                                  <Circle
+                                    onDone={() => finishMember(step.id, item, step.items.length)}
+                                    label={`Done: ${item.title}`}
+                                  />
+                                ) : (
+                                  <span />
+                                )}
+                              </span>
                               {rowBody(item, true)}
                             </MenuRow>
+                          ))}
+                          {step.done.map((d) => (
+                            <li key={d.key} className="sk-row is-done">
+                              <span className="sk-rlead">
+                                <span className="sk-circle is-done" aria-hidden="true">
+                                  <Icon name="check" size={12} />
+                                </span>
+                              </span>
+                              <span className="sk-rmain">
+                                <span className="sk-rt">{d.title}</span>
+                              </span>
+                            </li>
                           ))}
                         </ul>
                       ) : null}

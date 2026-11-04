@@ -94,11 +94,22 @@ export function useSiteListStore(): SiteListStore {
 }
 
 /** The list as it stands in the live data: its still-open tasks and how many it started with. */
-export function viewOfList(list: SiteList, snapshots: Partial<Record<SourceId, SourceSnapshot>>) {
-  const open = (snapshots[list.site]?.tasks || []).filter(t => t.status !== 'done' && list.tasks.includes(t.id));
+export function viewOfList(list: SiteList, snapshots: Partial<Record<SourceId, SourceSnapshot>>, doneOf?: DoneOf) {
+  const tasks = snapshots[list.site]?.tasks || [];
+  const open = tasks.filter(t => t.status !== 'done' && list.tasks.includes(t.id));
   const total = list.tasks.length;
-  return { open, total, done: Math.max(0, total - open.length) };
+  // Every member in list order; finished ones stay (struck through) with the title they had.
+  const openIds = new Set(open.map(t => t.id));
+  const items = list.tasks.flatMap(id => {
+    if (openIds.has(id)) return [{ id, title: open.find(t => t.id === id)!.title, done: false }];
+    const title = tasks.find(t => t.id === id)?.title || doneOf?.(list.site, id)?.title;
+    return title ? [{ id, title, done: true }] : [];
+  });
+  return { open, total, done: Math.max(0, total - open.length), items };
 }
+
+/** A finished task's title, from the completion log (finished tasks drop out of their site's feed). */
+export type DoneOf = (site: SourceId, taskId: string) => { title: string; at: string } | undefined;
 
 /**
  * The pool, with lists applied: every open task inside a list leaves its site's task list and counts,
@@ -163,6 +174,7 @@ export type SiteListsContextValue = {
   store: SiteListStore;
   snapshots: Partial<Record<SourceId, SourceSnapshot>>;
   complete: (site: SourceId, taskId: string) => void;
+  doneOf?: DoneOf;
 };
 export const SiteListsContext = createContext<SiteListsContextValue>({ store: {}, snapshots: {}, complete: () => {} });
 export const useSiteLists = () => useContext(SiteListsContext);

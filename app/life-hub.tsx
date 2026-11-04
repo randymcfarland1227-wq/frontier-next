@@ -1075,7 +1075,7 @@ goalsData ? (
   );
 
   return (
-    <SiteListsContext.Provider value={{ store: siteListStore, snapshots: baseSnapshots, complete: (site, taskId) => completeOnHub(site, taskId) }}>
+    <SiteListsContext.Provider value={{ store: siteListStore, snapshots: baseSnapshots, complete: (site, taskId) => completeOnHub(site, taskId), doneOf: (site, taskId) => { const e = ledger.entries[`${site}::${taskId}`]; return e?.title ? { title: e.title, at: e.completedAt } : undefined; } }}>
     <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' ? 'home' : active}`} data-color-mode={theme}>
       <StickerShell
         active={active}

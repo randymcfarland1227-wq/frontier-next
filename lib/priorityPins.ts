@@ -67,6 +67,8 @@ export type LaneEntry = {
   name?: string;
   /** On a `mix:<id>` entry: deleted / finished */
   gone?: boolean;
+  /** A mix member already checked off: shown struck through until the whole mix is done */
+  doneTitle?: string;
 };
 export type LaneMap = Record<string, LaneEntry>;
 
@@ -254,6 +256,14 @@ export function createMix(name: string, keys: string[]): string {
   return id;
 }
 
+/** A member checked off on its own: off the plan, but it stays in its mix (struck through). */
+export function doneInMix(key: string, title: string) {
+  const map = loadLanes();
+  if (!map[key]?.mix) return;
+  map[key] = { ...map[key], lane: null, doneTitle: title, at: new Date().toISOString() };
+  saveLanes(map);
+}
+
 export function addToMix(id: string, key: string) {
   const map = loadLanes();
   const at = new Date().toISOString();
@@ -284,7 +294,7 @@ export function endMix(id: string, lane?: Lane | null) {
   if (map[mixKey(id)]) map[mixKey(id)] = { ...map[mixKey(id)], gone: true, at };
   for (const [k, e] of Object.entries(map)) {
     if (e?.mix !== id) continue;
-    map[k] = { ...e, mix: undefined, ...(lane !== undefined ? { lane } : {}), at };
+    map[k] = { ...e, mix: undefined, doneTitle: undefined, ...(lane !== undefined && !e.doneTitle ? { lane } : {}), at };
   }
   saveLanes(map);
 }

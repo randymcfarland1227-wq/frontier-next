@@ -8,6 +8,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { Icon } from "../sticker/Icon";
+import { deleteRemote, docTag, downloadRef, fetchRefBlob, formatSize, linkLabel, normalizeUrl, openRef, sortRefs, uploadRef, type FocusRef } from "../../lib/focusRefs";
 import { openTaskPanel, pinKey } from "../../lib/priorityPins";
 import { openDebtPop } from "./DebtPop";
 import { FindingPop, type FindingTarget } from "./FindingPop";
@@ -405,6 +406,7 @@ function Card({
         </span>
       )}
       <h4 className="sk-fcard-t">{item.title}</h4>
+      {item.refs?.length ? <span className="sk-fcard-refs" title={`${item.refs.length} reference${item.refs.length === 1 ? "" : "s"}`}><Icon name="clip" size={12} />{item.refs.length}</span> : null}
       {item.priority ? <span className="sk-focus-rank">{FOCUS_PRIORITY_LABEL[item.priority]}</span> : null}
       {item.note ? <p className="sk-fcard-scope">{item.note}</p> : null}
       {item.habitGoal ? (() => {
@@ -976,6 +978,8 @@ function Detail({
               Add list
             </button>
           </form>
+
+          <RefsBox item={item} update={update} />
         </div>
 
         <div className="sk-fd-panels">
@@ -1543,6 +1547,164 @@ function HabitGoalBox({ item, update, count }: { item: Entry; update: (patch: Pa
           <small>When it&apos;s checked in that many times, this card is marked done and a task to delete the habit is added.</small>
         </div>
       )}
+    </section>
+  );
+}
+
+/** References: links, documents and images for this focus. Files live on the Worker (lib/focusRefs.ts). */
+function RefsBox({ item, update }: { item: Entry; update: (patch: Partial<Entry>) => void }) {
+  const refs = sortRefs(item.refs || []);
+  const [url, setUrl] = useState("");
+  const [label, setLabel] = useState("");
+  const [busy, setBusy] = useState("");
+  const [err, setErr] = useState("");
+  const [view, setView] = useState<{ ref: FocusRef; src: string } | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const live = useRef(item.refs || []);
+  useEffect(() => { live.current = item.refs || []; }, [item.refs]);
+
+  const addLink = (e: FormEvent) => {
+    e.preventDefault();
+    const u = normalizeUrl(url);
+    if (!u) return setErr("That doesn’t look like a web address.");
+    const ref: FocusRef = { id: crypto.randomUUID(), kind: "link", title: label.trim() || linkLabel(u), url: u, at: new Date().toISOString() };
+    update({ refs: [...live.current, ref] });
+    setUrl("");
+    setLabel("");
+    setErr("");
+  };
+  const addFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setErr("");
+    for (const f of Array.from(files)) {
+      setBusy(`Uploading ${f.name}…`);
+      try {
+        const ref = await uploadRef(f);
+        live.current = [...live.current, ref];
+        update({ refs: live.current });
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : "Upload failed.");
+      }
+    }
+    setBusy("");
+    if (fileInput.current) fileInput.current.value = "";
+  };
+  const remove = (r: FocusRef) => {
+    if (r.fileId && !window.confirm(`Remove “${r.title}”? The stored file is deleted too.`)) return;
+    deleteRemote(r);
+    update({ refs: live.current.filter((x) => x.id !== r.id) });
+  };
+  const rename = (r: FocusRef) => {
+    const t = window.prompt("Name", r.title)?.trim();
+    if (t && t !== r.title) update({ refs: live.current.map((x) => (x.id === r.id ? { ...x, title: t.slice(0, 120) } : x)) });
+  };
+  const open = async (r: FocusRef) => {
+    setErr("");
+    if (r.kind !== "image") {
+      try { await openRef(r); } catch (e) { setErr(e instanceof Error ? e.message : "Couldn’t open it."); }
+      return;
+    }
+    setBusy(`Opening ${r.title}…`);
+    try {
+      setView({ ref: r, src: URL.createObjectURL(await fetchRefBlob(r)) });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn’t open it.");
+    }
+    setBusy("");
+  };
+  const closeView = () => {
+    if (view) URL.revokeObjectURL(view.src);
+    setView(null);
+  };
+
+  const images = refs.filter((r) => r.kind === "image");
+  const rows = refs.filter((r) => r.kind !== "image");
+  return (
+    <section className="sk-fd-box sk-fd-list sk-fd-refs" aria-label="References">
+      <header>
+        <b>
+          <Icon name="clip" size={13} />
+          References
+        </b>
+        {refs.length ? <small>{refs.length}</small> : null}
+      </header>
+      <p className="sk-fd-hint">Links, documents and images for this focus.</p>
+      {images.length ? (
+        <div className="sk-ref-thumbs">
+          {images.map((r) => (
+            <div key={r.id} className="sk-ref-thumb">
+              <button type="button" onClick={() => open(r)} title={`${r.title} — open full size`}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- data URL thumbnail */}
+                {r.thumb ? <img src={r.thumb} alt={r.title} /> : <Icon name="file" size={18} />}
+              </button>
+              <button type="button" className="sk-ref-x" aria-label={`Remove ${r.title}`} title="Remove" onClick={() => remove(r)}>
+                <Icon name="close" size={11} />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {rows.length ? (
+        <ul className="sk-ref-rows">
+          {rows.map((r) => (
+            <li key={r.id}>
+              <Icon name={r.kind === "link" ? "link" : "file"} size={13} />
+              {r.kind === "link" ? (
+                <a href={r.url} target="_blank" rel="noopener noreferrer" title={r.url} onContextMenu={(e) => { e.preventDefault(); rename(r); }}>
+                  <span>{r.title}</span>
+                  <small>{linkLabel(r.url || "")}</small>
+                </a>
+              ) : (
+                <button type="button" className="sk-fd-taskopen" title="Open it" onClick={() => open(r)} onContextMenu={(e) => { e.preventDefault(); rename(r); }}>
+                  <span>{r.title}</span>
+                  <small>{`${docTag(r.title, r.type)} · ${formatSize(r.size)}`}</small>
+                </button>
+              )}
+              <span className="sk-ref-tools">
+                {r.kind === "doc" ? (
+                  <button type="button" className="sk-btn is-small is-icon is-quiet sk-ref-dl" aria-label={`Download ${r.title}`} title="Download" onClick={() => downloadRef(r).catch((e) => setErr(String(e.message || e)))}>
+                    <Icon name="chevron" size={13} />
+                  </button>
+                ) : null}
+                <button type="button" className="sk-btn is-small is-icon is-quiet" aria-label={`Rename ${r.title}`} title="Rename" onClick={() => rename(r)}>
+                  <Icon name="pencil" size={12} />
+                </button>
+                <button type="button" className="sk-btn is-small is-icon is-quiet" aria-label={`Remove ${r.title}`} title="Remove" onClick={() => remove(r)}>
+                  <Icon name="close" size={13} />
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <form className="sk-ref-add" onSubmit={addLink}>
+        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste a link" aria-label="Link address" inputMode="url" />
+        {url.trim() ? <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label (optional)" aria-label="Link label" maxLength={120} /> : null}
+        <div className="sk-ref-btns">
+          <button type="submit" className="sk-btn is-small" disabled={!url.trim()}>
+            <Icon name="link" size={13} />
+            Add link
+          </button>
+          <button type="button" className="sk-btn is-small" disabled={Boolean(busy)} onClick={() => fileInput.current?.click()}>
+            <Icon name="plus" size={13} />
+            Image / document
+          </button>
+        </div>
+        <input ref={fileInput} type="file" hidden multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.pages,.numbers,.key,.heic" onChange={(e) => addFiles(e.target.files)} />
+      </form>
+      {busy ? <p className="sk-fd-hint" role="status">{busy}</p> : null}
+      {err ? <p className="sk-ref-err" role="alert">{err}</p> : null}
+      {view ? (
+        <Dialog label={view.ref.title} onClose={closeView} className="sk-ref-view" backClassName="sk-ref-viewback">
+          {/* eslint-disable-next-line @next/next/no-img-element -- blob URL */}
+          <img src={view.src} alt={view.ref.title} />
+          <div className="sk-ref-viewbar">
+            <span>{view.ref.title}</span>
+            <a className="sk-btn is-small" href={view.src} download={view.ref.title}>Download</a>
+            <button type="button" className="sk-btn is-small" onClick={closeView}>Close</button>
+          </div>
+        </Dialog>
+      ) : null}
     </section>
   );
 }

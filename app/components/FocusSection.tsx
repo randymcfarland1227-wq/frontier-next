@@ -17,6 +17,7 @@ import { clearTickTickLog, logTickTick, useLoggedToday } from "../../lib/ticktic
 import { loadDayLog, TICKTICK_DAYLOG_EVENT } from "../../lib/ticktickDone";
 import { useSiteLists } from "../../lib/siteLists";
 import type { FocusPriority } from "../../lib/focusPriority";
+import type { FocusRef } from "../../lib/focusRefs";
 import { assignedFocusLists, focusListView, type FocusSectionId } from "../../lib/focusRouting";
 import flowMap from "../../public/data/flow-map.json";
 
@@ -112,6 +113,8 @@ export type Entry = {
   fin?: Array<{ key: string; label: string }>;
   /** Finished by itself once a TickTick habit is checked in N times (then a "delete the habit" task is added) */
   habitGoal?: HabitGoal;
+  /** References: links, documents and images for this focus (lib/focusRefs.ts) */
+  refs?: FocusRef[];
 };
 
 const mondayKey = () => {

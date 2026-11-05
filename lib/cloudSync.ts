@@ -17,7 +17,7 @@ import { GROUP_LOG_KEY } from './groupLog';
 import { FINDINGS_KEY } from './finFindings';
 import { FOCUS_LIST_KEYS, FOCUS_TOMBS_KEY, readFocusState, writeFocusState } from './focusSync';
 
-const WORKER_BASE =
+export const WORKER_BASE =
   (import.meta as ImportMeta & { env?: { VITE_WORKER_URL?: string } }).env?.VITE_WORKER_URL ||
   'https://frontier-work-room.randymcfarland1227.workers.dev';
 const STATE_URL = `${WORKER_BASE.replace(/\/$/, '')}/api/state`;

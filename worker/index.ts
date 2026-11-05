@@ -36,6 +36,7 @@ const CORS_ALLOW_ORIGINS = new Set([
   "http://127.0.0.1:3000",
   "http://localhost:4173",
   "http://localhost:8952",
+  "http://localhost:8987",
 ]);
 
 function corsHeaders(origin: string | null): HeadersInit {
@@ -43,8 +44,8 @@ function corsHeaders(origin: string | null): HeadersInit {
     origin && CORS_ALLOW_ORIGINS.has(origin) ? origin : "https://randymcfarland1227-wq.github.io";
   return {
     "Access-Control-Allow-Origin": allow,
-    "Access-Control-Allow-Methods": "GET, PUT, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Sync-Key",
+    "Access-Control-Allow-Methods": "GET, PUT, POST, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-Sync-Key, X-File-Name",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };
@@ -281,6 +282,57 @@ async function ttFetch(env: Env, path: string, init?: RequestInit): Promise<unkn
   if (!res.ok) throw new Error(`ticktick_${res.status}`);
   const text = await res.text();
   return text ? JSON.parse(text) : null;
+}
+
+// ---------------------------------------------------------------------------
+// Focus references: /api/files (PUT upload) and /api/files/<id> (GET / DELETE)
+// Documents and images attached to a short-term focus card. Stored in KV as
+// `file:<id>` (bytes) with the name and type in metadata; backup key required.
+// ---------------------------------------------------------------------------
+
+const MAX_FILE_BYTES = 10_000_000;
+
+async function handleFiles(request: Request, env: Env, pathname: string): Promise<Response> {
+  const origin = request.headers.get("Origin");
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  if (origin && !CORS_ALLOW_ORIGINS.has(origin)) return jsonResponse({ ok: false, error: "cors_denied" }, 403, origin);
+  const claimed = await env.LIFEHUB_STATE.get(AUTH_KEY);
+  const key = (request.headers.get("X-Sync-Key") || "").trim();
+  if (!claimed || key.length < 24 || (await sha256(key)) !== claimed) {
+    return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
+  }
+  const id = pathname.slice("/api/files".length).replace(/^\//, "");
+  if (pathname === "/api/files" && request.method === "PUT") {
+    const body = await request.arrayBuffer();
+    if (!body.byteLength) return jsonResponse({ ok: false, error: "empty" }, 400, origin);
+    if (body.byteLength > MAX_FILE_BYTES) return jsonResponse({ ok: false, error: "too_large" }, 413, origin);
+    const fileId = crypto.randomUUID();
+    const type = (request.headers.get("Content-Type") || "application/octet-stream").slice(0, 120);
+    let name = "file";
+    try { name = decodeURIComponent(request.headers.get("X-File-Name") || "file").slice(0, 200); } catch { /* keep default */ }
+    await env.LIFEHUB_STATE.put(`file:${fileId}`, body, { metadata: { name, type, size: body.byteLength, at: new Date().toISOString() } });
+    return jsonResponse({ ok: true, id: fileId, size: body.byteLength }, 200, origin);
+  }
+  if (!/^[0-9a-f-]{36}$/.test(id)) return jsonResponse({ ok: false, error: "bad_id" }, 400, origin);
+  if (request.method === "GET") {
+    const hit = await env.LIFEHUB_STATE.getWithMetadata<{ name?: string; type?: string }>(`file:${id}`, "arrayBuffer");
+    if (!hit.value) return jsonResponse({ ok: false, error: "not_found" }, 404, origin);
+    const name = hit.metadata?.name || "file";
+    return new Response(hit.value, {
+      status: 200,
+      headers: {
+        ...corsHeaders(origin),
+        "Content-Type": hit.metadata?.type || "application/octet-stream",
+        "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(name)}`,
+        "Cache-Control": "private, no-store",
+      },
+    });
+  }
+  if (request.method === "DELETE") {
+    await env.LIFEHUB_STATE.delete(`file:${id}`);
+    return jsonResponse({ ok: true }, 200, origin);
+  }
+  return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, origin);
 }
 
 /** Gate private TickTick data behind the backup key once the backup has been claimed. */
@@ -1123,6 +1175,10 @@ export default {
 
     if (pathname === "/api/brief") {
       return handleBrief(request, env);
+    }
+
+    if (pathname === "/api/files" || pathname.startsWith("/api/files/")) {
+      return handleFiles(request, env, pathname);
     }
 
     if (pathname === "/api/state") {

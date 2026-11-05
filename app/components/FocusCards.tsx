@@ -1245,6 +1245,44 @@ function seedRegistration(x: Entry, file: DebtFile): Entry {
   return { ...x, lists: [research, payments, tax, ...rest], seeded: [...(x.seeded || []), REG_SEED] };
 }
 
+const TICKET_SEED = "md-ticket-lists-v1";
+const needsTicketSeed = (x: Entry) => !x.done && /speeding\s+ticket/i.test(x.title) && !(x.seeded || []).includes(TICKET_SEED);
+
+/** Research / Watch For / Actions for the MD speeding ticket card (Randy's plan, one-time). */
+const TICKET_LISTS: [string, [string, string][]][] = [
+  ["Research", [
+    ["Legal Outcomes & Consequences", "Dismissal, stet, PBJ, reduced charges, points, fines, insurance implications, and eligibility."],
+    ["Citation & Evidence Review", "The 91-mph allegation, speed-measurement method, equipment accuracy, ramp conditions, posted limits, and work zones."],
+    ["Representation Options", "Public defender eligibility, application requirements, free legal consultations, and affordable alternatives."],
+    ["Court Procedures & Rights", "Mandatory appearance, discovery, evidence requests, plea procedures, deadlines, and possible negotiations."],
+    ["Case Strategy & Mitigation", "Compare viable defenses and resolutions; identify what evidence, driving history, or preparation strengthens the case."],
+  ]],
+  ["Watch For", [
+    ["Court Notice & Hearing Date", "Trigger: Citation processed; hearing date arrives by mail or appears in Case Search."],
+    ["Legal Assistance Updates", "Trigger: Public defender decision, attorney communications, or requests for documents."],
+    ["Evidence & Court Deadlines", "Trigger: Discovery responses, required submissions, schedule changes, or court orders."],
+    ["Disposition & MVA Updates", "Trigger: Final ruling, payment obligations, MVA points, and insurance renewal changes."],
+  ]],
+  ["Actions", [
+    ["Document the Incident", "Save citation; record the ramp, officer's statements, speed signs, traffic, and recollection of the stop.\nDependency: None — do now."],
+    ["Secure Legal Assistance", "Apply for a public defender and explore free or affordable alternatives if necessary.\nDependency: Financial documentation and application requirements. Court date not needed to apply."],
+    ["Confirm Court Information", "Monitor Case Search, verify mailing address, record the hearing date, and schedule reminders.\nDependency: Court processing and scheduling."],
+    ["Request & Review Evidence", "Pursue available speed-measurement records, officer documentation, relevant video, and posted-limit evidence through the applicable procedures.\nDependency: Confirm the proper request process; coordinate with counsel if appointed. Preservation may be urgent."],
+    ["Finalize Defense Strategy", "Review available evidence with counsel if possible; choose whether to contest the charge or pursue a negotiated resolution/PBJ. Prepare mitigating documentation.\nDependency: Legal advice where available and sufficient case information."],
+    ["Attend Court & Resolve Case", "Appear as directed, pursue the chosen outcome, obtain the written disposition, complete requirements, and verify MVA/insurance treatment.\nDependency: Hearing date and strategy preparation; post-hearing compliance depends on the ruling."],
+  ]],
+];
+
+function seedTicket(x: Entry): Entry {
+  const have = new Set((x.lists || []).map((l) => l.name.trim().toLowerCase()));
+  const add: SubList[] = TICKET_LISTS.filter(([name]) => !have.has(name.toLowerCase())).map(([name, rows]) => ({
+    id: uid(),
+    name,
+    tasks: rows.map(([text, note]) => ({ id: uid(), text, done: false, note })),
+  }));
+  return { ...x, lists: [...(x.lists || []), ...add], seeded: [...(x.seeded || []), TICKET_SEED] };
+}
+
 /** Daily Brief opens the very same editor without switching Today tabs. */
 export function FocusEntryDialog({ bills, events: eventsIn, ...props }: Omit<Parameters<typeof Detail>[0], 'ctx'> & { bills: BillDue[] }) {
   // Raw copy: focus cards lay findings over it themselves (own: items stay findings, not debt items).
@@ -1302,6 +1340,12 @@ export function FocusCards({
     for (const [items, save] of lists0) {
       if (!items.some(needsRegSeed)) continue;
       save(items.map((x) => (needsRegSeed(x) ? seedRegistration(x, file) : x)));
+    }
+  });
+  // One-time: the MD speeding ticket card gets its Research / Watch For / Actions lists.
+  useEffect(() => {
+    for (const [items, save] of lists0) {
+      if (items.some(needsTicketSeed)) save(items.map((x) => (needsTicketSeed(x) ? seedTicket(x) : x)));
     }
   });
   // A habit goal reached: the card finishes itself and a task to delete the TickTick habit is added (once).

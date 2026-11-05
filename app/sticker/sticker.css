@@ -3048,3 +3048,22 @@
 .sk-app .sk-ref-viewbar { display: flex; align-items: center; gap: 8px; color: #fff; font: var(--sk-secondary); }
 .sk-app .sk-ref-viewbar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50vw; }
 .sk-app .sk-fcard-refs { display: inline-flex; align-items: center; gap: 3px; width: fit-content; font: var(--sk-caption); color: var(--sk-ink-2); }
+
+/* Focus-card editor lists, compact: names get the room (tags, ✕, circles and the add inputs shrink). */
+.sk-app .sk-fd-list { padding: 10px 8px; gap: 6px; }
+.sk-app .sk-fd-list > ul { gap: 2px; }
+.sk-app .sk-fd-list > ul > li { gap: 4px; }
+.sk-app .sk-fd-list > ul > li > .sk-circle { width: 16px; height: 16px; border-width: 1.5px; }
+.sk-app .sk-fd-list > ul > li > .sk-circle .sk-icon { width: 10px; height: 10px; }
+.sk-app .sk-fd-list > ul > li > .sk-circle::after { inset: -8px; }
+.sk-app .sk-fd-list > ul > li > .sk-btn.is-icon { min-width: 18px; min-height: 18px; width: 18px; height: 18px; padding: 0; margin-right: -4px; position: relative; }
+.sk-app .sk-fd-list > ul > li > .sk-btn.is-icon .sk-icon { width: 11px; height: 11px; }
+.sk-app .sk-fd-list > ul > li > .sk-btn.is-icon::after { content: ""; position: absolute; inset: -6px -4px; }
+.sk-app .sk-fd-plan { padding: 0 4px; font: 700 9px/1.45 "DM Sans", system-ui, sans-serif; }
+.sk-app .sk-fd-list > ul > li small { font-size: 11px; }
+.sk-app .sk-fd-list .sk-fc-add, .sk-app .sk-fd-list .sk-fd-search { gap: 4px; }
+.sk-app .sk-fd-list .sk-fc-add input, .sk-app .sk-fd-list .sk-fd-search input { min-height: 24px; padding: 3px 7px; font-size: 12px; border-width: 1px; border-radius: 7px; }
+.sk-app .sk-fd-list .sk-fc-add .sk-btn { min-height: 24px; min-width: 24px; padding: 0 5px; border-radius: 7px; }
+.sk-app .sk-fd-list .sk-fc-add .sk-btn .sk-icon { width: 12px; height: 12px; }
+.sk-app .sk-fd-own { margin-top: 0; }
+.sk-app .sk-fd-list > ul > li .sk-fin-name { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; line-height: 1.3; }

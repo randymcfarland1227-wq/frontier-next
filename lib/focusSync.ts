@@ -45,10 +45,8 @@ export function mondayScope(now = new Date()): string {
 function save(list: string, items: Card[]) {
   if (list === ARRAY_KEY) return writeSaved(list, items);
   const raw = readSaved<{ scope?: string }>(list, { scope: '' });
-  // A browser restored from the backup has no saved scope; the weekly list would then hide every
-  // card it just got back (it only shows items whose scope is this Monday).
-  const scope = raw?.scope || (list === WEEK_KEY ? mondayScope() : '');
-  writeSaved(list, { scope, items });
+  // Keep whatever scope the list already has (none of the synced lists reset weekly).
+  writeSaved(list, { scope: raw?.scope ?? '', items });
 }
 
 export const readTombs = () => readSaved<Record<string, string>>(FOCUS_TOMBS_KEY, {});

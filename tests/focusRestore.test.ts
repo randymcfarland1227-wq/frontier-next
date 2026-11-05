@@ -9,8 +9,8 @@ g.localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: st
 g.CustomEvent ??= class extends Event { detail: unknown; constructor(t: string, o?: { detail?: unknown }) { super(t); this.detail = o?.detail; } };
 g.dispatchEvent ??= () => true;
 
-test('a browser restored from the backup gets its cards back, weekly ones stamped with this week', async () => {
-  const { writeFocusState, mondayScope } = await import('../lib/focusSync');
+test('a browser restored from the backup gets its cards back, with no scope added', async () => {
+  const { writeFocusState } = await import('../lib/focusSync');
   store.clear();
   const at = '2026-11-05T02:38:00.000Z';
   writeFocusState({
@@ -21,8 +21,8 @@ test('a browser restored from the backup gets its cards back, weekly ones stampe
   const weeks = JSON.parse(store.get('lifehub-focus-weeks2')!);
   assert.deepEqual(now.items.map((i: { title: string }) => i.title), ['MD Speeding Ticket']);
   assert.equal(now.scope, '');
-  // The weekly list only shows items whose scope is this Monday; an empty scope would hide them.
-  assert.equal(weeks.scope, mondayScope());
+  // weeks2 is not a week-reset list; stamping a Monday scope on it hid its cards.
+  assert.equal(weeks.scope, '');
   assert.equal(weeks.items[0].title, 'MD Registration Renewal');
 });
 

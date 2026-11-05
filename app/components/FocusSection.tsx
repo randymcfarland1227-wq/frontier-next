@@ -146,7 +146,9 @@ function useFocusList(storageKey: string, week?: boolean) {
       window.removeEventListener('lifehub:synced', synced);
     };
   }, [storageKey, scope]);
-  const items = state.scope === scope ? state.items : [];
+  // Only a `week` list empties itself on Monday. Every other list shows all its cards whatever scope
+  // was saved (a stray scope hid the restored MD Registration card on 2026-11-05).
+  const items = !week || state.scope === scope ? state.items : [];
   const save = (changed: Entry[]) => {
     // New and edited cards get a change time, removed ones a tombstone, so the cloud backup can merge them.
     const next = stampChanges(storageKey, items, changed);

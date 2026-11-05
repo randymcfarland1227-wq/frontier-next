@@ -10,6 +10,8 @@ import {
 import { Icon } from "../sticker/Icon";
 import { openTaskPanel, pinKey } from "../../lib/priorityPins";
 import { openDebtPop } from "./DebtPop";
+import { FindingPop, type FindingTarget } from "./FindingPop";
+import { addOwnItem, findingOf, ownItems, planLine, planShort, useFindings, type FindingStore, type PlanState } from "../../lib/finFindings";
 import { latestLine, useGroupLog } from "../../lib/groupLog";
 import { openSiteList, renameSiteList, useSiteLists, viewOfList, type SiteListsContextValue } from "../../lib/siteLists";
 import { Dialog } from "../sticker/Dialog";
@@ -48,7 +50,7 @@ export type LinkItem = {
 
 type CardList = readonly [Entry[], (next: Entry[]) => void];
 /** What a finance link needs to be read live. */
-type FinCtx = { file: DebtFile | null; marks: DebtMarks; bills: BillDue[]; sl?: SiteListsContextValue; habitCount?: (habitId: string, from: string) => number | undefined };
+type FinCtx = { file: DebtFile | null; marks: DebtMarks; bills: BillDue[]; sl?: SiteListsContextValue; habitCount?: (habitId: string, from: string) => number | undefined; findings?: FindingStore };
 export type OpenFinance = (itemId?: string, tab?: "owed" | "flow") => void;
 
 const DAY = 86400000;
@@ -131,15 +133,56 @@ function finRows(
       },
     ];
   }
+  if (link.key.startsWith("own:")) {
+    const f = ctx.findings ? findingOf(ctx.findings, link.key) : undefined;
+    if (!f) return [];
+    return [{ id: link.key, kind: "debt" as const, name: f.name || link.label, amount: f.amount ?? null, status: f.paid ? "paid" : "open", settled: Boolean(f.paid) }];
+  }
   return debtItems(ctx.file, link.key).map((i) => ({
     id: i.id,
     kind: "debt" as const,
     name: i.name,
-    amount: i.amount,
+    amount: foundAmount(ctx, i),
     status: i.unverified ? "unverified" : ctx.marks[i.id]?.status || "open",
     settled: isSettled(ctx.marks[i.id]),
     unverified: i.unverified,
   }));
+}
+
+/** The amount you found on Life Hub wins over the debt file's (which may be "?"). */
+function foundAmount(ctx: FinCtx, i: DebtItem): number | null {
+  const f = ctx.findings ? findingOf(ctx.findings, `item:${i.id}`) : undefined;
+  return f && f.amount !== undefined ? f.amount : i.amount;
+}
+
+/** What the finding pop-out needs for a Finance link: where its amount saves, and what the letters say about a plan. */
+function findingTarget(link: { key: string; label: string }, ctx: FinCtx): FindingTarget {
+  const own = link.key.startsWith("own:");
+  if (own) {
+    const f = ctx.findings ? findingOf(ctx.findings, link.key) : undefined;
+    return { key: link.key, label: f?.name || link.label, amountKey: link.key, amount: f?.amount ?? null };
+  }
+  const items = debtItems(ctx.file, link.key);
+  const one = items.length === 1 ? items[0] : undefined;
+  const step = link.key.startsWith("src:") ? ctx.file?.registration?.steps.find((s) => s.id === link.key.slice(4)) : undefined;
+  const plan = one?.plan || step?.plan;
+  return {
+    key: link.key,
+    label: link.label,
+    amountKey: one ? `item:${one.id}` : undefined,
+    amount: one ? one.amount : undefined,
+    onFile: plan ? { state: plan.state, terms: plan.terms, enroll: plan.enroll } : null,
+  };
+}
+
+/** Plan state for a Finance link: what you logged, else what the letters say, else not checked yet. */
+function planOf(link: { key: string }, ctx: FinCtx): { state: PlanState; line: string } {
+  const f = ctx.findings ? findingOf(ctx.findings, link.key) : undefined;
+  if (f?.plan) return { state: f.plan, line: planLine(f) };
+  const items = debtItems(ctx.file, link.key);
+  const step = link.key.startsWith("src:") ? ctx.file?.registration?.steps.find((s) => s.id === link.key.slice(4)) : undefined;
+  const st = (items.length === 1 ? items[0].plan?.state : undefined) || step?.plan?.state;
+  return { state: st === "yes" || st === "ask" || st === "none" ? st : "unknown", line: "" };
 }
 
 /** Open / cleared counts and what's still owed (unverified items stay out, like Finance's own totals). */
@@ -187,6 +230,8 @@ function financeOptions(ctx: FinCtx): Opt[] {
       sub: `${usd(b.bill.amount)} · due ${shortDate(fromDayKey(b.due))}`,
       group: "Bills & payments due",
     });
+  for (const f of ctx.findings ? ownItems(ctx.findings) : [])
+    out.push({ key: f.key, label: f.name || "Money item", sub: `yours · ${usd(f.amount)}`, group: "Your money items" });
   for (const i of file?.items || [])
     out.push({
       key: `item:${i.id}`,
@@ -473,6 +518,9 @@ function Detail({
   const [taskText, setTaskText] = useState<Record<string, string>>({});
   // Checklist task whose pop-out (notes + due day) is open
   const [subOpen, setSubOpen] = useState<{ list: string; task: string } | null>(null);
+  // Finding pop-out: log an amount / payment plan; `task` = a research task that gets checked off on save
+  const [findOpen, setFindOpen] = useState<{ link: { key: string; label: string }; task?: { list: string; task: string } } | null>(null);
+  const [ownName, setOwnName] = useState<Record<string, string>>({});
   const lists = item.lists || [];
   const setLists = (next: SubList[]) => update({ lists: next });
   const patchList = (id: string, patch: Partial<SubList>) =>
@@ -578,8 +626,6 @@ function Detail({
           </label>
         </div>
 
-        <HabitGoalBox item={item} update={update} count={ctx.habitCount} />
-
         <div className="sk-fd-three">
           {lists.map((l) => (
             <section key={l.id} className="sk-fd-box sk-fd-list">
@@ -610,12 +656,15 @@ function Detail({
                       className={`sk-circle${t.done ? " is-on" : ""}`}
                       aria-pressed={t.done}
                       aria-label={`Mark ${t.text} ${t.done ? "not done" : "done"}`}
+                      title={t.fills && !t.done ? `Check off — then type what you found for ${t.fills.label}` : undefined}
                       onClick={() =>
-                        patchList(l.id, {
-                          tasks: l.tasks.map((x) =>
-                            x.id === t.id ? { ...x, done: !x.done } : x,
-                          ),
-                        })
+                        t.fills && !t.done
+                          ? setFindOpen({ link: t.fills, task: { list: l.id, task: t.id } })
+                          : patchList(l.id, {
+                              tasks: l.tasks.map((x) =>
+                                x.id === t.id ? { ...x, done: !x.done } : x,
+                              ),
+                            })
                       }
                     >
                       <Icon name="check" size={12} />
@@ -628,7 +677,9 @@ function Detail({
                         onClick={() =>
                           t.fin!.key.startsWith("bill:")
                             ? openFinance?.(undefined, "flow")
-                            : openDebtPop(t.fin!.key, t.text)
+                            : t.fin!.key.startsWith("own:")
+                              ? setFindOpen({ link: t.fin! })
+                              : openDebtPop(t.fin!.key, t.text)
                         }
                       >
                         {t.text}
@@ -645,6 +696,16 @@ function Detail({
                       </button>
                     )}
                     {!t.fin && t.due ? <small className="sk-fd-due">{shortDate(new Date(`${t.due}T12:00`))}</small> : null}
+                    {t.fills ? (() => {
+                      const rows = finRows(t.fills, ctx);
+                      const pl = planOf(t.fills, ctx);
+                      const amt = rows.length === 1 ? rows[0].amount : undefined;
+                      return (
+                        <button type="button" className="sk-fd-fills" title={`Fills in ${t.fills.label} — tap to type what you found`} onClick={() => setFindOpen({ link: t.fills! })}>
+                          → {t.fills.label}{amt != null ? ` · ${usd(amt)}` : ""}{pl.state !== "unknown" ? ` · ${planShort(pl.state)}` : ""}
+                        </button>
+                      );
+                    })() : null}
                     {t.fin ? <small>{(() => {
                       const rows = finRows(t.fin, ctx);
                       if (!rows.length) return "Not loaded";
@@ -653,6 +714,19 @@ function Detail({
                       if (rows.some((r) => !r.settled && r.amount == null)) return "Amount unknown";
                       return usd(finStats(rows).owed);
                     })()}</small> : null}
+                    {t.fin && !t.fin.key.startsWith("bill:") ? (() => {
+                      const pl = planOf(t.fin, ctx);
+                      return (
+                        <button
+                          type="button"
+                          className={`sk-fd-plan is-${pl.state}`}
+                          title={`${planShort(pl.state)}${pl.line ? ` — ${pl.line}` : ""} · tap to log the amount / payment plan`}
+                          onClick={() => setFindOpen({ link: t.fin! })}
+                        >
+                          {planShort(pl.state)}
+                        </button>
+                      );
+                    })() : null}
                     <button
                       type="button"
                       className="sk-btn is-small is-icon is-quiet"
@@ -693,6 +767,29 @@ function Detail({
                 disabled={!finOpts.length}
                 onPick={(o) => addFinance(l, { key: o.key, label: o.label })}
               />
+              <form
+                className="sk-fc-add sk-fd-own"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const name = (ownName[l.id] || "").trim();
+                  if (!name) return;
+                  const key = addOwnItem(name);
+                  addFinance(l, { key, label: name });
+                  setOwnName({ ...ownName, [l.id]: "" });
+                  setFindOpen({ link: { key, label: name } });
+                }}
+              >
+                <input
+                  value={ownName[l.id] || ""}
+                  onChange={(e) => setOwnName({ ...ownName, [l.id]: e.target.value })}
+                  placeholder="+ New money item — e.g. Renewal fee"
+                  aria-label={`New money item in ${l.name}`}
+                  maxLength={120}
+                />
+                <button type="submit" className="sk-btn is-small" disabled={!(ownName[l.id] || "").trim()}>
+                  <Icon name="plus" size={14} />
+                </button>
+              </form>
             </section>
           ))}
 
@@ -1048,6 +1145,8 @@ function Detail({
           </section>
         </div>
 
+        <HabitGoalBox item={item} update={update} count={ctx.habitCount} />
+
         <footer className="sk-fd-foot">
           {item.ongoing ? (
             <button
@@ -1087,16 +1186,66 @@ function Detail({
         if (!sl || !st) return null;
         const patch = (p: Partial<SubTask>) =>
           patchList(sl.id, { tasks: sl.tasks.map((x) => (x.id === st.id ? { ...x, ...p } : x)) });
-        return <SubTaskPop task={st} listName={sl.name} patch={patch} close={() => setSubOpen(null)} />;
+        const fillOpts = lists.flatMap((x) => x.tasks.flatMap((y) => (y.fin && !y.fin.key.startsWith("bill:") ? [y.fin] : [])));
+        return <SubTaskPop task={st} listName={sl.name} patch={patch} fillOpts={fillOpts} close={() => setSubOpen(null)} />;
       })()}
+      {findOpen ? (() => {
+        const tl = findOpen.task ? lists.find((x) => x.id === findOpen.task!.list) : undefined;
+        const tt = tl?.tasks.find((x) => x.id === findOpen.task!.task);
+        return (
+          <FindingPop
+            target={findingTarget(findOpen.link, ctx)}
+            doneTask={tt?.text}
+            onSaved={tl && tt ? () => patchList(tl.id, { tasks: tl.tasks.map((x) => (x.id === tt.id ? { ...x, done: true } : x)) }) : undefined}
+            close={() => setFindOpen(null)}
+          />
+        );
+      })() : null}
     </Dialog>
   );
+}
+
+const REG_SEED = "reg-lists-v1";
+const needsRegSeed = (x: Entry) => !x.done && /registration\s+renew/i.test(x.title) && !(x.seeded || []).includes(REG_SEED);
+
+/** Research → Payments (tickets) → MD state tax, flags & renewal fee, with research tasks wired to what they fill in. */
+function seedRegistration(x: Entry, file: DebtFile): Entry {
+  const srcLabel = (id: string) => `MD tickets · ${mdSources(file).find((s) => s.id === id)?.label || id}`;
+  const fin = (key: string, label: string): SubTask => ({ id: uid(), text: label, done: false, fin: { key, label } });
+  const task = (text: string, fills?: { key: string; label: string }): SubTask => ({ id: uid(), text, done: false, ...(fills ? { fills } : {}) });
+  const fee = addOwnItem("Registration renewal fee", { amount: null, plan: "unknown", contact: "MVA renewal notice · mva.maryland.gov" }, "reg-renewal-fee");
+  const flags = addOwnItem("MVA flag fees (13 × $30)", { amount: 390, plan: "none", terms: "Fee invoice — pay in full, after each ticket clears", contact: "mymva.maryland.gov · 410-768-7000" }, "mva-flag-fees");
+  const lists = x.lists || [];
+  const tickets = lists.find((l) => l.tasks.some((t) => t.fin?.key.startsWith("src:")) || /ticket/i.test(l.name));
+  const rest = lists.filter((l) => l !== tickets);
+  const taxName = file.items.find((i) => i.id === "md-tax")?.name || "MD income tax 2025";
+  const research: SubList = {
+    id: uid(),
+    name: "Research",
+    tasks: [
+      task("Find the registration renewal fee", { key: fee, label: "Registration renewal fee" }),
+      task("Look up the MDTA flag amount (DriveEzMD or MVA 1-800-950-1682)", { key: "src:mdta", label: srcLabel("mdta") }),
+      task("Ask CCU about a payment arrangement (1-888-248-0345)", { key: "src:ccu", label: srcLabel("ccu") }),
+      task("Check the MD tax balance now + plan options", { key: "item:md-tax", label: taxName }),
+      task("Confirm MVA has the Root insurance policy on file"),
+    ],
+  };
+  const payments: SubList = tickets
+    ? { ...tickets, name: "Payments (tickets)" }
+    : { id: uid(), name: "Payments (tickets)", tasks: ["city", "county", "ccu", "mdta"].map((id) => fin(`src:${id}`, srcLabel(id))) };
+  const tax: SubList = {
+    id: uid(),
+    name: "MD state tax, flags & renewal fee",
+    tasks: [fin("item:md-tax", taxName), fin(flags, "MVA flag fees (13 × $30)"), fin(fee, "Registration renewal fee")],
+  };
+  return { ...x, lists: [research, payments, tax, ...rest], seeded: [...(x.seeded || []), REG_SEED] };
 }
 
 /** Daily Brief opens the very same editor without switching Today tabs. */
 export function FocusEntryDialog({ bills, events: eventsIn, ...props }: Omit<Parameters<typeof Detail>[0], 'ctx'> & { bills: BillDue[] }) {
   const { file, marks } = useDebtFile();
   const sl = useSiteLists();
+  const findings = useFindings();
   const events = file?.registration ? [...eventsIn, {
     id: "fin:registration",
     title: `${file.registration.vehicle} registration renews`,
@@ -1104,7 +1253,7 @@ export function FocusEntryDialog({ bills, events: eventsIn, ...props }: Omit<Par
     allDay: true,
     kind: "Finance",
   }] : eventsIn;
-  return <Detail {...props} events={events} ctx={{ file, marks, bills, sl }} />;
+  return <Detail {...props} events={events} ctx={{ file, marks, bills, sl, findings }} />;
 }
 
 /** Short-term focus as cards: the square shows focus, scope, why and the lists; tap it for the full pop-out. */
@@ -1139,7 +1288,16 @@ export function FocusCards({
   const lists0 = [list, ...extra];
   const goals = lists0.flatMap(([items]) => items.flatMap((x) => (x.habitGoal ? [{ habitId: x.habitGoal.habitId, from: x.habitGoal.from }] : [])));
   const habitCount = useHabitCounts(goals);
-  const ctx: FinCtx = { file, marks, bills, sl, habitCount };
+  const findings = useFindings();
+  const ctx: FinCtx = { file, marks, bills, sl, habitCount, findings };
+  // One-time: the MD registration card gets its Research / Payments / Tax-flags-fee lists (never twice).
+  useEffect(() => {
+    if (!file) return;
+    for (const [items, save] of lists0) {
+      if (!items.some(needsRegSeed)) continue;
+      save(items.map((x) => (needsRegSeed(x) ? seedRegistration(x, file) : x)));
+    }
+  });
   // A habit goal reached: the card finishes itself and a task to delete the TickTick habit is added (once).
   useEffect(() => {
     for (const [items, save] of lists0) {
@@ -1243,7 +1401,7 @@ export function FocusCards({
 }
 
 /** A focus checklist task's own pop-out: rename it, jot sub-details, give it an optional due day. */
-function SubTaskPop({ task, listName, patch, close }: { task: SubTask; listName: string; patch: (p: Partial<SubTask>) => void; close: () => void }) {
+function SubTaskPop({ task, listName, patch, fillOpts = [], close }: { task: SubTask; listName: string; patch: (p: Partial<SubTask>) => void; fillOpts?: Array<{ key: string; label: string }>; close: () => void }) {
   const closeNow = useRef(close);
   useEffect(() => {
     closeNow.current = close;
@@ -1293,6 +1451,25 @@ function SubTaskPop({ task, listName, patch, close }: { task: SubTask; listName:
             rows={5}
             placeholder="Sub-details, steps, numbers, who to call…"
           />
+        </label>
+        <label className="sk-subpop-field">
+          <span className="sk-cap">Research for (optional)</span>
+          <select
+            value={task.fills?.key || ""}
+            onChange={(e) => {
+              const o = fillOpts.find((x) => x.key === e.target.value);
+              patch({ fills: o ? { key: o.key, label: o.label } : undefined });
+            }}
+            aria-label="Finance item this task fills in"
+          >
+            <option value="">Not linked</option>
+            {fillOpts.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <small className="sk-fd-hint">{fillOpts.length ? "Checking it off asks for the amount / payment plan you found and saves it on that item." : "Add a Finance item to one of this card's lists first."}</small>
         </label>
         <div className="sk-subpop-row">
           <label className="sk-subpop-field">

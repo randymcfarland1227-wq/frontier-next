@@ -3000,3 +3000,20 @@
 .sk-app .sk-habits li .sk-habit-act { margin-left: 0; flex: none; white-space: nowrap; }
 .sk-app .sk-habits li .sk-habit-tag { margin-left: 0; flex: none; }
 .sk-app .sk-habits li.is-skipped span { text-decoration: line-through; text-decoration-thickness: 2px; font-style: normal; }
+
+/* Finance findings: plan tag on a Finance row, "fills in" chip on a research task, new money item, finding pop-out. */
+.sk-app .sk-fd-list > ul > .sk-fd-finrow:has(> .sk-fd-plan) { grid-template-columns: auto minmax(0, 1fr) auto auto auto; }
+.sk-app .sk-fd-plan { padding: 1px 7px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--sk-ink) 22%, transparent); background: none; color: var(--sk-ink-2); font: 700 10.5px/1.5 "DM Sans", system-ui, sans-serif; white-space: nowrap; cursor: pointer; }
+.sk-app .sk-fd-plan.is-yes { background: color-mix(in srgb, #2f9e5b 18%, transparent); border-color: color-mix(in srgb, #2f9e5b 55%, transparent); color: var(--sk-ink); }
+.sk-app .sk-fd-plan.is-ask { background: color-mix(in srgb, #d99a1e 20%, transparent); border-color: color-mix(in srgb, #d99a1e 60%, transparent); color: var(--sk-ink); }
+.sk-app .sk-fd-plan.is-none { background: color-mix(in srgb, var(--sk-ink) 8%, transparent); }
+.sk-app .sk-fd-plan:hover { border-color: currentColor; }
+.sk-app .sk-fd-list li:has(> .sk-fd-fills) { grid-template-columns: auto minmax(0, 1fr) auto; }
+.sk-app .sk-fd-fills { grid-column: 2; grid-row: 2; justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; border: 0; background: none; color: var(--sk-ink-2); font: 600 11px/1.4 "DM Sans", system-ui, sans-serif; cursor: pointer; text-align: left; }
+.sk-app .sk-fd-fills:hover { color: var(--sk-ink); text-decoration: underline; }
+.sk-app .sk-fd-own { margin-top: 6px; }
+.sk-app .sk-fd-own input { font-size: 12px; }
+.sk-findpop .sk-findpop-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sk-findpop .sk-subpop-field input, .sk-findpop .sk-subpop-field select { width: 100%; box-sizing: border-box; min-width: 0; }
+.sk-findpop .sk-findpop-check { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.sk-findpop b.sk-subpop-title { flex: 1; }

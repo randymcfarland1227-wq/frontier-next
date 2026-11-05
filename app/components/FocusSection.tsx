@@ -64,6 +64,8 @@ export type SubTask = {
   due?: string;
   /** A read-only Finance reference, rendered as one row in this list. */
   fin?: { key: string; label: string };
+  /** A research task that fills in a Finance item (its amount / payment plan): checking it off asks for what you found. */
+  fills?: { key: string; label: string };
 };
 export type SubList = { id: string; name: string; tasks: SubTask[] };
 
@@ -82,6 +84,8 @@ export type Entry = {
   why?: string;
   /** Named sub-task lists, layered under the card */
   lists?: SubList[];
+  /** One-time setups already applied to this card (e.g. 'reg-lists-v1') so they never run twice */
+  seeded?: string[];
   /** Day (YYYY-MM-DD) it counts down to, and the calendar item it's linked to (if any) */
   date?: string;
   eventId?: string;

@@ -74,6 +74,8 @@ export type SyncedState = {
   siteLists: Record<string, { at: string } & Record<string, unknown>>;
   /** Finance group log entries: id → entry, `gone` = deleted; newest wins (lib/groupLog.ts) */
   groupLog: Record<string, { at: string } & Record<string, unknown>>;
+  /** Finance findings: amount found, payment plan + details, hand-typed money items; newest wins (lib/finFindings.ts) */
+  findings: Record<string, { at: string } & Record<string, unknown>>;
 };
 
 /**
@@ -151,6 +153,7 @@ export function emptyState(): SyncedState {
     focus: {},
     siteLists: {},
     groupLog: {},
+    findings: {},
   };
 }
 
@@ -200,6 +203,7 @@ export function normalizeState(raw: unknown): SyncedState {
     focus: s.focus && typeof s.focus === 'object' ? s.focus : {},
     siteLists: s.siteLists && typeof s.siteLists === 'object' ? s.siteLists : {},
     groupLog: s.groupLog && typeof s.groupLog === 'object' ? s.groupLog : {},
+    findings: s.findings && typeof s.findings === 'object' ? s.findings : {},
   };
 }
 
@@ -305,6 +309,7 @@ export function mergeState(aRaw: unknown, bRaw: unknown): SyncedState {
     focus: mergeLevels(a.focus, b.focus),
     siteLists: mergeLevels(a.siteLists, b.siteLists),
     groupLog: mergeLevels(a.groupLog, b.groupLog),
+    findings: mergeLevels(a.findings, b.findings),
   };
 }
 

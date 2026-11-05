@@ -14,6 +14,7 @@ import { requestPersistentStorage, vaultCookieRead, vaultIdbRead, vaultWrite } f
 import { mergeState, normalizeState, stateCounts, type LocalGoalLinks, type SyncedState } from './syncState';
 import { SITE_LISTS_KEY } from './siteLists';
 import { GROUP_LOG_KEY } from './groupLog';
+import { FINDINGS_KEY } from './finFindings';
 import { FOCUS_LIST_KEYS, FOCUS_TOMBS_KEY, readFocusState, writeFocusState } from './focusSync';
 
 const WORKER_BASE =
@@ -56,6 +57,7 @@ const SYNCED_KEYS: string[] = [
   FOCUS_TOMBS_KEY,
   SITE_LISTS_KEY,
   GROUP_LOG_KEY,
+  FINDINGS_KEY,
 ];
 
 export type SyncStatus = {
@@ -177,6 +179,7 @@ export function readLocalState(): SyncedState {
     focus: readFocusState(),
     siteLists: readSaved(SITE_LISTS_KEY, {}),
     groupLog: readSaved(GROUP_LOG_KEY, {}),
+    findings: readSaved(FINDINGS_KEY, {}),
   });
 }
 
@@ -212,6 +215,7 @@ function writeLocalState(next: SyncedState): boolean {
     [STORAGE_KEYS.owedDone, current.owedDone, next.owedDone],
     [SITE_LISTS_KEY, current.siteLists, next.siteLists],
     [GROUP_LOG_KEY, current.groupLog, next.groupLog],
+    [FINDINGS_KEY, current.findings, next.findings],
   ];
   let changed = false;
   applying = true;

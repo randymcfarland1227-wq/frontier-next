@@ -122,6 +122,11 @@ function ScheduleSummary({
   );
 }
 
+/** Split view pane zoom, in percent. */
+const ZOOM_MIN = 70;
+const ZOOM_MAX = 160;
+const ZOOM_STEP = 10;
+
 export function HomeView({
   snapshots,
   enter,
@@ -230,6 +235,17 @@ export function HomeView({
   const setSplit = (v: boolean) => {
     setSplitState(v);
     writeSaved("sk-today-split", v);
+  };
+  // Split view zoom per pane (desktop vs laptop differ, so this stays on this device).
+  const [splitZoom, setSplitZoomState] = useState<[number, number]>(() => {
+    const z = readSaved<number[]>("sk-today-split-zoom", [100, 100]);
+    return [Number(z[0]) || 100, Number(z[1]) || 100];
+  });
+  const setSplitZoom = (i: number, v: number) => {
+    const next: [number, number] = [...splitZoom] as [number, number];
+    next[i] = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, v));
+    setSplitZoomState(next);
+    writeSaved("sk-today-split-zoom", next);
   };
   const [todayTab2, setTodayTab2] = useState<TodayTab>(() => {
     const saved = readSaved<string>("sk-today-tab2", "calendar");
@@ -479,10 +495,19 @@ export function HomeView({
               [tab2, pickTodayTab2],
             ] as const).map(([t, pick], i) => (
               <div key={i} className="sk-splitcol">
-                {tabBar(t, pick)}
-                <CapPane key={t} cap="split" label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>
-                  {renderTab(t)}
-                </CapPane>
+                <div className="sk-splithead">
+                  {tabBar(t, pick)}
+                  <div className="sk-panezoom" role="group" aria-label={`Pane ${i + 1} zoom`}>
+                    <button type="button" onClick={() => setSplitZoom(i, splitZoom[i] - ZOOM_STEP)} disabled={splitZoom[i] <= ZOOM_MIN} aria-label="Zoom out">−</button>
+                    <button type="button" className="sk-panezoom-pct" onClick={() => setSplitZoom(i, 100)} title="Back to 100%">{splitZoom[i]}%</button>
+                    <button type="button" onClick={() => setSplitZoom(i, splitZoom[i] + ZOOM_STEP)} disabled={splitZoom[i] >= ZOOM_MAX} aria-label="Zoom in">+</button>
+                  </div>
+                </div>
+                <div className="sk-splitzoom" style={splitZoom[i] === 100 ? undefined : { zoom: splitZoom[i] / 100 }}>
+                  <CapPane key={t} cap="split" label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>
+                    {renderTab(t)}
+                  </CapPane>
+                </div>
               </div>
             ))}
           </div>

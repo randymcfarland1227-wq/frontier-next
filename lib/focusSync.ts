@@ -34,10 +34,21 @@ function itemsOf(list: string): Card[] {
   return Array.isArray(items) ? (items as Card[]).filter(i => i && typeof i.id === 'string') : [];
 }
 
+/** The weekly list's scope: the Monday of this week (same format FocusSection's mondayKey uses). */
+export const WEEK_KEY = 'lifehub-focus-weeks2';
+export function mondayScope(now = new Date()): string {
+  const d = new Date(now);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
 function save(list: string, items: Card[]) {
   if (list === ARRAY_KEY) return writeSaved(list, items);
   const raw = readSaved<{ scope?: string }>(list, { scope: '' });
-  writeSaved(list, { scope: raw?.scope ?? '', items });
+  // A browser restored from the backup has no saved scope; the weekly list would then hide every
+  // card it just got back (it only shows items whose scope is this Monday).
+  const scope = raw?.scope || (list === WEEK_KEY ? mondayScope() : '');
+  writeSaved(list, { scope, items });
 }
 
 export const readTombs = () => readSaved<Record<string, string>>(FOCUS_TOMBS_KEY, {});

@@ -9,7 +9,7 @@ import type { SourceId, SourceSnapshot, SpaceId, TaskItem } from "../../lib/type
 import { readSaved, writeSaved } from "../../lib/storage";
 import { FOCUS_LIST_EVENT, ONGOING_KEY } from "../../lib/ongoingGoals";
 import type { HabitGoal } from "../../lib/locks";
-import { stampChanges } from "../../lib/focusSync";
+import { mondayScope, stampChanges } from "../../lib/focusSync";
 import { dayRecord, localDayKey, useDayKey } from "../../lib/dayKey";
 import type { CompletionLedger } from "../../lib/completions";
 import { tickTickToday } from "../../lib/tickTickToday";
@@ -120,11 +120,7 @@ export type Entry = {
   links?: GoalLink[];
 };
 
-const mondayKey = () => {
-  const d = new Date();
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-};
+const mondayKey = () => mondayScope();
 
 /** A saved typed list; `week` lists start empty every Monday. */
 function useFocusList(storageKey: string, week?: boolean) {

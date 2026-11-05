@@ -3083,3 +3083,13 @@
 .sk-app .sk-pursuits small { flex-basis: 100%; color: var(--sk-ink-2); font-size: 12px; }
 .sk-app .sk-pursuit-tag { padding: 0 6px; border-radius: 999px; font: 700 10px/1.6 "DM Sans", system-ui, sans-serif; background: color-mix(in srgb, #2f9e5b 18%, transparent); }
 .sk-app .fc-linkbox .sk-fd-search { width: 100%; max-width: 420px; } .sk-app .fc-linkbox .sk-fd-search input { width: 100%; box-sizing: border-box; }
+
+/* Today split view: per-pane zoom (− % +) beside each pane's tab bar */
+.sk-app .sk-splithead { display: flex; align-items: center; gap: var(--sk-s2); flex-wrap: wrap; }
+.sk-app .sk-splithead > :first-child { flex: 1 1 auto; min-width: 0; }
+.sk-app .sk-panezoom { display: inline-flex; align-items: center; border: 2px solid var(--sk-edge); border-radius: 999px; overflow: hidden; flex: none; background: var(--sk-paper); }
+.sk-app .sk-panezoom button { border: 0; background: none; color: inherit; font: var(--sk-label); min-width: 30px; height: 30px; padding: 0 8px; cursor: pointer; }
+.sk-app .sk-panezoom button:hover:not(:disabled) { background: color-mix(in srgb, var(--sk-ink) 10%, transparent); }
+.sk-app .sk-panezoom button:disabled { opacity: .35; cursor: default; }
+.sk-app .sk-panezoom .sk-panezoom-pct { min-width: 52px; font-variant-numeric: tabular-nums; border-inline: 1px solid var(--sk-edge); }
+.sk-app .sk-splitzoom { min-width: 0; }

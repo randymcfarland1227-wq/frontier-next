@@ -12,7 +12,8 @@ import { isLedgerPaid, ledgerMonthRows } from '../../lib/moneyLedger';
 import { DebtFile } from './DebtFile';
 import { CardPayoff } from './CardPayoff';
 import { billHistory } from '../../lib/billHistory';
-import { AccountsBoard, CardsTable, LoansTable, MoneyDash, PaySources, WeekBoard, cardRows, loanRows, nearest, type CellView, type DashCredit } from './MoneyBoards';
+import { AccountsBoard, CardsTable, LoansTable, MoneyDash, PaySources, WeekBoard, cardRows, loanRows, nearest, type CardRow, type CellView, type DashCredit } from './MoneyBoards';
+import { cardSig, figsKey, freshLabel, freshPatches } from '../../lib/cardFresh';
 import { outstandingParts, ticketTotals } from './OutstandingView';
 import { useOwedDone } from '../../lib/owedComplete';
 import { metaName, setMeta, useMoneyMeta, type MetaEntry } from '../../lib/moneyMeta';
@@ -2870,6 +2871,23 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
 }
 
 /** A credit card's shared panel: figures, this month's payments, and the APR / fee / pay-off rule Life Hub keeps. */
+/** "Figures updated today 7:12 AM · 2 h ago": when this card's balance / limit / minimum last changed. */
+function CardFreshness({ c, readAt }: { c: CardRow; readAt: string }) {
+  const { get } = useMoneyMeta();
+  const f = c.hub ? { seenAt: c.hub.updatedAt, first: false } : get(figsKey(c.name));
+  if (!f?.seenAt) return null;
+  const l = freshLabel(f.seenAt);
+  const read = freshLabel(readAt);
+  return (
+    <p className={`mb-cp-fresh${l.stale ? ' is-stale' : ''}`} title={c.hub ? 'Typed on Life Hub' : `Sheet last read ${read.when}`}>
+      <Icon name="clock" size={12} />
+      {c.hub ? 'Figures typed here ' : f.first ? 'Figures unchanged since at least ' : 'Figures updated '}
+      <b>{l.when}</b> <span>· {l.ago}</span>
+      {c.hub ? null : <span className="mb-cp-fresh-read"> · sheet read {read.when}</span>}
+    </p>
+  );
+}
+
 function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClose }: { name: string; model: MoneyModel; dues: BillDue[]; monthDues: BillDue[]; paidAt: Record<string, string>; onPaid: (d: BillDue) => void; onBack?: () => void; onClose: () => void }) {
   const panels = useMoneyPanels();
   const { get } = useMoneyMeta();
@@ -2888,6 +2906,7 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
   return (
     <Modal label={c.name} onClose={onClose} onBack={onBack} wide>
       <h3>{c.name}</h3>
+      <CardFreshness c={c} readAt={model.refreshedAt} />
       {c.due ? <BillFlagsFields due={c.due} /> : null}
       <div className="mb-cp-figs">
         <span><small>balance</small><b>{money(c.bal || 0)}</b></span>
@@ -3415,6 +3434,14 @@ export function MoneyPage({
     if (fresh.length) writeSaved('lifehub-pl-applied', [...applied, ...fresh]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plSeen, monthDues]);
+  // Remember when each sheet card's figures last changed (shown in its pop-out).
+  const sheetCards = model ? cardRows(model, [], metaGet).filter(c => !c.hub) : [];
+  const cardSigs = sheetCards.map(c => `${c.name}=${cardSig(c)}`).join(';');
+  useEffect(() => {
+    if (!model) return;
+    for (const p of freshPatches(sheetCards, metaGet, model.refreshedAt)) setMeta(p.key, { sig: p.sig, seenAt: p.seenAt, first: p.first });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardSigs, model?.refreshedAt]);
   if (!model) {
     return (
       <div className="settings-view money-view">

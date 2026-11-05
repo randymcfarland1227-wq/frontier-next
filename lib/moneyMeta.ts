@@ -7,6 +7,7 @@
  *   sale:<id>    → { platform, name, amount, state, availOn } one eBay / Poshmark sale
  *   figures:picks → { picks }                 which cells the Update Figures tool lists (ids from UpdateFigures.tsx); none = every checking balance
  *   card:<name>  → { payX, payPlan, payTarget }     payoff models B and C inputs (CardPayoff.tsx)
+ *   figs:<card>  → { sig, seenAt, first }           when a card's figures last changed (lib/cardFresh.ts)
  *   from:<src>   → { acct }                           which account or card pays a bill / sub / pay later
  * A removed entry keeps `gone: true` so the removal syncs too.
  */
@@ -46,6 +47,10 @@ export type MetaEntry = {
   paidKind?: string;
   /** Update Figures: chosen cell ids */
   picks?: string[];
+  /** figs:<card> → the card's figures signature and the sheet read that first showed them (lib/cardFresh.ts) */
+  sig?: string;
+  seenAt?: string;
+  first?: boolean;
 };
 export type MoneyMeta = Record<string, MetaEntry>;
 

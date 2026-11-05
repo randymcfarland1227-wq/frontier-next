@@ -48,7 +48,7 @@ import {
   useShortTermFocus,
 } from "./FocusSection";
 import { HomeTop } from "../sticker/HomeTop";
-import { ListHead, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
+import { ListHead, PaneZoomContext, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
 import { CapPane } from "../sticker/CapPane";
 import { SegTabs } from "../sticker/SegTabs";
 import { readSaved, writeSaved } from "../../lib/storage";
@@ -495,19 +495,15 @@ export function HomeView({
               [tab2, pickTodayTab2],
             ] as const).map(([t, pick], i) => (
               <div key={i} className="sk-splitcol">
-                <div className="sk-splithead">
-                  {tabBar(t, pick)}
-                  <div className="sk-panezoom" role="group" aria-label={`Pane ${i + 1} zoom`}>
-                    <button type="button" onClick={() => setSplitZoom(i, splitZoom[i] - ZOOM_STEP)} disabled={splitZoom[i] <= ZOOM_MIN} aria-label="Zoom out">−</button>
-                    <button type="button" className="sk-panezoom-pct" onClick={() => setSplitZoom(i, 100)} title="Back to 100%">{splitZoom[i]}%</button>
-                    <button type="button" onClick={() => setSplitZoom(i, splitZoom[i] + ZOOM_STEP)} disabled={splitZoom[i] >= ZOOM_MAX} aria-label="Zoom in">+</button>
+                {tabBar(t, pick)}
+                {/* Money has its own − / + (it starts at 60%), so the pane zoom leaves it alone. */}
+                <PaneZoomContext.Provider value={t === "money" ? null : { zoom: splitZoom[i], set: (v) => setSplitZoom(i, v), min: ZOOM_MIN, max: ZOOM_MAX, step: ZOOM_STEP }}>
+                  <div className="sk-splitzoom" style={t === "money" || splitZoom[i] === 100 ? undefined : { zoom: splitZoom[i] / 100 }}>
+                    <CapPane key={t} cap="split" label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>
+                      {renderTab(t)}
+                    </CapPane>
                   </div>
-                </div>
-                <div className="sk-splitzoom" style={splitZoom[i] === 100 ? undefined : { zoom: splitZoom[i] / 100 }}>
-                  <CapPane key={t} cap="split" label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>
-                    {renderTab(t)}
-                  </CapPane>
-                </div>
+                </PaneZoomContext.Provider>
               </div>
             ))}
           </div>

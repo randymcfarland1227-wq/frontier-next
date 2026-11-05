@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type HTMLAttributes, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, type HTMLAttributes, type ReactNode } from 'react';
 import { useFold } from '../components/Collapsible';
 import { Icon, type IconName } from './Icon';
 
@@ -67,18 +67,34 @@ export function Group({
   className?: string;
   children: ReactNode;
 }) {
+  const zoom = useContext(PaneZoomContext);
   return (
     <div className={`sk-group tone-${tone}${className ? ` ${className}` : ''}`}>
       {title ? (
         <div className="sk-ghead">
           {icon ? <Icon name={icon} /> : null}
           <h3 className="sk-hl">{title}</h3>
+          {zoom ? <PaneZoomButtons {...zoom} /> : null}
           {meta ? <span className="sk-sec sk-ghead-meta">{meta}</span> : null}
           {actions ? <span className="sk-ghead-actions">{actions}</span> : null}
         </div>
       ) : null}
-      <div className="sk-gbody">{children}</div>
+      <div className="sk-gbody">{zoom ? <PaneZoomContext.Provider value={null}>{children}</PaneZoomContext.Provider> : children}</div>
     </div>
+  );
+}
+
+/** Today split view: the pane's zoom, shown beside the first Group title in that pane (like Money's − 60% +). */
+export type PaneZoom = { zoom: number; set: (v: number) => void; min: number; max: number; step: number };
+export const PaneZoomContext = createContext<PaneZoom | null>(null);
+
+function PaneZoomButtons({ zoom, set, min, max, step }: PaneZoom) {
+  return (
+    <span className="sk-panezoom" role="group" aria-label="Pane size">
+      <button type="button" onClick={() => set(zoom - step)} disabled={zoom <= min} aria-label="Smaller" title="Smaller">−</button>
+      <button type="button" className="sk-panezoom-pct" onClick={() => set(100)} title="Back to 100%">{zoom}%</button>
+      <button type="button" onClick={() => set(zoom + step)} disabled={zoom >= max} aria-label="Bigger" title="Bigger">+</button>
+    </span>
   );
 }
 

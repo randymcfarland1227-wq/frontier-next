@@ -3084,12 +3084,16 @@
 .sk-app .sk-pursuit-tag { padding: 0 6px; border-radius: 999px; font: 700 10px/1.6 "DM Sans", system-ui, sans-serif; background: color-mix(in srgb, #2f9e5b 18%, transparent); }
 .sk-app .fc-linkbox .sk-fd-search { width: 100%; max-width: 420px; } .sk-app .fc-linkbox .sk-fd-search input { width: 100%; box-sizing: border-box; }
 
-/* Today split view: per-pane zoom (− % +) beside each pane's tab bar */
-.sk-app .sk-splithead { display: flex; align-items: center; gap: var(--sk-s2); flex-wrap: wrap; }
-.sk-app .sk-splithead > :first-child { flex: 1 1 auto; min-width: 0; }
-.sk-app .sk-panezoom { display: inline-flex; align-items: center; border: 2px solid var(--sk-edge); border-radius: 999px; overflow: hidden; flex: none; background: var(--sk-paper); }
-.sk-app .sk-panezoom button { border: 0; background: none; color: inherit; font: var(--sk-label); min-width: 30px; height: 30px; padding: 0 8px; cursor: pointer; }
-.sk-app .sk-panezoom button:hover:not(:disabled) { background: color-mix(in srgb, var(--sk-ink) 10%, transparent); }
+/* Today split view: per-pane zoom (− % +) beside the pane's first title, same look as Money's */
+.sk-app .sk-panezoom { display: inline-flex; align-items: center; border: 2px solid var(--sk-edge); border-radius: 10px; overflow: hidden; background: var(--sk-paper); flex: none; vertical-align: middle; }
+.sk-app .sk-panezoom button { border: 0; background: none; color: var(--sk-ink); font: 700 14px/1 "DM Sans", system-ui, sans-serif; min-width: 30px; min-height: 30px; padding: 0 8px; cursor: pointer; box-shadow: none; }
+.sk-app .sk-panezoom button:hover:not(:disabled) { background: var(--sk-hover); }
 .sk-app .sk-panezoom button:disabled { opacity: .35; cursor: default; }
-.sk-app .sk-panezoom .sk-panezoom-pct { min-width: 52px; font-variant-numeric: tabular-nums; border-inline: 1px solid var(--sk-edge); }
+.sk-app .sk-panezoom .sk-panezoom-pct { min-width: 50px; font: 600 13px/1 "DM Sans", system-ui, sans-serif; font-variant-numeric: tabular-nums; border-inline: 2px solid var(--sk-edge); }
 .sk-app .sk-splitzoom { min-width: 0; }
+
+/* TickTick habits: rows fit the card (the grid used to size to the longest nowrap row and run off-screen);
+   long titles wrap to two lines, Skip / Uncompleted stay whole at the right. */
+.sk-app .sk-habits, .sk-app .sk-habits .sk-daytasks { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.sk-app .sk-habits .sk-habit-group, .sk-app .sk-habits li { min-width: 0; max-width: 100%; }
+.sk-app .sk-habits li > span:not(.sk-circle) { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }

@@ -400,6 +400,8 @@ export function HomeView({
         ) : t === "focus" ? (
           <ShortTermFocus
             focus={shortTerm}
+            snapshots={snapshots}
+            ledger={ledger}
             events={linkItems}
             bills={bills}
             openFinance={(id, tab) => {

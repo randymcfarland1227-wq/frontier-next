@@ -149,6 +149,7 @@ function migrateSnapshots(raw: unknown): Record<SourceId, SourceSnapshot> {
       featured: value.featured || [],
       tasks: value.tasks || [],
       refreshedAt: value.refreshedAt || '',
+      ...(id === 'income' && Array.isArray(value.shelves) ? { shelves: value.shelves } : {}),
     };
   }
   return base;
@@ -757,6 +758,8 @@ export function LifeHub() {
           featured: preserveFeatured ? current[id].featured : payload.featured || [],
           tasks: payload.tasks || current[id].tasks || [],
           refreshedAt: payload.refreshedAt || new Date().toISOString(),
+          // Venture Lab sends its active / building ideas as a shelf (Today → Active Pursuits).
+          ...(id === 'income' && Array.isArray(payload.shelves) ? { shelves: payload.shelves } : {}),
         };
         const nextLedger = diffSnapshotCompletions(id, current[id], nextSnap, loadLedger());
         setLedger(nextLedger);

@@ -3067,3 +3067,19 @@
 .sk-app .sk-fd-list .sk-fc-add .sk-btn .sk-icon { width: 12px; height: 12px; }
 .sk-app .sk-fd-own { margin-top: 0; }
 .sk-app .sk-fd-list > ul > li .sk-fin-name { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; line-height: 1.3; }
+
+/* Ongoing goals: linked TickTick habits / recurring tasks */
+.sk-app .fc-links { list-style: none; margin: 4px 0; padding: 0; display: grid; gap: 2px; font-size: 12.5px; }
+.sk-app .fc-links li { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+.sk-app .fc-links li small { margin-left: auto; color: var(--sk-ink-2); font-size: 11px; white-space: nowrap; }
+.sk-app .fc-links li.is-done > span { color: var(--sk-done-ink, #0a8a5f); font-weight: 700; }
+.sk-app .fc-linkbox .fc-links li { align-items: center; }
+.sk-app .fc-linkbox .fc-links li .sk-btn.is-icon { min-width: 20px; min-height: 20px; padding: 0; }
+/* Active Pursuits (Venture Lab ideas marked active / building) */
+.sk-app .sk-pursuits { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.sk-app .sk-pursuits a { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 8px 10px; border: 1.5px solid var(--sk-line); border-radius: 12px; color: var(--sk-ink); text-decoration: none; background: color-mix(in srgb, var(--sk-paper) 60%, transparent); }
+.sk-app .sk-pursuits a:hover { border-color: var(--sk-ink); }
+.sk-app .sk-pursuits b { font-size: 14px; }
+.sk-app .sk-pursuits small { flex-basis: 100%; color: var(--sk-ink-2); font-size: 12px; }
+.sk-app .sk-pursuit-tag { padding: 0 6px; border-radius: 999px; font: 700 10px/1.6 "DM Sans", system-ui, sans-serif; background: color-mix(in srgb, #2f9e5b 18%, transparent); }
+.sk-app .fc-linkbox .sk-fd-search { width: 100%; max-width: 420px; } .sk-app .fc-linkbox .sk-fd-search input { width: 100%; box-sizing: border-box; }

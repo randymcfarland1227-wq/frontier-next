@@ -18,6 +18,7 @@ import { loadDayLog, TICKTICK_DAYLOG_EVENT } from "../../lib/ticktickDone";
 import { useSiteLists } from "../../lib/siteLists";
 import type { FocusPriority } from "../../lib/focusPriority";
 import type { FocusRef } from "../../lib/focusRefs";
+import { activePursuits, type GoalLink } from "../../lib/goalLinks";
 import { assignedFocusLists, focusListView, type FocusSectionId } from "../../lib/focusRouting";
 import flowMap from "../../public/data/flow-map.json";
 
@@ -115,6 +116,8 @@ export type Entry = {
   habitGoal?: HabitGoal;
   /** References: links, documents and images for this focus (lib/focusRefs.ts) */
   refs?: FocusRef[];
+  /** Ongoing goals: TickTick habits / recurring tasks that move it forward (lib/goalLinks.ts) */
+  links?: GoalLink[];
 };
 
 const mondayKey = () => {
@@ -545,13 +548,19 @@ export function ShortTermFocus({
   events = [],
   bills = [],
   openFinance,
+  snapshots,
+  ledger,
 }: {
   focus: ReturnType<typeof useShortTermFocus>;
   events?: LinkItem[];
   bills?: BillDue[];
   openFinance?: OpenFinance;
+  snapshots?: Partial<Record<SourceId, SourceSnapshot>>;
+  ledger?: CompletionLedger;
 }) {
   const [ongoingShut, toggleOngoing] = useShut("focus-ongoing");
+  const [pursuitsShut, togglePursuits] = useShut("focus-pursuits");
+  const pursuits = activePursuits(snapshots?.income);
   // A goal promoted to Short-term focus is the SAME record (so edits show in both places): it appears in the
   // top grid and on its site, and is left out of the "Ongoing goals" row below so it isn't shown twice here.
   const promoted = focusListView(focus.ongoing, (i) => Boolean(i.inFocus));
@@ -587,12 +596,35 @@ export function ShortTermFocus({
               events={events}
               bills={bills}
               openFinance={openFinance}
+              ticktick={snapshots?.ticktick}
+              ledger={ledger}
               label=""
               noAdd
             />
           )}
         </>
       ) : null}
+      <ListHead
+        title="Active Pursuits"
+        meta={`${pursuits.length} · Venture Lab ideas marked active or building`}
+        shut={pursuitsShut}
+        onToggle={togglePursuits}
+      />
+      {pursuitsShut ? null : pursuits.length ? (
+        <ul className="sk-pursuits">
+          {pursuits.map((p) => (
+            <li key={p.id}>
+              <a href={p.url || "https://randymcfarland1227-wq.github.io/income-venture-lab/"} target="_blank" rel="noreferrer">
+                <b>{p.title}</b>
+                {p.status ? <span className="sk-pursuit-tag">{p.status}</span> : null}
+                <small>{p.open ? `${p.open} open task${p.open === 1 ? "" : "s"}` : "No open tasks"}</small>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="sk-fd-hint">Nothing from the Venture Lab yet. Open the Venture Lab once and its active and building ideas show up here.</p>
+      )}
     </Group>
   );
 }

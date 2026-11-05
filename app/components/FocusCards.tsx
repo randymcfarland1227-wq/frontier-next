@@ -35,6 +35,10 @@ import {
 import { mdSources, oosSources } from "./OutstandingView";
 import type { Entry, SubList, SubTask } from "./FocusSection";
 import { habitOptions, todayIso, useHabitCounts } from "../../lib/locks";
+import { linkOptions, linkStatus } from "../../lib/goalLinks";
+import { loadLedger, type CompletionLedger } from "../../lib/completions";
+import { readSaved, STORAGE_KEYS } from "../../lib/storage";
+import type { SourceSnapshot } from "../../lib/types";
 import { addSelfItem, SELF_ITEMS_EVENT } from "../../lib/adapters/self";
 import { FOCUS_PRIORITY_LABEL, orderFocus, type FocusPriority } from "../../lib/focusPriority";
 import { FOCUS_SECTION_LABELS, type FocusSectionId } from "../../lib/focusRouting";
@@ -51,7 +55,7 @@ export type LinkItem = {
 
 type CardList = readonly [Entry[], (next: Entry[]) => void];
 /** What a finance link needs to be read live. */
-type FinCtx = { file: DebtFile | null; marks: DebtMarks; bills: BillDue[]; sl?: SiteListsContextValue; habitCount?: (habitId: string, from: string) => number | undefined; findings?: FindingStore };
+type FinCtx = { file: DebtFile | null; marks: DebtMarks; bills: BillDue[]; sl?: SiteListsContextValue; habitCount?: (habitId: string, from: string) => number | undefined; findings?: FindingStore; ledger?: CompletionLedger; ticktick?: SourceSnapshot };
 export type OpenFinance = (itemId?: string, tab?: "owed" | "flow") => void;
 
 const DAY = 86400000;
@@ -422,6 +426,19 @@ function Card({
           </div>
         );
       })() : null}
+      {item.links?.length ? (
+        <ul className="fc-links" aria-label="Linked TickTick actions">
+          {item.links.map((l) => {
+            const st = linkStatus(l, ctx.ledger);
+            return (
+              <li key={l.id} className={st.doneToday ? "is-done" : ""} title={`${l.kind === "habit" ? "Habit" : "Task"} · done ${st.last7} of the last 7 days`}>
+                <span aria-hidden="true">{st.doneToday ? "✓" : "○"}</span> {l.title}
+                <small>{st.doneToday ? "today" : `${st.last7}/7`}</small>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
       {item.why ? (
         <p className="sk-fcard-why">
           <b>Why</b> {item.why}
@@ -1149,6 +1166,8 @@ function Detail({
           </section>
         </div>
 
+        {item.ongoing ? <LinkedActionsBox item={item} update={update} ledger={ctx.ledger} ticktick={ctx.ticktick} /> : null}
+
         <HabitGoalBox item={item} update={update} count={ctx.habitCount} />
 
         <footer className="sk-fd-foot">
@@ -1283,6 +1302,15 @@ function seedTicket(x: Entry): Entry {
   return { ...x, lists: [...(x.lists || []), ...add], seeded: [...(x.seeded || []), TICKET_SEED] };
 }
 
+/** Last saved TickTick pull + completion log, for cards opened where the live ones aren't passed in. */
+const savedTickTick = () => readSaved<Partial<Record<SourceId, SourceSnapshot>>>(STORAGE_KEYS.snapshots, {}).ticktick;
+
+/** Only read the saved log / pull when some card here is an ongoing goal or has linked actions. */
+function linkCtx(lists: CardList[], ledger?: CompletionLedger, ticktick?: SourceSnapshot) {
+  const need = lists.some(([items]) => items.some((x) => x.ongoing || x.links?.length));
+  return need ? { ledger: ledger ?? loadLedger(), ticktick: ticktick ?? savedTickTick() } : { ledger, ticktick };
+}
+
 /** Daily Brief opens the very same editor without switching Today tabs. */
 export function FocusEntryDialog({ bills, events: eventsIn, ...props }: Omit<Parameters<typeof Detail>[0], 'ctx'> & { bills: BillDue[] }) {
   // Raw copy: focus cards lay findings over it themselves (own: items stay findings, not debt items).
@@ -1296,7 +1324,7 @@ export function FocusEntryDialog({ bills, events: eventsIn, ...props }: Omit<Par
     allDay: true,
     kind: "Finance",
   }] : eventsIn;
-  return <Detail {...props} events={events} ctx={{ file, marks, bills, sl, findings }} />;
+  return <Detail {...props} events={events} ctx={{ file, marks, bills, sl, findings, ledger: loadLedger(), ticktick: savedTickTick() }} />;
 }
 
 /** Short-term focus as cards: the square shows focus, scope, why and the lists; tap it for the full pop-out. */
@@ -1310,7 +1338,12 @@ export function FocusCards({
   empty,
   noAdd,
   defaults,
+  ticktick,
+  ledger,
 }: {
+  /** Last TickTick pull + completion log (ongoing goals show their linked habits/tasks) */
+  ticktick?: SourceSnapshot;
+  ledger?: CompletionLedger;
   /** Where new entries go */
   list: CardList;
   /** More lists shown in the same grid (their entries are edited in place) */
@@ -1333,7 +1366,7 @@ export function FocusCards({
   const goals = lists0.flatMap(([items]) => items.flatMap((x) => (x.habitGoal ? [{ habitId: x.habitGoal.habitId, from: x.habitGoal.from }] : [])));
   const habitCount = useHabitCounts(goals);
   const findings = useFindings();
-  const ctx: FinCtx = { file, marks, bills, sl, habitCount, findings };
+  const ctx: FinCtx = { file, marks, bills, sl, habitCount, findings, ...linkCtx(lists0, ledger, ticktick) };
   // One-time: the MD registration card gets its Research / Payments / Tax-flags-fee lists (never twice).
   useEffect(() => {
     if (!file) return;
@@ -1541,6 +1574,45 @@ function SubTaskPop({ task, listName, patch, fillOpts = [], close }: { task: Sub
 }
 
 /** "Done after a TickTick habit is checked in N times" for a focus card. */
+/** Ongoing goals: TickTick habits / recurring tasks that move it forward, with whether each is done today. */
+function LinkedActionsBox({ item, update, ledger, ticktick }: { item: Entry; update: (patch: Partial<Entry>) => void; ledger?: CompletionLedger; ticktick?: SourceSnapshot }) {
+  const links = item.links || [];
+  const opts = linkOptions(ticktick, habitOptions()).filter((o) => !links.some((l) => l.id === o.id));
+  const pick: Opt[] = opts.map((o) => ({ key: o.id, label: o.title, group: o.kind === "habit" ? "Habits" : "Tasks" }));
+  return (
+    <section className="sk-fd-box fc-habit fc-linkbox">
+      <span><b>Linked TickTick actions</b></span>
+      {links.length ? (
+        <ul className="fc-links">
+          {links.map((l) => {
+            const st = linkStatus(l, ledger);
+            return (
+              <li key={l.id} className={st.doneToday ? "is-done" : ""}>
+                <span aria-hidden="true">{st.doneToday ? "✓" : "○"}</span> {l.title}
+                <small>{l.kind === "habit" ? "Habit" : "Task"} · {st.doneToday ? "done today" : "not yet today"} · {st.last7} of last 7 days</small>
+                <button type="button" className="sk-btn is-small is-icon is-quiet" aria-label={`Unlink ${l.title}`} onClick={() => update({ links: links.filter((x) => x.id !== l.id) })}>
+                  <Icon name="close" size={12} />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      <SearchPick
+        options={pick}
+        label="Link a TickTick habit or task"
+        placeholder={opts.length ? "+ Link a TickTick habit or recurring task" : "Open the TickTick tab once to load your habits and tasks"}
+        disabled={!opts.length}
+        onPick={(o) => {
+          const hit = opts.find((x) => x.id === o.key);
+          if (hit) update({ links: [...links, hit] });
+        }}
+      />
+      <small>Finishing it in TickTick (or here on Life Hub) counts toward this goal.</small>
+    </section>
+  );
+}
+
 function HabitGoalBox({ item, update, count }: { item: Entry; update: (patch: Partial<Entry>) => void; count?: (habitId: string, from: string) => number | undefined }) {
   const g = item.habitGoal;
   const [habitId, setHabitId] = useState(g?.habitId || "");

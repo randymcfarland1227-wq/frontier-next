@@ -22,6 +22,7 @@ import {
   type DebtFile,
   type DebtItem,
   type DebtMarks,
+  RENEWAL_STEP,
 } from "../../lib/debtFile";
 import { isLedgerPaid } from "../../lib/moneyLedger";
 import { readSaved, writeSaved } from "../../lib/storage";
@@ -74,6 +75,7 @@ const MD_SOURCES: Array<[string, string]> = [
   ["county", "Baltimore County"],
   ["ccu", "Work zone · CCU"],
   ["mdta", "MDTA (toll flag)"],
+  [RENEWAL_STEP, "Registration renewal fee"],
 ];
 const OOS_SOURCES: Array<[string, string]> = [
   ["dc-", "Washington, DC"],
@@ -123,10 +125,12 @@ const extraOf = (i: DebtItem, kind: "md" | "oos") =>
   kind === "md" ? (isFlagged(i) ? FLAG_FEE : 0) : i.maybe || 0;
 function sums(items: DebtItem[], marks: DebtMarks, kind: "md" | "oos") {
   const live = items.filter((i) => counts(i, marks));
+  // Hand-typed fees (registration renewal) count in the money, not as tickets.
+  const tickets = live.filter((i) => !i.id.startsWith("own:")).length;
   const sum = live.reduce((s, i) => s + (i.amount || 0), 0);
   const extra = live.reduce((s, i) => s + extraOf(i, kind), 0);
   return {
-    n: live.length,
+    n: tickets,
     sum,
     withExtra: sum + extra,
     unknown: live.some((i) => i.amount === null),
@@ -226,7 +230,7 @@ function TicketBox({
                       </em>
                     ) : null}
                   </span>
-                  <span className="num">{t.n}</span>
+                  <span className="num">{t.n || "—"}</span>
                   <span className="num">{unk(t.sum, t.unknown)}</span>
                   <span className="num">
                     <b>{unk(t.withExtra, t.unknown)}</b>

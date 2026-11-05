@@ -1243,7 +1243,8 @@ function seedRegistration(x: Entry, file: DebtFile): Entry {
 
 /** Daily Brief opens the very same editor without switching Today tabs. */
 export function FocusEntryDialog({ bills, events: eventsIn, ...props }: Omit<Parameters<typeof Detail>[0], 'ctx'> & { bills: BillDue[] }) {
-  const { file, marks } = useDebtFile();
+  // Raw copy: focus cards lay findings over it themselves (own: items stay findings, not debt items).
+  const { raw: file, rawMarks: marks } = useDebtFile();
   const sl = useSiteLists();
   const findings = useFindings();
   const events = file?.registration ? [...eventsIn, {
@@ -1283,7 +1284,8 @@ export function FocusCards({
   noAdd?: boolean;
   defaults?: Partial<Entry>;
 }) {
-  const { file, marks } = useDebtFile();
+  // Raw copy: focus cards lay findings over it themselves (own: items stay findings, not debt items).
+  const { raw: file, rawMarks: marks } = useDebtFile();
   const sl = useSiteLists();
   const lists0 = [list, ...extra];
   const goals = lists0.flatMap(([items]) => items.flatMap((x) => (x.habitGoal ? [{ habitId: x.habitGoal.habitId, from: x.habitGoal.from }] : [])));

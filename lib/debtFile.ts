@@ -5,8 +5,9 @@
  * Randy's marks (paid / disputed / gone + a note) save back to the Worker so every device sees them.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { syncKeyHeader } from './cloudSync';
+import { findingOf, ownItems, setFinding, useFindings, type Finding, type FindingStore } from './finFindings';
 import { readSaved, writeSaved } from './storage';
 
 const WORKER_BASE =
@@ -95,6 +96,76 @@ export function owedOf(items: DebtItem[], marks: DebtMarks): number {
   return items.filter(i => !i.unverified && !isSettled(marks[i.id])).reduce((s, i) => s + (i.amount || 0), 0);
 }
 
+/** Hand-typed items already counted elsewhere in Finance (the 13 × $30 MVA flag fees = the flag fee on each flagged MD ticket). */
+export const OWN_COUNTED_ELSEWHERE = new Set(['own:mva-flag-fees']);
+/** Hand-typed items that belong with the MD tickets (they have to be paid before the registration renews). */
+export const OWN_REGISTRATION = new Set(['own:reg-renewal-fee']);
+export const RENEWAL_STEP = 'renewal';
+
+const money = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: n % 1 ? 2 : 0 });
+
+/** A plan logged on Life Hub, in the debt file's own shape (only when a real state was picked). */
+function planFrom(f: Finding | undefined, prev?: DebtPlan): DebtPlan | undefined {
+  if (!f?.plan || f.plan === 'unknown') return undefined;
+  const parts: string[] = [];
+  if (f.monthly) parts.push(`${money(f.monthly)}/mo${f.months ? ` × ${f.months}` : ''}`);
+  else if (f.months) parts.push(`${f.months} months`);
+  if (f.down) parts.push(`${money(f.down)} down`);
+  if (f.terms) parts.push(f.terms);
+  if (f.note) parts.push(f.note);
+  return {
+    state: f.plan,
+    terms: parts.join(' · ') || (f.plan === prev?.state ? prev.terms : '') || '',
+    enroll: f.contact || prev?.enroll || null,
+    source: `Logged on Life Hub${f.checked ? ` ${f.checked}` : ''}`,
+  };
+}
+
+/**
+ * What Randy found on Life Hub (lib/finFindings) laid over the debt file, so every Finance total and story uses it:
+ *  - `item:<id>` amount / plan replace the item's,
+ *  - `src:<step>` plan replaces the registration step's and that source's tickets' (unless a ticket has its own logged),
+ *  - `own:` hand-typed items become items (registration fee → with the MD tickets, others → Taxes / Legal);
+ *    paid ones are marked paid, ones already counted elsewhere (MVA flag fees) are left out.
+ */
+export function applyFindings(file: DebtFile | null, marks: DebtMarks, findings: FindingStore): { file: DebtFile | null; marks: DebtMarks } {
+  if (!file) return { file, marks };
+  const srcPlan = (step: string | undefined, prev?: DebtPlan) => (step ? planFrom(findingOf(findings, `src:${step}`), prev) : undefined);
+  const items: DebtItem[] = file.items.map(i => {
+    const f = findingOf(findings, `item:${i.id}`);
+    // Logged on the ticket itself, else logged for its source (CCU, MDTA…), else what the letters say.
+    const plan = planFrom(f, i.plan) || (i.group === 'md' ? srcPlan(i.step, i.plan) : undefined);
+    const amount = f && f.amount !== undefined ? f.amount : i.amount;
+    return plan || amount !== i.amount ? { ...i, amount, ...(plan ? { plan } : {}) } : i;
+  });
+  const nextMarks: DebtMarks = { ...marks };
+  for (const o of ownItems(findings)) {
+    if (OWN_COUNTED_ELSEWHERE.has(o.key)) continue;
+    const reg = OWN_REGISTRATION.has(o.key);
+    items.push({
+      id: o.key,
+      group: reg ? 'md' : 'liability',
+      ...(reg ? { step: RENEWAL_STEP, blocksRegistration: true } : {}),
+      name: o.name || 'Money item',
+      amount: o.amount ?? null,
+      status: o.paid ? 'paid' : 'open',
+      plan: planFrom(o),
+      timeline: [],
+      facts: ['Typed in on Life Hub (focus card).'],
+    });
+    if (o.paid) nextMarks[o.key] = { status: 'paid', at: o.at };
+    else delete nextMarks[o.key];
+  }
+  const steps = file.registration?.steps.map(st => {
+    const plan = planFrom(findingOf(findings, `src:${st.id}`), st.plan);
+    return plan ? { ...st, plan } : st;
+  });
+  return {
+    file: { ...file, items, ...(file.registration && steps ? { registration: { ...file.registration, steps } } : {}) },
+    marks: nextMarks,
+  };
+}
+
 export function useDebtFile() {
   const [state, setState] = useState<Cached>(() => readSaved<Cached>(CACHE_KEY, { file: null, marks: {} }));
   const [status, setStatus] = useState<'loading' | 'ok' | 'locked' | 'empty' | 'offline'>('loading');
@@ -151,5 +222,18 @@ export function useDebtFile() {
     return false;
   }, []);
 
-  return { file: state.file, marks: state.marks, status, refresh: pull, setMark };
+  const findings = useFindings();
+  const shown = useMemo(() => applyFindings(state.file, state.marks, findings), [state, findings]);
+  // A hand-typed (own:) item's paid state lives with the findings, not in the Worker's marks.
+  const mark = useCallback(
+    async (id: string, m: DebtMark | null) => {
+      if (!id.startsWith('own:')) return setMark(id, m);
+      setFinding(id, { paid: m?.status === 'paid' || m?.status === 'gone' });
+      return true;
+    },
+    [setMark],
+  );
+
+  /** file / marks have Life Hub findings applied; raw / rawMarks are the Worker's copy. */
+  return { file: shown.file, marks: shown.marks, raw: state.file, rawMarks: state.marks, status, refresh: pull, setMark: mark };
 }

@@ -9,6 +9,7 @@ import {
   isSettled,
   owedOf,
   useDebtFile,
+  RENEWAL_STEP,
   type Bureau,
   type DebtFile as File,
   type DebtItem,
@@ -631,7 +632,15 @@ export function Story({
           />
         </div>
 
-        {item.step && file.registration ? (
+        {item.step === RENEWAL_STEP && file.registration ? (
+          <Block title="Where it sits in the registration">
+            <p>
+              Paid at the renewal itself, once every flag is cleared — renewal
+              due {shortDate(file.registration.due)}.
+            </p>
+          </Block>
+        ) : item.step &&
+          file.registration?.steps.some((x) => x.id === item.step) ? (
           <Block title="Where it sits in the registration">
             <p>
               Step{" "}
@@ -825,17 +834,19 @@ export function Story({
           </Block>
         ) : null}
 
-        <Block title="Letters, emails & report history">
-          <ol className="dbt-time">
-            {events.map((e, n) => (
-              <li key={n} className={`is-${e.kind}`}>
-                <time>{shortDate(e.date)}</time>
-                <i>{e.kind}</i>
-                <span>{e.text}</span>
-              </li>
-            ))}
-          </ol>
-        </Block>
+        {events.length ? (
+          <Block title="Letters, emails & report history">
+            <ol className="dbt-time">
+              {events.map((e, n) => (
+                <li key={n} className={`is-${e.kind}`}>
+                  <time>{shortDate(e.date)}</time>
+                  <i>{e.kind}</i>
+                  <span>{e.text}</span>
+                </li>
+              ))}
+            </ol>
+          </Block>
+        ) : null}
 
         {item.facts?.length ? (
           <Block title="Worth knowing">

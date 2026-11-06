@@ -8,7 +8,7 @@ import { openTaskPanel, pinKey, usePriorityPins } from '../../lib/priorityPins';
 import { DayMenu, shortDue } from './DayMenu';
 import { GestureRow } from './RowMenu';
 import { TickLogMenu } from './TickLogMenu';
-import { LOG_LABEL, useLoggedToday } from '../../lib/ticktickLog';
+import { LOG_LABEL, useTickTickOff } from '../../lib/ticktickLog';
 import { setTaskTag, TAG_SUGGESTIONS, TAGGABLE } from '../../lib/taskTags';
 import { setSelfHome } from '../../lib/adapters/self';
 import { moveItem, removeItem } from '../../lib/siteMoves';
@@ -62,7 +62,8 @@ export function TaskList({
   /** List everything (the card scrolls) instead of a short preview + Show more */
   fill?: boolean;
 }) {
-  const logged = useLoggedToday();
+  // Skipped / uncompleted / won't do today, here or in the TickTick app.
+  const logged = useTickTickOff();
   const [expandedState, setExpanded] = useState(false);
   // Row whose ☆ menu (star / give it a day) is open
   const [menuFor, setMenuFor] = useState<string | null>(null);

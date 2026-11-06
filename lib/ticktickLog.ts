@@ -4,7 +4,7 @@
  * shows the logged state at once and TickTick's next pull confirms it.
  */
 import { syncKeyHeader } from './cloudSync';
-import { loadDayLog, saveDayLog, stampOfToday, unmarkTickTickHabit } from './ticktickDone';
+import { TICKTICK_DAYLOG_EVENT, loadDayLog, saveDayLog, stampOfToday, unmarkTickTickHabit } from './ticktickDone';
 import { projectIdFromTask } from './ticktickComplete';
 import type { TaskItem } from './types';
 import { useEffect, useState } from 'react';
@@ -49,6 +49,38 @@ export function useLoggedToday(): Record<string, LogOutcome> {
     return () => window.removeEventListener(EVENT, on);
   }, []);
   return v.map;
+}
+
+/**
+ * Everything logged as not-done today, by TickTick feed id: marked here (Skip / Uncompleted / Won't do) or in the
+ * TickTick app (the feed's skipped / notDone / won't-do lists). Every list that shows a TickTick item reads this so a
+ * skipped habit is struck through everywhere, not just in the habits list.
+ */
+export function tickTickOffMap(): Record<string, LogOutcome> {
+  const m: Record<string, LogOutcome> = { ...load().map };
+  const d = loadDayLog();
+  for (const id of d.skippedHabits) m[id] ??= 'skipped';
+  for (const id of d.notDoneHabits || []) m[id] ??= 'notdone';
+  for (const id of d.wontDoTasks) m[id] ??= 'wontdo';
+  return m;
+}
+
+/** tickTickOffMap(), kept current as items are logged here or a TickTick pull lands. */
+export function useTickTickOff(): Record<string, LogOutcome> {
+  const [v, setV] = useState(tickTickOffMap);
+  useEffect(() => {
+    const on = () => setV(tickTickOffMap());
+    window.addEventListener(EVENT, on);
+    window.addEventListener(TICKTICK_DAYLOG_EVENT, on);
+    // Day rolls over while the page is open.
+    const timer = window.setInterval(on, 60_000);
+    return () => {
+      window.removeEventListener(EVENT, on);
+      window.removeEventListener(TICKTICK_DAYLOG_EVENT, on);
+      window.clearInterval(timer);
+    };
+  }, []);
+  return v;
 }
 
 export function isHabitTask(t: { id: string; kind?: string }) {

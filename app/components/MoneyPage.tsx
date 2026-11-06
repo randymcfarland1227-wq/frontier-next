@@ -22,6 +22,8 @@ import { bankRows } from './MoneyBoards';
 import { UpdateFiguresButton } from './UpdateFigures';
 import { BrandLogo } from './BrandLogo';
 import { Icon } from '../sticker/Icon';
+import { ListHead } from '../sticker/kit';
+import { useFold } from './Collapsible';
 import { useDebtFile } from '../../lib/debtFile';
 import {
   amountOf,
@@ -2023,15 +2025,13 @@ function CardCredit({ model }: { model: MoneyModel }) {
   const rows = cardRows(model, [], get)
     .filter(r => (r.avail ?? 0) > 0.009)
     .sort((a, b) => (b.avail || 0) - (a.avail || 0));
+  const [shut, toggle] = useFold('money-week-credit');
   if (!rows.length) return null;
   const total = rows.reduce((t, r) => t + (r.avail || 0), 0);
   return (
     <section className="bal-credit" aria-label="Available credit">
-      <header className="bal-head">
-        <h3>Available credit</h3>
-        <span>{money(total)} across {rows.length} card{rows.length === 1 ? '' : 's'}</span>
-      </header>
-      <ul>
+      <ListHead title="Available credit" meta={`${money(total)} across ${rows.length} card${rows.length === 1 ? '' : 's'}`} shut={shut} onToggle={toggle} />
+      {shut ? null : <ul>
         {rows.map(r => (
           <li key={r.key}>
             <button type="button" className="mny-item-link" onClick={() => panels.openCard(r.name)} title="Card details">{r.name}</button>
@@ -2042,7 +2042,7 @@ function CardCredit({ model }: { model: MoneyModel }) {
             </small>
           </li>
         ))}
-      </ul>
+      </ul>}
     </section>
   );
 }
@@ -2098,7 +2098,7 @@ function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week'
   };
 
   return (
-    <div className="bal">
+    <div className={`bal${period === 'week' && !tasks ? ' is-solo' : ''}`}>
       <section
         className={`bal-sheet${dropping ? ' is-drop' : ''}`}
         aria-label="Balancing sheet"
@@ -2249,11 +2249,12 @@ function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week'
           )}
           {firstWeek && model.balancing && !adding ? <BalancingAdd table={model.balancing} onSave={onSave} /> : null}
         </div>
+        {/* Week: available credit folds under the ledger (tasks moved above Overdue), so the ledger gets the full width. */}
+        {period === 'week' ? <CardCredit model={model} /> : null}
       </section>
 
-      <div className="bal-side">
+      {period === 'week' && !tasks ? null : <div className="bal-side">
       {tasks ? <section className="mny-tasks" aria-label="Finance tasks">{tasks}</section> : null}
-      {period === 'week' ? <CardCredit model={model} /> : null}
       {period === 'week' ? null : (
       <aside className="bal-offer" aria-label="Upcoming — add to the sheet">
         <header className="bal-head">
@@ -2349,7 +2350,7 @@ function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week'
         })()}
       </aside>
       )}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -3696,8 +3697,8 @@ export function MoneyPage({
         ) : null}
         {tab === 'flow' && flowView === 'week' ? (
           <div className="mny-stack">
-            <WeekBoard dues={dues} monthDues={monthDues} paidAt={paidAt} onPaid={onPaid} onOpen={panelApi.openDue} onAdd={k => setBalancePicks([k], true)} isAdded={k => book.plan.picks.has(k)}>
-              <BalancingSheet period="week" book={book} model={model} onSave={save} tasks={financeTasks} />
+            <WeekBoard dues={dues} monthDues={monthDues} paidAt={paidAt} onPaid={onPaid} onOpen={panelApi.openDue} onAdd={k => setBalancePicks([k], true)} isAdded={k => book.plan.picks.has(k)} tasks={financeTasks}>
+              <BalancingSheet period="week" book={book} model={model} onSave={save} />
             </WeekBoard>
             <Section tone="cash" title="Incoming funds" hint="Log money you expect; it shows up on the right to add to the sheet. Synced, not written to the sheet.">
               <IncomeSection list={incomeList} upcoming={incoming} />

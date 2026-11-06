@@ -36,6 +36,7 @@ import { mdSources, oosSources } from "./OutstandingView";
 import type { Entry, SubList, SubTask } from "./FocusSection";
 import { habitOptions, todayIso, useHabitCounts } from "../../lib/locks";
 import { linkOptions, linkStatus } from "../../lib/goalLinks";
+import { LOG_LABEL, tickTickOffMap } from "../../lib/ticktickLog";
 import { loadLedger, type CompletionLedger } from "../../lib/completions";
 import { readSaved, STORAGE_KEYS } from "../../lib/storage";
 import type { SourceSnapshot } from "../../lib/types";
@@ -430,10 +431,11 @@ function Card({
         <ul className="fc-links" aria-label="Linked TickTick actions">
           {item.links.map((l) => {
             const st = linkStatus(l, ctx.ledger);
+            const off = st.doneToday ? undefined : tickTickOffMap()[l.id];
             return (
-              <li key={l.id} className={st.doneToday ? "is-done" : ""} title={`${l.kind === "habit" ? "Habit" : "Task"} · done ${st.last7} of the last 7 days`}>
+              <li key={l.id} className={st.doneToday ? "is-done" : off ? "is-off" : ""} title={`${l.kind === "habit" ? "Habit" : "Task"} · done ${st.last7} of the last 7 days`}>
                 <span aria-hidden="true">{st.doneToday ? "✓" : "○"}</span> {l.title}
-                <small>{st.doneToday ? "today" : `${st.last7}/7`}</small>
+                <small>{st.doneToday ? "today" : off ? LOG_LABEL[off] : `${st.last7}/7`}</small>
               </li>
             );
           })}
@@ -1586,10 +1588,11 @@ function LinkedActionsBox({ item, update, ledger, ticktick }: { item: Entry; upd
         <ul className="fc-links">
           {links.map((l) => {
             const st = linkStatus(l, ledger);
+            const off = st.doneToday ? undefined : tickTickOffMap()[l.id];
             return (
-              <li key={l.id} className={st.doneToday ? "is-done" : ""}>
+              <li key={l.id} className={st.doneToday ? "is-done" : off ? "is-off" : ""}>
                 <span aria-hidden="true">{st.doneToday ? "✓" : "○"}</span> {l.title}
-                <small>{l.kind === "habit" ? "Habit" : "Task"} · {st.doneToday ? "done today" : "not yet today"} · {st.last7} of last 7 days</small>
+                <small>{l.kind === "habit" ? "Habit" : "Task"} · {st.doneToday ? "done today" : off ? `${LOG_LABEL[off]} today` : "not yet today"} · {st.last7} of last 7 days</small>
                 <button type="button" className="sk-btn is-small is-icon is-quiet" aria-label={`Unlink ${l.title}`} onClick={() => update({ links: links.filter((x) => x.id !== l.id) })}>
                   <Icon name="close" size={12} />
                 </button>

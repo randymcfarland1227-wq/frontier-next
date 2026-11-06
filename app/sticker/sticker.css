@@ -3150,3 +3150,44 @@
 .sk-ftg-fin .sk-fd-plan { flex: none; }
 .sk-ftg-headrow { display: flex; align-items: center; gap: 6px; }
 .sk-ftg-headrow .sk-ftg-head { flex: 1; min-width: 0; }
+
+/* 2026-11-06 Daily rhythm: foldable groups. Folded groups stack in one column (header only); open ones stretch down. */
+.sk-app .sk-trio.sk-rhythm { grid-template-columns: var(--rhythm-cols, minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, .8fr)); }
+@media (max-width: 1100px) { .sk-app .sk-trio.sk-rhythm { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .sk-app .sk-trio.sk-rhythm { grid-template-columns: 1fr; } }
+.sk-app .sk-rhythm-stack { display: flex; flex-direction: column; gap: var(--sk-s3, 10px); align-self: start; min-width: 0; }
+.sk-app .sk-rhythm-stack > .sk-group { margin: 0; }
+.sk-app .sk-group.is-shut > .sk-ghead { margin-bottom: 0; }
+.sk-app .sk-gfold { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.sk-app .sk-gfold .sk-hl { margin: 0; }
+.sk-app .sk-gfold:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 6px; }
+/* Skipped / uncompleted today (TickTick): struck through like done, softer. */
+.sk-app :is(.sk-daytasks, .sk-mv-today) li.is-off { color: var(--sk-ink-2); }
+.sk-app :is(.sk-daytasks, .sk-mv-today) li.is-off span { text-decoration: line-through; font-style: italic; }
+.sk-app .sk-habits li.is-skipped span { text-decoration: line-through; }
+.sk-app .sk-daytasks li .sk-habit-tag { margin-left: auto; }
+.sk-app .is-ttoff { text-decoration: line-through; color: var(--sk-ink-2); font-style: italic; }
+.sk-app .sk-tt-offtag { font: var(--sk-caption); font-style: normal; color: var(--sk-ink-2); margin-left: 6px; text-decoration: none; display: inline-block; }
+.sk-app .sk-brief-entry.is-off .sk-brief-title { text-decoration: line-through; color: var(--sk-ink-2); font-style: italic; }
+.sk-app .fc-links li.is-off { text-decoration: line-through; color: var(--sk-ink-2); font-style: italic; }
+.sk-app .fc-links li.is-off small { display: inline-block; text-decoration: none; }
+
+/* 2026-11-06 Money week board: one-line heads, no dead space under short lists, tighter rows, tasks + credit fold. */
+.sk-app .skm-head-inline { padding-block: 8px; }
+.sk-app .skm-head-inline .sk-hl { margin: 0; font-size: 17px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sk-app .skm-head-inline .sk-hl b { font: inherit; font-weight: 800; }
+.sk-app .skm-head-inline .sk-hl .sk-cap { font-size: 13px; font-weight: 500; }
+.sk-app .skm-sec.is-inline > .skm-body { padding-top: var(--sk-s2); gap: var(--sk-s2); }
+.sk-app .skw-fixed .skw-list { height: auto; max-height: 240px; overflow-y: auto; }
+.sk-app .skw-left { container-type: inline-size; align-content: start; }
+.sk-app .skw-line .sk-btn { min-height: 22px; padding: 0 7px; font-size: 11.5px; }
+@container (max-width: 460px) {
+  .skw-line, .skw-head { grid-template-columns: minmax(0, 1fr) 58px 44px 26px auto !important; gap: 3px !important; }
+  .skw-line { padding: 2px 3px 2px 6px !important; font-size: 13px !important; }
+  .skw-head { padding: 0 3px 3px 9px !important; }
+  .skw-line .sk-btn { min-height: 20px !important; padding: 0 5px !important; font-size: 11px !important; }
+}
+.sk-app .skw-tasks { display: grid; gap: 6px; min-width: 0; }
+.sk-app .skw-tasks > :not(.sk-listh) { margin: 0; }
+.bal.is-solo { grid-template-columns: minmax(0, 1fr); }
+.sk-app .bal-credit .sk-listh { margin-bottom: 0; }

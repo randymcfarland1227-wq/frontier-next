@@ -47,6 +47,8 @@ import { loadLifeSubs, updateLifeSub, type LifeSub } from "../../lib/lifeSubs";
 import { isLedgerPaid, ledgerMonthRows } from "../../lib/moneyLedger";
 import { MenuRow } from "./RowMenu";
 import { Icon } from "../sticker/Icon";
+import { ListHead } from "../sticker/kit";
+import { useFold } from "./Collapsible";
 import { readSaved, writeSaved } from "../../lib/storage";
 
 export type CellView = (c: Cell | undefined, placeholder?: string) => ReactNode;
@@ -92,6 +94,7 @@ function Box({
   figureLabel,
   hint,
   className = "",
+  inline,
   children,
 }: {
   tone: string;
@@ -100,8 +103,23 @@ function Box({
   figureLabel?: string;
   hint?: string;
   className?: string;
+  /** One-line head: "Overdue · $680.65 · 4 not paid" (week board). */
+  inline?: boolean;
   children: ReactNode;
 }) {
+  if (inline)
+    return (
+      <section className={`sk-group tone-${tone} skm-sec is-inline ${className}`}>
+        <header className="sk-ghead skm-head skm-head-inline">
+          <h2 className="sk-hl">
+            {title}
+            {figure !== undefined ? <> · <b>{figure}</b></> : null}
+            {figureLabel ? <span className="sk-cap"> · {figureLabel}</span> : null}
+          </h2>
+        </header>
+        <div className="sk-gbody skm-body">{children}</div>
+      </section>
+    );
   return (
     <section className={`sk-group tone-${tone} skm-sec ${className}`}>
       <header className="sk-ghead skm-head">
@@ -1115,6 +1133,17 @@ function WeekLine({
   );
 }
 
+/** Finance tasks above Overdue on the week board, folded to one line when you want (remembered). */
+function WeekTasks({ children }: { children: ReactNode }) {
+  const [shut, toggle] = useFold("money-week-tasks");
+  return (
+    <section className="skw-tasks" aria-label="Finance tasks">
+      <ListHead title="Finance tasks" shut={shut} onToggle={toggle} />
+      {shut ? null : children}
+    </section>
+  );
+}
+
 export function WeekBoard({
   dues,
   monthDues,
@@ -1123,8 +1152,11 @@ export function WeekBoard({
   onOpen,
   onAdd,
   isAdded,
+  tasks,
   children,
 }: {
+  /** Finance tasks card, shown first in the left column as a foldable list. */
+  tasks?: ReactNode;
   dues: BillDue[];
   monthDues: BillDue[];
   paidAt: Record<string, string>;
@@ -1215,6 +1247,7 @@ export function WeekBoard({
       </section>
       <div className="skw-grid">
         <div className="skw-left">
+          {tasks ? <WeekTasks>{tasks}</WeekTasks> : null}
           {overdue.length ? (
             <Box
               tone="owed"
@@ -1222,6 +1255,7 @@ export function WeekBoard({
               figure={usd(lateSum)}
               figureLabel={`${overdue.length} not paid`}
               className="skw-fixed"
+              inline
             >
               <div className="skw-head is-late">
                 <span>Bill</span>
@@ -1252,6 +1286,7 @@ export function WeekBoard({
             figure={usd(sumOf(thisWeek.map((d) => d.bill.amount)))}
             figureLabel={`${thisWeek.length} through Sun`}
             className="skw-fixed"
+            inline
           >
             {onAdd && thisWeek.some((d) => !isAdded?.(d.key)) ? (
               <button

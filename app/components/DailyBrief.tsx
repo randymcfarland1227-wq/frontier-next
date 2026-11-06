@@ -19,6 +19,7 @@ import { FocusEntryDialog, type LinkItem, type OpenFinance } from './FocusCards'
 import type { Entry, useShortTermFocus } from './FocusSection';
 import { sourceById } from '../../lib/sources';
 import { focusCollections } from '../../lib/focusRouting';
+import { LOG_LABEL, useTickTickOff } from '../../lib/ticktickLog';
 
 const SEEN_KEY = 'lifehub-brief-seen';
 const DISMISS_KEY = 'lifehub-brief-dismissed';
@@ -78,11 +79,13 @@ const SHORT: Record<BriefSection['id'], [string, string]> = {
 export function useBrief(snapshots: Record<SourceId, SourceSnapshot>, bills: BillDue[]) {
   const gone = useDismissed();
   const day = useDayKey();
+  const ttOff = useTickTickOff();
   return useMemo(
     () =>
       buildBrief(snapshots, bills, new Date(`${day}T12:00:00`))
+        .map(s => ({ ...s, rows: s.rows.map(r => (r.pin?.startsWith('ticktick:') && ttOff[r.pin.slice(9)] ? { ...r, off: LOG_LABEL[ttOff[r.pin.slice(9)]] } : r)) }))
         .map(s => ({ ...s, rows: s.rows.filter(r => !gone[r.id] && (s.id !== 'tasks' || r.tone === 'today')) })),
-    [snapshots, bills, gone, day],
+    [snapshots, bills, gone, day, ttOff],
   );
 }
 
@@ -104,7 +107,7 @@ const whenLabel = (d: Date) => {
   const n = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime()) / 86400000);
   return n <= 0 ? 'Today' : n === 1 ? 'Tomorrow' : `in ${n} days`;
 };
-type BRow = { id: string; title: string; note: string; tone?: string; pin?: string; go?: SpaceId; mix?: string; focusId?: string; priority?: FocusPriority; marker?: string; when?: string; finish?: () => void };
+type BRow = { id: string; title: string; note: string; tone?: string; pin?: string; go?: SpaceId; mix?: string; focusId?: string; priority?: FocusPriority; marker?: string; when?: string; finish?: () => void; off?: string };
 type BCol = { id: string; title: string; rows: BRow[]; compact?: boolean; keepAll?: boolean; empty: string };
 
 export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, openFinance, complete }: {
@@ -119,6 +122,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
   complete?: (source: SourceId, item: PriorityItem) => void;
 }) {
   const sections = useBrief(snapshots, bills);
+  const briefOff = useTickTickOff();
   const gone = useDismissed();
   const { plan, lanes } = usePlan(snapshots, bills);
   const { isCritical, toggleCritical } = useFeaturedLevels();
@@ -190,15 +194,17 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
         {cols.map(s => <section key={s.id} className={`sk-brief-section${s.compact ? ' is-compact' : ''}${s.id === 'doing' ? ' is-numbered' : ''}`} aria-label={s.title}>
           <ListHead title={s.title} meta={s.rows.length} shut={Boolean(folds[s.id])} onToggle={() => toggle(s.id)} />
           {folds[s.id] ? null : <>
-            {s.rows.length ? <ul className="sk-brief-items">{s.rows.map(r => {
+            {s.rows.length ? <ul className="sk-brief-items">{s.rows.map(r0 => {
+              const ttId = r0.pin?.startsWith('ticktick:') ? r0.pin.slice(9) : '';
+              const r = !r0.off && ttId && briefOff[ttId] ? { ...r0, off: LOG_LABEL[briefOff[ttId]] } : r0;
               const isNew = !s.keepAll && !seen.includes(r.id);
               const open = r.id.startsWith('bill:') ? () => openMoneyDue(r.id.slice(5)) : r.mix ? () => requestOpenMix(r.mix!) : r.focusId ? () => setOpenFocusId(r.focusId!) : r.pin ? () => openTaskPanel(r.pin!) : r.go ? () => enter(r.go!) : undefined;
-              return <li key={r.id} className="sk-brief-entry" data-focus-priority={r.priority}>
+              return <li key={r.id} className={`sk-brief-entry${r.off ? ' is-off' : ''}`} data-focus-priority={r.priority}>
                 {open ? <button type="button" className="sk-brief-open" onClick={open} title={[r.title, r.note, r.priority ? FOCUS_PRIORITY_LABEL[r.priority] : ''].filter(Boolean).join(' · ')}>
                   <span className="sk-brief-title">{isNew && !s.compact ? <Dot tone="needs" hint="New since you last looked" /> : null}{r.marker ? <span className="sk-brief-kind">{r.marker}</span> : null}{r.title}{r.when ? <em className="sk-brief-when">{r.when}</em> : null}</span>
-                  {r.note ? <small>{r.note}</small> : null}
+                  {r.note || r.off ? <small>{[r.off, r.note].filter(Boolean).join(' · ')}</small> : null}
                 </button> : <span className="sk-brief-open"><span className="sk-brief-title">{r.title}{r.when ? <em className="sk-brief-when">{r.when}</em> : null}</span><small>{r.note}</small></span>}
-                {r.finish ? <span className="sk-brief-done"><Circle onDone={r.finish} label={`Done: ${r.title}`} /></span> : null}
+                {r.finish && !r.off ? <span className="sk-brief-done"><Circle onDone={r.finish} label={`Done: ${r.title}`} /></span> : null}
                 {s.keepAll ? null : <button type="button" className="sk-brief-clear" aria-label={`Clear ${r.title} from today’s brief`} title="Clear from today’s brief (it can come back tomorrow)" onClick={() => dismissIds([r.id])}><Icon name="close" size={12} /></button>}
               </li>;
             })}</ul> : <p className="sk-brief-empty">{s.empty}</p>}

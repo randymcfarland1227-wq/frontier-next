@@ -57,6 +57,8 @@ export function Group({
   meta,
   actions,
   className,
+  shut,
+  onToggle,
   children,
 }: {
   tone: Tone;
@@ -65,21 +67,35 @@ export function Group({
   meta?: ReactNode;
   actions?: ReactNode;
   className?: string;
+  /** Foldable group: `onToggle` makes the title a fold button; `shut` hides the body (header only). */
+  shut?: boolean;
+  onToggle?: () => void;
   children: ReactNode;
 }) {
   const zoom = useContext(PaneZoomContext);
+  const folded = Boolean(onToggle && shut);
   return (
-    <div className={`sk-group tone-${tone}${className ? ` ${className}` : ''}`}>
+    <div className={`sk-group tone-${tone}${onToggle ? ' is-foldable' : ''}${folded ? ' is-shut' : ''}${className ? ` ${className}` : ''}`}>
       {title ? (
         <div className="sk-ghead">
-          {icon ? <Icon name={icon} /> : null}
-          <h3 className="sk-hl">{title}</h3>
+          {onToggle ? (
+            <button type="button" className="sk-gfold" aria-expanded={!folded} onClick={onToggle} title={folded ? 'Open' : 'Fold up'}>
+              <Icon name={folded ? 'chevron' : 'chevronDown'} size={14} />
+              {icon ? <Icon name={icon} /> : null}
+              <h3 className="sk-hl">{title}</h3>
+            </button>
+          ) : (
+            <>
+              {icon ? <Icon name={icon} /> : null}
+              <h3 className="sk-hl">{title}</h3>
+            </>
+          )}
           {zoom ? <PaneZoomButtons {...zoom} /> : null}
           {meta ? <span className="sk-sec sk-ghead-meta">{meta}</span> : null}
           {actions ? <span className="sk-ghead-actions">{actions}</span> : null}
         </div>
       ) : null}
-      <div className="sk-gbody">{zoom ? <PaneZoomContext.Provider value={null}>{children}</PaneZoomContext.Provider> : children}</div>
+      {folded ? null : <div className="sk-gbody">{zoom ? <PaneZoomContext.Provider value={null}>{children}</PaneZoomContext.Provider> : children}</div>}
     </div>
   );
 }

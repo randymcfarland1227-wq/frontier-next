@@ -18,6 +18,8 @@ export type BriefRow = {
   go: SourceId | 'money';
   /** Pin key, when the row is a task the side panel can open */
   pin?: string;
+  /** Logged skipped / uncompleted / won't do today in TickTick: shown struck through. */
+  off?: string;
 };
 export type BriefSection = { id: 'money' | 'tasks' | 'mail' | 'roles' | 'sales'; label: string; rows: BriefRow[] };
 

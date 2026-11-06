@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Circle, Group, ListHead, Section } from "../sticker/kit";
 import { useFold } from "./Collapsible";
 import { FocusCards, useFinSummary, type LinkItem, type OpenFinance } from "./FocusCards";
@@ -14,7 +14,7 @@ import { mondayScope, stampChanges } from "../../lib/focusSync";
 import { dayRecord, localDayKey, useDayKey } from "../../lib/dayKey";
 import { isReopened, type CompletionLedger } from "../../lib/completions";
 import { tickTickToday } from "../../lib/tickTickToday";
-import { clearTickTickLog, logTickTick, useLoggedToday } from "../../lib/ticktickLog";
+import { LOG_LABEL, clearTickTickLog, logTickTick, useLoggedToday, useTickTickOff, type LogOutcome } from "../../lib/ticktickLog";
 import { loadDayLog, TICKTICK_DAYLOG_EVENT } from "../../lib/ticktickDone";
 import { useSiteLists } from "../../lib/siteLists";
 import type { FocusPriority } from "../../lib/focusPriority";
@@ -258,15 +258,19 @@ const MARVEL_MENU: {
 ];
 type MarvelPicks = Record<string, { pick?: string; done?: boolean }>;
 
-/** Today's tasks and habits for an area (from TickTick), struck through once done. */
-function DayTasks({ tasks }: { tasks: { title: string; done: boolean }[] }) {
+type DayTask = { title: string; done: boolean; off?: LogOutcome };
+const dayRowClass = (t: DayTask) => (t.done ? "is-done" : t.off ? "is-off" : "");
+
+/** Today's tasks and habits for an area (from TickTick), struck through once done, skipped or uncompleted. */
+function DayTasks({ tasks }: { tasks: DayTask[] }) {
   if (!tasks.length) return <p className="sk-empty">Nothing today</p>;
   return (
     <ul className="sk-daytasks" aria-label="Today's tasks and habits">
       {tasks.map((t) => (
-        <li key={t.title} className={t.done ? "is-done" : ""}>
+        <li key={t.title} className={dayRowClass(t)}>
           <Icon name={t.done ? "check" : "minus"} size={13} />
           <span>{t.title}</span>
+          {t.off ? <em className="sk-habit-tag">{LOG_LABEL[t.off]}</em> : null}
         </li>
       ))}
     </ul>
@@ -432,25 +436,26 @@ function TickTickHabits({
 }
 
 /** Today's Marvel tasks and habits from TickTick, above the menu, each marked done or not. */
-function MarvelToday({ tasks }: { tasks: { title: string; done: boolean }[] }) {
+function MarvelToday({ tasks }: { tasks: DayTask[] }) {
   const [shut, toggle] = useShut("focus-marvel-today");
   if (!tasks.length) return null;
   const done = tasks.filter((t) => t.done).length;
+  const off = tasks.filter((t) => !t.done && t.off).length;
   return (
     <div className="sk-mv-today">
       <ListHead
         title="Marvel today"
-        meta={`${done} of ${tasks.length} done`}
+        meta={`${done} of ${tasks.length} done${off ? ` · ${off} skipped` : ""}`}
         shut={shut}
         onToggle={toggle}
       />
       {shut ? null : (
         <ul>
           {tasks.map((t) => (
-            <li key={t.title} className={t.done ? "is-done" : ""}>
+            <li key={t.title} className={dayRowClass(t)}>
               <Icon name={t.done ? "check" : "minus"} size={13} />
               <span>{t.title}</span>
-              <em>{t.done ? "done" : "not yet"}</em>
+              <em>{t.done ? "done" : t.off ? LOG_LABEL[t.off] : "not yet"}</em>
             </li>
           ))}
         </ul>
@@ -661,89 +666,119 @@ export function FocusSection({
     {},
   );
   const [daysShut, toggleDays] = useShut("focus-fit-today");
-  const fitToday = tickTickToday(
-    FITNESS_RE,
-    snapshots?.ticktick,
-    ledger,
-    day,
-  ).filter(notMarvel);
-  const nutToday = tickTickToday(
-    NUTRITION_RE,
-    snapshots?.ticktick,
-    ledger,
-    day,
-  ).filter(notMarvel);
+  // Skipped / uncompleted today (here or in the TickTick app) shows struck through in every group, not just Habits.
+  const off = useTickTickOff();
+  const habitName = (id: string) => HABIT_NAMES.get(id);
+  const fitToday = tickTickToday(FITNESS_RE, snapshots?.ticktick, ledger, day, off, habitName).filter(notMarvel);
+  const nutToday = tickTickToday(NUTRITION_RE, snapshots?.ticktick, ledger, day, off, habitName).filter(notMarvel);
+  const marvelToday = tickTickToday(/marvel/i, snapshots?.ticktick, ledger, day, off, habitName);
+  const [nfShut, toggleNf] = useFold("rhythm-nutrition");
+  const [mvShut, toggleMv] = useFold("rhythm-marvel");
+  const [hbShut, toggleHb] = useFold("rhythm-habits");
   const marvelDone = MARVEL_MENU.filter((g) => picks[g.id]?.done).length;
   const habitsOpen = (snapshots?.ticktick?.tasks || []).filter((t) => isHabit(t) && t.status !== "done").length;
   const summary = `${water} of ${BOTTLES} bottles · Marvel ${marvelDone} of ${MARVEL_MENU.length}`;
+  // Each group folds to its header (remembered). Folded groups stack in one column, at the spot of the first
+  // folded one; open groups take a column each and stretch to the bottom of the row.
+  const groups: Array<{ id: string; shut: boolean; weight: number; el: ReactNode }> = [
+    { id: "nutrition", shut: nfShut, weight: 1.2, el: (
+    <Group
+      shut={nfShut}
+      onToggle={toggleNf}
+      tone="habit"
+      icon="apple"
+      title="Nutrition & Fitness"
+      meta={`${water} of ${BOTTLES} bottles`}
+    >
+      <div className="sk-mv-today sk-day-panel">
+        <ListHead
+          title="Today’s tasks & habits"
+          meta={`${fitToday.filter((t) => t.done).length + nutToday.filter((t) => t.done).length} of ${fitToday.length + nutToday.length} done${[...fitToday, ...nutToday].some((t) => !t.done && t.off) ? ` · ${[...fitToday, ...nutToday].filter((t) => !t.done && t.off).length} skipped` : ""}`}
+          shut={daysShut}
+          onToggle={toggleDays}
+        />
+        {daysShut ? null : (
+          <div className="sk-daysplit" aria-label="Today's tasks and habits">
+            <div>
+              <p className="sk-cap">Fitness today</p>
+              <DayTasks tasks={fitToday} />
+            </div>
+            <div>
+              <p className="sk-cap">Nutrition today</p>
+              <DayTasks tasks={nutToday} />
+            </div>
+          </div>
+        )}
+      </div>
+      <ListHead title="Nutrition focus" />
+      <FocusCards list={nutritionLists[3]} extra={nutritionLists.filter((_, i) => i !== 3)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'nutrition', ongoing: true }} label="Add a nutrition focus" empty="Add what you’re working on with nutrition." />
+      <button
+        type="button"
+        className="sk-link sk-fc-log"
+        onClick={() => enter("logs")}
+      >
+        Log in the tracker
+        <Icon name="chevron" size={14} />
+      </button>
+      <ListHead title="Fitness focus" />
+      <FocusCards list={fitnessLists[4]} extra={fitnessLists.filter((_, i) => i !== 4)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'fitness', ongoing: true, push: 2, since: localDayKey() }} label="Add a fitness focus" empty="Add what you’re working on with fitness." />
+      <ListHead title="Drink tracker" />
+      <Water water={water} setWater={setWater} />
+    </Group>
+    ) },
+    { id: "marvel", shut: mvShut, weight: 1, el: (
+    <Group
+      shut={mvShut}
+      onToggle={toggleMv}
+      tone="marvel"
+      icon="paw"
+      title="Marvel · This or That"
+      meta={`${marvelDone} of ${MARVEL_MENU.length}`}
+    >
+      <MarvelToday tasks={marvelToday} />
+      <ListHead title="Short-term goals" />
+      <FocusCards list={marvelLists[5]} extra={marvelLists.filter((_, i) => i !== 5)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'marvel', ongoing: true }} label="Add a Marvel focus" empty="Add what you’re working on with Marvel right now." />
+      <ListHead title="This or that" />
+      <MarvelMenu st={picks} setSt={setPicks} />
+    </Group>
+    ) },
+    { id: "habits", shut: hbShut, weight: 0.8, el: (
+    <Group
+      shut={hbShut}
+      onToggle={toggleHb}
+      tone="habit"
+      icon="repeat"
+      title="TickTick habits"
+      meta={`${habitsOpen} left today`}
+    >
+      <TickTickHabits ticktick={snapshots?.ticktick} ledger={ledger} day={day} complete={completeHabit} />
+    </Group>
+    ) },
+  ];
+  const cols: Array<{ key: string; weight: number; shut: boolean; els: ReactNode[] }> = [];
+  let stack: (typeof cols)[number] | null = null;
+  for (const grp of groups) {
+    const el = <Fragment key={grp.id}>{grp.el}</Fragment>;
+    if (!grp.shut) cols.push({ key: grp.id, weight: grp.weight, shut: false, els: [el] });
+    else if (stack) stack.els.push(el);
+    else {
+      stack = { key: "shut", weight: 0.7, shut: true, els: [el] };
+      cols.push(stack);
+    }
+  }
+  const template = cols.map((c) => (c.shut ? "minmax(200px, .55fr)" : `minmax(0, ${c.weight}fr)`)).join(" ");
   return (
     <Section id="focus" title="Daily Rhythm & Routine" summary={summary}>
-      <div className="sk-trio sk-rhythm" data-day={day}>
-        <Group
-          tone="habit"
-          icon="apple"
-          title="Nutrition & Fitness"
-          meta={`${water} of ${BOTTLES} bottles`}
-        >
-          <div className="sk-mv-today sk-day-panel">
-            <ListHead
-              title="Today’s tasks & habits"
-              meta={`${fitToday.filter((t) => t.done).length + nutToday.filter((t) => t.done).length} of ${fitToday.length + nutToday.length} done`}
-              shut={daysShut}
-              onToggle={toggleDays}
-            />
-            {daysShut ? null : (
-              <div className="sk-daysplit" aria-label="Today's tasks and habits">
-                <div>
-                  <p className="sk-cap">Fitness today</p>
-                  <DayTasks tasks={fitToday} />
-                </div>
-                <div>
-                  <p className="sk-cap">Nutrition today</p>
-                  <DayTasks tasks={nutToday} />
-                </div>
-              </div>
-            )}
-          </div>
-          <ListHead title="Nutrition focus" />
-          <FocusCards list={nutritionLists[3]} extra={nutritionLists.filter((_, i) => i !== 3)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'nutrition', ongoing: true }} label="Add a nutrition focus" empty="Add what you’re working on with nutrition." />
-          <button
-            type="button"
-            className="sk-link sk-fc-log"
-            onClick={() => enter("logs")}
-          >
-            Log in the tracker
-            <Icon name="chevron" size={14} />
-          </button>
-          <ListHead title="Fitness focus" />
-          <FocusCards list={fitnessLists[4]} extra={fitnessLists.filter((_, i) => i !== 4)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'fitness', ongoing: true, push: 2, since: localDayKey() }} label="Add a fitness focus" empty="Add what you’re working on with fitness." />
-          <ListHead title="Drink tracker" />
-          <Water water={water} setWater={setWater} />
-        </Group>
-
-        <Group
-          tone="marvel"
-          icon="paw"
-          title="Marvel · This or That"
-          meta={`${marvelDone} of ${MARVEL_MENU.length}`}
-        >
-          <MarvelToday
-            tasks={tickTickToday(/marvel/i, snapshots?.ticktick, ledger, day)}
-          />
-          <ListHead title="Short-term goals" />
-          <FocusCards list={marvelLists[5]} extra={marvelLists.filter((_, i) => i !== 5)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'marvel', ongoing: true }} label="Add a Marvel focus" empty="Add what you’re working on with Marvel right now." />
-          <ListHead title="This or that" />
-          <MarvelMenu st={picks} setSt={setPicks} />
-        </Group>
-
-        <Group
-          tone="habit"
-          icon="repeat"
-          title="TickTick habits"
-          meta={`${habitsOpen} left today`}
-        >
-          <TickTickHabits ticktick={snapshots?.ticktick} ledger={ledger} day={day} complete={completeHabit} />
-        </Group>
+      <div className="sk-trio sk-rhythm" data-day={day} style={{ "--rhythm-cols": template } as CSSProperties}>
+        {cols.map((c) =>
+          c.shut ? (
+            <div key={c.key} className="sk-rhythm-stack">
+              {c.els}
+            </div>
+          ) : (
+            c.els
+          ),
+        )}
       </div>
     </Section>
   );

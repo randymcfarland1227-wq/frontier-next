@@ -50,6 +50,7 @@ import { removeItem } from "../../lib/siteMoves";
 import { renameSelfItem } from "../../lib/adapters/self";
 import { completeFocusPin, focusPinItems, isFocusPinId } from "../../lib/focusPins";
 import { FOCUS_LIST_EVENT } from "../../lib/ongoingGoals";
+import { LOG_LABEL, useTickTickOff } from "../../lib/ticktickLog";
 
 /** Self's stand-in detail for starred items with no note — not worth a subtext line. */
 const FILLER_DETAIL = "Captured in Self inbox";
@@ -199,6 +200,8 @@ export function PriorityBoard({
   const ledgerNow = useMemo(() => loadLedger(), [snapshots, lanes]); // eslint-disable-line react-hooks/exhaustive-deps
   const habitLocks = Object.values(lanes).flatMap((e) => (e?.lock?.kind === "habit" ? [{ habitId: e.lock.habitId, from: e.lock.from }] : []));
   const habitCount = useHabitCounts(habitLocks);
+  // TickTick items skipped / uncompleted / won't do today read struck through here too.
+  const ttOff = useTickTickOff();
   const lockOf = (key: string): LockState | undefined => {
     const l = lanes[key]?.lock;
     return l ? lockState(l, { ledger: ledgerNow, lists: sl.store, count: habitCount }) : undefined;
@@ -435,7 +438,14 @@ export function PriorityBoard({
             .filter(Boolean)
             .join(" — ")}
         >
-          <span className="sk-rt">{item.title}</span>
+          {item.source === "ticktick" && ttOff[item.id] ? (
+            <span className="sk-rt">
+              <span className="is-ttoff">{item.title}</span>
+              <em className="sk-tt-offtag">{LOG_LABEL[ttOff[item.id]]}</em>
+            </span>
+          ) : (
+            <span className="sk-rt">{item.title}</span>
+          )}
           {hasSub ? (
             <span className="sk-rs sk-facts">
               {level ? <Dot tone={level} hint={`Level: ${level}`} /> : null}

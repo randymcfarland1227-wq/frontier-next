@@ -12,7 +12,7 @@ import { FOCUS_LIST_EVENT, ONGOING_KEY } from "../../lib/ongoingGoals";
 import type { HabitGoal } from "../../lib/locks";
 import { mondayScope, stampChanges } from "../../lib/focusSync";
 import { dayRecord, localDayKey, useDayKey } from "../../lib/dayKey";
-import type { CompletionLedger } from "../../lib/completions";
+import { isReopened, type CompletionLedger } from "../../lib/completions";
 import { tickTickToday } from "../../lib/tickTickToday";
 import { clearTickTickLog, logTickTick, useLoggedToday } from "../../lib/ticktickLog";
 import { loadDayLog, TICKTICK_DAYLOG_EVENT } from "../../lib/ticktickDone";
@@ -22,6 +22,8 @@ import type { FocusRef } from "../../lib/focusRefs";
 import { activePursuits, type GoalLink } from "../../lib/goalLinks";
 import { assignedFocusLists, focusListView, type FocusSectionId } from "../../lib/focusRouting";
 import flowMap from "../../public/data/flow-map.json";
+import { DECK, pinKey, placePin, unpin, usePriorityPins, type LaneMap } from "../../lib/priorityPins";
+import { focusListId, focusTaskId } from "../../lib/focusPins";
 
 type Snaps = Record<SourceId, SourceSnapshot>;
 
@@ -340,6 +342,7 @@ function TickTickHabits({
     .filter(
       ([k, e]) =>
         e.source === "ticktick" &&
+        !isReopened(e) &&
         (k.split("::").length === 3 || e.taskId.startsWith("habit-")) &&
         !openIds.has(e.taskId) &&
         localDayKey(new Date(e.completedAt)) === day,
@@ -746,68 +749,109 @@ export function FocusSection({
   );
 }
 
+/** Send-to-Doing-Now toggle for a focus list or task (pinned under Self, see lib/focusPins.ts). */
+function SendToDoing({ id, label, lanes }: { id: string; label: string; lanes: LaneMap }) {
+  const key = pinKey("self", id);
+  const on = Boolean(lanes[key]?.lane);
+  return (
+    <button
+      type="button"
+      className={`sk-ftg-pin${on ? " is-on" : ""}`}
+      aria-pressed={on}
+      title={on ? `In Doing Now — click to take “${label}” out` : `Send “${label}” to Doing Now`}
+      aria-label={on ? `Take ${label} out of Doing Now` : `Send ${label} to Doing Now`}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (on) unpin(key);
+        else placePin(key, DECK);
+      }}
+    >
+      <Icon name="pin" size={12} />
+      {on ? <span>Doing</span> : null}
+    </button>
+  );
+}
+
 /** One short-term focus card's sub-list tasks, folded or open (fold state remembered per card). */
-function FocusTaskGroup({ card, tag, onToggle }: { card: Entry; tag: string; onToggle: (listId: string, taskId: string) => void }) {
+function FocusTaskGroup({ card, code, tag, lanes, onToggle }: { card: Entry; code: string; tag: string; lanes: LaneMap; onToggle: (listId: string, taskId: string) => void }) {
   const [collapsed, toggle] = useFold(`self-focus-${card.id}`);
-  const rows = (card.lists || []).flatMap((l) => l.tasks.filter((t) => !t.fin).map((t) => ({ l, t })));
-  const open = rows.filter((r) => !r.t.done);
-  const done = rows.filter((r) => r.t.done);
+  const lists = (card.lists || []).map((l) => ({ l, tasks: l.tasks.filter((t) => !t.fin) })).filter((x) => x.tasks.length);
+  const open = lists.reduce((n, x) => n + x.tasks.filter((t) => !t.done).length, 0);
+  const done = lists.reduce((n, x) => n + x.tasks.filter((t) => t.done).length, 0);
   return (
     <div className={`sk-ftg${collapsed ? " is-folded" : ""}`}>
       <button type="button" className="sk-ftg-head" aria-expanded={!collapsed} onClick={toggle}>
         <span className="sk-ftg-caret" aria-hidden="true">{collapsed ? "▸" : "▾"}</span>
         <span className="sk-ftg-title">{card.title}</span>
-        <span className="sk-ftg-meta">{tag} · {open.length ? `${open.length} open` : "all done"}{done.length ? ` · ${done.length} done` : ""}</span>
+        <span className="sk-ftg-meta">{tag} · {open ? `${open} open` : "all done"}{done ? ` · ${done} done` : ""}</span>
       </button>
-      {collapsed ? null : (
-        <ul className="sk-ftg-list">
-          {[...open, ...done].map(({ l, t }) => (
-            <li key={`${l.id}:${t.id}`} className={t.done ? "is-done" : ""}>
-              <button
-                type="button"
-                className={`sk-circle${t.done ? " is-on" : ""}`}
-                aria-pressed={t.done}
-                aria-label={`Mark ${t.text} ${t.done ? "not done" : "done"}`}
-                onClick={() => onToggle(l.id, t.id)}
-              >
-                <Icon name="check" size={12} />
-              </button>
-              <span className="sk-ftg-text">{t.text}</span>
-              {(card.lists || []).length > 1 ? <span className="sk-ftg-list-name">{l.name}</span> : null}
-              {t.due ? <span className="sk-ftg-due">{new Date(`${t.due}T12:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span> : null}
-            </li>
-          ))}
-        </ul>
-      )}
+      {collapsed ? null : lists.map(({ l, tasks }) => {
+        const left = tasks.filter((t) => !t.done);
+        const ordered = [...left, ...tasks.filter((t) => t.done)];
+        return (
+          <div key={l.id} className="sk-ftg-sub">
+            <div className="sk-ftg-subhead">
+              <span className="sk-ftg-subname">{l.name}</span>
+              <span className="sk-ftg-subcount">{left.length ? `${left.length} open` : "done"}</span>
+              {left.length ? <SendToDoing id={focusListId(code, card.id, l.id)} label={`${card.title} · ${l.name}`} lanes={lanes} /> : null}
+            </div>
+            <ul className="sk-ftg-list">
+              {ordered.map((t) => (
+                <li key={t.id} className={t.done ? "is-done" : ""}>
+                  <button
+                    type="button"
+                    className={`sk-circle${t.done ? " is-on" : ""}`}
+                    aria-pressed={t.done}
+                    aria-label={`Mark ${t.text} ${t.done ? "not done" : "done"}`}
+                    onClick={() => onToggle(l.id, t.id)}
+                  >
+                    <Icon name="check" size={12} />
+                  </button>
+                  <span className="sk-ftg-text">{t.text}</span>
+                  {t.due ? <span className="sk-ftg-due">{new Date(`${t.due}T12:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span> : null}
+                  {t.done ? null : <SendToDoing id={focusTaskId(code, card.id, l.id, t.id)} label={t.text} lanes={lanes} />}
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-/** Self tab: the tasks inside each Short-term focus card, grouped by card. Same records as the cards, so checking one here checks it there. */
-export function FocusTaskBoard() {
+/** Self tab / Self site card: the tasks inside each Short-term focus card, grouped by card. Same records as the cards, so checking one here checks it there. */
+export function FocusTaskBoard({ compact }: { compact?: boolean } = {}) {
   const [now, saveNow] = useFocusList("lifehub-focus-now2");
   const [weeks, saveWeeks] = useFocusList("lifehub-focus-weeks2");
   const [ongoing, saveOngoing] = useFocusList(ONGOING_KEY);
-  const groups: Array<{ card: Entry; tag: string; items: Entry[]; save: (e: Entry[]) => void }> = [
-    ...now.map((card) => ({ card, tag: "Right now", items: now, save: saveNow })),
-    ...weeks.map((card) => ({ card, tag: "Next few weeks", items: weeks, save: saveWeeks })),
-    ...ongoing.filter((c) => c.inFocus).map((card) => ({ card, tag: "Ongoing", items: ongoing, save: saveOngoing })),
+  const { lanes } = usePriorityPins();
+  const groups: Array<{ card: Entry; code: string; tag: string; items: Entry[]; save: (e: Entry[]) => void }> = [
+    ...now.map((card) => ({ card, code: "n", tag: "Right now", items: now, save: saveNow })),
+    ...weeks.map((card) => ({ card, code: "w", tag: "Next few weeks", items: weeks, save: saveWeeks })),
+    ...ongoing.filter((c) => c.inFocus).map((card) => ({ card, code: "o", tag: "Ongoing", items: ongoing, save: saveOngoing })),
   ].filter((g) => !g.card.done && (g.card.lists || []).some((l) => l.tasks.some((t) => !t.fin)));
   const openCount = groups.reduce((n, g) => n + (g.card.lists || []).reduce((m, l) => m + l.tasks.filter((t) => !t.fin && !t.done).length, 0), 0);
   return (
-    <section className="self-focus-tasks">
-      <div className="ledger-heading">
-        <div>
-          <p className="section-label">Short-term focus</p>
-          <h2>Focus tasks · {openCount}</h2>
+    <section className={`self-focus-tasks${compact ? " is-compact" : ""}`}>
+      {compact ? (
+        <p className="task-split-label">Focus tasks · {openCount}</p>
+      ) : (
+        <div className="ledger-heading">
+          <div>
+            <p className="section-label">Short-term focus</p>
+            <h2>Focus tasks · {openCount}</h2>
+          </div>
         </div>
-      </div>
+      )}
       {groups.length ? (
         groups.map((g) => (
           <FocusTaskGroup
             key={g.card.id}
             card={g.card}
+            code={g.code}
             tag={g.tag}
+            lanes={lanes}
             onToggle={(listId, taskId) =>
               g.save(g.items.map((c) => (c.id !== g.card.id ? c : {
                 ...c,

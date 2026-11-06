@@ -48,6 +48,8 @@ import { Icon } from "../sticker/Icon";
 import { openSiteList, useSiteLists } from "../../lib/siteLists";
 import { removeItem } from "../../lib/siteMoves";
 import { renameSelfItem } from "../../lib/adapters/self";
+import { completeFocusPin, focusPinItems, isFocusPinId } from "../../lib/focusPins";
+import { FOCUS_LIST_EVENT } from "../../lib/ongoingGoals";
 
 /** Self's stand-in detail for starred items with no note — not worth a subtext line. */
 const FILLER_DETAIL = "Captured in Self inbox";
@@ -114,6 +116,11 @@ export function buildCatalog(
         key,
       });
     }
+  }
+  // Short-term focus card lists / tasks sent to Doing Now (lib/focusPins.ts): they live on the card.
+  for (const f of focusPinItems()) {
+    const key = pinKey("self", f.id);
+    catalog.set(key, { ...f, source: "self", key });
   }
   return catalog;
 }
@@ -196,6 +203,17 @@ export function PriorityBoard({
     const l = lanes[key]?.lock;
     return l ? lockState(l, { ledger: ledgerNow, lists: sl.store, count: habitCount }) : undefined;
   };
+  // Focus cards changed (here, on the card, or merged from the cloud): rebuild their Doing Now rows.
+  const [focusVer, setFocusVer] = useState(0);
+  useEffect(() => {
+    const bump = () => setFocusVer((v) => v + 1);
+    window.addEventListener(FOCUS_LIST_EVENT, bump);
+    window.addEventListener("lifehub:synced", bump);
+    return () => {
+      window.removeEventListener(FOCUS_LIST_EVENT, bump);
+      window.removeEventListener("lifehub:synced", bump);
+    };
+  }, []);
   // Tasks inside a site list leave the pool but keep their own panel (notes, questions, findings).
   const catalog = useMemo(() => {
     const withMembers = { ...snapshots } as Record<SourceId, SourceSnapshot>;
@@ -209,7 +227,8 @@ export function PriorityBoard({
       if (extra.length) withMembers[l.site] = { ...cur, tasks: [...cur.tasks, ...extra] };
     }
     return buildCatalog(withMembers, bills);
-  }, [snapshots, bills, sl.store, sl.snapshots]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshots, bills, sl.store, sl.snapshots, focusVer]);
   const criticals = useMemo(
     () => criticalKeys(levels).map(([s, id]) => pinKey(s, id)),
     [levels],
@@ -254,7 +273,9 @@ export function PriorityBoard({
   };
   const reopenMember = (key: string) => {
     const at = key.indexOf(":");
-    sl.reopen?.(key.slice(0, at) as SourceId, key.slice(at + 1));
+    const rest = key.slice(at + 1);
+    if (isFocusPinId(rest)) completeFocusPin(rest, false);
+    else sl.reopen?.(key.slice(0, at) as SourceId, rest);
     updatePinDetails(key, { doneTitle: undefined, lane: PLAN });
   };
   const finishMix = (id: string, items: PriorityItem[]) => {
@@ -343,7 +364,9 @@ export function PriorityBoard({
   const finish = (item: PriorityItem) => {
     // A locked task can't be checked off until its lock opens.
     if (lockOf(item.key)?.open === false) return;
-    onComplete?.(item.source, item);
+    // A focus card task/list: mark it done on the card itself (same record).
+    if (isFocusPinId(item.id)) completeFocusPin(item.id);
+    else onComplete?.(item.source, item);
     unpin(item.key);
     if (isCritical(item.source, item.id)) toggleCritical(item.source, item.id);
   };

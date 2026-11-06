@@ -19,6 +19,7 @@ import type {
 import type { FocusAreaConfig } from "../../lib/focusAreas";
 import type { EnergyWindow } from "../../lib/energy";
 import { PriorityBoard } from "./PriorityBoard";
+import { completeFocusPin, isFocusPinId } from "../../lib/focusPins";
 import { GroundingSummary } from "./DailyGrounding";
 import { ReviewPanel } from "./ReviewPanel";
 import { DailyBrief, BriefSummary } from "./DailyBrief";
@@ -43,6 +44,7 @@ import { ScheduleSection } from "./ScheduleSection";
 import { KitBillRow } from "./BillsList";
 import {
   FocusSection,
+  FocusTaskBoard,
   ShortTermFocus,
   shortTermSummary,
   useShortTermFocus,
@@ -210,7 +212,9 @@ export function HomeView({
   // Paid from anywhere a bill shows up as a Priority item ("Doing now").
   const payFromPriority = (source: SourceId, item: FeaturedItem) => {
     const due = bills.find((b) => b.key === item.id);
-    if (source === "radall" && due) onBillPaid(due);
+    // Short-term focus card task/list pinned into Doing Now: done on the card itself.
+    if (isFocusPinId(item.id)) completeFocusPin(item.id);
+    else if (source === "radall" && due) onBillPaid(due);
     else onCompleteFeatured(source, item);
   };
   // Today is one section with tabs (Daily Brief | Grounding | Calendar | Short-term focus); the last tab is remembered on this device.
@@ -562,7 +566,15 @@ export function HomeView({
           onCompleteTask={onCompleteTask}
           onStarTask={onStarTask}
           extra={Object.fromEntries(SITE_ROWS.flatMap(r => r.ids).map(id => [id, <div key={id}>
-            {id === 'self' ? capturesPanel : id === 'radall' ? (bills.length ? financeBills : null) : id === 'ticktick' ? ticktickRings : null}
+            {id === 'self' ? (
+              // Self tasks | the tasks inside Short-term focus cards, side by side (stacks only when the box is narrow).
+              <div className="sk-self-split">
+                <div className="sk-self-split-grid">
+                  <div>{capturesPanel}</div>
+                  <div><FocusTaskBoard compact /></div>
+                </div>
+              </div>
+            ) : id === 'radall' ? (bills.length ? financeBills : null) : id === 'ticktick' ? ticktickRings : null}
             <AssignedFocus target={id} focus={shortTerm} events={linkItems} bills={bills} openFinance={(debtId, tab) => { requestOpenDebt(debtId, tab); enter("money"); }} />
           </div>]))}
         />

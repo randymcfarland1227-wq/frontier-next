@@ -15,6 +15,7 @@ import { ShelfList } from "./ShelfList";
 import { SiteIcon } from "./SiteIcon";
 import type { ReactNode } from "react";
 import { SelfInbox } from "./SelfInbox";
+import { FocusTaskBoard } from "./FocusSection";
 
 export function SourceView({
   sourceId,
@@ -99,12 +100,20 @@ export function SourceView({
       <section className="work-ledger sksite-ledger">
         {sourceId === "self" ? (
           <section className="sk-group sksite-box">
-            <SelfInbox
-              items={selfItems}
-              onAdd={onSelfAdd}
-              onComplete={onSelfComplete}
-              onStar={onSelfStar}
-            />
+            {/* Split like TickTick's old Tasks | Habits: Self inbox on one side, the tasks inside Short-term focus cards on the other. */}
+            <div className="task-split self-split">
+              <div>
+                <SelfInbox
+                  items={selfItems}
+                  onAdd={onSelfAdd}
+                  onComplete={onSelfComplete}
+                  onStar={onSelfStar}
+                />
+              </div>
+              <div>
+                <FocusTaskBoard />
+              </div>
+            </div>
           </section>
         ) : (
           <>

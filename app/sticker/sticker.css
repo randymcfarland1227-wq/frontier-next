@@ -3103,3 +3103,17 @@
 .sk-app .mb-cp-fresh b { color: var(--sk-ink); font-weight: 700; }
 .sk-app .mb-cp-fresh.is-stale b { color: #e0832a; }
 .sk-app .mb-cp-fresh-read { opacity: .75; }
+
+/* Self tab: Focus tasks split (tasks inside Short-term focus cards, grouped by card, each foldable) */
+.self-split { align-items: start; }
+.self-focus-tasks .ledger-heading { margin-bottom: 8px; }
+.sk-ftg { border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent); padding: 6px 0; }
+.sk-ftg-head { display: flex; align-items: baseline; gap: 6px; width: 100%; background: none; border: 0; padding: 4px 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.sk-ftg-caret { width: 12px; font-size: 11px; opacity: .7; flex: none; }
+.sk-ftg-title { font-weight: 700; font-size: 13.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-ftg-meta { margin-left: auto; flex: none; font-size: 11px; opacity: .65; }
+.sk-ftg-list { list-style: none; margin: 2px 0 2px 18px; padding: 0; display: grid; gap: 2px; }
+.sk-ftg-list li { display: flex; align-items: center; gap: 8px; min-height: 26px; font-size: 13px; }
+.sk-ftg-list li.is-done .sk-ftg-text { text-decoration: line-through; opacity: .55; }
+.sk-ftg-text { min-width: 0; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sk-ftg-list-name, .sk-ftg-due { flex: none; font-size: 10.5px; opacity: .6; }

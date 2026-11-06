@@ -247,6 +247,13 @@ export function HomeView({
     setSplitZoomState(next);
     writeSaved("sk-today-split-zoom", next);
   };
+  // Single view zoom: its own saved size (this device), same − % + as each Split pane.
+  const [singleZoom, setSingleZoomState] = useState<number>(() => Number(readSaved<number>("sk-today-single-zoom", 100)) || 100);
+  const setSingleZoom = (v: number) => {
+    const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, v));
+    setSingleZoomState(next);
+    writeSaved("sk-today-single-zoom", next);
+  };
   const [todayTab2, setTodayTab2] = useState<TodayTab>(() => {
     const saved = readSaved<string>("sk-today-tab2", "calendar");
     return TODAY_TABS.some(([id]) => id === saved)
@@ -510,9 +517,14 @@ export function HomeView({
         ) : (
           <>
             {tabBar(tab, pickTodayTab)}
-            <CapPane key={tab} cap="page" label={TODAY_TABS.find(([id]) => id === tab)?.[1] || "Today"}>
-              {renderTab(tab)}
-            </CapPane>
+            {/* Money keeps its own − / +, like in Split view. */}
+            <PaneZoomContext.Provider value={tab === "money" ? null : { zoom: singleZoom, set: setSingleZoom, min: ZOOM_MIN, max: ZOOM_MAX, step: ZOOM_STEP }}>
+              <div className="sk-splitzoom" style={tab === "money" || singleZoom === 100 ? undefined : { zoom: singleZoom / 100 }}>
+                <CapPane key={tab} cap="page" label={TODAY_TABS.find(([id]) => id === tab)?.[1] || "Today"}>
+                  {renderTab(tab)}
+                </CapPane>
+              </div>
+            </PaneZoomContext.Provider>
           </>
         )}
       </Section>

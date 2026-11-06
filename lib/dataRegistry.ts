@@ -105,6 +105,7 @@ export const SAVED_KEYS: SavedKey[] = [
   { key: 'lifehub-money-split-zoom', backup: 'device' },
   { key: 'sk-today-split', backup: 'device' },
   { key: 'sk-today-split-zoom', backup: 'device' },
+  { key: 'sk-today-single-zoom', backup: 'device' },
   { key: 'sk-today-tab', backup: 'device' },
   { key: 'sk-today-tab2', backup: 'device' },
 ];

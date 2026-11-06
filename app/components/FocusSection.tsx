@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Circle, Group, ListHead, Section } from "../sticker/kit";
+import { useFold } from "./Collapsible";
 import { FocusCards, type LinkItem, type OpenFinance } from "./FocusCards";
 import type { BillDue } from "../../lib/schedule";
 import { Icon } from "../sticker/Icon";
@@ -742,5 +743,82 @@ export function FocusSection({
         </Group>
       </div>
     </Section>
+  );
+}
+
+/** One short-term focus card's sub-list tasks, folded or open (fold state remembered per card). */
+function FocusTaskGroup({ card, tag, onToggle }: { card: Entry; tag: string; onToggle: (listId: string, taskId: string) => void }) {
+  const [collapsed, toggle] = useFold(`self-focus-${card.id}`);
+  const rows = (card.lists || []).flatMap((l) => l.tasks.filter((t) => !t.fin).map((t) => ({ l, t })));
+  const open = rows.filter((r) => !r.t.done);
+  const done = rows.filter((r) => r.t.done);
+  return (
+    <div className={`sk-ftg${collapsed ? " is-folded" : ""}`}>
+      <button type="button" className="sk-ftg-head" aria-expanded={!collapsed} onClick={toggle}>
+        <span className="sk-ftg-caret" aria-hidden="true">{collapsed ? "▸" : "▾"}</span>
+        <span className="sk-ftg-title">{card.title}</span>
+        <span className="sk-ftg-meta">{tag} · {open.length ? `${open.length} open` : "all done"}{done.length ? ` · ${done.length} done` : ""}</span>
+      </button>
+      {collapsed ? null : (
+        <ul className="sk-ftg-list">
+          {[...open, ...done].map(({ l, t }) => (
+            <li key={`${l.id}:${t.id}`} className={t.done ? "is-done" : ""}>
+              <button
+                type="button"
+                className={`sk-circle${t.done ? " is-on" : ""}`}
+                aria-pressed={t.done}
+                aria-label={`Mark ${t.text} ${t.done ? "not done" : "done"}`}
+                onClick={() => onToggle(l.id, t.id)}
+              >
+                <Icon name="check" size={12} />
+              </button>
+              <span className="sk-ftg-text">{t.text}</span>
+              {(card.lists || []).length > 1 ? <span className="sk-ftg-list-name">{l.name}</span> : null}
+              {t.due ? <span className="sk-ftg-due">{new Date(`${t.due}T12:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Self tab: the tasks inside each Short-term focus card, grouped by card. Same records as the cards, so checking one here checks it there. */
+export function FocusTaskBoard() {
+  const [now, saveNow] = useFocusList("lifehub-focus-now2");
+  const [weeks, saveWeeks] = useFocusList("lifehub-focus-weeks2");
+  const [ongoing, saveOngoing] = useFocusList(ONGOING_KEY);
+  const groups: Array<{ card: Entry; tag: string; items: Entry[]; save: (e: Entry[]) => void }> = [
+    ...now.map((card) => ({ card, tag: "Right now", items: now, save: saveNow })),
+    ...weeks.map((card) => ({ card, tag: "Next few weeks", items: weeks, save: saveWeeks })),
+    ...ongoing.filter((c) => c.inFocus).map((card) => ({ card, tag: "Ongoing", items: ongoing, save: saveOngoing })),
+  ].filter((g) => !g.card.done && (g.card.lists || []).some((l) => l.tasks.some((t) => !t.fin)));
+  const openCount = groups.reduce((n, g) => n + (g.card.lists || []).reduce((m, l) => m + l.tasks.filter((t) => !t.fin && !t.done).length, 0), 0);
+  return (
+    <section className="self-focus-tasks">
+      <div className="ledger-heading">
+        <div>
+          <p className="section-label">Short-term focus</p>
+          <h2>Focus tasks · {openCount}</h2>
+        </div>
+      </div>
+      {groups.length ? (
+        groups.map((g) => (
+          <FocusTaskGroup
+            key={g.card.id}
+            card={g.card}
+            tag={g.tag}
+            onToggle={(listId, taskId) =>
+              g.save(g.items.map((c) => (c.id !== g.card.id ? c : {
+                ...c,
+                lists: (c.lists || []).map((l) => (l.id !== listId ? l : { ...l, tasks: l.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t)) })),
+              })))
+            }
+          />
+        ))
+      ) : (
+        <p className="local-note">No tasks inside your Short-term focus cards yet. Add them on a card in Today → Short-term focus.</p>
+      )}
+    </section>
   );
 }

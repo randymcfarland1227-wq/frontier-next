@@ -1192,7 +1192,7 @@ export function WeekBoard({
   const todayK = dayKey(today);
   const lateSum = sumOf(overdue.map((d) => d.bill.amount));
   return (
-    <div className="mny-stack">
+    <div className="mny-stack skw-wrap">
       <section className="sk-group tone-plan skw-strip-wrap">
         <div
           className="skw-strip"

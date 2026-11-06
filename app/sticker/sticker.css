@@ -930,7 +930,9 @@
 .sk-app .skw-day li.is-paid button { opacity: .5; text-decoration: line-through; }
 .sk-app .skw-daysum { justify-self: end; font: var(--sk-caption); opacity: .8; }
 .sk-app .skw-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sk-s4); align-items: start; }
-@media (min-width: 1100px) { .sk-app .skw-grid { grid-template-columns: minmax(360px, .85fr) minmax(0, 1.6fr); } }
+/* Two columns only when the board itself is wide (Today Split panes are narrow on a wide screen). */
+.sk-app .skw-wrap { container-type: inline-size; }
+@container (min-width: 880px) { .skw-grid { grid-template-columns: minmax(340px, .85fr) minmax(0, 1.6fr) !important; } }
 .sk-app .skw-left { display: grid; gap: var(--sk-s3); }
 .sk-app .skw-list { list-style: none; margin: 0; padding: 0 4px 0 0; height: 196px; overflow-y: scroll; display: grid; align-content: start; gap: 4px; }
 .sk-app .skw-line, .sk-app .skw-head { display: grid; grid-template-columns: minmax(0, 1fr) 70px 56px 56px auto; gap: 6px; align-items: center; font-size: 13.5px; }

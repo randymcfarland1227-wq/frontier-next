@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Circle, Group, ListHead, Section } from "../sticker/kit";
 import { useFold } from "./Collapsible";
+import { habitOptions } from "../../lib/locks";
 import { FocusCards, useFinSummary, type LinkItem, type OpenFinance } from "./FocusCards";
 import type { BillDue } from "../../lib/schedule";
 import { Icon } from "../sticker/Icon";
@@ -300,6 +301,13 @@ for (const r of (flowMap as { records?: Array<{ id: string; title?: string; name
   HABIT_NAMES.set(r.id, r.title || r.name || "Habit");
   HABIT_TITLES.set((r.title || r.name || "").toLowerCase(), r.sectionName);
 }
+/**
+ * A habit's name by feed id. TickTick drops a skipped / uncompleted habit from today's feed, so fall back to the
+ * built-in map, then the last habit schedule pulled from TickTick (habitOptions, cached).
+ */
+function habitTitle(id: string): string | undefined {
+  return HABIT_NAMES.get(id) || habitOptions().find((h) => h.id === id || `habit-${h.id}` === id)?.title;
+}
 function habitGroupOf(id: string, title: string): (typeof HABIT_GROUPS)[number]["id"] {
   const sec = HABIT_SECTIONS.get(id) || HABIT_TITLES.get(title.toLowerCase()) || "";
   if (/gym/i.test(sec)) return "pregym";
@@ -337,9 +345,9 @@ function TickTickHabits({
   const offLabel = (id: string) => (logged[id] ? logged[id] === 'notdone' : (dayLog.notDoneHabits || []).includes(id) && !dayLog.skippedHabits.includes(id)) ? 'uncompleted' : 'skipped';
   const all = (ticktick?.tasks || []).filter((t) => isHabit(t) && t.status !== "done");
   const open = all.filter((t) => !skippedIds.has(t.id));
-  const titleOf = (id: string) => all.find((t) => t.id === id)?.title || HABIT_NAMES.get(id) || "Habit";
+  const titleOf = (id: string) => all.find((t) => t.id === id)?.title || habitTitle(id) || "Habit";
   const skipped = [...skippedIds]
-    .filter((id) => HABIT_NAMES.has(id) || all.some((t) => t.id === id))
+    .filter((id) => Boolean(habitTitle(id)) || all.some((t) => t.id === id))
     .map((id) => ({ id, title: titleOf(id) }));
   const openIds = new Set(all.map((t) => t.id));
   const done = Object.entries(ledger?.entries || {})
@@ -668,7 +676,7 @@ export function FocusSection({
   const [daysShut, toggleDays] = useShut("focus-fit-today");
   // Skipped / uncompleted today (here or in the TickTick app) shows struck through in every group, not just Habits.
   const off = useTickTickOff();
-  const habitName = (id: string) => HABIT_NAMES.get(id);
+  const habitName = habitTitle;
   const fitToday = tickTickToday(FITNESS_RE, snapshots?.ticktick, ledger, day, off, habitName).filter(notMarvel);
   const nutToday = tickTickToday(NUTRITION_RE, snapshots?.ticktick, ledger, day, off, habitName).filter(notMarvel);
   const marvelToday = tickTickToday(/marvel/i, snapshots?.ticktick, ledger, day, off, habitName);

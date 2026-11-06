@@ -2729,10 +2729,10 @@
 /* Money size − / + : only in split view */
 .sk-app .skm-zoom { display: none; }
 .sk-app .sk-splitwrap[data-cap="split"] .sk-money-tab .skm-zoom { display: inline-flex; align-items: center; border: 2px solid var(--sk-edge); border-radius: 12px; overflow: hidden; background: var(--sk-paper); margin-right: 8px; vertical-align: middle; }
-.sk-app .skm-zoom button { border: 0; background: none; color: var(--sk-ink); font: 700 22px/1 "DM Sans", system-ui, sans-serif; min-width: 52px; min-height: 52px; padding: 0 10px; cursor: pointer; }
+.sk-app .skm-zoom button { border: 0; background: none; color: var(--sk-ink); font: 700 20px/1 "DM Sans", system-ui, sans-serif; min-width: 34px; min-height: 34px; padding: 0 8px; cursor: pointer; }
 .sk-app .skm-zoom button:hover:not(:disabled) { background: var(--sk-hover); }
 .sk-app .skm-zoom button:disabled { opacity: .35; cursor: default; }
-.sk-app .skm-zoom .skm-zoom-val { font-size: 17px; min-width: 70px; border-inline: 2px solid var(--sk-edge); }
+.sk-app .skm-zoom .skm-zoom-val { font-size: 18px; min-width: 62px; border-inline: 2px solid var(--sk-edge); }
 
 /* Split-view Money never cuts off on the right: wide tables scroll inside their own box, and the
    pane itself can scroll sideways as a last resort. */
@@ -3085,11 +3085,13 @@
 .sk-app .fc-linkbox .sk-fd-search { width: 100%; max-width: 420px; } .sk-app .fc-linkbox .sk-fd-search input { width: 100%; box-sizing: border-box; }
 
 /* Today split view: per-pane zoom (− % +) beside the pane's first title, same look as Money's */
-.sk-app .sk-panezoom { display: inline-flex; align-items: center; border: 2px solid var(--sk-edge); border-radius: 10px; overflow: hidden; background: var(--sk-paper); flex: none; vertical-align: middle; }
-.sk-app .sk-panezoom button { border: 0; background: none; color: var(--sk-ink); font: 700 14px/1 "DM Sans", system-ui, sans-serif; min-width: 30px; min-height: 30px; padding: 0 8px; cursor: pointer; box-shadow: none; }
+.sk-app .sk-panezoom { display: inline-flex; align-items: center; border: 1.5px solid var(--sk-edge); border-radius: 7px; overflow: hidden; background: var(--sk-paper); flex: none; vertical-align: middle; }
+.sk-app .sk-panezoom button { border: 0; background: none; color: var(--sk-ink); font: 700 12px/1 "DM Sans", system-ui, sans-serif; min-width: 20px; min-height: 20px; padding: 0 5px; cursor: pointer; box-shadow: none; }
 .sk-app .sk-panezoom button:hover:not(:disabled) { background: var(--sk-hover); }
 .sk-app .sk-panezoom button:disabled { opacity: .35; cursor: default; }
-.sk-app .sk-panezoom .sk-panezoom-pct { min-width: 50px; font: 600 13px/1 "DM Sans", system-ui, sans-serif; font-variant-numeric: tabular-nums; border-inline: 2px solid var(--sk-edge); }
+.sk-app .sk-panezoom .sk-panezoom-pct { min-width: 38px; font: 600 11px/1 "DM Sans", system-ui, sans-serif; font-variant-numeric: tabular-nums; border-inline: 1.5px solid var(--sk-edge); }
+.sk-app .sk-panezoom-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sk-app .sk-panezoom-row > :first-child { min-width: 0; }
 .sk-app .sk-splitzoom { min-width: 0; }
 
 /* TickTick habits: rows fit the card (the grid used to size to the longest nowrap row and run off-screen);

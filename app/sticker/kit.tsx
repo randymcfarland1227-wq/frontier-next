@@ -88,7 +88,7 @@ export function Group({
 export type PaneZoom = { zoom: number; set: (v: number) => void; min: number; max: number; step: number };
 export const PaneZoomContext = createContext<PaneZoom | null>(null);
 
-function PaneZoomButtons({ zoom, set, min, max, step }: PaneZoom) {
+export function PaneZoomButtons({ zoom, set, min, max, step }: PaneZoom) {
   return (
     <span className="sk-panezoom" role="group" aria-label="Pane size">
       <button type="button" onClick={() => set(zoom - step)} disabled={zoom <= min} aria-label="Smaller" title="Smaller">−</button>

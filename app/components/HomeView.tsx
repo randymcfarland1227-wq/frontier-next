@@ -48,7 +48,7 @@ import {
   useShortTermFocus,
 } from "./FocusSection";
 import { HomeTop } from "../sticker/HomeTop";
-import { ListHead, PaneZoomContext, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
+import { ListHead, PaneZoomButtons, PaneZoomContext, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
 import { CapPane } from "../sticker/CapPane";
 import { SegTabs } from "../sticker/SegTabs";
 import { readSaved, writeSaved } from "../../lib/storage";
@@ -253,6 +253,13 @@ export function HomeView({
     const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, v));
     setSingleZoomState(next);
     writeSaved("sk-today-single-zoom", next);
+  };
+  // Money in Single view: its own size (Money reads best at a different size than the other tabs).
+  const [moneyZoom, setMoneyZoomState] = useState<number>(() => Number(readSaved<number>("sk-today-single-money-zoom", 100)) || 100);
+  const setMoneyZoom = (v: number) => {
+    const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, v));
+    setMoneyZoomState(next);
+    writeSaved("sk-today-single-money-zoom", next);
   };
   const [todayTab2, setTodayTab2] = useState<TodayTab>(() => {
     const saved = readSaved<string>("sk-today-tab2", "calendar");
@@ -516,10 +523,15 @@ export function HomeView({
           </div>
         ) : (
           <>
-            {tabBar(tab, pickTodayTab)}
-            {/* Money keeps its own − / +, like in Split view. */}
+            {/* Money has no Group title to sit beside, so its − % + sits right after the tab bar (own saved size). */}
+            {tab === "money" ? (
+              <div className="sk-panezoom-row">
+                {tabBar(tab, pickTodayTab)}
+                <PaneZoomButtons zoom={moneyZoom} set={setMoneyZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />
+              </div>
+            ) : tabBar(tab, pickTodayTab)}
             <PaneZoomContext.Provider value={tab === "money" ? null : { zoom: singleZoom, set: setSingleZoom, min: ZOOM_MIN, max: ZOOM_MAX, step: ZOOM_STEP }}>
-              <div className="sk-splitzoom" style={tab === "money" || singleZoom === 100 ? undefined : { zoom: singleZoom / 100 }}>
+              <div className="sk-splitzoom" style={(tab === "money" ? moneyZoom : singleZoom) === 100 ? undefined : { zoom: (tab === "money" ? moneyZoom : singleZoom) / 100 }}>
                 <CapPane key={tab} cap="page" label={TODAY_TABS.find(([id]) => id === tab)?.[1] || "Today"}>
                   {renderTab(tab)}
                 </CapPane>

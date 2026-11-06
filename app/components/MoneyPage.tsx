@@ -1173,11 +1173,24 @@ function SubAdd({ onDone, kind = 'sub' }: { onDone: () => void; kind?: 'sub' | '
   const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [month, setMonth] = useState(new Date().getMonth());
   const [note, setNote] = useState('');
+  // Bills only: routine (every month) or non-routine (one time / a set number of monthly payments).
+  const [repeat, setRepeat] = useState<'routine' | 'once' | 'months'>('routine');
+  const [first, setFirst] = useState(() => dayKey(new Date()));
+  const [times, setTimes] = useState('2');
+  const oneOff = kind === 'bill' && repeat !== 'routine';
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const amt = amountOf(amount);
+    if (oneOff) {
+      const n = repeat === 'once' ? 1 : Math.round(Number(times));
+      if (!name.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(first) || !(n >= 1 && n <= 36)) return;
+      setBillEnd(billRuleKey({ name: name.trim(), kind: 'bill' }), null);
+      addLifeSub({ name, kind: 'bill', amount: amt, day: Number(first.slice(8)), cycle: 'monthly', start: first, times: n, status: 'active', note: note.trim() || undefined });
+      onDone();
+      return;
+    }
     const d = Number(day);
     if (!name.trim() || !(d >= 1 && d <= 31)) return;
-    const amt = amountOf(amount);
     setBillEnd(billRuleKey({ name: name.trim(), kind: kind === 'sub' ? 'sub' : 'bill' }), null);
     addLifeSub({ name, kind: kind === 'sub' ? undefined : kind, amount: amt, day: d, cycle, month: cycle === 'yearly' ? month : undefined, status, note: note.trim() || undefined });
     onDone();
@@ -1192,6 +1205,31 @@ function SubAdd({ onDone, kind = 'sub' }: { onDone: () => void; kind?: 'sub' | '
         <span>Amount</span>
         <input inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} placeholder="$9.99" />
       </label>
+      {kind === 'bill' ? (
+        <label>
+          <span>How often</span>
+          <select value={repeat} onChange={e => setRepeat(e.target.value as 'routine' | 'once' | 'months')}>
+            <option value="routine">Every month (routine)</option>
+            <option value="once">Just once</option>
+            <option value="months">A few months, then done</option>
+          </select>
+        </label>
+      ) : null}
+      {oneOff ? (
+        <>
+          <label>
+            <span>{repeat === 'once' ? 'Due on' : 'First payment'}</span>
+            <input type="date" value={first} onChange={e => setFirst(e.target.value)} required />
+          </label>
+          {repeat === 'months' ? (
+            <label>
+              <span>Payments</span>
+              <input type="number" min={2} max={36} value={times} onChange={e => setTimes(e.target.value)} required />
+            </label>
+          ) : null}
+        </>
+      ) : (
+      <>
       <label>
         <span>Charges on day</span>
         <input type="number" min={1} max={31} value={day} onChange={e => setDay(e.target.value)} required />
@@ -1215,6 +1253,8 @@ function SubAdd({ onDone, kind = 'sub' }: { onDone: () => void; kind?: 'sub' | '
           </select>
         </label>
       ) : null}
+      </>
+      )}
       {kind === 'sub' ? (
       <label>
         <span>Status</span>

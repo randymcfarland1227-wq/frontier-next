@@ -25,6 +25,8 @@ export type LifeSub = {
   kind?: 'sub' | 'bill' | 'loan';
   /** First charge day (YYYY-MM-DD); nothing is due before it */
   start?: string;
+  /** Non-routine: only this many payments from `start` (1 = one-time bill), then it stops on its own */
+  times?: number;
   note?: string;
   removed?: boolean;
   createdAt: string;
@@ -128,6 +130,13 @@ function chargeIn(year: number, month: number, day: number): Date {
 }
 
 /** Charges from `back` days ago to `ahead` days out, in the calendar's bill shape. Paid keys are left out unless `keepPaid`. */
+/** Which payment (0-based) a due date is, counted from the first one: months apart (or years, for yearly). */
+export function paymentIndex(start: string, due: string, cycle: 'monthly' | 'yearly' = 'monthly'): number {
+  const [sy, sm] = start.split('-').map(Number);
+  const [dy, dm] = due.split('-').map(Number);
+  return cycle === 'yearly' ? dy - sy : (dy - sy) * 12 + (dm - sm);
+}
+
 export function lifeSubDues(subs: LifeSub[], paid: Set<string>, today = new Date(), back = 45, ahead = 120, keepPaid = false): BillDue[] {
   const t = startOfDay(today);
   const from = addDays(t, -back);
@@ -144,10 +153,12 @@ export function lifeSubDues(subs: LifeSub[], paid: Set<string>, today = new Date
       if (d < from || d > to || d < addDays(created, -31)) continue;
       const due = dayKey(d);
       if (s.start && due < s.start) continue;
+      const nth = s.times && s.start ? paymentIndex(s.start, due, s.cycle) : 0;
+      if (s.times && nth >= s.times) continue;
       const key = `money:lhsub:${s.id}:${due}`;
       if (!keepPaid && paid.has(key)) continue;
       out.push({
-        bill: { id: key, name: s.name, amount: s.amount, kind: s.kind && s.kind !== 'sub' ? 'bill' : 'sub', notes: [s.kind === 'loan' ? 'Loan' : s.kind === 'bill' ? 'Bill' : 'Subscription', s.status === 'trial' ? 'Trial' : '', 'added on Life Hub'].filter(Boolean).join(' · ') },
+        bill: { id: key, name: s.name, amount: s.amount, kind: s.kind && s.kind !== 'sub' ? 'bill' : 'sub', notes: [s.kind === 'loan' ? 'Loan' : s.kind === 'bill' ? 'Bill' : 'Subscription', s.status === 'trial' ? 'Trial' : '', s.times === 1 ? 'One-time' : s.times ? `Payment ${nth + 1} of ${s.times}` : '', 'added on Life Hub'].filter(Boolean).join(' · ') },
         due,
         days: daysBetween(t, fromDayKey(due)),
         key,

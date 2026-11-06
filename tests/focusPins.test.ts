@@ -18,11 +18,11 @@ const card = {
 };
 
 test('focus lists and tasks become Doing Now items, and checking one off marks it on the card', async () => {
-  const { focusPinItems, completeFocusPin, focusTaskId, focusListId } = await import('../lib/focusPins');
+  const { focusPinItems, completeFocusPin, focusTaskId, focusListId, focusCardId } = await import('../lib/focusPins');
   store.clear();
   store.set('lifehub-focus-now2', JSON.stringify({ scope: '', items: [card] }));
   const ids = focusPinItems().map((i) => i.id);
-  assert.deepEqual(ids, [focusListId('n', 'c1', 'l1'), focusTaskId('n', 'c1', 'l1', 't1'), focusTaskId('n', 'c1', 'l1', 't2')]);
+  assert.deepEqual(ids, [focusCardId('n', 'c1'), focusListId('n', 'c1', 'l1'), focusTaskId('n', 'c1', 'l1', 't1'), focusTaskId('n', 'c1', 'l1', 't2')]);
   assert.equal(completeFocusPin(focusTaskId('n', 'c1', 'l1', 't1')), true);
   const saved = JSON.parse(store.get('lifehub-focus-now2')!);
   assert.deepEqual(saved.items[0].lists[0].tasks.map((t: { done: boolean }) => t.done), [true, false, false]);
@@ -36,4 +36,15 @@ test('focus lists and tasks become Doing Now items, and checking one off marks i
   // Reopen from Doing Now
   completeFocusPin(focusTaskId('n', 'c1', 'l1', 't2'), false);
   assert.equal(JSON.parse(store.get('lifehub-focus-now2')!).items[0].lists[0].tasks[1].done, false);
+});
+
+test('a whole short-term goal can go to Doing Now; checking it off marks all its tasks done', async () => {
+  const { focusPinItems, completeFocusPin, focusCardId } = await import('../lib/focusPins');
+  store.clear();
+  store.set('lifehub-focus-weeks2', JSON.stringify({ scope: '', items: [card] }));
+  assert.equal(focusPinItems()[0].id, focusCardId('w', 'c1'));
+  completeFocusPin(focusCardId('w', 'c1'));
+  const after = JSON.parse(store.get('lifehub-focus-weeks2')!);
+  assert.deepEqual(after.items[0].lists[0].tasks.map((t: { done: boolean }) => t.done), [true, true, false]);
+  assert.equal(focusPinItems().length, 0);
 });

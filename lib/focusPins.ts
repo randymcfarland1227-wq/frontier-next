@@ -22,10 +22,11 @@ export const FOCUS_PIN_LISTS = [
   { code: 'o', key: ONGOING_KEY, tag: 'Ongoing' },
 ] as const;
 
+export const focusCardId = (code: string, cardId: string) => `fcard:${code}:${cardId}`;
 export const focusListId = (code: string, cardId: string, listId: string) => `flist:${code}:${cardId}:${listId}`;
 export const focusTaskId = (code: string, cardId: string, listId: string, taskId: string) =>
   `ftask:${code}:${cardId}:${listId}:${taskId}`;
-export const isFocusPinId = (id: string) => id.startsWith('flist:') || id.startsWith('ftask:');
+export const isFocusPinId = (id: string) => id.startsWith('fcard:') || id.startsWith('flist:') || id.startsWith('ftask:');
 
 const load = (key: string) => readSaved<Saved>(key, { scope: '', items: [] });
 const shown = (code: string, c: Card) => !c.done && (code !== 'o' || Boolean(c.inFocus));
@@ -37,6 +38,19 @@ export function focusPinItems(): Array<FeaturedItem & { id: string }> {
   for (const { code, key, tag } of FOCUS_PIN_LISTS) {
     for (const card of load(key).items || []) {
       if (!card || !shown(code, card)) continue;
+      // The whole short-term goal: every task in all its lists.
+      const all = (card.lists || []).flatMap((l) => l.tasks.filter(real));
+      const allOpen = all.filter((t) => !t.done);
+      if (allOpen.length)
+        out.push({
+          id: focusCardId(code, card.id),
+          title: card.title,
+          detail: `${tag} · ${all.length - allOpen.length} of ${all.length} done · next: ${allOpen[0].text}`,
+          meta: 'Focus goal',
+          completable: true,
+          tag: 'Goal',
+          steps: all.map((t) => ({ id: t.id, text: t.text, done: t.done })),
+        } as FeaturedItem & { id: string });
       for (const l of card.lists || []) {
         const tasks = l.tasks.filter(real);
         const open = tasks.filter((t) => !t.done);
@@ -78,7 +92,12 @@ export function completeFocusPin(id: string, done = true): boolean {
     const next = items.map((card) => {
       if (!card?.lists) return card;
       let changed = false;
+      const whole = focusCardId(code, card.id) === id;
       const lists = card.lists.map((l) => {
+        if (whole) {
+          changed = true;
+          return { ...l, tasks: l.tasks.map((t) => (real(t) ? { ...t, done } : t)) };
+        }
         if (focusListId(code, card.id, l.id) === id) {
           changed = true;
           return { ...l, tasks: l.tasks.map((t) => (real(t) ? { ...t, done } : t)) };

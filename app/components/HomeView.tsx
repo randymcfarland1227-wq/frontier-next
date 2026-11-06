@@ -571,7 +571,7 @@ export function HomeView({
               <div className="sk-self-split">
                 <div className="sk-self-split-grid">
                   <div>{capturesPanel}</div>
-                  <div><FocusTaskBoard compact /></div>
+                  <div><FocusTaskBoard compact bills={bills} /></div>
                 </div>
               </div>
             ) : id === 'radall' ? (bills.length ? financeBills : null) : id === 'ticktick' ? ticktickRings : null}

@@ -1824,3 +1824,30 @@ function RefsBox({ item, update }: { item: Entry; update: (patch: Partial<Entry>
     </section>
   );
 }
+
+/**
+ * Focus tasks board (Self): one finance link's status as the card shows it — amount owed / Cleared /
+ * Amount unknown, plus its payment-plan tag. Context only, never counted as a task.
+ */
+export function useFinSummary(bills: BillDue[] = []) {
+  const { raw: file, rawMarks: marks } = useDebtFile();
+  const findings = useFindings();
+  const ctx: FinCtx = { file, marks, bills, findings };
+  return (fin: { key: string; label: string }) => {
+    // Without the bill list a bill link can't be read (it would look paid), so say nothing.
+    if (fin.key.startsWith("bill:") && !bills.length) return { text: "", cleared: false, plan: "" };
+    const rows = finRows(fin, ctx);
+    const cleared = rows.length > 0 && rows.every((r) => r.settled && !r.unverified);
+    const text = !rows.length
+      ? "Not loaded"
+      : rows.some((r) => r.unverified)
+        ? "Unverified"
+        : cleared
+          ? "Cleared"
+          : rows.some((r) => !r.settled && r.amount == null)
+            ? "Amount unknown"
+            : usd(finStats(rows).owed);
+    const pl = fin.key.startsWith("bill:") ? null : planOf(fin, ctx);
+    return { text, cleared, plan: pl && pl.state !== "unknown" ? planShort(pl.state) : "", planState: pl?.state };
+  };
+}

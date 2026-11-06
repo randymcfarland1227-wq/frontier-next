@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Circle, Group, ListHead, Section } from "../sticker/kit";
 import { useFold } from "./Collapsible";
-import { FocusCards, type LinkItem, type OpenFinance } from "./FocusCards";
+import { FocusCards, useFinSummary, type LinkItem, type OpenFinance } from "./FocusCards";
 import type { BillDue } from "../../lib/schedule";
 import { Icon } from "../sticker/Icon";
 import type { SourceId, SourceSnapshot, SpaceId, TaskItem } from "../../lib/types";
@@ -23,7 +23,7 @@ import { activePursuits, type GoalLink } from "../../lib/goalLinks";
 import { assignedFocusLists, focusListView, type FocusSectionId } from "../../lib/focusRouting";
 import flowMap from "../../public/data/flow-map.json";
 import { DECK, pinKey, placePin, unpin, usePriorityPins, type LaneMap } from "../../lib/priorityPins";
-import { focusListId, focusTaskId } from "../../lib/focusPins";
+import { focusCardId, focusListId, focusTaskId } from "../../lib/focusPins";
 
 type Snaps = Record<SourceId, SourceSnapshot>;
 
@@ -773,26 +773,32 @@ function SendToDoing({ id, label, lanes }: { id: string; label: string; lanes: L
 }
 
 /** One short-term focus card's sub-list tasks, folded or open (fold state remembered per card). */
-function FocusTaskGroup({ card, code, tag, lanes, onToggle }: { card: Entry; code: string; tag: string; lanes: LaneMap; onToggle: (listId: string, taskId: string) => void }) {
+function FocusTaskGroup({ card, code, tag, lanes, fin, onToggle }: { card: Entry; code: string; tag: string; lanes: LaneMap; fin: ReturnType<typeof useFinSummary>; onToggle: (listId: string, taskId: string) => void }) {
   const [collapsed, toggle] = useFold(`self-focus-${card.id}`);
-  const lists = (card.lists || []).map((l) => ({ l, tasks: l.tasks.filter((t) => !t.fin) })).filter((x) => x.tasks.length);
+  // Finance links ride along as context rows (amount / plan), never counted as tasks.
+  const lists = (card.lists || [])
+    .map((l) => ({ l, tasks: l.tasks.filter((t) => !t.fin), fins: l.tasks.filter((t) => t.fin) }))
+    .filter((x) => x.tasks.length || x.fins.length);
   const open = lists.reduce((n, x) => n + x.tasks.filter((t) => !t.done).length, 0);
   const done = lists.reduce((n, x) => n + x.tasks.filter((t) => t.done).length, 0);
   return (
     <div className={`sk-ftg${collapsed ? " is-folded" : ""}`}>
+      <div className="sk-ftg-headrow">
       <button type="button" className="sk-ftg-head" aria-expanded={!collapsed} onClick={toggle}>
         <span className="sk-ftg-caret" aria-hidden="true">{collapsed ? "▸" : "▾"}</span>
         <span className="sk-ftg-title">{card.title}</span>
         <span className="sk-ftg-meta">{tag} · {open ? `${open} open` : "all done"}{done ? ` · ${done} done` : ""}</span>
       </button>
-      {collapsed ? null : lists.map(({ l, tasks }) => {
+      {open ? <SendToDoing id={focusCardId(code, card.id)} label={card.title} lanes={lanes} /> : null}
+      </div>
+      {collapsed ? null : lists.map(({ l, tasks, fins }) => {
         const left = tasks.filter((t) => !t.done);
         const ordered = [...left, ...tasks.filter((t) => t.done)];
         return (
           <div key={l.id} className="sk-ftg-sub">
             <div className="sk-ftg-subhead">
               <span className="sk-ftg-subname">{l.name}</span>
-              <span className="sk-ftg-subcount">{left.length ? `${left.length} open` : "done"}</span>
+              <span className="sk-ftg-subcount">{tasks.length ? (left.length ? `${left.length} open` : "done") : `${fins.length} finance`}</span>
               {left.length ? <SendToDoing id={focusListId(code, card.id, l.id)} label={`${card.title} · ${l.name}`} lanes={lanes} /> : null}
             </div>
             <ul className="sk-ftg-list">
@@ -812,6 +818,17 @@ function FocusTaskGroup({ card, code, tag, lanes, onToggle }: { card: Entry; cod
                   {t.done ? null : <SendToDoing id={focusTaskId(code, card.id, l.id, t.id)} label={t.text} lanes={lanes} />}
                 </li>
               ))}
+              {fins.map((t) => {
+                const f = fin(t.fin!);
+                return (
+                  <li key={t.id} className={`sk-ftg-fin${f.cleared ? " is-done" : ""}`} title="Finance item — shown for context, not counted as a task">
+                    <span className={`sk-fin-dot${f.cleared ? " is-on" : ""}`} aria-label={f.cleared ? "Cleared in Finance" : "Linked to Finance"} />
+                    <span className="sk-ftg-text">{t.text}</span>
+                    {f.text ? <small className="sk-ftg-finamt">{f.text}</small> : null}
+                    {f.plan ? <small className={`sk-fd-plan is-${f.planState}`}>{f.plan}</small> : null}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         );
@@ -821,16 +838,17 @@ function FocusTaskGroup({ card, code, tag, lanes, onToggle }: { card: Entry; cod
 }
 
 /** Self tab / Self site card: the tasks inside each Short-term focus card, grouped by card. Same records as the cards, so checking one here checks it there. */
-export function FocusTaskBoard({ compact }: { compact?: boolean } = {}) {
+export function FocusTaskBoard({ compact, bills }: { compact?: boolean; bills?: BillDue[] } = {}) {
   const [now, saveNow] = useFocusList("lifehub-focus-now2");
   const [weeks, saveWeeks] = useFocusList("lifehub-focus-weeks2");
   const [ongoing, saveOngoing] = useFocusList(ONGOING_KEY);
   const { lanes } = usePriorityPins();
+  const fin = useFinSummary(bills);
   const groups: Array<{ card: Entry; code: string; tag: string; items: Entry[]; save: (e: Entry[]) => void }> = [
     ...now.map((card) => ({ card, code: "n", tag: "Right now", items: now, save: saveNow })),
     ...weeks.map((card) => ({ card, code: "w", tag: "Next few weeks", items: weeks, save: saveWeeks })),
     ...ongoing.filter((c) => c.inFocus).map((card) => ({ card, code: "o", tag: "Ongoing", items: ongoing, save: saveOngoing })),
-  ].filter((g) => !g.card.done && (g.card.lists || []).some((l) => l.tasks.some((t) => !t.fin)));
+  ].filter((g) => !g.card.done && (g.card.lists || []).some((l) => l.tasks.length));
   const openCount = groups.reduce((n, g) => n + (g.card.lists || []).reduce((m, l) => m + l.tasks.filter((t) => !t.fin && !t.done).length, 0), 0);
   return (
     <section className={`self-focus-tasks${compact ? " is-compact" : ""}`}>
@@ -852,6 +870,7 @@ export function FocusTaskBoard({ compact }: { compact?: boolean } = {}) {
             code={g.code}
             tag={g.tag}
             lanes={lanes}
+            fin={fin}
             onToggle={(listId, taskId) =>
               g.save(g.items.map((c) => (c.id !== g.card.id ? c : {
                 ...c,

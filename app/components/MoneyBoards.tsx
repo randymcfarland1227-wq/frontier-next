@@ -1413,7 +1413,9 @@ export function PaySources({
     if (d.days < 0) t.late += d.bill.amount || 0;
     totals.set(k, t);
   }
-  const order = [...banks.map((b) => b.name), ...cards, ""];
+  const known = [...banks.map((b) => b.name), ...cards];
+  // Misc (paid from more than one place) and any typed-in account get their own box too.
+  const order = [...known, "Misc", ...[...totals.keys()].filter((k) => k && k !== "Misc" && !known.includes(k)), ""];
   const chips = order.filter((k) => totals.has(k));
   const label = (k: string) =>
     k ? banks.find((b) => b.name === k)?.label || k : "Not set";

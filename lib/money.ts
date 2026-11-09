@@ -826,8 +826,12 @@ export function moneyDues(model: MoneyModel | null, paid: Set<string>, today = n
   const t = startOfDay(today);
   const from = addDays(t, -back);
   const to = addDays(t, ahead);
+  const month = dayKey(t).slice(0, 7);
   return model.items
     .filter(i => i.date && !i.skipped && !i.status && !paid.has(i.id))
+    // A subscription's sheet row holds its last charge; from an earlier month that charge is history, not overdue
+    // (this month's copy is projected from it and is what gets paid / crossed off).
+    .filter(i => !(i.kind === 'sub' && !i.projected && i.date!.slice(0, 7) < month))
     .filter(i => {
       const d = fromDayKey(i.date!);
       return d >= from && d <= to;

@@ -121,9 +121,8 @@ export function PriorityPanel({
       }
     };
     resize();
-    const observer = new ResizeObserver(resize);
-    if (panelRef.current) observer.observe(panelRef.current);
-    return () => observer.disconnect();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
   }, [name, note]);
 
   // Auto page zoom can differ from the saved zoom token. Use the actual scale for this

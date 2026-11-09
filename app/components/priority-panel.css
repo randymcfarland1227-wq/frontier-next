@@ -1,0 +1,149 @@
+/* The compact task sheet inherits the active sticker palette, not the retired shell palette. */
+.sk-app .plan-panel-compact {
+  --ink: var(--sk-ink); --muted: var(--sk-ink-2); --surface: var(--sk-paper);
+  --row-line: var(--sk-line); --accent: var(--sk-tint); --pp-label: 102px;
+  container-type: inline-size;
+  top: 12px; right: 12px; width: min(660px, calc(100% - 24px)); height: auto;
+  max-height: calc(100% - 24px); padding: 0; box-sizing: border-box;
+  border: 2px solid var(--sk-edge); border-radius: 12px;
+  background: var(--sk-paper); color: var(--sk-ink); font: var(--sk-secondary);
+  overscroll-behavior: contain; scrollbar-gutter: stable;
+  color-scheme: light;
+}
+.frontier-shell[data-color-mode="dark"] .sk-app .plan-panel-compact { color-scheme: dark; }
+.sk-app .plan-panel-compact * { box-sizing: border-box; }
+.sk-app .plan-panel-compact .plan-panel-header {
+  padding: 12px 20px 10px;
+  background: color-mix(in srgb, var(--sk-tint) 6%, var(--sk-paper));
+}
+.sk-app .plan-panel-compact .plan-panel-head { gap: 8px; }
+.sk-app .plan-panel-compact .plan-panel-site {
+  padding: 0; min-height: 30px; border: 0; background: none;
+  color: var(--sk-ink-2); font: var(--sk-caption); box-shadow: none;
+}
+.sk-app .plan-panel-compact .plan-panel-icon { width: 18px; height: 18px; }
+.sk-app .plan-panel-compact .plan-panel-head-tools { display: flex; align-items: center; gap: 4px; }
+.sk-app .plan-panel-compact :is(.plan-panel-tools, .plan-panel-close) {
+  display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0;
+  border: 0; border-radius: 6px; background: none; color: var(--sk-ink-2); cursor: pointer;
+}
+.sk-app .plan-panel-compact :is(.plan-panel-tools, .plan-panel-close):hover { background: var(--sk-hover); }
+.sk-app .plan-panel-compact h2 { margin: 5px 0 8px; font: var(--sk-headline); font-size: 22px; letter-spacing: -.02em; }
+.sk-app .plan-panel-compact .plan-panel-name {
+  display: block; width: 100%; min-height: 0; margin: 0; padding: 0;
+  border: 0; border-radius: 4px; background: none; color: inherit; font: inherit;
+  resize: none; overflow: hidden; line-height: inherit;
+}
+.sk-app .plan-panel-compact .plan-panel-name:focus { outline: 2px solid var(--sk-tint); outline-offset: 3px; }
+.sk-app .plan-panel-compact .plan-panel-marks { gap: 6px 12px; flex-wrap: wrap; }
+.sk-app .plan-panel-compact .plan-panel-where { font: var(--sk-caption); font-weight: 400; color: var(--sk-ink-2); }
+.sk-app .plan-panel-compact .plan-panel-priority { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; }
+.sk-app .plan-panel-compact .plan-panel-priority strong { font: var(--sk-caption); color: var(--sk-ink); }
+.sk-app .plan-panel-compact .plan-levels { gap: 2px; flex-wrap: nowrap; }
+.sk-app .plan-panel-compact .plan-level {
+  min-height: 26px; padding: 3px 6px; border: 0; border-radius: 5px;
+  font: var(--sk-caption); font-weight: 400; color: var(--sk-ink-2);
+}
+.sk-app .plan-panel-compact .plan-level.is-red { --lv: var(--sk-alert); }
+.sk-app .plan-panel-compact .plan-level.is-yellow { --lv: var(--sk-needs); }
+.sk-app .plan-panel-compact .plan-level.is-green { --lv: var(--sk-done); }
+.sk-app .plan-panel-compact .plan-level.is-on {
+  background: color-mix(in srgb, var(--lv) 23%, var(--sk-paper)); color: var(--sk-ink); font-weight: 700;
+  box-shadow: inset 0 -2px var(--lv);
+}
+.sk-app .plan-panel-compact .critical-flag { font: var(--sk-caption); }
+.sk-app .plan-panel-compact .plan-panel-detail {
+  margin: 8px 0 0; padding: 0 0 0 9px; border-radius: 0; border-left: 2px solid var(--sk-tint);
+  background: none; color: var(--sk-ink); font: var(--sk-secondary); white-space: pre-wrap;
+}
+.sk-app .plan-panel-compact .plan-panel-link { margin-top: 6px; color: var(--sk-tint); font: var(--sk-caption); }
+.sk-app .plan-panel-compact .plan-panel-body { padding: 0 20px; }
+.sk-app .plan-panel-compact .plan-panel-sec { margin: 0; padding: 0; border: 0; }
+.sk-app .plan-panel-compact .plan-panel-property {
+  display: grid; grid-template-columns: var(--pp-label) minmax(0, 1fr); align-items: start;
+  gap: 6px; padding: 3px 0; min-height: 35px;
+}
+.sk-app .plan-panel-compact .plan-panel-property:first-child { padding-top: 11px; border-top: 1px solid var(--sk-line); }
+.sk-app .plan-panel-compact h3 { display: flex; align-items: center; gap: 4px; margin: 0; font: var(--sk-caption); color: var(--sk-ink); }
+.sk-app .plan-panel-compact .plan-panel-property > h3 { min-height: 29px; white-space: nowrap; }
+.sk-app .plan-panel-compact .plan-panel-value { min-width: 0; }
+.sk-app .plan-panel-compact .plan-panel-help-wrap { position: relative; display: inline-flex; font-weight: 400; }
+.sk-app .plan-panel-compact .plan-panel-help {
+  display: inline-grid; place-items: center; width: 20px; min-height: 24px; padding: 0;
+  border: 0; background: none; color: var(--sk-ink-2); font: var(--sk-caption); cursor: pointer;
+}
+.sk-app .plan-panel-compact .plan-panel-help-tip {
+  position: absolute; z-index: 6; top: 100%; left: -60px; width: min(300px, calc(100vw - 48px));
+  padding: 8px 10px; border: 1px solid var(--sk-line); border-radius: 6px; white-space: normal;
+  background: var(--sk-paper); color: var(--sk-ink); font: var(--sk-secondary); box-shadow: 0 4px 18px #0002;
+}
+.sk-app .plan-panel-compact :is(input:not([type=checkbox]), textarea:not(.plan-panel-name), select) {
+  min-width: 0; min-height: 29px; margin: 0; padding: 4px 5px;
+  border: 1px solid transparent; border-radius: 4px; background: none; color: var(--sk-ink); font: var(--sk-secondary);
+}
+.sk-app .plan-panel-compact :is(input:not([type=checkbox]), textarea, select):hover { background: var(--sk-hover); }
+.sk-app .plan-panel-compact :is(input, textarea)::placeholder { color: var(--sk-ink-2); opacity: 1; }
+.sk-app .plan-panel-compact input[type=date] { width: 155px; max-width: 100%; }
+.sk-app .plan-panel-compact .plan-panel-action {
+  min-height: 29px !important; padding: 3px 6px; border: 0; border-radius: 5px;
+  background: none; color: var(--sk-tint); font: var(--sk-caption); box-shadow: none; white-space: nowrap;
+}
+.sk-app .plan-panel-compact .plan-panel-action:hover:not(:disabled) { background: var(--sk-hover); }
+.sk-app .plan-panel-compact .plan-before-add { align-items: center; gap: 5px; }
+.sk-app .plan-panel-compact .plan-before-add input { flex: 1; width: 0; }
+.sk-app .plan-panel-compact .plan-before-list { gap: 0; margin: 0; }
+.sk-app .plan-panel-compact .plan-before-list li { padding: 3px 0; min-height: 31px; background: none; }
+.sk-app .plan-panel-compact .plan-before-list label { min-height: 25px; color: var(--sk-ink); font: var(--sk-secondary); }
+.sk-app .plan-panel-compact .plan-before-list input { width: 16px; height: 16px; margin: 0; accent-color: var(--sk-tint); }
+.sk-app .plan-panel-compact .plan-before-list li.is-done span { color: var(--sk-ink-2); }
+.sk-app .plan-panel-compact .plan-panel-subtasks { margin-top: 7px; padding: 10px 0 6px; border-block: 1px solid var(--sk-line); }
+.sk-app .plan-panel-compact .plan-panel-subtasks > h3 { margin-bottom: 4px; font: var(--sk-label); font-size: 13px; }
+.sk-app .plan-panel-compact .plan-subs-count { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; color: var(--sk-ink-2); font: var(--sk-caption); font-weight: 400; }
+.sk-app .plan-panel-compact .plan-subs-meter { width: 48px; height: 3px; overflow: hidden; border-radius: 3px; background: var(--sk-hover); }
+.sk-app .plan-panel-compact .plan-subs-meter > span { display: block; height: 100%; background: var(--sk-tint); }
+.sk-app .plan-panel-compact .plan-panel-subtasks .plan-before-add { margin-left: 24px; }
+.sk-app .plan-panel-compact .plan-panel-note { padding: 9px 0; }
+.sk-app .plan-panel-compact #plan-note { display: block; width: 100%; resize: none; overflow: hidden; line-height: 1.45; }
+.sk-app .plan-panel-compact .plan-panel-actions { margin: 0; padding: 10px 20px; border-top: 1px solid var(--sk-line); align-items: center; }
+.sk-app .plan-panel-compact .plan-panel-actions > .plan-panel-action { padding-inline: 6px; }
+.sk-app .plan-panel-compact .plan-panel-done { margin-left: auto; padding-inline: 13px !important; background: var(--sk-ink); color: var(--sk-paper); }
+.sk-app .plan-panel-compact .plan-panel-done:hover:not(:disabled) { background: var(--sk-ink); opacity: .85; }
+.sk-app .plan-panel-compact .plan-panel-done:disabled { opacity: .5; cursor: not-allowed; }
+.sk-app .plan-panel-compact .plan-lock-editor { display: flex; gap: 6px; align-items: start; flex-wrap: wrap; }
+.sk-app .plan-panel-compact .plan-lock-kinds { display: flex; gap: 1px; flex: none; }
+.sk-app .plan-panel-compact .plan-lock-kinds button { padding: 4px 6px; min-height: 29px; border: 0; border-radius: 4px; background: none; color: var(--sk-ink-2); font: var(--sk-caption); font-weight: 400; cursor: pointer; }
+.sk-app .plan-panel-compact .plan-lock-kinds button.is-on { background: color-mix(in srgb, var(--sk-tint) 14%, var(--sk-paper)); color: var(--sk-ink); }
+.sk-app .plan-panel-compact .sk-fd-search { flex: 1 1 150px; min-width: 0; }
+.sk-app .plan-panel-compact .sk-fd-search > input { width: 100%; }
+.sk-app .plan-panel-compact .sk-fd-pop { max-width: 100%; }
+.sk-app .plan-panel-compact .plan-lock-state { margin: 3px 0; font: var(--sk-secondary); overflow-wrap: anywhere; }
+.sk-app .plan-panel-compact .plan-lock-state.is-open { color: var(--sk-ink); }
+.sk-app .plan-panel-compact .plan-lock-bar { background: var(--sk-hover); }
+.sk-app .plan-panel-compact .plan-lock-bar > span { background: var(--sk-tint); }
+.sk-app .plan-panel-compact .plan-lock-habit { gap: 6px; flex-basis: 100%; }
+.sk-app .plan-panel-compact .plan-lock-habit select { width: 100%; }
+.sk-app .plan-panel-compact .plan-lock-habit label { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .plan-panel-compact .plan-panel-hint { margin: 3px 0; color: var(--sk-ink-2); font: var(--sk-caption); font-weight: 400; }
+@container (max-width: 440px) {
+  .sk-app .plan-panel-compact :is(.plan-panel-header, .plan-panel-actions) { padding-inline: 12px; }
+  .sk-app .plan-panel-compact .plan-panel-body { padding-inline: 12px; }
+  .sk-app .plan-panel-compact .plan-panel-marks { gap: 5px; }
+  .sk-app .plan-panel-compact .plan-panel-priority { gap: 3px; }
+  .sk-app .plan-panel-compact .plan-level { padding-inline: 5px; }
+  .sk-app .plan-panel-compact .plan-lock-editor .sk-fd-search { flex-basis: 100%; }
+  .sk-app .plan-panel-compact :is(input:not([type=checkbox]), textarea:not(.plan-panel-name), select) { font-size: 16px; }
+}
+@media (pointer: coarse) {
+  .sk-app .plan-panel-compact .plan-before-list label { min-height: 40px; }
+  .sk-app .plan-panel-compact :is(.plan-panel-tools, .plan-panel-close, .plan-panel-help, .plan-panel-action, .plan-level, .plan-lock-kinds button) { min-height: 40px !important; }
+}
+/* The phone page deliberately zooms out; task editing keeps its normal readable size. */
+@media (max-width: 520px) {
+  .sk-app .plan-panel-wrap { zoom: calc(1 / var(--pp-page-zoom, 1)); }
+  .sk-app:has(.plan-panel-compact) .row-menu {
+    --sk-secondary: 400 calc(14px / var(--pp-page-zoom, 1))/1.45 "DM Sans", system-ui, sans-serif;
+    --sk-caption: 600 calc(12px / var(--pp-page-zoom, 1))/1.3 "DM Sans", system-ui, sans-serif;
+    min-width: calc(180px / var(--pp-page-zoom, 1)); max-width: calc(280px / var(--pp-page-zoom, 1));
+  }
+  .sk-app:has(.plan-panel-compact) .row-menu-item { min-height: calc(40px / var(--pp-page-zoom, 1)); }
+}

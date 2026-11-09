@@ -509,3 +509,9 @@ Design critique + WCAG 2.1 AA + copy + design-system audit, then fixes (last blo
 - Section headings and reminder lists flow as labeled text with dot separators. Goal rows and padding are tighter. Content remains fully visible; no additional disclosures, clipping, or internal scrolling.
 - Tablet moves affirmations below each reminder; phone stacks each row and wraps the original text. Affirmation persistence and review behavior are unchanged.
 - Browser checks: 996px section at 1280px versus approximately 1760px previously, no overflow at 390px or 900px, and Enter submission passed. TypeScript, component lint, and Pages build pass. Full lint retains the documented existing issues.
+
+## Compact task popout (2026-11-09)
+- Priority task details use the approved inline layout: compact Day / Locked until / Before this rows, flat subtasks with a progress meter, and title/plan fields that grow with their text. Subtasks have no focal highlight.
+- The panel is portalled into `.sk-app`, inheriting the active sticker palette and DM Sans styles. Selected High / Med / Low controls use the existing red / yellow / green meaning palette. Phone editing and its menus compensate for the actual page zoom without changing the saved page-size setting.
+- The original field explanations remain in keyboard/touch-accessible info controls. Critical, Take off the plan and Delete are in Task tools / the header context menu; individual prerequisite and subtask removal uses the existing row-menu gestures.
+- Existing task callbacks, lock rules, source-managed read-only steps and saved fields are retained; there are no new stored keys, Worker changes or Apps Script changes. Validation uses isolated sample data for edits and a read-only integration check in the local preview.

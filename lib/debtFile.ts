@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { syncKeyHeader } from './cloudSync';
-import { findingOf, ownItems, setFinding, useFindings, type Finding, type FindingStore } from './finFindings';
+import { findingOf, ownItems, scheduleNow, setFinding, useFindings, type Finding, type FindingStore } from './finFindings';
 import { readSaved, writeSaved } from './storage';
 
 const WORKER_BASE =
@@ -54,6 +54,8 @@ export type DebtItem = {
   facts?: string[];
   pay?: string;
   next?: string;
+  /** Pay-by date for what's owed now (hand-typed items with a schedule) */
+  due?: string;
 };
 
 export type PayLaterSeen = { id: string; provider: string; merchant: string; amount: number | null; date: string; state: 'paid' | 'late' | 'upcoming'; note?: string };
@@ -142,16 +144,21 @@ export function applyFindings(file: DebtFile | null, marks: DebtMarks, findings:
   for (const o of ownItems(findings)) {
     if (OWN_COUNTED_ELSEWHERE.has(o.key)) continue;
     const reg = OWN_REGISTRATION.has(o.key);
+    const step = o.schedule?.length ? scheduleNow(o.schedule) : undefined;
     items.push({
       id: o.key,
       group: reg ? 'md' : 'liability',
       ...(reg ? { step: RENEWAL_STEP, blocksRegistration: true } : {}),
       name: o.name || 'Money item',
-      amount: o.amount ?? null,
-      status: o.paid ? 'paid' : 'open',
+      amount: step ? step.amount : (o.amount ?? null),
+      ...(step ? { due: step.by } : {}),
+      status: o.paid ? 'paid' : o.note || 'open',
       plan: planFrom(o),
+      ...(o.contact ? { pay: o.contact } : {}),
       timeline: [],
-      facts: ['Typed in on Life Hub (focus card).'],
+      facts: step
+        ? ['Added on Life Hub from the county tax record.', ...o.schedule!.map(x => `${money(x.amount)} if paid by ${x.by}`)]
+        : ['Typed in on Life Hub (focus card).'],
     });
     if (o.paid) nextMarks[o.key] = { status: 'paid', at: o.at };
     else delete nextMarks[o.key];

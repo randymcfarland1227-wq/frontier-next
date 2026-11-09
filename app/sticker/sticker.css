@@ -3198,3 +3198,13 @@
 /* Split view: the Today tab names shrink with the pane so all five fit on one row. */
 .sk-app .sk-splitcol .sk-seg.sk-today-tabs { flex-wrap: nowrap; max-width: 100%; }
 .sk-app .sk-splitcol .sk-seg.sk-today-tabs button { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: clamp(11px, 1.6cqi, 15px); min-height: 28px; padding: 3px clamp(5px, 1.1cqi, 12px); }
+
+/* Short-term focus: finished cards — green check in the corner, folded "Done" list under the active ones */
+.sk-app .sk-ring.is-check { background: var(--sk-done-ink, #0a8a5f); color: #fff; }
+.sk-app .sk-ring.is-check::before { display: none; }
+.sk-app .sk-ring.is-check b { font-size: 15px; }
+.sk-app .sk-fdone { margin: var(--sk-s1) 0 var(--sk-s2); }
+.sk-app .sk-fdone-head { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--sk-done-ink, #0a8a5f) 14%, transparent); color: inherit; font: 700 13px/1.2 "DM Sans", system-ui, sans-serif; cursor: pointer; }
+.sk-app .sk-fdone-check { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--sk-done-ink, #0a8a5f); color: #fff; font-size: 11px; }
+.sk-app .sk-fdone-chev { opacity: .6; }
+.sk-app .sk-fdone .sk-fcard.is-done { opacity: .8; }

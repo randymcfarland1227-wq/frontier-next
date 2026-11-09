@@ -38,6 +38,8 @@ export type Finding = {
   /** Where to set it up / who to call */
   contact?: string;
   note?: string;
+  /** own: items: pay-by steps (amount owed if paid by each date), e.g. a county tax ticket that adds interest monthly */
+  schedule?: Array<{ by: string; amount: number }>;
   /** own: items: paid off */
   paid?: boolean;
   /** Day (YYYY-MM-DD) it was last checked */
@@ -74,6 +76,30 @@ export function addOwnItem(name: string, init: Partial<Omit<Finding, 'key' | 'at
   if (s[key] && !s[key].gone) return key;
   put({ ...s, [key]: { key, name: name.trim(), amount: null, plan: 'unknown', ...init, at: new Date().toISOString() } });
   return key;
+}
+
+const WV_PAY = 'Pay online at monongalia.softwaresystems.com (Pay your taxes online) or call the Sheriff\'s Tax Office (304) 291-7244';
+const WV_TICKETS: Array<{ id: string; name: string; note: string; steps: number[] }> = [
+  { id: 'wv-pp-2023', name: 'Monongalia Co. personal property tax 2023', note: 'Ticket 1100000037 S · acct 20242760 · 17 Toyota Corolla · delinquent, none paid', steps: [302.37, 304.05, 305.73, 307.41, 309.08, 310.76, 312.43, 314.11, 315.79, 317.47, 319.15] },
+  { id: 'wv-pp-2024', name: 'Monongalia Co. personal property tax 2024', note: 'Ticket 316186 · acct 20242760 · 17 Toyota Corolla · delinquent, none paid', steps: [238.43, 239.83, 241.23, 242.63, 244.03, 245.43, 246.82, 248.21, 249.61, 251.01, 252.41] },
+];
+const WV_BY = ['2026-11-30', '2026-12-31', '2027-01-31', '2027-02-28', '2027-03-31', '2027-04-30', '2027-05-31', '2027-06-30', '2027-07-31', '2027-08-31', '2027-09-30'];
+
+/** Randy's two WV personal property tax tickets → Taxes / Legal (once; never brought back after he removes one). */
+export function seedCountyTaxes() {
+  const s = loadFindings();
+  let next = s;
+  for (const t of WV_TICKETS) {
+    const key = `own:${t.id}`;
+    if (next[key]) continue;
+    next = { ...next, [key]: { key, name: t.name, amount: t.steps[0], plan: 'none', terms: 'Pay the full total — no halves once delinquent', contact: WV_PAY, note: t.note, schedule: t.steps.map((amount, i) => ({ by: WV_BY[i], amount })), at: new Date().toISOString() } };
+  }
+  if (next !== s) put(next);
+}
+
+/** The step that applies today (first pay-by date not yet passed; the last one after that). */
+export function scheduleNow(steps: Array<{ by: string; amount: number }>, today = new Date().toLocaleDateString('en-CA')) {
+  return steps.find(x => x.by >= today) || steps[steps.length - 1];
 }
 
 export function removeFinding(key: string) {

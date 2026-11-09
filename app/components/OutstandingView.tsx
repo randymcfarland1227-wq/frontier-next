@@ -350,6 +350,7 @@ export function outstandingParts(
     amount: i.amount ?? undefined,
     itemId: i.id,
     note: i.status,
+    date: i.due,
     done: isSettled(marks[i.id]),
     unverified: i.unverified,
   });

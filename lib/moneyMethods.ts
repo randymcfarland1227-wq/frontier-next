@@ -5,6 +5,7 @@
  */
 import { paySrc } from './balancePicks';
 import { addLifeSub, loadLifeSubs, updateLifeSub } from './lifeSubs';
+import { seedCountyTaxes } from './finFindings';
 import { loadMoneyMeta, metaName, setMeta } from './moneyMeta';
 import type { BillDue } from './schedule';
 
@@ -115,6 +116,7 @@ function seedHubSubs() {
 /** Fill in pay-from and notes for matching items that have none yet. */
 export function applyMoneyMethods(dues: BillDue[]) {
   seedHubSubs();
+  seedCountyTaxes();
   const meta = loadMoneyMeta();
   const done = new Set<string>();
   for (const d of dues) {

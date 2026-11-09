@@ -7,6 +7,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
+import { useFold } from "./Collapsible";
 import { Icon } from "../sticker/Icon";
 import { deleteRemote, docTag, downloadRef, fetchRefBlob, formatSize, linkLabel, normalizeUrl, openRef, sortRefs, uploadRef, type FocusRef } from "../../lib/focusRefs";
 import { openTaskPanel, pinKey } from "../../lib/priorityPins";
@@ -406,8 +407,14 @@ function Card({
         </span>
       ) : null}
       {item.ongoing || item.section ? null : (
-        <span className={`sk-fcard-corner${(p.pct ?? 0) >= 100 ? " is-full" : ""}`} aria-label={`${p.pct ?? 0}% complete`} title={p.total ? `${p.done} of ${p.total} done` : "No sub-tasks yet"}>
-          <Ring pct={p.pct ?? 0} />
+        <span className={`sk-fcard-corner${item.done || (p.pct ?? 0) >= 100 ? " is-full" : ""}`} aria-label={item.done ? "Done" : `${p.pct ?? 0}% complete`} title={p.total ? `${p.done} of ${p.total} done` : "No sub-tasks yet"}>
+          {item.done ? (
+            <span className="sk-ring is-check" aria-hidden="true">
+              <b>✓</b>
+            </span>
+          ) : (
+            <Ring pct={p.pct ?? 0} />
+          )}
         </span>
       )}
       <h4 className="sk-fcard-t">{item.title}</h4>
@@ -1433,23 +1440,29 @@ export function FocusCards({
     setOpenId(id);
   };
   const ordered = orderFocus(all.map((a) => a.item));
+  const active = ordered.filter((i) => !i.done);
+  const finished = ordered.filter((i) => i.done);
+  const [doneShut, toggleDone] = useFold(`focus-done-${label || "cards"}`);
   const openItem = all.find((a) => a.item.id === openId)?.item;
+  const cardOf = (i: Entry) => (
+    <Card key={i.id} item={i} events={events} ctx={ctx} open={() => setOpenId(i.id)} />
+  );
   return (
     <>
-      {ordered.length ? (
-        <div className="sk-fcards">
-          {ordered.map((i) => (
-            <Card
-              key={i.id}
-              item={i}
-              events={events}
-              ctx={ctx}
-              open={() => setOpenId(i.id)}
-            />
-          ))}
-        </div>
-      ) : empty ? (
+      {active.length ? (
+        <div className="sk-fcards">{active.map(cardOf)}</div>
+      ) : empty && !finished.length ? (
         <p className="sk-empty">{empty}</p>
+      ) : null}
+      {finished.length ? (
+        <div className={`sk-fdone${doneShut ? "" : " is-open"}`}>
+          <button type="button" className="sk-fdone-head" aria-expanded={!doneShut} onClick={toggleDone}>
+            <span className="sk-fdone-check" aria-hidden="true">✓</span>
+            Done · {finished.length}
+            <span className="sk-fdone-chev" aria-hidden="true">{doneShut ? "▸" : "▾"}</span>
+          </button>
+          {doneShut ? null : <div className="sk-fcards">{finished.map(cardOf)}</div>}
+        </div>
       ) : null}
       {noAdd ? null : (
         <form className="sk-fc-add" onSubmit={add}>

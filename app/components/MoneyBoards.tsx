@@ -1449,6 +1449,7 @@ export function PaySources({
               tone={kind === "sub" ? "sub" : kind === "card" ? "card" : "due"}
               title={title}
               figure={usd(sumOf(xs.map((d) => d.bill.amount)))}
+              inline
             >
               <ul className="mb-src-list">
                 {xs.map((d) => (

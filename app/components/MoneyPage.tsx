@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PayPlanner } from './PayPlanner';
 import { debtOptions, purchaseAddEdits, purchaseDeleteEdits } from '../../lib/money';
+import { CashAdvanceAdd, PayLaterAdd } from './MoneyAddRows';
 import { MoneySelector } from './MoneySelector';
 import { isLedgerPaid, ledgerMonthRows } from '../../lib/moneyLedger';
 import { DebtFile } from './DebtFile';
@@ -1416,7 +1417,7 @@ function SubsView({ model, lifeSubs: allLifeSubs, paidAt, dues, onSave }: { mode
   const stateOf = (r: SubRow) => {
     if (r.status === 'paused') return { text: 'Paused', tone: 'is-quiet' };
     if (r.status === 'cancelled') return { text: 'Cancelled', tone: 'is-quiet' };
-    if (r.status === 'skipped') return { text: '✓ Crossed off', tone: 'is-paid' };
+    if (r.status === 'skipped') return { text: '✓ Paid', tone: 'is-paid' };
     if (!r.date) return { text: r.status === 'trial' ? 'Free trial' : '—', tone: r.status === 'trial' ? 'is-trial' : '' };
     const days = Math.round((fromDayKey(r.date).getTime() - today.getTime()) / 86_400_000);
     if (isCharged(r)) return { text: `✓ Charged ${shortDate(r.date)}`, tone: 'is-paid' };
@@ -1469,8 +1470,8 @@ function SubsView({ model, lifeSubs: allLifeSubs, paidAt, dues, onSave }: { mode
               <span className={`subs-state ${st.tone}`}>{st.text}</span>
               <span className="subs-tools">
                 {r.from === 'sheet' && r.row ? (
-                  <button type="button" className="sk-btn is-small" onClick={() => void onSave([strikeEdit(r.row!, r.status !== 'skipped')])} title="Crosses it out in the sheet (done or skipped this month)">
-                    {r.status === 'skipped' ? 'Uncross' : 'Cross off'}
+                  <button type="button" className="sk-btn is-small" onClick={() => void onSave([strikeEdit(r.row!, r.status !== 'skipped')])} title={r.status === 'skipped' ? 'Un-crosses it in the sheet (not paid this month)' : 'Crosses it out in the sheet = paid this month'}>
+                    {r.status === 'skipped' ? 'Not paid' : 'Paid'}
                   </button>
                 ) : null}
                 {r.from === 'sheet' ? (
@@ -3786,6 +3787,7 @@ export function MoneyPage({
 
         {tab === 'spend' && spendView === 'cash' ? (
           <Section tone="due" title={`Cash advances · ${monthName}`} hint="Dave, MoneyLion, Cleo… from the Cash Advances block on the Randy tab. Nothing counts as paid until you tap Paid." figure={money(weekLeft(['cash']))} figureLabel="left this week" href={link('Randy')}>
+            <CashAdvanceAdd onSave={save} />
             <MonthView dues={monthDues} paidAt={paidAt} model={model} onPaid={onPaid} kinds={['cash']} foldPaid />
           </Section>
         ) : null}
@@ -3793,6 +3795,7 @@ export function MoneyPage({
         {tab === 'spend' && spendView === 'paylater' ? (
           <div className="mny-stack">
             <Section tone="due" title={`Pay later · ${monthName}`} hint="Affirm, Afterpay, Klarna, Zip. Nothing counts as paid until you tap Paid." figure={money(weekLeft(['paylater']))} figureLabel="left this week" href={link('Randy')}>
+              <PayLaterAdd onSave={save} />
               <MonthView dues={monthDues} paidAt={paidAt} model={model} onPaid={onPaid} kinds={['paylater']} foldPaid />
             </Section>
             {plSeen.length ? (

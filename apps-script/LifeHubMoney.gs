@@ -76,6 +76,7 @@ function lhPushMoney_(key) {
 /**
  * Apply edits from Life Hub. Each edit is one of:
  *   { tab, r, c, expect, value }        set a cell (0-based row/col) — typed like you typed it
+ *   { tab, addRows: true, title, width, moveWidth?, rows }  add rows to the end of a titled block (see lhAddRows_)
  *   { tab, r, c1, c2, expect, strike }  cross out / un-cross a row segment (first cell must match expect)
  *   { tab, r, c1, c2, expect, moveAfter } move a row segment to a new row inserted under row `moveAfter`
  *                                         (e.g. Needed Purchases → Wants); the old row is removed
@@ -99,6 +100,12 @@ function lhMoneyEdit_(edits) {
         if (!lock.tryLock(5000)) return { ok: false, error: 'busy' };
         try { return lhInsertBalancing_(ss, sh, e); }
         finally { SpreadsheetApp.flush(); lock.releaseLock(); }
+      }
+      if (e.addRows === true) {
+        var lockA = LockService.getScriptLock();
+        if (!lockA.tryLock(5000)) return { ok: false, error: 'busy' };
+        try { return lhAddRows_(ss, sh, e); }
+        finally { SpreadsheetApp.flush(); lockA.releaseLock(); }
       }
       if (e.deleteBalancing === true) {
         var lockD = LockService.getScriptLock();
@@ -262,6 +269,85 @@ function lhInsertBalancing_(ss, sh, e) {
   });
   lhMoneyLog_(ss, e.tab, target.getA1Notation(), '', JSON.stringify(values));
   return { ok: true };
+}
+
+/**
+ * { tab, addRows: true, title, width, moveWidth?, rows } adds rows to the end of a titled block
+ * (title cell, header row, then data — e.g. "Cash Advances" on Randy, "Full Ledger" / "Klarna Sum" on Paylater).
+ * The block ends at the first row whose first two cells are blank (a total row counts as the end).
+ * If that spot isn't free (a total row, or the next block right under it), only the block's own columns
+ * (moveWidth wide) shift down, never whole sheet rows, so blocks to the left/right stay put. The new rows
+ * take the format of the row above, and SUM-style ranges that ended on the old last row grow to include them.
+ */
+function lhAddRows_(ss, sh, e) {
+  var title = String(e.title || '').trim();
+  var width = Number(e.width);
+  var span = Number(e.moveWidth || e.width);
+  var rows = e.rows;
+  if (!title || !(width >= 2 && width <= 8) || !(span >= width && span <= 12) || !Array.isArray(rows) || !rows.length || rows.length > 12) return { ok: false, error: 'bad range' };
+  var clean = [];
+  for (var i = 0; i < rows.length; i++) {
+    if (!Array.isArray(rows[i]) || rows[i].length !== width) return { ok: false, error: 'bad value' };
+    var out = [];
+    for (var j = 0; j < width; j++) {
+      var v = String(rows[i][j] === undefined || rows[i][j] === null ? '' : rows[i][j]).trim();
+      if (v.length > 200 || /^[=+@]/.test(v)) return { ok: false, error: 'bad value' };
+      var iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+      out.push(iso ? new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])) : /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v);
+    }
+    if (out[1] === '' || out[1] === undefined) return { ok: false, error: 'bad value' };
+    clean.push(out);
+  }
+  var at = sh.getDataRange().createTextFinder(title).matchEntireCell(true).findNext();
+  if (!at) return { ok: false, error: 'no block' };
+  var c = at.getColumn();
+  var start = at.getRow() + 2;
+  var k = clean.length;
+  var lastRow = Math.max(sh.getLastRow(), start);
+  var look = sh.getRange(start, c, Math.max(Math.min(lastRow - start + 1 + k + 2, sh.getMaxRows() - start + 1), 1), span).getDisplayValues();
+  var blank = function (i) { return !look[i] || look[i].every(function (x) { return String(x).trim() === ''; }); };
+  var at0 = 0;
+  while (at0 < look.length && (String(look[at0][0]).trim() !== '' || String(look[at0][1]).trim() !== '')) at0++;
+  var r = start + at0;
+  // Room = k free rows plus one spacer row under them.
+  var free = true;
+  for (var f = 0; f <= k; f++) if (!blank(at0 + f)) free = false;
+  if (!free) {
+    // Shift this block's columns from r down to the first run of k+1 empty rows (or the end of the sheet).
+    var q = at0 + 1;
+    while (q < look.length) {
+      var ok = true;
+      for (var g = 0; g <= k; g++) if (!blank(q + g)) ok = false;
+      if (ok) break;
+      q++;
+    }
+    var height = q - at0;
+    var need = r + height + k - 1 - sh.getMaxRows();
+    if (need > 0) sh.insertRowsAfter(sh.getMaxRows(), need);
+    sh.getRange(r, c, height, span).moveTo(sh.getRange(r + k, c));
+  }
+  var target = sh.getRange(r, c, k, width);
+  if (target.getFormulas().some(function (row) { return row.some(Boolean); })) return { ok: false, error: 'formula' };
+  if (r - 1 >= start) sh.getRange(r - 1, c, 1, width).copyTo(target, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+  target.setValues(clean).setFontLine('none');
+  // Grow ranges in these columns that ended on the old last row (e.g. =SUM(U4:U6) -> =SUM(U4:U7)).
+  var colNum = function (s) { var n = 0; for (var x = 0; x < s.length; x++) n = n * 26 + s.charCodeAt(x) - 64; return n; };
+  var re = /(^|[^!A-Za-z0-9_$])(\$?)([A-Z]{1,3})(\$?)(\d+):(\$?)([A-Z]{1,3})(\$?)(\d+)(?![\d(A-Za-z_])/g;
+  var data = sh.getDataRange();
+  var formulas = data.getFormulas();
+  formulas.forEach(function (row, ri) {
+    row.forEach(function (formula, ci) {
+      if (!formula) return;
+      var next = formula.replace(re, function (m, pre, d1, c1, d2, r1, d3, c2, d4, r2) {
+        var a = colNum(c1), b = colNum(c2);
+        if (Number(r2) !== r - 1 || Number(r1) < start - 1 || a < c || b > c + span - 1) return m;
+        return pre + d1 + c1 + d2 + r1 + ':' + d3 + c2 + d4 + (r + k - 1);
+      });
+      if (next !== formula) sh.getRange(ri + 1, ci + 1).setFormula(next);
+    });
+  });
+  lhMoneyLog_(ss, e.tab, target.getA1Notation(), '', 'added ' + JSON.stringify(rows));
+  return { ok: true, row: r - 1 };
 }
 
 /** One row per change on the "Life Hub edits" tab, so anything can be undone by hand. */

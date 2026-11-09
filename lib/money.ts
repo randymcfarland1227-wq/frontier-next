@@ -76,7 +76,9 @@ export type CellEdit =
   /** Move a row segment to a new row inserted under row `moveAfter` (e.g. Needed → Wants) */
   | { tab: string; r: number; c: number; c1: number; c2: number; expect: string; moveAfter: number }
   /** Add a Finance task row to the Radall 'Task List' tab (same title = not added twice) */
-  | { tab: 'Task List'; appendTask: true; title: string; due?: string; note?: string };
+  | { tab: 'Task List'; appendTask: true; title: string; due?: string; note?: string }
+  /** Add rows to the end of a titled block (Randy "Cash Advances", Paylater "Full Ledger" / "Klarna Sum"…); only that block's columns shift */
+  | { tab: string; addRows: true; title: string; width: number; moveWidth?: number; rows: string[][] };
 
 export type EditResult = { ok: boolean; error?: string; now?: string; row?: number; existed?: boolean };
 
@@ -876,7 +878,10 @@ export function moneyBillDues(model: MoneyModel | null, paid: Set<string>, today
  * when there's nothing in the sheet to cross (a month carried forward, a row already crossed out).
  */
 export function crossOffEdit(item: MoneyItem | undefined, strike = true): CellEdit | undefined {
-  if (!item || item.projected || (strike && item.skipped)) return undefined;
+  if (!item || (strike && item.skipped)) return undefined;
+  // A subscription is one sheet row (its date is the last charge); this month's copy is projected from it,
+  // and crossing that row out is how the sheet says "paid this month". Later months stay off.
+  if (item.projected && !(item.kind === 'sub' && item.date && item.date.slice(0, 7) <= dayKey(new Date()).slice(0, 7))) return undefined;
   const cells = [item.cells.date, item.cells.name, item.cells.amount].filter((c): c is Cell => Boolean(c) && c!.tab === item.cells.name.tab && c!.r === item.cells.name.r);
   if (!cells.length) return undefined;
   const first = cells.reduce((a, b) => (b.c < a.c ? b : a));

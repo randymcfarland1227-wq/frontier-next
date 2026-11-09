@@ -3194,3 +3194,7 @@
 .sk-app .skw-tasks > :not(.sk-listh) { margin: 0; }
 .bal.is-solo { grid-template-columns: minmax(0, 1fr); }
 .sk-app .bal-credit .sk-listh { margin-bottom: 0; }
+
+/* Split view: the Today tab names shrink with the pane so all five fit on one row. */
+.sk-app .sk-splitcol .sk-seg.sk-today-tabs { flex-wrap: nowrap; max-width: 100%; }
+.sk-app .sk-splitcol .sk-seg.sk-today-tabs button { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: clamp(11px, 1.6cqi, 15px); min-height: 28px; padding: 3px clamp(5px, 1.1cqi, 12px); }

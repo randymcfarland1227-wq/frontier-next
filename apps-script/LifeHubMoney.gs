@@ -272,7 +272,7 @@ function lhInsertBalancing_(ss, sh, e) {
 }
 
 /**
- * { tab, addRows: true, title, under?, width, moveWidth?, rows } adds rows to the end of a titled block
+ * { tab, addRows: true, title, under?, width, moveWidth?, wholeRows?, rows } adds rows to the end of a titled block
  * (title cell, header row, then data — e.g. "Cash Advances" on Randy, "Full Ledger" / "Klarna Sum" on Paylater).
  * The block ends at the first row whose first two cells are blank (a total row counts as the end).
  * If that spot isn't free (a total row, or the next block right under it), only the block's own columns
@@ -325,10 +325,15 @@ function lhAddRows_(ss, sh, e) {
       if (ok) break;
       q++;
     }
+    if (e.wholeRows === true) {
+      // Whole sheet rows: everything under r moves together, so side-by-side old tables stay lined up.
+      sh.insertRowsBefore(r, k);
+    } else {
     var height = q - at0;
     var need = r + height + k - 1 - sh.getMaxRows();
     if (need > 0) sh.insertRowsAfter(sh.getMaxRows(), need);
     sh.getRange(r, c, height, span).moveTo(sh.getRange(r + k, c));
+    }
   }
   var target = sh.getRange(r, c, k, width);
   if (target.getFormulas().some(function (row) { return row.some(Boolean); })) return { ok: false, error: 'formula' };

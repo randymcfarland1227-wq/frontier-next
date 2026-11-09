@@ -2842,10 +2842,11 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
 /** Paid-from picker: bank accounts and cards with their last 4; a typed account that isn't in either list (Current Debit, a Zip card) still shows. */
 function PayFromSelect({ value, onPick, banks, cards, label }: { value: string; onPick: (acct: string) => void; banks: Array<{ name: string; label: string }>; cards: string[]; label: string }) {
   const { meta } = useMoneyMeta();
-  const known = value === '' || banks.some(b => b.name === value) || cards.includes(value);
+  const known = value === '' || value === 'Misc' || banks.some(b => b.name === value) || cards.includes(value);
   return (
     <select className="mb-cp-sel" value={value} onChange={e => onPick(e.target.value)} aria-label={label}>
       <option value="">Not set</option>
+      <option value="Misc">Misc (more than one)</option>
       {!known ? <option value={value}>{withLast4(value, meta)}</option> : null}
       <optgroup label="Accounts">{banks.map(b => <option key={b.name} value={b.name}>{last4Of(b.name, meta) && !b.label.includes(last4Of(b.name, meta)) ? `${b.label} •${last4Of(b.name, meta)}` : b.label}</option>)}</optgroup>
       <optgroup label="Cards">{cards.map(c => <option key={c} value={c}>{withLast4(c, meta)}</option>)}</optgroup>

@@ -1467,6 +1467,7 @@ export function PaySources({
                       aria-label={`Pay ${d.bill.name} from`}
                     >
                       <option value="">Pay from…</option>
+                      <option value="Misc">Misc (more than one)</option>
                       <optgroup label="Accounts">
                         {banks.map((b) => (
                           <option key={b.name} value={b.name}>

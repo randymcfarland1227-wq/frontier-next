@@ -113,7 +113,7 @@ export function PayLaterAdd({ onSave }: { onSave: Save }) {
       onSubmit={async e => {
         e.preventDefault();
         if (!f.name.trim() || !amount || !f.first) return;
-        const edits: CellEdit[] = [{ tab: 'Paylater', addRows: true, title: 'Full Ledger', under: 'Date', width: 5, rows }];
+        const edits: CellEdit[] = [{ tab: 'Paylater', addRows: true, title: 'Full Ledger', under: 'Date', width: 5, wholeRows: true, rows }];
         if (COPY_TABLE[f.provider]) edits.push({ tab: 'Paylater', addRows: true, title: `${f.provider} Sum`, under: COPY_TABLE[f.provider], width: 5, rows });
         if (await run(edits, edits.length - 1)) {
           setF(blank);

@@ -153,6 +153,8 @@ export function lifeSubDues(subs: LifeSub[], paid: Set<string>, today = new Date
       if (d < from || d > to || d < addDays(created, -31)) continue;
       const due = dayKey(d);
       if (s.start && due < s.start) continue;
+      // A subscription charges itself: a charge dated before it was added on Life Hub is history, not overdue.
+      if ((!s.kind || s.kind === 'sub') && !s.start && due < dayKey(created) && due < dayKey(t)) continue;
       const nth = s.times && s.start ? paymentIndex(s.start, due, s.cycle) : 0;
       if (s.times && nth >= s.times) continue;
       const key = `money:lhsub:${s.id}:${due}`;

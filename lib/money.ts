@@ -78,7 +78,7 @@ export type CellEdit =
   /** Add a Finance task row to the Radall 'Task List' tab (same title = not added twice) */
   | { tab: 'Task List'; appendTask: true; title: string; due?: string; note?: string }
   /** Add rows to the end of a titled block (Randy "Cash Advances", Paylater "Full Ledger" / "Klarna Sum"…); only that block's columns shift */
-  | { tab: string; addRows: true; title: string; width: number; moveWidth?: number; rows: string[][] };
+  | { tab: string; addRows: true; title: string; under?: string; width: number; moveWidth?: number; rows: string[][] };
 
 export type EditResult = { ok: boolean; error?: string; now?: string; row?: number; existed?: boolean };
 

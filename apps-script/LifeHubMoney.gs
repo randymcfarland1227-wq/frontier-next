@@ -272,7 +272,7 @@ function lhInsertBalancing_(ss, sh, e) {
 }
 
 /**
- * { tab, addRows: true, title, width, moveWidth?, rows } adds rows to the end of a titled block
+ * { tab, addRows: true, title, under?, width, moveWidth?, rows } adds rows to the end of a titled block
  * (title cell, header row, then data — e.g. "Cash Advances" on Randy, "Full Ledger" / "Klarna Sum" on Paylater).
  * The block ends at the first row whose first two cells are blank (a total row counts as the end).
  * If that spot isn't free (a total row, or the next block right under it), only the block's own columns
@@ -298,7 +298,11 @@ function lhAddRows_(ss, sh, e) {
     if (out[1] === '' || out[1] === undefined) return { ok: false, error: 'bad value' };
     clean.push(out);
   }
-  var at = sh.getDataRange().createTextFinder(title).matchEntireCell(true).findNext();
+  // Same title elsewhere (e.g. "Klarna Sum" in the Paylater summary): `under` = the text right below the real one.
+  var under = String(e.under || '').trim().toLowerCase();
+  var at = sh.getDataRange().createTextFinder(title).matchEntireCell(true).findAll().filter(function (cell) {
+    return !under || String(cell.offset(1, 0).getDisplayValue()).trim().toLowerCase() === under;
+  })[0];
   if (!at) return { ok: false, error: 'no block' };
   var c = at.getColumn();
   var start = at.getRow() + 2;

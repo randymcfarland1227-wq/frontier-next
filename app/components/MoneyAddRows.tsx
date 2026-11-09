@@ -50,7 +50,7 @@ export function CashAdvanceAdd({ onSave }: { onSave: Save }) {
         e.preventDefault();
         const amount = cents(f.amount);
         if (!f.name.trim() || !amount || !f.due) return;
-        const ok = await run([{ tab: 'Randy', addRows: true, title: 'Cash Advances', width: 3, moveWidth: 4, rows: [[f.due, f.name.trim(), amount]] }]);
+        const ok = await run([{ tab: 'Randy', addRows: true, title: 'Cash Advances', under: 'Date Due', width: 3, moveWidth: 4, rows: [[f.due, f.name.trim(), amount]] }]);
         if (ok) {
           setF(blank);
           setOpen(false);
@@ -78,7 +78,8 @@ export function CashAdvanceAdd({ onSave }: { onSave: Save }) {
 
 const PROVIDERS = ['Klarna', 'Afterpay', 'Affirm', 'Zip'] as const;
 /** Providers with their own copy table on the Paylater tab (titled "<Provider> Sum"); Afterpay's total reads the ledger. */
-const COPY_TABLE: Record<string, boolean> = { Klarna: true, Affirm: true, Zip: true };
+/** value = the text right under the table's title (the summary at J3:J6 repeats the titles). */
+const COPY_TABLE: Record<string, string> = { Klarna: 'Klarna', Affirm: 'Affirm', Zip: 'Date' };
 
 function addStep(iso: string, i: number, every: 'week2' | 'month'): string {
   const [y, m, d] = iso.split('-').map(Number);
@@ -112,8 +113,8 @@ export function PayLaterAdd({ onSave }: { onSave: Save }) {
       onSubmit={async e => {
         e.preventDefault();
         if (!f.name.trim() || !amount || !f.first) return;
-        const edits: CellEdit[] = [{ tab: 'Paylater', addRows: true, title: 'Full Ledger', width: 5, rows }];
-        if (COPY_TABLE[f.provider]) edits.push({ tab: 'Paylater', addRows: true, title: `${f.provider} Sum`, width: 5, rows });
+        const edits: CellEdit[] = [{ tab: 'Paylater', addRows: true, title: 'Full Ledger', under: 'Date', width: 5, rows }];
+        if (COPY_TABLE[f.provider]) edits.push({ tab: 'Paylater', addRows: true, title: `${f.provider} Sum`, under: COPY_TABLE[f.provider], width: 5, rows });
         if (await run(edits, edits.length - 1)) {
           setF(blank);
           setOpen(false);

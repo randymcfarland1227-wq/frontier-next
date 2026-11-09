@@ -4984,6 +4984,8 @@ button.bal-led-row:hover { background: color-mix(in srgb, var(--ev, #0f8a7e) 8%,
 .mm-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .mm-name small.mm-from { color: var(--muted); font-weight: 500; }
 .mb-cp-sel { font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line, var(--row-line)); background: var(--surface); color: inherit; width: 100%; }
+.mb-cp-note { font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line, var(--row-line)); background: var(--surface); color: inherit; width: 100%; resize: vertical; box-sizing: border-box; }
+.cc-l4 { font-weight: 500; opacity: .65; font-size: .85em; margin-left: 2px; }
 .mb-cp-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
 .mb-cp-list li { display: grid; grid-template-columns: 70px 70px 1fr; gap: 8px; font-size: 12.5px; }
 

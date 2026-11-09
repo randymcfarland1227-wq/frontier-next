@@ -45,6 +45,7 @@ import { billRuleKey, isEnded, loadBillDays, setBillEnd, isOverdue, loadBillEdit
 import { deleteForGood, BillChangeForm, BillFlagsFields, BillPinButton, FlagBadges, billChangeText } from './BillControls';
 import { addExtraCard, updateExtraCard, useExtraCards, type ExtraCard } from '../../lib/extraCards';
 import { addLifeSub, loadLifeSubs, updateLifeSub, type LifeSub } from '../../lib/lifeSubs';
+import { applyMoneyMethods, last4Of, withLast4 } from '../../lib/moneyMethods';
 import { addCustomItem, METHOD_LABEL, mondayOf, setBalancePicks, setPickLanded, srcKey, paySrc, NO_ACCT, updatePick, useBalancePicks, type BalancePlan, type CustomItem, type PayMethod } from '../../lib/balancePicks';
 import { addIncoming, incomingDues, updateIncoming, useIncoming, type Incoming, type IncomingDue } from '../../lib/incoming';
 
@@ -779,7 +780,7 @@ function MonthRow({ d, paidAt, onPaid, fullDate = false }: { d: BillDue; paidAt:
         <BrandLogo name={`${d.bill.name} ${d.bill.notes || ''}`} />
         <ItemName id={d.key}>{d.bill.name}</ItemName>
         {installment ? <small> · {installment}</small> : null}
-        {from ? <small className="mm-from"> · {from}</small> : null}
+        {from ? <small className="mm-from"> · {withLast4(from)}</small> : null}
         {billChangeText(d) ? <small> · {billChangeText(d)}</small> : null}
         <FlagBadges d={d} />
       </span>
@@ -1009,7 +1010,7 @@ function CardTiles({ model, dues, paidAt, onPaid, onSave }: { model: MoneyModel;
         return (
           <li key={c.name} className={`cc-tile ${level}`}>
             <div className="cc-head">
-              <button type="button" className="mny-item-link" onClick={() => panels.openCard(c.name.replace(/\s+/g, ' '))} title="Card details"><strong>{c.name}</strong></button>
+              <button type="button" className="mny-item-link" onClick={() => panels.openCard(c.name.replace(/\s+/g, ' '))} title="Card details"><strong>{c.name}</strong>{last4Of(c.name) ? <small className="cc-l4"> •{last4Of(c.name)}</small> : null}</button>
               {used !== undefined ? <span className="cc-used">{used}% used</span> : <span className="cc-used" title="Type its limit in More Cards (Randy tab, Limit column) to include it in % used">Limit unknown</span>}
             </div>
             <div className="cc-bal">
@@ -1080,7 +1081,7 @@ function ExtraCardTile({ card }: { card: ExtraCard }) {
   return (
     <li className="cc-tile">
       <div className="cc-head">
-        <strong>{card.name}</strong>
+        <strong>{card.name}</strong>{last4Of(card.name) ? <small className="cc-l4"> •{last4Of(card.name)}</small> : null}
         <span className="cc-used">{card.limit === undefined && card.balance === undefined && card.fee === undefined ? 'Placeholder' : used !== undefined ? `${used}% used` : 'Added here'}</span>
       </div>
       <div className="cc-bal">
@@ -2837,6 +2838,45 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
   );
 }
 
+/** Paid-from picker: bank accounts and cards with their last 4; a typed account that isn't in either list (Current Debit, a Zip card) still shows. */
+function PayFromSelect({ value, onPick, banks, cards, label }: { value: string; onPick: (acct: string) => void; banks: Array<{ name: string; label: string }>; cards: string[]; label: string }) {
+  const { meta } = useMoneyMeta();
+  const known = value === '' || banks.some(b => b.name === value) || cards.includes(value);
+  return (
+    <select className="mb-cp-sel" value={value} onChange={e => onPick(e.target.value)} aria-label={label}>
+      <option value="">Not set</option>
+      {!known ? <option value={value}>{withLast4(value, meta)}</option> : null}
+      <optgroup label="Accounts">{banks.map(b => <option key={b.name} value={b.name}>{last4Of(b.name, meta) && !b.label.includes(last4Of(b.name, meta)) ? `${b.label} •${last4Of(b.name, meta)}` : b.label}</option>)}</optgroup>
+      <optgroup label="Cards">{cards.map(c => <option key={c} value={c}>{withLast4(c, meta)}</option>)}</optgroup>
+    </select>
+  );
+}
+
+/** Randy's note on a bill / sub / pay later (other saved cards, balance left). Hub subs keep it on the sub itself. */
+function NotesField({ src, hubSub }: { src: string; hubSub?: LifeSub }) {
+  const { get } = useMoneyMeta();
+  const val = hubSub ? hubSub.note || '' : get(`note:${src}`)?.note || '';
+  return (
+    <>
+      <h4 className="mb-cp-h">Notes</h4>
+      <textarea
+        key={`${src}:${val}`}
+        className="mb-cp-note"
+        rows={2}
+        defaultValue={val}
+        placeholder="Other saved cards, balance left…"
+        aria-label="Notes"
+        onBlur={e => {
+          const v = e.target.value.trim();
+          if (v === val) return;
+          if (hubSub) updateLifeSub(hubSub.id, { note: v || undefined });
+          else setMeta(`note:${src}`, { note: v || undefined });
+        }}
+      />
+    </>
+  );
+}
+
 /** A subscription's shared panel: how long, this month's charge, next charge, where it's paid from. */
 function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name: string; model: MoneyModel; dues: BillDue[]; paidAt: Record<string, string>; onPaid: (d: BillDue) => void; onBack?: () => void; onClose: () => void }) {
   const fromOf = usePayFrom();
@@ -2871,11 +2911,8 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
       </div>
       <SinceField metaKey={`sub:${metaName(name)}`} label="Subscribed since" />
       <h4 className="mb-cp-h">Paid from</h4>
-      <select className="mb-cp-sel" value={mine ? fromOf(mine) : ''} onChange={e => pick(e.target.value)} aria-label={`Pay ${name} from`}>
-        <option value="">Not set</option>
-        <optgroup label="Accounts">{banks.map(b => <option key={b.name} value={b.name}>{b.label}</option>)}</optgroup>
-        <optgroup label="Cards">{cards.map(c => <option key={c} value={c}>{c}</option>)}</optgroup>
-      </select>
+      <PayFromSelect value={mine ? fromOf(mine) : ''} onPick={pick} banks={banks} cards={cards} label={`Pay ${name} from`} />
+      <NotesField src={src} hubSub={hubSub} />
       <PaidHistory list={list} paidAt={paidAt} model={model} current={mine} />
       {mine ? <ChangeThisOne due={mine} onGone={onClose} /> : null}
       {hubSub ? (
@@ -2946,7 +2983,7 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
   const num = (v: string) => (v.trim() === '' ? undefined : Number(v));
   return (
     <Modal label={c.name} onClose={onClose} onBack={onBack} wide>
-      <h3>{c.name}</h3>
+      <h3>{c.name}{last4Of(c.name) ? <small className="cc-l4"> •{last4Of(c.name)}</small> : null}</h3>
       <CardFreshness c={c} readAt={model.refreshedAt} />
       {c.due ? <BillFlagsFields due={c.due} /> : null}
       <div className="mb-cp-figs">
@@ -3042,11 +3079,8 @@ function ItemPanel({ id, dues, model, paidAt, onPaid, onBack, onClose }: { id: s
         {d.bill.payBy ? <span><small>pay by</small><b>{payByText(d.bill.payBy)}</b></span> : null}
       </div>
       <h4 className="mb-cp-h">Paid from</h4>
-      <select className="mb-cp-sel" value={fromOf(d)} onChange={e => pick(e.target.value)} aria-label={`Pay ${d.bill.name} from`}>
-        <option value="">Not set</option>
-        <optgroup label="Accounts">{banks.map(b => <option key={b.name} value={b.name}>{b.label}</option>)}</optgroup>
-        <optgroup label="Cards">{cards.map(c => <option key={c} value={c}>{c}</option>)}</optgroup>
-      </select>
+      <PayFromSelect value={fromOf(d)} onPick={pick} banks={banks} cards={cards} label={`Pay ${d.bill.name} from`} />
+      <NotesField src={src} hubSub={d.bill.kind === 'sub' ? loadLifeSubs().find(x => !x.removed && x.name.trim().toLowerCase() === (d.bill.origName ?? d.bill.name).trim().toLowerCase()) : undefined} />
       <PaidHistory list={dues} paidAt={paidAt} model={model} current={d} />
       <ChangeThisOne due={d} onGone={onClose} />
       {['paid', 'crossed', 'charged', 'skipped'].includes(state) ? null : (
@@ -3362,6 +3396,8 @@ export function MoneyPage({
   const billEditsNow = useBillEdits();
   // Pay-by dates read from Gmail notices (e.g. Verizon's suspension date) fill in where the sheet / Life Hub has none.
   const dues = useMemo(() => withPayBy(duesIn, debtFile.file?.payby, billEditsNow), [duesIn, debtFile.file?.payby, billEditsNow]);
+  // Randy's Nov 8 list: pay-from + notes for subs and pay laters that have none yet (lib/moneyMethods.ts)
+  useEffect(() => { if (dues.length) applyMoneyMethods(dues); }, [dues]);
   const monthDues = useMemo(() => withPayBy(monthDuesIn, debtFile.file?.payby, billEditsNow), [monthDuesIn, debtFile.file?.payby, billEditsNow]);
   // Unpaid from before this month (the month lists only show this month's rows)
   const carryDues = useMemo(() => {

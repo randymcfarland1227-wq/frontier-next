@@ -9,6 +9,8 @@
  *   card:<name>  → { payX, payPlan, payTarget }     payoff models B and C inputs (CardPayoff.tsx)
  *   figs:<card>  → { sig, seenAt, first }           when a card's figures last changed (lib/cardFresh.ts)
  *   from:<src>   → { acct }                           which account or card pays a bill / sub / pay later
+ *   note:<src>   → { note }                           Randy's note on a bill / sub / pay later (other saved cards, balance left)
+ *   last4:<name> → { last4 }                          last 4 digits of a card or bank account (lib/moneyMethods.ts)
  * A removed entry keeps `gone: true` so the removal syncs too.
  */
 
@@ -38,6 +40,9 @@ export type MetaEntry = {
   state?: 'pend' | 'avail';
   availOn?: string;
   acct?: string;
+  /** note:<src> → free text; last4:<name> → 4 digits */
+  note?: string;
+  last4?: string;
   /** Card payoff models (CardPayoff.tsx): B's fixed monthly amount, C's planned payments + target date */
   payX?: number;
   payPlan?: Array<{ date: string; amount: number }>;

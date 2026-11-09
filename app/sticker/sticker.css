@@ -1114,6 +1114,7 @@
 .sk-app .mb-cp-figs small, .sk-app .mb-cp-h, .sk-app .mb-cp-edit label { color: var(--sk-ink-2); font: var(--sk-caption); }
 .sk-app .mb-cp-list li { border-bottom: 1.5px solid var(--sk-line); }
 .sk-app .mb-cp-sel { border: 1.5px solid var(--sk-edge); border-radius: 8px; background: var(--sk-paper); color: var(--sk-ink); }
+.sk-app .mb-cp-note { border: 1.5px solid var(--sk-edge); border-radius: 8px; background: var(--sk-paper); color: var(--sk-ink); }
 /* Money cards (loans / card detail) */
 .sk-app .mny-card { border: 2px solid var(--sk-edge); border-radius: 12px; background: var(--sk-paper); }
 .sk-app .mny-card.is-open { box-shadow: 3px 3px 0 var(--sk-edge); }

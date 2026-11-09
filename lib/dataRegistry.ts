@@ -34,6 +34,7 @@ export const SAVED_KEYS: SavedKey[] = [
   { key: 'lifehub-extra-cards', backup: 'cloud', note: "Cards added on Life Hub (not in the sheet) — cloud-synced" },
   { key: 'lifehub-featured-levels', backup: 'cloud', note: "Red / yellow / green on featured + pinned items — cloud-synced" },
   { key: 'lifehub-finance-seed-v1', backup: 'device' },
+  { key: 'lifehub-seed-money-methods-v1', backup: 'device' },
   { key: 'lifehub-flow-sorting-backup', backup: 'device' },
   { key: 'lifehub-focus', backup: 'device' },
   { key: 'lifehub-focus-fit-areas', backup: 'cloud' },

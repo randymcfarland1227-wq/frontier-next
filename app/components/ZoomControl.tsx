@@ -2,38 +2,32 @@
 
 import { useEffect, useState } from 'react';
 import { readSaved, writeSaved, STORAGE_KEYS } from '../../lib/storage';
+import { pageZoom } from '../../lib/displaySettings';
 
 const MIN = 60;
 const MAX = 160;
 const STEP = 10;
 
-/**
- * Default size is 100%: the browser's own zoom (Cmd − / Cmd +) decides. Scaling up by window width
- * fought it — zooming out widens the CSS viewport, which bumped the auto size straight back up.
- */
-function autoZoom() {
-  return 100;
-}
-
-/**
- * Page zoom for this device (the layout re-flows at each size, it doesn't just magnify).
- * Until you pick a size it follows the screen width ("Auto"); tapping the % goes back to Auto.
- */
+/** One page-wide control; a saved size overrides the legacy phone default. */
 export function ZoomControl() {
-  // The first version saved 100 on every load, so a stored 100 means "never picked" → Auto.
-  const [saved, setSaved] = useState<number | null>(() => {
-    const v = readSaved<number | null>(STORAGE_KEYS.zoom, null);
-    return typeof v === 'number' && v !== 100 ? v : null;
-  });
-  const [auto] = useState(autoZoom);
+  const [saved, setSaved] = useState<number | null>(() => pageZoom(readSaved(STORAGE_KEYS.zoom, null)));
+  const [auto, setAuto] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 520px)').matches ? 60 : 100);
   const zoom = saved ?? auto;
 
-
   useEffect(() => {
-    document.documentElement.style.setProperty('zoom', zoom === 100 ? '' : String(zoom / 100));
-    // Full-height pieces (the sticker sidebar) divide by this so they still fit the window.
+    const screen = window.matchMedia('(max-width: 520px)');
+    const update = () => setAuto(screen.matches ? 60 : 100);
+    screen.addEventListener('change', update);
+    return () => screen.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    document.documentElement.style.setProperty('zoom', saved === null ? '' : String(zoom / 100));
     document.documentElement.style.setProperty('--page-zoom', String(zoom / 100));
-  }, [zoom]);
+    return () => {
+      document.documentElement.style.removeProperty('zoom');
+      document.documentElement.style.removeProperty('--page-zoom');
+    };
+  }, [zoom, saved]);
 
   const pick = (next: number | null) => {
     writeSaved(STORAGE_KEYS.zoom, next);
@@ -49,10 +43,11 @@ export function ZoomControl() {
       <button
         type="button"
         className="zoom-value"
-        onClick={() => pick(null)}
-        title={saved === null ? 'Browser zoom decides (Cmd − / Cmd +)' : 'Back to browser zoom'}
+        onClick={() => pick(100)}
+        title="Reset site size to 100%"
+        aria-label={`Site size ${zoom}%. Reset to 100%`}
       >
-        {saved === null ? 'Auto' : `${zoom}%`}
+        {zoom}%
       </button>
       <button type="button" onClick={() => step(STEP)} disabled={zoom >= MAX} aria-label="Zoom in" title="Zoom in">
         +

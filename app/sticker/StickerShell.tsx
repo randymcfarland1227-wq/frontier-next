@@ -4,7 +4,8 @@ import { inFocusPlan, useFocusLinks } from "../../lib/focusLinks";
 import { useEffect, useState, type ReactNode } from "react";
 import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import { sourceById } from "../../lib/sources";
-import { ZoomControl } from "../components/ZoomControl";
+import { DisplayControls } from "./DisplayControls";
+import { DISPLAY_KEY, displaySettings, type DisplaySettings } from "../../lib/displaySettings";
 import { Icon, type IconName } from "./Icon";
 import { DaySky } from "./DaySky";
 import { NightSky } from "./NightSky";
@@ -102,6 +103,11 @@ export function StickerShell({
   children: ReactNode;
 }) {
   const [more, setMore] = useState(false);
+  const [display, setDisplay] = useState(() => displaySettings(readSaved(DISPLAY_KEY, null)));
+  const changeDisplay = (next: DisplaySettings) => {
+    setDisplay(next);
+    writeSaved(DISPLAY_KEY, next);
+  };
   const { iconFor } = useSiteIcons();
   const { lanes } = usePriorityPins();
   const focusLinks = useFocusLinks();
@@ -254,10 +260,6 @@ export function StickerShell({
           <Icon name={theme === "dark" ? "sun" : "moon"} size={14} />
         </button>
       </div>
-      <div className="sk-zoom">
-        <span className="sk-cap">Page size</span>
-        <ZoomControl />
-      </div>
     </>
   );
 
@@ -290,6 +292,9 @@ export function StickerShell({
               : "classic"
       }
       data-side={slim ? "slim" : "full"}
+      data-headers={display.headers}
+      data-tabs={display.tabs}
+      data-spacing={display.spacing}
     >
       {/* Night mode only (CSS): stars, planets, constellations, shooting stars and an astronaut. */}
       <DaySky />
@@ -350,6 +355,7 @@ export function StickerShell({
       </aside>
 
       <div className="sk-main">
+        <DisplayControls settings={display} onChange={changeDisplay} />
         {active === "home" ? (
           <div className="sk-content">{children}</div>
         ) : (

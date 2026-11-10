@@ -97,6 +97,7 @@ export const SAVED_KEYS: SavedKey[] = [
   { key: 'lifehub-vault', backup: 'device' },
   { key: 'lifehub-weather', backup: 'device' },
   { key: 'lifehub-why-tab', backup: 'device' },
+  { key: 'lifehub-display', backup: 'device', note: 'Heading, tab and spacing preferences on this device' },
   { key: 'lifehub-zoom', backup: 'device', note: "Page zoom % on this device" },
   { key: 'sk-side-folded', backup: 'device' },
   { key: 'sk-side-slim', backup: 'device' },

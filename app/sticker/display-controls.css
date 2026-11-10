@@ -1,0 +1,56 @@
+/* Display controls inherit the current Life Hub palette, including night mode. */
+.sk-app .sk-display { position: sticky; top: 0; z-index: 20; color: var(--sk-ink); background: var(--sk-paper); border-bottom: 1px solid var(--sk-line); font: 500 12px/1.4 "DM Sans", sans-serif; }
+.sk-app .sk-display-bar { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; min-height: 44px; padding: 4px clamp(12px, 1.6vw, 28px); }
+.sk-app .sk-display button { color: var(--sk-ink); background: transparent; border: 1px solid var(--sk-line); border-radius: 7px; font: inherit; min-height: 32px; padding: 4px 10px; cursor: pointer; box-shadow: none; }
+.sk-app .sk-display button:hover:not(:disabled) { background: var(--sk-hover); }
+.sk-app .sk-display button:focus-visible { outline: 2px solid var(--sk-tint); outline-offset: 2px; }
+.sk-app .sk-display button:disabled { opacity: .4; cursor: default; }
+.sk-app .sk-display .zoom-control { display: inline-flex; gap: 2px; align-items: center; }
+.sk-app .sk-display .zoom-control button { min-width: 32px; }
+.sk-app .sk-display .zoom-value { display: block; min-width: 58px; font-variant-numeric: tabular-nums; }
+.sk-app .sk-display .sk-display-toggle { display: flex; gap: 12px; align-items: center; font-weight: 700; }
+.sk-app .sk-display-toggle[aria-expanded="true"] { background: var(--sk-hover); border-color: var(--sk-tint); }
+.sk-app .sk-display-options { position: absolute; right: 12px; top: 100%; width: min(360px, calc(100vw / var(--page-zoom, 1) - 24px)); max-height: calc(100dvh / var(--page-zoom, 1) - 180px); overflow-y: auto; padding: 14px; border: 1px solid var(--sk-line); border-radius: 0 0 12px 12px; background: var(--sk-paper); box-shadow: 0 8px 24px #0003; }
+.sk-app .sk-display-options p { color: var(--sk-ink-2); margin: 0 0 10px; font: inherit; }
+.sk-app .sk-display-options fieldset { padding: 0; border: 0; margin: 12px 0; min-width: 0; }
+.sk-app .sk-display-options legend { padding: 0; margin-bottom: 6px; font-weight: 700; }
+.sk-app .sk-display-choices { display: flex; gap: 4px; }
+.sk-app .sk-display-choices button { flex: 1; }
+.sk-app .sk-display-choices button[aria-pressed="true"] { background: var(--sk-ink); color: var(--sk-paper); border-color: var(--sk-ink); font-weight: 700; }
+.sk-app .sk-display .sk-display-reset { color: var(--sk-tint); }
+
+/* Role-specific sizes: body copy, inputs, task rows and figures are untouched. */
+.sk-app[data-headers="compact"] { --sk-title: 600 16px/1.3 "Unbounded", system-ui, sans-serif; --sk-large: 600 28px/1.2 "Unbounded", system-ui, sans-serif; }
+.sk-app[data-headers="compact"][data-page] :is(.sk-title, .sk-section > .sk-shead .sk-title) { font-size: 16px; }
+.sk-app[data-headers="compact"][data-page] .sk-greet { font-size: 28px; white-space: normal; }
+.sk-app[data-headers="compact"][data-page] .sk-top .sk-large { font-size: 20px; }
+.sk-app[data-headers="compact"][data-page] :is(h1:not(.sk-large), .room-hero h1, .hero.hero-flush h1) { font-size: 28px; white-space: normal; }
+.sk-app[data-headers="compact"][data-page] :is(h2.sk-hl, .review-head h2, .priority-head h2, .why-head h2, .captures-head h2, .card-copy h2) { font-size: 16px; }
+.sk-app[data-headers="large"][data-page] :is(.sk-title, .sk-section > .sk-shead .sk-title) { font-size: 24px; }
+.sk-app[data-headers="large"][data-page] .sk-greet { font-size: 48px; white-space: normal; }
+.sk-app[data-headers="large"][data-page] .sk-top .sk-large { font-size: 32px; }
+.sk-app[data-headers="large"][data-page] h1:not(.sk-large) { font-size: 40px; }
+.sk-app[data-headers="large"][data-page] :is(h2.sk-hl, .review-head h2, .priority-head h2, .why-head h2, .captures-head h2, .card-copy h2) { font-size: 22px; }
+
+.sk-app[data-tabs="compact"][data-page] :is(.sk-seg button, .skm-tab-l, .skm-subtab-l, .seg button, button[role="tab"]) { font-size: 13px !important; }
+.sk-app[data-tabs="compact"][data-page] :is(.sk-seg button, .skm-subtab, button[role="tab"]) { padding: 4px 8px; min-height: 32px; }
+.sk-app[data-tabs="large"][data-page] :is(.sk-seg button, .skm-tab-l, .skm-subtab-l, .seg button, button[role="tab"]) { font-size: 16px !important; }
+.sk-app[data-tabs="large"][data-page] :is(.sk-seg button, .skm-subtab, button[role="tab"]) { padding: 7px 14px; min-height: 38px; }
+.sk-app[data-tabs][data-page] .sk-seg.sk-today-tabs { display: flex; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; }
+.sk-app[data-tabs][data-page] .sk-seg.sk-today-tabs button { flex: 0 0 auto; overflow: visible; text-overflow: clip; }
+
+.sk-app[data-spacing="compact"] { --sk-s3: 10px; --sk-s4: 12px; --sk-s5: 16px; --sk-s6: 28px; }
+.sk-app[data-spacing="compact"][data-page] .sk-hero { padding: 14px 16px; margin-bottom: 16px; }
+@media (max-width: 760px) {
+  .sk-app .sk-display-bar { justify-content: flex-end; padding-inline: 10px; gap: 6px; }
+  .sk-app[data-headers="large"][data-page] .sk-greet { font-size: 34px; }
+  .sk-app[data-headers="large"][data-page] .sk-top .sk-large { font-size: 26px; }
+}
+
+/* Older pages have a 12px !important tab rule; these two size overrides intentionally win. */
+.sk-app[data-headers="compact"][data-page] .sk-main h2 { font-size: 16px; }
+.sk-app[data-headers="large"][data-page] .sk-main h2 { font-size: 22px; }
+.sk-app[data-headers="compact"][data-page] .sk-main h3 { font-size: 14px; }
+.sk-app[data-headers="large"][data-page] .sk-main h3 { font-size: 19px; }
+.sk-app[data-headers="compact"][data-page] .sk-main h4 { font-size: 13px; }
+.sk-app[data-headers="large"][data-page] .sk-main h4 { font-size: 17px; }

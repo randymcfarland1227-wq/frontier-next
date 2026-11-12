@@ -3208,3 +3208,23 @@
 .sk-app .sk-fdone-check { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--sk-done-ink, #0a8a5f); color: #fff; font-size: 11px; }
 .sk-app .sk-fdone-chev { opacity: .6; }
 .sk-app .sk-fdone .sk-fcard.is-done { opacity: .8; }
+
+/* Voice memo captures (VoicePlayer.tsx; recordings come from the voice-memos repo) */
+.sk-app .sk-voice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 2px; }
+.sk-app .sk-voice-play { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 5px 14px 5px 6px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--sk-tint) 14%, transparent); color: inherit; font: var(--sk-label); font-size: 13px; cursor: pointer; }
+.sk-app .sk-voice-play:disabled { opacity: .6; cursor: progress; }
+.sk-app .sk-voice-tri { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--sk-tint); color: #fff; font-size: 10px; padding-left: 2px; }
+.sk-app .sk-voice-audio { width: min(100%, 320px); height: 36px; }
+.sk-app .sk-voice-err { font-size: 12px; opacity: .75; }
+
+/* Voice memos list inside Self (VoiceMemoList.tsx) */
+.sk-app .sk-vm { margin: var(--sk-s1, 8px) 0 var(--sk-s2, 12px); padding: 8px 10px 10px; border-radius: 14px; background: color-mix(in srgb, var(--sk-tint) 7%, transparent); }
+.sk-app .sk-vm .sk-listh { gap: 8px; }
+.sk-app .sk-vm-rec { margin-left: auto; font-size: 13px; }
+.sk-app .sk-vm-body { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.sk-app .sk-vm-dayh { display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; opacity: .7; }
+.sk-app .sk-vm-dayh::after { content: ""; flex: 1; height: 1px; background: currentColor; opacity: .25; }
+.sk-app .sk-vm-dayn { font-weight: 500; }
+.sk-app .sk-vm-row.is-parked { opacity: .65; }
+.sk-app .sk-vm-note { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.sk-app .sk-vm-more { align-self: flex-start; font-size: 13px; }

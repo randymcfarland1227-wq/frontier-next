@@ -46,6 +46,7 @@ import { SourceCard } from './components/SourceCard';
 import { requestOpenDebt } from '../lib/finLinks';
 import { SiteFocus } from './components/AssignedFocus';
 import { SourceView } from './components/SourceView';
+import { VoiceMemoList } from './components/VoiceMemoList';
 import { FocusDrawer, useTodayListCount } from './components/FocusDrawer';
 import { SourceBridges } from './components/SourceBridges';
 import {
@@ -1303,6 +1304,13 @@ goalsData ? (
           onSelfAdd={(title, detail) => syncSelf(addSelfItem(title, detail))}
           onSelfComplete={id => syncSelf(toggleSelfComplete(id))}
           onSelfStar={id => syncSelf(toggleSelfStar(id))}
+          voiceMemos={
+            <VoiceMemoList
+              memos={captures.filter(c => c.kind === 'voice' && c.status !== 'dropped')}
+              onStatus={(id, status) => setCaptures(setCaptureStatus(id, status))}
+              onPromote={promoteCapture}
+            />
+          }
         />
       )}
       </StickerShell>

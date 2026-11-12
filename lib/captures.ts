@@ -4,7 +4,11 @@ import type { SourceId } from './types';
 import type { FocusAreaId } from './focusAreas';
 import { readSaved, writeSaved, STORAGE_KEYS } from './storage';
 
-export type CaptureKind = 'research' | 'learn' | 'lookinto' | 'idea' | 'thought';
+/** 'voice' = a recording from the voice-memos site (separate repo); never offered in the quick-add form. */
+export type CaptureKind = 'research' | 'learn' | 'lookinto' | 'idea' | 'thought' | 'voice';
+
+/** A voice memo's recording, stored on the Worker (/api/files, KV `file:<id>`, backup key). */
+export type CaptureAudio = { fileId: string; type: string; seconds: number; size: number };
 
 export type CaptureStatus = 'inbox' | 'parked' | 'promoted' | 'dropped';
 
@@ -19,6 +23,12 @@ export type Capture = {
   status: CaptureStatus;
   createdAt: string;
   reviewedAt?: string;
+  /** Voice memo recording (kind 'voice'); notes hold the phone's transcript when it made one */
+  audio?: CaptureAudio;
+  /** Voice memos: the date/time Randy logged it for (may differ from createdAt) */
+  loggedAt?: string;
+  /** Voice memos: Thought / Idea / To-do / Journal / Meeting / Reminder (free text) */
+  memoType?: string;
   /** Set when promoted into a real task */
   promotedTo?: { source: SourceId; taskId: string };
 };

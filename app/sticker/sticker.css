@@ -3209,7 +3209,7 @@
 .sk-app .sk-fdone-chev { opacity: .6; }
 .sk-app .sk-fdone .sk-fcard.is-done { opacity: .8; }
 
-/* Voice memo captures (VoicePlayer.tsx; recordings come from public/memo/) */
+/* Voice memo captures (VoicePlayer.tsx; recordings come from the voice-memos repo) */
 .sk-app .sk-voice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 2px; }
 .sk-app .sk-voice-play { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 5px 14px 5px 6px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--sk-tint) 14%, transparent); color: inherit; font: var(--sk-label); font-size: 13px; cursor: pointer; }
 .sk-app .sk-voice-play:disabled { opacity: .6; cursor: progress; }

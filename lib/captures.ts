@@ -4,7 +4,7 @@ import type { SourceId } from './types';
 import type { FocusAreaId } from './focusAreas';
 import { readSaved, writeSaved, STORAGE_KEYS } from './storage';
 
-/** 'voice' = a recording from the Voice memo page (public/memo/); never offered in the quick-add form. */
+/** 'voice' = a recording from the voice-memos site (separate repo); never offered in the quick-add form. */
 export type CaptureKind = 'research' | 'learn' | 'lookinto' | 'idea' | 'thought' | 'voice';
 
 /** A voice memo's recording, stored on the Worker (/api/files, KV `file:<id>`, backup key). */

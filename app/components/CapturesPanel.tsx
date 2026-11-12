@@ -12,7 +12,7 @@ import type { SelfItem } from '../../lib/adapters/self';
 import { useRowMenu, type RowMenuItem } from './RowMenu';
 import { Circle, ListHead, Row, Tag } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
-import { VoicePlayer } from './VoicePlayer';
+import { VoiceMemoList } from './VoiceMemoList';
 import { PLAN, openTaskPanel, pinDragProps, pinKey, usePriorityPins } from '../../lib/priorityPins';
 import { addOngoingGoal } from '../../lib/ongoingGoals';
 import { addToSiteList, createSiteList, listOfTask, openSiteList, useSiteListStore } from '../../lib/siteLists';
@@ -219,11 +219,14 @@ export function CapturesPanel({
   // Starred ones sit in their own list above the tabs; Pin there is what sends one to Priority.
   const starredTasks = allOpen.filter(t => t.starred);
   const openTasks = allOpen.filter(t => !t.starred);
+  // Voice memos get their own foldable list; the tabs keep the typed captures.
+  const memos = captures.filter(c => c.kind === 'voice' && c.status !== 'dropped');
+  const typed = captures.filter(c => c.kind !== 'voice');
   // Finished ones are kept on the Self page, not on the Daily Ops card.
   const counts: Record<Tab, number> = Object.fromEntries(
-    TABS.map(t => [t.id, t.id === 'tasks' ? openTasks.length + myLists.length : captures.filter(c => c.status === t.id).length]),
+    TABS.map(t => [t.id, t.id === 'tasks' ? openTasks.length + myLists.length : typed.filter(c => c.status === t.id).length]),
   ) as Record<Tab, number>;
-  const visible = tab === 'tasks' ? [] : captures.filter(c => c.status === tab);
+  const visible = tab === 'tasks' ? [] : typed.filter(c => c.status === tab);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -406,6 +409,8 @@ export function CapturesPanel({
         </div>
       ) : null}
 
+      <VoiceMemoList memos={memos} onStatus={onStatus} onPromote={onPromote} />
+
       <div className="sk-chips sk-captabs" role="tablist" aria-label="Capture status">
         {/* Empty tabs step aside (the open one always shows). */}
         {TABS.filter(t => t.id === tab || t.id === 'inbox' || t.id === 'tasks' || counts[t.id] > 0).map(t => (
@@ -485,7 +490,6 @@ export function CapturesPanel({
                         {areaName(c.focusAreaId) ? <span>{areaName(c.focusAreaId)}</span> : null}
                         <span>{ago(c.createdAt)}</span>
                       </span>
-                      {c.audio ? <VoicePlayer audio={c.audio} /> : null}
                       {c.notes ? <span className="sk-capnote">{c.notes}</span> : null}
                       {c.status === 'promoted' ? (
                         <span className="sk-capnote">Now a Self task · {task ? (task.done ? 'done' : 'open') : 'removed'}</span>

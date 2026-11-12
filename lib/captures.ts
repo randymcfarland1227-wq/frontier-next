@@ -25,6 +25,10 @@ export type Capture = {
   reviewedAt?: string;
   /** Voice memo recording (kind 'voice'); notes hold the phone's transcript when it made one */
   audio?: CaptureAudio;
+  /** Voice memos: the date/time Randy logged it for (may differ from createdAt) */
+  loggedAt?: string;
+  /** Voice memos: Thought / Idea / To-do / Journal / Meeting / Reminder (free text) */
+  memoType?: string;
   /** Set when promoted into a real task */
   promotedTo?: { source: SourceId; taskId: string };
 };

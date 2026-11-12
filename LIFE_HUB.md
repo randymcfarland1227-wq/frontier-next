@@ -515,3 +515,9 @@ Design critique + WCAG 2.1 AA + copy + design-system audit, then fixes (last blo
 - The panel is portalled into `.sk-app`, inheriting the active sticker palette and DM Sans styles. Selected High / Med / Low controls use the existing red / yellow / green meaning palette. Phone editing and its menus compensate for the actual page zoom without changing the saved page-size setting.
 - The original field explanations remain in keyboard/touch-accessible info controls. Critical, Take off the plan and Delete are in Task tools / the header context menu; individual prerequisite and subtask removal uses the existing row-menu gestures.
 - Existing task callbacks, lock rules, source-managed read-only steps and saved fields are retained; there are no new stored keys, Worker changes or Apps Script changes. Validation uses isolated sample data for edits and a read-only integration check in the local preview.
+
+## Voice memos (2026-11-12)
+- Phone page: `public/memo/` → https://randymcfarland1227-wq.github.io/frontier-next/memo/ (own manifest, so Add to Home Screen opens straight to the recorder). Plain HTML/JS, no build step.
+- Same origin as the hub, so it reuses the backup key (`lifehub-sync` / cookie `lifehub_sync_key` / IndexedDB `lifehub-vault`). A home-screen app has its own storage: it asks once for the "Link another device" link.
+- Save = recording kept in IndexedDB `lifehub-memos` first (works offline), then PUT `/api/files` (10 MB cap ≈ 25 min at 48 kbps) and PUT `/api/state` with one capture `{ kind: 'voice', focusAreaId: 'self', audio: { fileId, type, seconds, size } }`. Captures merge by id, so no Worker change was needed.
+- Hub: `VoicePlayer.tsx` in the Self inbox (CapturesPanel) fetches the recording with the backup key only when Play is tapped. Live transcript is browser speech recognition (off by default on iPhone).

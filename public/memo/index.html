@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Voice Memo</title>
+<meta name="theme-color" content="#14110f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Memo">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="icon" href="../favicon.svg">
+<style>
+  :root {
+    --bg: #14110f; --card: #201b18; --line: #3a312b; --ink: #f4ece4; --mute: #a8998c;
+    --rec: #ff5a3c; --rec-soft: rgba(255, 90, 60, .16); --ok: #45c08a; --warn: #f2b84b; --tint: #f08a4b;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    min-height: 100dvh; padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: 18px; max-width: 520px; margin: 0 auto;
+    -webkit-tap-highlight-color: transparent;
+  }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  .pill { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--card); color: var(--mute); border: 1px solid var(--line); white-space: nowrap; }
+  .pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); }
+  a { color: var(--tint); }
+
+  .stage { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 22px 18px 20px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .timer { font: 600 44px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+  .hint { color: var(--mute); font-size: 14px; text-align: center; min-height: 20px; margin: 0; }
+  canvas { width: 100%; height: 56px; display: block; }
+  .rec {
+    width: 96px; height: 96px; border-radius: 50%; border: 4px solid var(--ink); background: transparent;
+    display: grid; place-items: center; cursor: pointer; padding: 0; touch-action: manipulation;
+  }
+  .rec span { width: 70px; height: 70px; border-radius: 50%; background: var(--rec); transition: all .18s ease; }
+  .rec.on span { width: 36px; height: 36px; border-radius: 9px; }
+  .rec.on { box-shadow: 0 0 0 10px var(--rec-soft); }
+  .rec:disabled { opacity: .4; }
+  .live { width: 100%; color: var(--mute); font-size: 15px; min-height: 0; white-space: pre-wrap; }
+  .live:empty { display: none; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--mute); }
+  .toggle input { width: 18px; height: 18px; accent-color: var(--tint); }
+
+  .review { display: none; flex-direction: column; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 16px; }
+  .review.show { display: flex; }
+  .review audio { width: 100%; }
+  label.f { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--mute); }
+  input[type=text], textarea {
+    width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px;
+  }
+  textarea { min-height: 84px; resize: vertical; }
+  .row { display: flex; gap: 10px; }
+  button.btn { flex: 1; min-height: 48px; font: 600 16px/1 inherit; font-family: inherit; border-radius: 14px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+  button.btn.main { background: var(--tint); border-color: var(--tint); color: #1a0f08; }
+
+  .link { display: none; flex-direction: column; gap: 10px; background: var(--card); border: 1px solid var(--warn); border-radius: 18px; padding: 16px; }
+  .link.show { display: flex; }
+  .link p { margin: 0; font-size: 14px; color: var(--mute); }
+  .link b { color: var(--ink); font-weight: 600; }
+
+  h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); margin: 4px 0 -8px; }
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  li { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+  li .t { flex: 1; min-width: 0; }
+  li .t div:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  li .m { font-size: 12px; color: var(--mute); }
+  li .s { font-size: 12px; white-space: nowrap; }
+  li .s.ok { color: var(--ok); } li .s.wait { color: var(--warn); } li .s.bad { color: var(--rec); }
+  .empty { color: var(--mute); font-size: 14px; text-align: center; padding: 10px; }
+  footer { margin-top: auto; text-align: center; font-size: 13px; color: var(--mute); }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Voice memo</h1>
+    <span id="status" class="pill">Checking…</span>
+  </header>
+
+  <section id="link" class="link" aria-labelledby="link-h">
+    <p id="link-h"><b>Link this to your Life Hub once.</b> On your Mac open Life Hub → Review → backup row → <b>Link another device</b>, copy that link, and paste it here.</p>
+    <input id="link-in" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste the Link another device link">
+    <div class="row"><button id="link-go" class="btn main" type="button">Link</button></div>
+    <p id="link-msg" role="status"></p>
+  </section>
+
+  <section class="stage" aria-label="Recorder">
+    <div class="timer" id="timer" aria-live="off">0:00</div>
+    <canvas id="wave" width="600" height="112" aria-hidden="true"></canvas>
+    <button id="rec" class="rec" type="button" aria-label="Start recording"><span></span></button>
+    <p class="hint" id="hint" role="status">Tap to record</p>
+    <div class="live" id="live" aria-live="polite"></div>
+    <label class="toggle" id="tx-wrap" hidden><input type="checkbox" id="tx"> Live transcript (beta)</label>
+  </section>
+
+  <section class="review" id="review" aria-label="Save memo">
+    <audio id="play" controls preload="metadata"></audio>
+    <label class="f">Title<input type="text" id="title" maxlength="140" placeholder="What's this about?"></label>
+    <label class="f">Notes / transcript<textarea id="notes" placeholder="Optional"></textarea></label>
+    <div class="row">
+      <button class="btn" id="discard" type="button">Discard</button>
+      <button class="btn main" id="save" type="button">Save to Self</button>
+    </div>
+  </section>
+
+  <h2>Recent</h2>
+  <ul id="recent"></ul>
+
+  <footer><a href="../">Open Life Hub</a></footer>
+
+<script>
+(() => {
+  'use strict';
+  const WORKER = 'https://frontier-work-room.randymcfarland1227.workers.dev';
+  const FILES_URL = WORKER + '/api/files';
+  const STATE_URL = WORKER + '/api/state';
+  const MAX_BYTES = 9_800_000; // Worker file cap is 10 MB
+  const KEY_RE = /^[0-9a-f]{24,}$/i;
+  const SYNC_LS = 'lifehub-sync';      // same storage Life Hub uses (same origin)
+  const COOKIE = 'lifehub_sync_key';
+  const RECENT_LS = 'lifehub-memo-recent';
+  const TX_LS = 'lifehub-memo-transcript';
+
+  const $ = id => document.getElementById(id);
+  const ui = {
+    status: $('status'), link: $('link'), linkIn: $('link-in'), linkGo: $('link-go'), linkMsg: $('link-msg'),
+    timer: $('timer'), wave: $('wave'), rec: $('rec'), hint: $('hint'), live: $('live'),
+    txWrap: $('tx-wrap'), tx: $('tx'), review: $('review'), play: $('play'), title: $('title'),
+    notes: $('notes'), discard: $('discard'), save: $('save'), recent: $('recent'),
+  };
+
+  /* ---------- backup key (shared with Life Hub on this origin) ---------- */
+  function readLs(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }
+  function writeLs(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full or blocked */ } }
+  function openVault() {
+    return new Promise(res => {
+      try {
+        const r = indexedDB.open('lifehub-vault', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('kv');
+        r.onsuccess = () => res(r.result); r.onerror = () => res(null);
+      } catch { res(null); }
+    });
+  }
+  async function readKey() {
+    const ls = readLs(SYNC_LS, {}).key;
+    if (ls && KEY_RE.test(ls)) return ls;
+    const m = document.cookie.match(new RegExp('(?:^|; )' + COOKIE + '=([0-9a-f]+)', 'i'));
+    if (m && KEY_RE.test(m[1])) { saveKey(m[1]); return m[1]; }
+    const db = await openVault();
+    if (!db) return '';
+    const v = await new Promise(res => {
+      try { const q = db.transaction('kv').objectStore('kv').get('key'); q.onsuccess = () => res(q.result); q.onerror = () => res(''); }
+      catch { res(''); }
+    });
+    if (typeof v === 'string' && KEY_RE.test(v)) { saveKey(v); return v; }
+    return '';
+  }
+  function saveKey(key) {
+    writeLs(SYNC_LS, { ...readLs(SYNC_LS, {}), key });
+    try { document.cookie = `${COOKIE}=${key}; max-age=${60 * 60 * 24 * 730}; path=/; SameSite=Lax; Secure`; } catch {}
+    openVault().then(db => { try { db && db.transaction('kv', 'readwrite').objectStore('kv').put(key, 'key'); } catch {} });
+  }
+  let KEY = '';
+
+  function setStatus(text, cls) { ui.status.textContent = text; ui.status.className = 'pill' + (cls ? ' ' + cls : ''); }
+
+  async function checkKey(key) {
+    // Cheap check: ask for a file that doesn't exist — 404 means the key was accepted, 401 means refused.
+    const r = await fetch(FILES_URL + '/00000000-0000-0000-0000-000000000000', { headers: { 'X-Sync-Key': key }, cache: 'no-store' });
+    if (r.status === 401) return 'wrong';
+    return r.status === 404 || r.ok ? 'ok' : 'down';
+  }
+
+  ui.linkGo.addEventListener('click', async () => {
+    const raw = ui.linkIn.value.trim();
+    const m = raw.match(/#sync-key=([0-9a-f]{24,})/i);
+    const key = (m ? m[1] : raw).trim();
+    if (!KEY_RE.test(key)) { ui.linkMsg.textContent = 'That doesn’t look like the Life Hub link. Copy “Link another device” again.'; return; }
+    ui.linkMsg.textContent = 'Checking…';
+    try {
+      const ok = await checkKey(key);
+      if (ok === 'wrong') { ui.linkMsg.textContent = 'Life Hub refused that key. Copy a fresh “Link another device” link.'; return; }
+      saveKey(key); KEY = key; ui.link.classList.remove('show'); ui.linkIn.value = '';
+      setStatus('Linked', 'ok'); flush();
+    } catch { ui.linkMsg.textContent = 'No connection right now. Try again in a moment.'; }
+  });
+
+  /* ---------- offline queue (IndexedDB) ---------- */
+  function openQ() {
+    return new Promise(res => {
+      try {
+        const r = indexedDB.open('lifehub-memos', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('queue', { keyPath: 'id' });
+        r.onsuccess = () => res(r.result); r.onerror = () => res(null);
+      } catch { res(null); }
+    });
+  }
+  async function qAll() {
+    const db = await openQ(); if (!db) return [];
+    return new Promise(res => { const q = db.transaction('queue').objectStore('queue').getAll(); q.onsuccess = () => res(q.result || []); q.onerror = () => res([]); });
+  }
+  async function qPut(item) {
+    const db = await openQ(); if (!db) throw new Error('no storage');
+    return new Promise((res, rej) => { const t = db.transaction('queue', 'readwrite'); t.objectStore('queue').put(item); t.oncomplete = res; t.onerror = () => rej(t.error); });
+  }
+  async function qDel(id) {
+    const db = await openQ(); if (!db) return;
+    return new Promise(res => { const t = db.transaction('queue', 'readwrite'); t.objectStore('queue').delete(id); t.oncomplete = res; t.onerror = res; });
+  }
+
+  /* ---------- recent list ---------- */
+  function clock(sec) { const s = Math.max(0, Math.round(sec)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+  function when(iso) { return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+  async function renderRecent() {
+    const pending = await qAll();
+    const done = readLs(RECENT_LS, []);
+    const rows = [
+      ...pending.map(p => ({ ...p, state: p.error ? 'bad' : 'wait' })),
+      ...done.filter(d => !pending.some(p => p.id === d.id)).map(d => ({ ...d, state: 'ok' })),
+    ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 15);
+    ui.recent.innerHTML = '';
+    if (!rows.length) { ui.recent.innerHTML = '<li class="empty">Saved memos show here.</li>'; return; }
+    for (const r of rows) {
+      const li = document.createElement('li');
+      const t = document.createElement('div'); t.className = 't';
+      const a = document.createElement('div'); a.textContent = r.title;
+      const m = document.createElement('div'); m.className = 'm'; m.textContent = when(r.createdAt) + ' · ' + clock(r.seconds);
+      t.append(a, m);
+      const s = document.createElement('span'); s.className = 's ' + r.state;
+      s.textContent = r.state === 'ok' ? '✓ In Self' : r.state === 'bad' ? 'Retrying' : 'Waiting to sync';
+      if (r.error) s.title = r.error;
+      li.append(t, s); ui.recent.append(li);
+    }
+  }
+
+  /* ---------- sync: upload recording, then add a Self capture ---------- */
+  let flushing = false;
+  async function flush() {
+    if (flushing || !KEY) return;
+    flushing = true;
+    try {
+      for (const item of await qAll()) {
+        try {
+          if (!item.fileId) {
+            const r = await fetch(FILES_URL, {
+              method: 'PUT',
+              headers: { 'X-Sync-Key': KEY, 'Content-Type': item.type, 'X-File-Name': encodeURIComponent(item.fileName) },
+              body: item.blob,
+            });
+            const out = await r.json().catch(() => ({}));
+            if (r.status === 401) throw new Error('wrong_key');
+            if (!r.ok || !out.id) throw new Error('upload ' + (out.error || r.status));
+            item.fileId = out.id; await qPut(item);
+          }
+          const capture = {
+            id: item.id, kind: 'voice', title: item.title, notes: item.notes || undefined,
+            focusAreaId: 'self', status: 'inbox', createdAt: item.createdAt,
+            audio: { fileId: item.fileId, type: item.type, seconds: Math.round(item.seconds), size: item.blob.size },
+          };
+          const r2 = await fetch(STATE_URL, {
+            method: 'PUT', headers: { 'X-Sync-Key': KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state: { captures: [capture] } }),
+          });
+          if (r2.status === 401) throw new Error('wrong_key');
+          if (!r2.ok) throw new Error('save ' + r2.status);
+          const done = readLs(RECENT_LS, []).filter(d => d.id !== item.id);
+          done.unshift({ id: item.id, title: item.title, seconds: item.seconds, createdAt: item.createdAt });
+          writeLs(RECENT_LS, done.slice(0, 30));
+          await qDel(item.id);
+        } catch (e) {
+          if (String(e.message) === 'wrong_key') { KEY = ''; ui.link.classList.add('show'); setStatus('Not linked', 'warn'); break; }
+          item.error = String(e.message || e); await qPut(item).catch(() => {});
+        }
+      }
+    } finally {
+      flushing = false;
+      const left = (await qAll()).length;
+      if (KEY) setStatus(left ? left + ' waiting' : navigator.onLine ? 'Synced' : 'Offline', left ? 'warn' : 'ok');
+      renderRecent();
+    }
+  }
+  window.addEventListener('online', flush);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') flush(); });
+  setInterval(() => { qAll().then(q => { if (q.length) flush(); }); }, 30_000);
+
+  /* ---------- recording ---------- */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (SR) {
+    ui.txWrap.hidden = false;
+    const saved = readLs(TX_LS, null);
+    ui.tx.checked = saved === null ? !isIOS : saved; // off by default on iPhone: some iOS versions share the mic badly
+    ui.tx.addEventListener('change', () => writeLs(TX_LS, ui.tx.checked));
+  }
+
+  let rec = null, stream = null, chunks = [], bytes = 0, startedAt = 0, tick = 0, raf = 0, actx = null, analyser = null;
+  let recognition = null, finalText = '', interim = '', wantRecognition = false;
+  let draft = null; // { blob, type, seconds, createdAt }
+
+  function pickType() {
+    const types = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
+    if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return '';
+    return types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+  }
+
+  function drawWave() {
+    const c = ui.wave, g = c.getContext('2d');
+    g.clearRect(0, 0, c.width, c.height);
+    if (analyser) {
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteTimeDomainData(data);
+      const bars = 48, w = c.width / bars;
+      g.fillStyle = '#ff5a3c';
+      for (let i = 0; i < bars; i++) {
+        let peak = 0;
+        const from = Math.floor(i * data.length / bars), to = Math.floor((i + 1) * data.length / bars);
+        for (let j = from; j < to; j++) peak = Math.max(peak, Math.abs(data[j] - 128));
+        const h = Math.max(4, (peak / 128) * c.height * 1.6);
+        g.fillRect(i * w + 2, (c.height - Math.min(h, c.height)) / 2, w - 4, Math.min(h, c.height));
+      }
+      raf = requestAnimationFrame(drawWave);
+    }
+  }
+
+  function startRecognition() {
+    if (!SR || !ui.tx.checked) return;
+    wantRecognition = true; finalText = ''; interim = '';
+    try {
+      recognition = new SR();
+      recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-US';
+      recognition.onresult = e => {
+        interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          if (r.isFinal) finalText += (finalText ? ' ' : '') + r[0].transcript.trim();
+          else interim += r[0].transcript;
+        }
+        ui.live.textContent = (finalText + ' ' + interim).trim();
+      };
+      recognition.onend = () => { if (wantRecognition) { try { recognition.start(); } catch {} } };
+      recognition.onerror = e => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') wantRecognition = false; };
+      recognition.start();
+    } catch { recognition = null; }
+  }
+  function stopRecognition() { wantRecognition = false; try { recognition && recognition.stop(); } catch {} }
+
+  async function start() {
+    if (draft && !confirm('Discard the unsaved memo and record a new one?')) return;
+    hideReview();
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch {
+      ui.hint.textContent = 'Microphone blocked. Allow it in your browser settings, then try again.';
+      return;
+    }
+    const type = pickType();
+    try {
+      rec = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 48000 } : undefined);
+    } catch { rec = new MediaRecorder(stream); }
+    chunks = []; bytes = 0;
+    rec.ondataavailable = e => {
+      if (e.data && e.data.size) { chunks.push(e.data); bytes += e.data.size; }
+      if (bytes > MAX_BYTES && rec.state === 'recording') { ui.hint.textContent = 'Reached the size limit — saved what you have.'; stop(); }
+    };
+    rec.onstop = finish;
+    rec.start(1000);
+    startedAt = Date.now();
+    try {
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = actx.createMediaStreamSource(stream);
+      analyser = actx.createAnalyser(); analyser.fftSize = 1024; src.connect(analyser);
+      drawWave();
+    } catch { analyser = null; }
+    tick = setInterval(() => { ui.timer.textContent = clock((Date.now() - startedAt) / 1000); }, 250);
+    ui.rec.classList.add('on'); ui.rec.setAttribute('aria-label', 'Stop recording');
+    ui.hint.textContent = 'Recording… tap to stop'; ui.live.textContent = '';
+    startRecognition();
+    try { navigator.wakeLock && (window.__lock = await navigator.wakeLock.request('screen')); } catch {}
+  }
+
+  function stop() {
+    if (!rec || rec.state === 'inactive') return;
+    stopRecognition();
+    rec.stop();
+  }
+
+  function finish() {
+    clearInterval(tick); cancelAnimationFrame(raf);
+    const seconds = (Date.now() - startedAt) / 1000;
+    stream && stream.getTracks().forEach(t => t.stop());
+    try { actx && actx.close(); } catch {}
+    analyser = null; drawWave();
+    try { window.__lock && window.__lock.release(); } catch {}
+    ui.rec.classList.remove('on'); ui.rec.setAttribute('aria-label', 'Start recording');
+    const type = (rec.mimeType || chunks[0]?.type || 'audio/mp4').split(';')[0];
+    const blob = new Blob(chunks, { type });
+    rec = null;
+    if (!blob.size || seconds < 0.8) { ui.hint.textContent = 'Too short — nothing saved. Tap to record.'; ui.timer.textContent = '0:00'; return; }
+    draft = { blob, type, seconds, createdAt: new Date().toISOString() };
+    const text = (finalText + ' ' + interim).trim();
+    ui.play.src = URL.createObjectURL(blob);
+    ui.title.value = text ? text.split(/\s+/).slice(0, 8).join(' ') + (text.split(/\s+/).length > 8 ? '…' : '') : '';
+    ui.notes.value = text;
+    ui.review.classList.add('show');
+    ui.hint.textContent = 'Name it (optional) and save.';
+  }
+
+  function hideReview() {
+    if (ui.play.src) URL.revokeObjectURL(ui.play.src);
+    ui.play.removeAttribute('src'); ui.review.classList.remove('show');
+    ui.title.value = ''; ui.notes.value = ''; ui.live.textContent = ''; draft = null;
+  }
+
+  ui.rec.addEventListener('click', () => (rec && rec.state === 'recording' ? stop() : start()));
+  ui.discard.addEventListener('click', () => {
+    if (!confirm('Discard this memo?')) return;
+    hideReview(); ui.timer.textContent = '0:00'; ui.hint.textContent = 'Tap to record';
+  });
+  ui.save.addEventListener('click', async () => {
+    if (!draft) return;
+    const ext = draft.type.includes('mp4') ? 'm4a' : draft.type.includes('ogg') ? 'ogg' : 'webm';
+    const stamp = new Date(draft.createdAt);
+    const fallback = 'Voice memo · ' + when(draft.createdAt);
+    const item = {
+      id: 'cap-voice-' + stamp.getTime(),
+      title: ui.title.value.trim() || fallback,
+      notes: ui.notes.value.trim(),
+      blob: draft.blob, type: draft.type, seconds: draft.seconds, createdAt: draft.createdAt,
+      fileName: 'memo-' + stamp.toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.' + ext,
+    };
+    try { await qPut(item); } catch { alert('Couldn’t keep the memo on this phone. Try again.'); return; }
+    hideReview(); ui.timer.textContent = '0:00';
+    ui.hint.textContent = KEY ? 'Saved — syncing to Self…' : 'Saved on this phone. Link it to Life Hub to sync.';
+    await renderRecent(); flush();
+  });
+
+  /* ---------- boot ---------- */
+  if (!window.MediaRecorder || !navigator.mediaDevices) {
+    ui.rec.disabled = true; ui.hint.textContent = 'This browser can’t record audio. Open this page in Safari or Chrome.';
+  }
+  (async () => {
+    const hash = location.hash.match(/#sync-key=([0-9a-f]{24,})/i);
+    if (hash) { saveKey(hash[1]); history.replaceState(null, '', location.pathname); }
+    KEY = await readKey();
+    renderRecent();
+    if (!KEY) { ui.link.classList.add('show'); setStatus('Not linked', 'warn'); return; }
+    try {
+      const ok = await checkKey(KEY);
+      if (ok === 'wrong') { KEY = ''; ui.link.classList.add('show'); setStatus('Not linked', 'warn'); return; }
+      setStatus(ok === 'ok' ? 'Linked' : 'Offline', ok === 'ok' ? 'ok' : 'warn');
+    } catch { setStatus('Offline', 'warn'); }
+    flush();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -12,6 +12,7 @@ import type { SelfItem } from '../../lib/adapters/self';
 import { useRowMenu, type RowMenuItem } from './RowMenu';
 import { Circle, ListHead, Row, Tag } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
+import { VoicePlayer } from './VoicePlayer';
 import { PLAN, openTaskPanel, pinDragProps, pinKey, usePriorityPins } from '../../lib/priorityPins';
 import { addOngoingGoal } from '../../lib/ongoingGoals';
 import { addToSiteList, createSiteList, listOfTask, openSiteList, useSiteListStore } from '../../lib/siteLists';
@@ -91,7 +92,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'dropped', label: 'Dropped' },
 ];
 
-const KIND_LABEL = Object.fromEntries(CAPTURE_KINDS.map(k => [k.id, k.label])) as Record<CaptureKind, string>;
+const KIND_LABEL = { ...Object.fromEntries(CAPTURE_KINDS.map(k => [k.id, k.label])), voice: 'Voice' } as Record<CaptureKind, string>;
 
 function ago(iso: string) {
   const days = Math.floor((Date.now() - Date.parse(iso)) / 86400000);
@@ -484,6 +485,7 @@ export function CapturesPanel({
                         {areaName(c.focusAreaId) ? <span>{areaName(c.focusAreaId)}</span> : null}
                         <span>{ago(c.createdAt)}</span>
                       </span>
+                      {c.audio ? <VoicePlayer audio={c.audio} /> : null}
                       {c.notes ? <span className="sk-capnote">{c.notes}</span> : null}
                       {c.status === 'promoted' ? (
                         <span className="sk-capnote">Now a Self task · {task ? (task.done ? 'done' : 'open') : 'removed'}</span>

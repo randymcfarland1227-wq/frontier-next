@@ -3228,3 +3228,48 @@
 .sk-app .sk-vm-row.is-parked { opacity: .65; }
 .sk-app .sk-vm-note { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .sk-app .sk-vm-more { align-self: flex-start; font-size: 13px; }
+
+/* Home top band, compact pass (2026-11-13): same layout and colors, everything about a notch smaller.
+   Header sizes follow the Display "Headers" choice (default / compact / large), each one step down. */
+.sk-app[data-page="home"] .sk-hero { padding: 10px 14px 11px; border-radius: 16px; }
+.sk-app[data-spacing="compact"][data-page="home"] .sk-hero { padding: 8px 12px 9px; }
+.sk-app .sk-hero .sk-top { gap: 12px; }
+.sk-app[data-page] .sk-hero .sk-greet { margin: 0 0 2px; font-size: 32px; line-height: 1.1; }
+.sk-app[data-page] .sk-hero .sk-top .sk-large { font-size: 20px; line-height: 1.2; }
+.sk-app[data-headers="compact"][data-page] .sk-hero .sk-greet { font-size: 23px; }
+.sk-app[data-headers="compact"][data-page] .sk-hero .sk-top .sk-large { font-size: 16px; }
+.sk-app[data-headers="large"][data-page] .sk-hero .sk-greet { font-size: 38px; }
+.sk-app[data-headers="large"][data-page] .sk-hero .sk-top .sk-large { font-size: 25px; }
+.sk-app .sk-hero .sk-dateline { gap: 4px 8px; }
+.sk-app .sk-hero .sk-top .sk-status { font-size: 12px; margin-top: 1px; }
+.sk-app .sk-hero .sk-weather { padding: 3px 9px; gap: 5px; font-size: 12px; }
+.sk-app .sk-hero .sk-weather b { font-size: 13px; }
+.sk-app .sk-hero .sk-weather small { font-size: 11px; }
+.sk-app .sk-hero .sk-top .sk-btn.is-prominent { min-height: 34px; padding: 5px 12px; font-size: 13px; }
+.sk-app .sk-hero .sk-top .sk-btn.is-prominent .sk-icon { width: 15px; height: 15px; }
+.sk-app .sk-hero .sk-top .sk-ribbon.is-compact { padding: 2px 10px 1px; }
+.sk-app .sk-hero .sk-top .sk-ribbon.is-compact .sk-track { margin-top: 10px; }
+.sk-app .sk-hero .sk-readouts { margin-top: 8px; gap: 6px; }
+.sk-app .sk-hero .sk-readouts > .sk-ro { min-width: 124px; padding: 4px 9px 6px; gap: 1px; border-radius: 10px; line-height: 1.2; }
+.sk-app .sk-hero .sk-ro-top > span { font-size: 11px; gap: 5px; }
+.sk-app .sk-hero .sk-ro-top .sk-icon { width: 13px; height: 13px; }
+.sk-app .sk-hero .sk-ro-chev { width: 13px; height: 13px; }
+.sk-app .sk-hero .sk-ro .sk-figure { font-size: 17px; line-height: 1.1; }
+.sk-app .sk-hero .sk-ro-note, .sk-app .sk-hero .sk-pie-count, .sk-app .sk-hero .sk-ro-half > small { font-size: 10px; }
+.sk-app .sk-hero .sk-ro-halves { gap: 8px; }
+.sk-app .sk-hero .sk-ro-half + .sk-ro-half { padding-left: 8px; }
+.sk-app .sk-hero .sk-pie-row { gap: 6px; }
+.sk-app .sk-hero .sk-pie { width: 24px; height: 24px; border-width: 1.5px; }
+@media (max-width: 760px) {
+  .sk-app[data-page] .sk-hero .sk-greet { font-size: 24px; }
+  .sk-app[data-page] .sk-hero .sk-top .sk-large { font-size: 16px; }
+  .sk-app[data-headers="compact"][data-page] .sk-hero .sk-greet { font-size: 21px; }
+  .sk-app[data-headers="compact"][data-page] .sk-hero .sk-top .sk-large { font-size: 15px; }
+  .sk-app[data-headers="large"][data-page] .sk-hero .sk-greet { font-size: 28px; }
+  .sk-app[data-headers="large"][data-page] .sk-hero .sk-top .sk-large { font-size: 19px; }
+}
+@media (max-width: 520px) {
+  .sk-app[data-page="home"] .sk-hero, .sk-app[data-spacing="compact"][data-page="home"] .sk-hero { padding: 8px 10px 9px; }
+  .sk-app .sk-hero .sk-top .sk-status { font-size: 11px; }
+  .sk-app .sk-hero .sk-ro .sk-figure { font-size: 15px; }
+}

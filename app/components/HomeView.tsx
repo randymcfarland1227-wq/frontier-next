@@ -50,7 +50,7 @@ import {
   useShortTermFocus,
 } from "./FocusSection";
 import { HomeTop } from "../sticker/HomeTop";
-import { ListHead, PaneZoomButtons, PaneZoomContext, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
+import { ListHead, PaneHeadContext, PaneZoomButtons, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
 import { CapPane } from "../sticker/CapPane";
 import { SegTabs } from "../sticker/SegTabs";
 import { readSaved, writeSaved } from "../../lib/storage";
@@ -270,6 +270,12 @@ export function HomeView({
     setMoneyZoomState(next);
     writeSaved("sk-today-single-money-zoom", next);
   };
+  // Slots on each tab line (0 = Single, 1/2 = Split panes) where the pane's top box puts its buttons.
+  const [paneSlots, setPaneSlots] = useState<(HTMLElement | null)[]>([null, null, null]);
+  const slotRefs = useMemo(
+    () => [0, 1, 2].map((i) => (el: HTMLElement | null) => setPaneSlots((s) => (s[i] === el ? s : s.map((x, j) => (j === i ? el : x))))),
+    [],
+  );
   const [todayTab2, setTodayTab2] = useState<TodayTab>(() => {
     const saved = readSaved<string>("sk-today-tab2", "calendar");
     return TODAY_TABS.some(([id]) => id === saved)
@@ -408,6 +414,34 @@ export function HomeView({
       items={TODAY_TABS.filter(([id]) => tabAvailable(id)).map(([id, label]) => ({ id, label }))}
     />
   );
+  // A Today tab line: tabs | − % + (over Refresh sources), then the pane's own buttons.
+  const todayBar = (t: TodayTab, pick: (t: TodayTab) => void, zoomEl: ReactNode, refresh: boolean, slot: number) => {
+    const tools = zoomEl || (refresh && onRefresh);
+    return (
+      <div className="sk-todaybar">
+        {tabBar(t, pick)}
+        {tools ? <span className="sk-todaybar-div" aria-hidden="true" /> : null}
+        {tools ? (
+          <div className="sk-todaybar-tools">
+            {zoomEl}
+            {refresh && onRefresh ? (
+              <button
+                type="button"
+                className="sk-todaybar-refresh"
+                onClick={onRefresh}
+                disabled={syncing}
+                title="Sync Gmail, Radall, calendar, bills and TickTick now"
+              >
+                <Icon name="refresh" size={12} />
+                {syncing ? "Syncing…" : "Refresh sources"}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="sk-todaybar-slot" ref={slotRefs[slot]} />
+      </div>
+    );
+  };
   const renderTab = (t: TodayTab) =>
         t === "money" ? (
           <div className="sk-money-tab">{money}</div>
@@ -518,51 +552,31 @@ export function HomeView({
               [tab2, pickTodayTab2],
             ] as const).map(([t, pick], i) => (
               <div key={i} className="sk-splitcol">
-                {tabBar(t, pick)}
                 {/* Money has its own − / + (it starts at 60%), so the pane zoom leaves it alone. */}
-                <PaneZoomContext.Provider value={t === "money" ? null : { zoom: splitZoom[i], set: (v) => setSplitZoom(i, v), min: ZOOM_MIN, max: ZOOM_MAX, step: ZOOM_STEP }}>
+                {todayBar(t, pick, t === "money" ? null : <PaneZoomButtons zoom={splitZoom[i]} set={(v) => setSplitZoom(i, v)} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, i === 0, i + 1)}
+                <PaneHeadContext.Provider value={t === "money" ? undefined : paneSlots[i + 1]}>
                   <div className="sk-splitzoom" style={t === "money" || splitZoom[i] === 100 ? undefined : { zoom: splitZoom[i] / 100 }}>
                     <CapPane key={t} cap="split" label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>
                       {renderTab(t)}
                     </CapPane>
                   </div>
-                </PaneZoomContext.Provider>
+                </PaneHeadContext.Provider>
               </div>
             ))}
           </div>
         ) : (
           <>
-            {/* The tab row is the Today header: tabs | page size over Refresh sources. */}
-            <div className="sk-todaybar">
-              {tabBar(tab, pickTodayTab)}
-              <span className="sk-todaybar-div" aria-hidden="true" />
-              <div className="sk-todaybar-tools">
-                {tab === "money" ? (
-                  <PaneZoomButtons zoom={moneyZoom} set={setMoneyZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />
-                ) : (
-                  <PaneZoomButtons zoom={singleZoom} set={setSingleZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />
-                )}
-                {onRefresh ? (
-                  <button
-                    type="button"
-                    className="sk-todaybar-refresh"
-                    onClick={onRefresh}
-                    disabled={syncing}
-                    title="Sync Gmail, Radall, calendar, bills and TickTick now"
-                  >
-                    <Icon name="refresh" size={12} />
-                    {syncing ? "Syncing…" : "Refresh sources"}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            <PaneZoomContext.Provider value={null}>
+            {/* The tab row is the Today header: tabs | page size over Refresh sources | the pane's buttons. */}
+            {todayBar(tab, pickTodayTab, tab === "money"
+              ? <PaneZoomButtons zoom={moneyZoom} set={setMoneyZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />
+              : <PaneZoomButtons zoom={singleZoom} set={setSingleZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, true, 0)}
+            <PaneHeadContext.Provider value={tab === "money" ? undefined : paneSlots[0]}>
               <div className="sk-splitzoom" style={(tab === "money" ? moneyZoom : singleZoom) === 100 ? undefined : { zoom: (tab === "money" ? moneyZoom : singleZoom) / 100 }}>
                 <CapPane key={tab} cap="page" label={TODAY_TABS.find(([id]) => id === tab)?.[1] || "Today"}>
                   {renderTab(tab)}
                 </CapPane>
               </div>
-            </PaneZoomContext.Provider>
+            </PaneHeadContext.Provider>
           </>
         )}
       </Section>

@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, type HTMLAttributes, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useFold } from '../components/Collapsible';
 import { Icon, type IconName } from './Icon';
 
@@ -73,10 +74,15 @@ export function Group({
   children: ReactNode;
 }) {
   const zoom = useContext(PaneZoomContext);
-  const folded = Boolean(onToggle && shut);
+  // Today panes: the tab line is the header, so a pane's top box drops its own title row and its buttons move up there.
+  const paneHead = useContext(PaneHeadContext);
+  const lifted = paneHead !== undefined && Boolean(title);
+  const folded = Boolean(onToggle && shut) && !lifted;
+  const body = zoom ? <PaneZoomContext.Provider value={null}>{children}</PaneZoomContext.Provider> : children;
   return (
     <div className={`sk-group tone-${tone}${onToggle ? ' is-foldable' : ''}${folded ? ' is-shut' : ''}${className ? ` ${className}` : ''}`}>
-      {title ? (
+      {lifted && paneHead && actions ? createPortal(<span className="sk-ghead-actions">{actions}</span>, paneHead) : null}
+      {title && !lifted ? (
         <div className="sk-ghead">
           {onToggle ? (
             <button type="button" className="sk-gfold" aria-expanded={!folded} onClick={onToggle} title={folded ? 'Open' : 'Fold up'}>
@@ -95,7 +101,7 @@ export function Group({
           {actions ? <span className="sk-ghead-actions">{actions}</span> : null}
         </div>
       ) : null}
-      {folded ? null : <div className="sk-gbody">{zoom ? <PaneZoomContext.Provider value={null}>{children}</PaneZoomContext.Provider> : children}</div>}
+      {folded ? null : <div className="sk-gbody">{lifted ? <PaneHeadContext.Provider value={undefined}>{body}</PaneHeadContext.Provider> : body}</div>}
     </div>
   );
 }
@@ -103,6 +109,8 @@ export function Group({
 /** Today split view: the pane's zoom, shown beside the first Group title in that pane (like Money's − 60% +). */
 export type PaneZoom = { zoom: number; set: (v: number) => void; min: number; max: number; step: number };
 export const PaneZoomContext = createContext<PaneZoom | null>(null);
+/** Today panes: the slot on the tab line where a pane's top box puts its buttons (undefined = not in a Today pane). */
+export const PaneHeadContext = createContext<HTMLElement | null | undefined>(undefined);
 
 export function PaneZoomButtons({ zoom, set, min, max, step }: PaneZoom) {
   return (

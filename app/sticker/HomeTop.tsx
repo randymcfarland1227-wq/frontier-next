@@ -83,7 +83,6 @@ function SplitReadout({
           const pc = p.total ? Math.round((p.done / p.total) * 100) : 0;
           return (
             <span key={p.label} className="sk-ro-half">
-              <small>{p.label}</small>
               <span className="sk-pie-row">
                 <span
                   className="sk-pie"
@@ -94,7 +93,7 @@ function SplitReadout({
                 <b className="sk-figure">{pc}%</b>
               </span>
               <small className="sk-pie-count">
-                {p.done} of {p.total} done
+                {p.label} · {p.done}/{p.total}
               </small>
             </span>
           );

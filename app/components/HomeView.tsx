@@ -132,6 +132,8 @@ const ZOOM_STEP = 10;
 export function HomeView({
   snapshots,
   enter,
+  onRefresh,
+  syncing = false,
   openSource,
   onCompleteFeatured,
   onCompleteTask,
@@ -154,6 +156,9 @@ export function HomeView({
   openFocus,
 }: {
   snapshots: Record<SourceId, SourceSnapshot>;
+  /** Sync every source now (same as the sidebar Refresh). */
+  onRefresh?: () => void;
+  syncing?: boolean;
   enter: (id: SpaceId) => void;
   openSource: (id: SourceId) => void;
   onCompleteFeatured: (source: SourceId, item: FeaturedItem) => void;
@@ -527,14 +532,31 @@ export function HomeView({
           </div>
         ) : (
           <>
-            {/* Money has no Group title to sit beside, so its − % + sits right after the tab bar (own saved size). */}
-            {tab === "money" ? (
-              <div className="sk-panezoom-row">
-                {tabBar(tab, pickTodayTab)}
-                <PaneZoomButtons zoom={moneyZoom} set={setMoneyZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />
+            {/* The tab row is the Today header: tabs | page size over Refresh sources. */}
+            <div className="sk-todaybar">
+              {tabBar(tab, pickTodayTab)}
+              <span className="sk-todaybar-div" aria-hidden="true" />
+              <div className="sk-todaybar-tools">
+                {tab === "money" ? (
+                  <PaneZoomButtons zoom={moneyZoom} set={setMoneyZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />
+                ) : (
+                  <PaneZoomButtons zoom={singleZoom} set={setSingleZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />
+                )}
+                {onRefresh ? (
+                  <button
+                    type="button"
+                    className="sk-todaybar-refresh"
+                    onClick={onRefresh}
+                    disabled={syncing}
+                    title="Sync Gmail, Radall, calendar, bills and TickTick now"
+                  >
+                    <Icon name="refresh" size={12} />
+                    {syncing ? "Syncing…" : "Refresh sources"}
+                  </button>
+                ) : null}
               </div>
-            ) : tabBar(tab, pickTodayTab)}
-            <PaneZoomContext.Provider value={tab === "money" ? null : { zoom: singleZoom, set: setSingleZoom, min: ZOOM_MIN, max: ZOOM_MAX, step: ZOOM_STEP }}>
+            </div>
+            <PaneZoomContext.Provider value={null}>
               <div className="sk-splitzoom" style={(tab === "money" ? moneyZoom : singleZoom) === 100 ? undefined : { zoom: (tab === "money" ? moneyZoom : singleZoom) / 100 }}>
                 <CapPane key={tab} cap="page" label={TODAY_TABS.find(([id]) => id === tab)?.[1] || "Today"}>
                   {renderTab(tab)}

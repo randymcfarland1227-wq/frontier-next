@@ -3273,3 +3273,77 @@
   .sk-app .sk-hero .sk-top .sk-status { font-size: 11px; }
   .sk-app .sk-hero .sk-ro .sk-figure { font-size: 15px; }
 }
+
+/* Glass pills (2026-11-13), borrowed from the slim sidebar's site discs and not copied: a translucent tint
+   of each box's own colour, a 1px light rim, a soft lifted shadow with an inset top highlight, a round
+   radius, and a small disc behind each icon. The selected pill turns solid and light, like the current site. */
+.sk-app { --sk-glass-rim: #ffffffb8; --sk-glass-shadow: 0 5px 14px #1b12401f, inset 0 1px 0 #ffffffb3; --sk-glass-lift: 0 9px 20px #1b12402e, inset 0 1px 0 #ffffffb3; --sk-glass-disc: #ffffff66; --sk-glass-track: #ffffff40; --sk-glass-on: #fffdf8; }
+.frontier-shell[data-color-mode="dark"] .sk-app { --sk-glass-rim: #ffffff2e; --sk-glass-shadow: 0 6px 16px #00000059, inset 0 1px 0 #ffffff24; --sk-glass-lift: 0 10px 22px #00000073, inset 0 1px 0 #ffffff2e; --sk-glass-disc: #ffffff1f; --sk-glass-track: #ffffff12; --sk-glass-on: #f4efe6; }
+
+/* Home stat boxes: one height for all five */
+.sk-app .sk-hero .sk-readouts { align-items: stretch; }
+.sk-app .sk-hero .sk-readouts > .sk-ro {
+  padding: 5px 12px 6px; border: 1px solid var(--sk-glass-rim); border-radius: 18px; box-shadow: var(--sk-glass-shadow);
+  background: color-mix(in srgb, var(--skf) 64%, #ffffff3d); -webkit-backdrop-filter: blur(10px) saturate(1.4); backdrop-filter: blur(10px) saturate(1.4);
+  transition: transform .25s cubic-bezier(.22, 1, .36, 1), box-shadow .25s cubic-bezier(.22, 1, .36, 1);
+}
+.sk-app .sk-hero .sk-readouts > .sk-ro:hover { transform: translateY(-1px); box-shadow: var(--sk-glass-lift); }
+.sk-app .sk-hero .sk-readouts > .sk-ro:active { transform: scale(.98); box-shadow: var(--sk-glass-shadow); }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-hero .sk-readouts > .sk-ro { background: color-mix(in srgb, var(--skf) 24%, #ffffff0a); color: var(--sk-ink); }
+.sk-app .sk-hero .sk-ro-top > span > .sk-icon { box-sizing: border-box; width: 18px; height: 18px; padding: 3px; border-radius: 50%; background: var(--sk-glass-disc); }
+.sk-app .sk-hero .sk-ro-half + .sk-ro-half { border-left: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+.sk-app .sk-hero .sk-pie-row { gap: 5px; }
+.sk-app .sk-hero .sk-pie { width: 16px; height: 16px; border-width: 1.5px; }
+.sk-app .sk-hero .sk-ro-split .sk-figure { font-size: 17px; line-height: 1.1; }
+@media (prefers-reduced-motion: reduce) { .sk-app .sk-hero .sk-readouts > .sk-ro { transition: none; } }
+
+/* Today: the tab row is the header. Tabs | page size over Refresh sources. */
+.sk-app .sk-todaybar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 2px 0 10px; }
+.sk-app .sk-todaybar > .sk-seg.sk-today-tabs { flex: 0 1 auto; min-width: 0; }
+.sk-app .sk-todaybar-div { flex: none; align-self: stretch; width: 2px; min-height: 26px; border-radius: 2px; background: currentColor; opacity: .3; }
+.sk-app .sk-todaybar-tools { display: grid; gap: 3px; justify-items: start; }
+.sk-app .sk-todaybar-refresh {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 22px; padding: 2px 9px; border: 1px solid var(--sk-glass-rim); border-radius: 99px;
+  background: var(--sk-glass-track); box-shadow: var(--sk-glass-shadow); color: var(--sk-ink); font: 700 11px/1 "DM Sans", system-ui, sans-serif; cursor: pointer;
+}
+.sk-app .sk-todaybar-refresh:hover:not(:disabled) { box-shadow: var(--sk-glass-lift); }
+.sk-app .sk-todaybar-refresh:disabled { opacity: .6; cursor: default; }
+.sk-app .sk-todaybar .sk-panezoom { border: 1px solid var(--sk-glass-rim); border-radius: 99px; background: var(--sk-glass-track); box-shadow: var(--sk-glass-shadow); }
+.sk-app .sk-todaybar .sk-panezoom .sk-panezoom-pct { border-inline: 1px solid color-mix(in srgb, var(--sk-ink) 18%, transparent); }
+
+/* The tab track and Single / Split: glass pills */
+.sk-app .sk-seg.sk-today-tabs, .sk-app .sk-seg.sk-viewseg {
+  gap: 2px; padding: 3px; border: 1px solid var(--sk-glass-rim); border-radius: 99px; background: var(--sk-glass-track);
+  box-shadow: var(--sk-glass-shadow); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.sk-app #sk-brief .sk-today-tabs { box-shadow: var(--sk-glass-shadow); }
+.sk-app .sk-seg.sk-today-tabs button, .sk-app .sk-seg.sk-viewseg button { border: 0; border-radius: 99px; background: transparent; color: var(--sk-ink); box-shadow: none; }
+.sk-app .sk-seg.sk-today-tabs button + button, .sk-app .sk-seg.sk-viewseg button + button { border-left: 0; }
+.sk-app .sk-seg.sk-today-tabs button:hover:not([aria-pressed="true"]), .sk-app .sk-seg.sk-viewseg button:hover:not([aria-pressed="true"]) { background: var(--sk-hover); }
+.sk-app .sk-seg.sk-today-tabs button[aria-pressed="true"], .sk-app .sk-seg.sk-viewseg button[aria-pressed="true"] { background: var(--sk-glass-on); color: #16141f; box-shadow: 0 3px 10px #1b124033; }
+.sk-app[data-page] .sk-todaybar .sk-seg.sk-today-tabs button { font: 800 15px/1.1 "DM Sans", system-ui, sans-serif !important; min-height: 30px; padding: 4px 12px; }
+.sk-app[data-tabs="compact"][data-page] .sk-todaybar .sk-seg.sk-today-tabs button { font-size: 14px !important; padding: 3px 10px; min-height: 28px; }
+.sk-app[data-tabs="large"][data-page] .sk-todaybar .sk-seg.sk-today-tabs button { font-size: 17px !important; }
+.sk-app .sk-seg.sk-viewseg { padding: 2px; }
+.sk-app .sk-viewseg button { font-size: 11px; min-height: 22px; padding: 2px 8px; gap: 4px; }
+.sk-app .sk-viewseg svg { width: 12px; height: 9px; }
+@media (max-width: 520px) {
+  .sk-app .sk-todaybar { flex-wrap: nowrap; gap: 8px; }
+  .sk-app .sk-todaybar > .sk-seg.sk-today-tabs { flex: 1 1 auto; }
+  .sk-app[data-page] .sk-todaybar .sk-seg.sk-today-tabs button { font-size: 13px !important; padding: 3px 9px; }
+  .sk-app .sk-todaybar-refresh { padding: 2px 7px; }
+}
+/* tight line boxes so the five stat boxes stay one short height */
+.sk-app .sk-hero .sk-ro-top { height: 18px; line-height: 16px; }
+.sk-app .sk-hero .sk-ro .sk-figure, .sk-app .sk-hero .sk-ro-split .sk-figure { line-height: 18px; }
+.sk-app .sk-hero .sk-pie-row { height: 18px; }
+.sk-app .sk-hero .sk-ro-half { gap: 1px; }
+.sk-app .sk-hero :is(.sk-ro-note, .sk-pie-count) { line-height: 13px; }
+.sk-app[data-page] .sk-sactions .sk-seg.sk-viewseg button { font-size: 11px !important; min-height: 22px; padding: 2px 8px; }
+@media (max-width: 520px) {
+  .sk-app .sk-todaybar { flex-wrap: wrap; gap: 6px; }
+  .sk-app .sk-todaybar > .sk-seg.sk-today-tabs { flex: 1 1 100%; }
+  .sk-app .sk-todaybar-div { display: none; }
+  .sk-app .sk-todaybar-tools { display: flex; align-items: center; gap: 6px; }
+  .sk-app .sk-todaybar-refresh { white-space: nowrap; }
+}

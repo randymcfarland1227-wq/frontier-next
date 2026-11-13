@@ -1197,6 +1197,8 @@ goalsData ? (
         <HomeView
           key={rolledDay}
           enter={enter}
+          onRefresh={() => void refreshEverything()}
+          syncing={connectorSyncing}
           snapshots={visibleSnapshots}
           openSource={openSource}
           onCompleteFeatured={(source, item) => completeOnHub(source, item.id)}

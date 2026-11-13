@@ -188,7 +188,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
       <span className="sk-updated" title="Newest source update; each section uses its latest available feed"><Icon name="refresh" size={12} />{updated ? `Updated ${updated}` : 'Not updated yet'}</span>
       {hidden ? <button type="button" className="sk-link" onClick={restoreAll} title="Bring back what you cleared today"><Icon name="eye" size={14} />Show {hidden} Cleared</button> : null}
       {fresh ? <button type="button" className="sk-link" onClick={markSeen} title="Clears the new marks; items stay until they’re dealt with"><Icon name="eye" size={14} />Mark Seen</button> : null}
-      <button type="button" className="sk-link" onClick={() => window.dispatchEvent(new Event(REFRESH_EVENT))} title="Pull the latest available source feeds"><Icon name="refresh" size={14} />Refresh Sources</button>
+      <button type="button" className="sk-link sk-brief-refresh" onClick={() => window.dispatchEvent(new Event(REFRESH_EVENT))} title="Pull the latest available source feeds"><Icon name="refresh" size={14} />Refresh Sources</button>
     </>}>
       <div className="sk-brief-sections">
         {cols.map(s => <section key={s.id} className={`sk-brief-section${s.compact ? ' is-compact' : ''}${s.id === 'doing' ? ' is-numbered' : ''}`} aria-label={s.title}>

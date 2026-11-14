@@ -7,6 +7,7 @@
  * then part 2 in three columns: Pay laters · Taxes / Legal · Projects / Required.
  */
 
+import { FinanceLabel } from "./FinanceDrawer";
 import { useState, type ReactNode } from "react";
 import { Icon } from "../sticker/Icon";
 import {
@@ -384,7 +385,7 @@ export function outstandingParts(
   const payLater: OwedLine[] = rowsOf(model?.paylaterSums).map((r) => {
     const prov = r[0].text.replace(/\s*sum$/i, "").trim();
     const next = plDues.find((d) =>
-      `${d.bill.name} ${d.bill.notes || ""}`
+      `${d.bill.nameBeforeLabel ?? d.bill.name} ${d.bill.notes || ""}`
         .toLowerCase()
         .includes(prov.toLowerCase()),
     );
@@ -457,7 +458,7 @@ function OwedCol({
           onClick={() => onOpen(x.itemId!)}
           title={x.note}
         >
-          {x.name}
+          <FinanceLabel id={`debt:${x.itemId}`} name={x.name} />
         </button>
       ) : (
         <span className="ob-line-name" title={x.note}>

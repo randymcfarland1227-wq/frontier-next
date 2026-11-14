@@ -1,0 +1,177 @@
+/* Finance uses the same paper, ink and compact rows as the task drawer. */
+.sk-app dialog.finance-drawer {
+  --ink: var(--sk-ink);
+  --muted: var(--sk-ink-2);
+  --surface: var(--sk-paper);
+  --surface-2: color-mix(in srgb, var(--sk-ink) 6%, var(--sk-paper));
+  --line: var(--sk-line);
+  --row-line: var(--sk-line);
+  --accent: var(--sk-tint);
+  --glass: var(--sk-paper);
+  --finance-inset: 12px;
+  box-sizing: border-box;
+  position: fixed;
+  inset: var(--finance-inset) var(--finance-inset) auto auto;
+  margin: 0;
+  width: min(660px, calc(100% - 2 * var(--finance-inset)));
+  max-width: none;
+  height: auto;
+  max-height: calc(100% - 2 * var(--finance-inset));
+  padding: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 2px solid var(--sk-edge);
+  border-radius: 12px;
+  background: var(--sk-paper);
+  color: var(--sk-ink);
+  box-shadow: 0 10px 32px #0005;
+  font: var(--sk-secondary);
+  color-scheme: light;
+  animation: none;
+}
+.sk-app dialog.finance-drawer:not([open]) { display: none; }
+.sk-app dialog.finance-drawer-wide { width: min(800px, calc(100% - 2 * var(--finance-inset))); }
+.frontier-shell[data-color-mode="dark"] .sk-app dialog.finance-drawer { color-scheme: dark; }
+.sk-app .finance-drawer::backdrop { background: #16141f66; }
+.sk-app .finance-drawer-content { display: grid; align-content: start; gap: 9px; min-width: 0; padding: 14px 18px 16px; }
+.sk-app .finance-drawer-tools { position: sticky; top: 0; height: 0; z-index: 2; display: flex; justify-content: space-between; padding-inline: 10px; }
+.sk-app .finance-drawer-icon { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 32px; min-height: 32px; padding: 0 6px; border: 0; border-radius: 6px; background: var(--sk-paper); color: var(--sk-ink-2); font: var(--sk-caption); cursor: pointer; }
+.sk-app .finance-drawer-tools .finance-drawer-icon { align-self: start; margin-top: 8px; }
+.sk-app .finance-drawer-tools .finance-drawer-icon:last-child { margin-left: auto; }
+.sk-app .finance-drawer-icon:hover { background: var(--surface-2); color: var(--sk-ink); }
+.sk-app .finance-drawer :focus-visible { outline: 2px solid var(--sk-tint); outline-offset: 2px; }
+.sk-app .finance-drawer-content > :first-child { padding-right: 36px; }
+.sk-app .finance-drawer-tools:has(button + button) + .finance-drawer-content { padding-top: 42px; }
+.sk-app .finance-drawer .finance-name-title { display: flex; align-items: center; gap: 4px; }
+.sk-app .finance-drawer .finance-name-title h3 { margin: 0; padding: 0; font: var(--sk-headline); font-size: 22px; overflow-wrap: anywhere; }
+.sk-app .finance-name-title .finance-drawer-icon { flex: none; }
+.sk-app .finance-name-editor { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.sk-app .finance-name-editor input { flex: 1 1 170px; min-width: 0; min-height: 34px; padding: 4px 8px; border: 1px solid var(--sk-line); border-radius: 6px; background: var(--surface-2); color: var(--sk-ink); font: inherit; }
+.sk-app .finance-name-status { color: var(--sk-ink-2); font: var(--sk-caption); }
+.sk-app .finance-name-status:empty { display: none; }
+.sk-app .finance-drawer .bal-drw-head > .section-label { font: var(--sk-caption); letter-spacing: .07em; }
+.sk-app .finance-drawer .bal-drw-chips { margin-top: 4px !important; gap: 4px; }
+.sk-app .finance-drawer .bal-drw-chips span { padding: 2px 7px; }
+.sk-app .finance-drawer :is(.bal-drw-tiles, .mb-cp-figs) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 92px), 1fr));
+  gap: 7px 12px;
+  margin: 0;
+  padding-block: 8px;
+  border-block: 1px solid var(--sk-line);
+}
+.sk-app .finance-drawer :is(.bal-drw-tiles > div, .mb-cp-figs > span) {
+  grid-column: auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  overflow-wrap: anywhere;
+}
+.sk-app .finance-drawer :is(.bal-drw-tiles b, .bal-drw-tiles .bal-drw-num, .mb-cp-figs b) { font-size: 16px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.sk-app .finance-drawer :is(.bal-drw-tiles span, .mb-cp-figs small) { font-size: 11px; }
+.sk-app .finance-drawer .bal-pay { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 10px; padding: 0; border: 0; background: none; }
+.sk-app .finance-drawer .bal-pay small { flex: 1 1 180px; }
+.sk-app .finance-drawer .bal-drw-sec { min-width: 0; gap: 6px; padding-top: 8px; }
+.sk-app .finance-drawer :is(.bal-drw-sec h4, .mb-cp-h, .dbt-block > .sk-ghead) { margin: 0; font: var(--sk-caption); color: var(--sk-ink); text-transform: none; letter-spacing: 0; }
+.sk-app .finance-drawer .bill-flags { gap: 5px 8px; margin: 0; }
+.sk-app .finance-drawer .bill-level-hint { order: 2; flex-basis: 100%; }
+.sk-app .finance-drawer .bill-level label { padding: 3px 8px; font-weight: 650; }
+.sk-app .finance-drawer .bill-level .is-priority.is-on { color: var(--sk-ink); border-color: var(--sk-alert); background: color-mix(in srgb, var(--sk-alert) 27%, var(--sk-paper)); }
+.sk-app .finance-drawer .bill-level .is-noncritical.is-on { color: var(--sk-ink); border-color: #f97316; background: color-mix(in srgb, #f97316 22%, var(--sk-paper)); }
+.sk-app .finance-plan { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 275px), 1fr)); gap: 10px 16px; }
+.sk-app .finance-drawer .bal-form { gap: 6px; }
+.sk-app .finance-drawer .bal-form label { grid-template-columns: 67px minmax(0, 1fr); gap: 5px; }
+.sk-app .finance-drawer .bal-form-row { gap: 4px; }
+.sk-app .finance-drawer :is(input:not([type=radio]):not([type=checkbox]), select, textarea) { min-width: 0; max-width: 100%; }
+.sk-app .finance-drawer .mb-cp-list li { grid-template-columns: minmax(65px, auto) minmax(45px, auto) minmax(0, 1fr); }
+.sk-app .finance-drawer .mb-cp-list small { overflow-wrap: anywhere; }
+.sk-app .finance-drawer .mb-cp-change { padding-block: 7px; border-top: 1px solid var(--sk-line); }
+.sk-app .finance-drawer .mb-cp-change .mb-cp-h { margin-bottom: 4px; }
+.sk-app .finance-drawer .dbt-story-head { border: 0; border-bottom: 1px solid var(--sk-line); border-radius: 0; box-shadow: none; padding: 0 36px 8px 0; background: none; color: var(--sk-ink); }
+.sk-app .finance-drawer .dbt-story-amt b { font-size: 18px; }
+.sk-app .finance-drawer .dbt-block { margin: 0; border: 0; border-top: 1px solid var(--sk-line); border-radius: 0; background: none; box-shadow: none; }
+.sk-app .finance-drawer .dbt-block > .sk-ghead { padding: 7px 0 2px; border: 0; background: none; }
+.sk-app .finance-drawer .dbt-block-body { padding: 0 0 4px; }
+@media (max-width: 520px) {
+  .sk-app dialog.finance-drawer { zoom: calc(1 / var(--page-zoom, .6)); }
+  .sk-app .finance-drawer-content { padding-inline: 12px; }
+  .sk-app .finance-drawer :is(input:not([type=radio]):not([type=checkbox]), select, textarea) { font-size: 16px; }
+}
+@media (pointer: coarse) {
+  .sk-app .finance-drawer-icon { min-width: 40px; min-height: 40px; }
+}
+.sk-app dialog.finance-drawer { gap: 0; }
+.sk-app .finance-item-pay { justify-self: start; }
+.frontier-shell[data-color-mode="dark"] .sk-app .finance-drawer .dbt-story-head { background: none; }
+.sk-app .finance-drawer .mb-hist-range .sk-btn.is-on {
+  background: var(--sk-ink);
+  color: var(--sk-paper);
+}
+.sk-app .finance-plan .bal-drw-sec { align-content: start; }
+.sk-app .finance-drawer .bill-level-hint { margin: 0; }
+
+/* One leading amount, quiet supporting text, and whitespace between groups. */
+.sk-app .finance-drawer-content { gap: 10px; }
+.sk-app .finance-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 12px;
+  color: var(--sk-ink-2);
+}
+.sk-app .finance-overview .finance-amount {
+  color: var(--sk-ink);
+  font-size: 24px;
+  line-height: 1.12;
+  font-variant-numeric: tabular-nums;
+}
+.sk-app .finance-overview strong { color: var(--sk-ink); font-weight: 650; }
+.sk-app .finance-drawer .finance-status { margin: -6px 0 0; font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .finance-drawer .finance-status.mb-late { color: #b91c1c; }
+.sk-app .finance-drawer .finance-caution { color: #9a3412; }
+.frontier-shell[data-color-mode="dark"] .sk-app .finance-drawer .finance-status.mb-late { color: #fca5a5; }
+.frontier-shell[data-color-mode="dark"] .sk-app .finance-drawer .finance-caution { color: #fdba74; }
+.sk-app .finance-drawer :is(.bal-drw-tiles, .mb-cp-figs, .bal-drw-sec, .mb-cp-change, .dbt-block) { border: 0; padding-block: 0; }
+.sk-app .finance-drawer .bal-drw-chips span {
+  padding: 0;
+  background: none;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.sk-app .finance-drawer .bal-drw-chips span + span::before { content: "· "; color: var(--sk-ink-2); }
+.sk-app .finance-drawer .finance-plan { padding-top: 9px; border-top: 1px solid var(--sk-line); }
+.sk-app .finance-drawer .bill-change-modes.bill-level label:not(.is-on) { border-color: transparent; background: none; }
+.sk-app .finance-drawer .bill-flags .bill-change-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sk-app .finance-drawer .bill-level-hint { opacity: 1; color: var(--sk-ink-2); }
+.sk-app .finance-drawer .finance-effect { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px; }
+.sk-app .finance-drawer .finance-effect .bal-drw-effect { font: var(--sk-secondary); }
+.sk-app .finance-drawer .finance-effect .bal-link { margin-left: auto; }
+.sk-app .finance-drawer .mb-cp-change { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.sk-app .finance-drawer .mb-cp-change .mb-cp-h { margin: 0; }
+.sk-app .finance-drawer .mb-cp-change .bill-change,
+.sk-app .finance-drawer .mb-cp-change .mb-saved { flex-basis: 100%; }
+.sk-app .finance-drawer .mb-cp-change > button {
+  border: 0; box-shadow: none; background: transparent; color: var(--sk-tint); padding-inline: 2px;
+}
+.sk-app .finance-drawer .finance-history summary {
+  cursor: pointer;
+  padding-block: 5px;
+  color: var(--sk-ink);
+}
+.sk-app .finance-drawer .finance-history summary span { margin-inline-start: 8px; color: var(--sk-ink-2); }
+.sk-app .finance-drawer .finance-history-body { display: grid; gap: 8px; padding-block: 6px; }
+.sk-app .finance-drawer .bill-flags .bill-change-field > span { white-space: nowrap; }
+.sk-app .finance-drawer .bill-flags .bill-change-field input { width: auto; }
+.sk-app .finance-drawer .finance-screen-reader {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

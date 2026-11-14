@@ -1,5 +1,7 @@
 "use client";
 
+import { FinanceLabel } from "./FinanceDrawer";
+
 /**
  * Money page boards from Randy's 2026-10-22 drawings: the pinned header dashboard, the Week board
  * (week strip + fixed Overdue / Upcoming boxes beside the balancing sheet), Accounts (bank boxes,
@@ -618,7 +620,7 @@ export function cardRows(
   // Each payment belongs to the one card its name is closest to (Cap 1 S → Cap 1 Sec, not Cap 1 Savor).
   const hubDue = (name: string) => cardDues.find((d) => d.key.startsWith(hubCardPrefix(name)));
   const sheetDues = cardDues.filter((d) => !d.key.startsWith("money:hubcard:"));
-  const ownerOf = (d: BillDue) => nearest(d.bill.name, sums, (x) => x.name);
+  const ownerOf = (d: BillDue) => nearest(d.bill.nameBeforeLabel ?? d.bill.name, sums, (x) => x.name);
   const sheetNames = new Set(sums.map((c) => metaName(c.name)));
   const extra: CardRow[] = loadExtraCards()
     .filter((c) => !c.removed && !sheetNames.has(metaName(c.name)))
@@ -762,7 +764,7 @@ export function CardsTable({
                     onClick={() => onOpen(r.name)}
                     title="Card details"
                   >
-                    {r.name}
+                    <FinanceLabel id={r.key} name={r.name} />
                   </button>
                 ) : (
                   r.name
@@ -906,7 +908,7 @@ export function loanRows(
       const name = r[0].text.trim();
       const key = `loan:${metaName(name)}`;
       const m = get(key);
-      const due = nearest(name, bills, (d) => d.bill.name);
+      const due = nearest(name, bills, (d) => d.bill.nameBeforeLabel ?? d.bill.name);
       return {
         name,
         what: r[1]?.text || "",
@@ -978,7 +980,7 @@ export function LoansTable({
                         onClick={() => onOpen(r.name)}
                         title="Loan details"
                       >
-                        {r.name}
+                        <FinanceLabel id={r.key} name={r.name} />
                       </button>
                     ) : (
                       r.name
@@ -1617,7 +1619,7 @@ export function MoneyDash({
               <DashRow
                 key={r.name}
                 onOpen={() => onOpenAccount(r.name)}
-                label={r.label}
+                label={<FinanceLabel id={`account:${metaName(r.name)}`} name={r.label} />}
               >
                 <b>{usd(r.now ?? 0)}</b>
                 <b className="is-pend">{r.pend ? usd(r.pend) : "·"}</b>
@@ -1645,7 +1647,7 @@ export function MoneyDash({
               <DashRow
                 key={c.key}
                 onOpen={() => onOpenCard(c.name)}
-                label={c.name.replace(/^cap(ital)?\s*1\s*/i, "C1 ")}
+                label={<FinanceLabel id={c.key} name={c.name.replace(/^cap(ital)?\s*1\s*/i, "C1 ")} />}
                 title={c.name}
               >
                 <b>{usd(c.limit)}</b>
@@ -1810,7 +1812,7 @@ function DashRow({
   onOpen,
   children,
 }: {
-  label: string;
+  label: ReactNode;
   title?: string;
   onOpen: () => void;
   children: ReactNode;
@@ -1823,7 +1825,7 @@ function DashRow({
         onOpen();
       }}
     >
-      <button type="button" className="skm-glink" title={title || label}>
+      <button type="button" className="skm-glink" title={title || (typeof label === "string" ? label : undefined)}>
         {label}
       </button>
       {children}

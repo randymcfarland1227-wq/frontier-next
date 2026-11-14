@@ -34,7 +34,7 @@ function parseKey(key: string): { kind: string; slug: string; due: string } | un
 }
 
 export function billHistory(
-  bill: { name: string; kind?: string; origName?: string; ruleDay?: string },
+  bill: { name: string; kind?: string; origName?: string; nameBeforeLabel?: string; ruleDay?: string },
   dues: BillDue[],
   items: MoneyItem[],
   paidAt: Record<string, string>,
@@ -42,7 +42,7 @@ export function billHistory(
 ): BillHistory {
   const want = ruleOf(bill.kind, bill.origName ?? bill.name);
   // After a rename written to the sheet, newer rows carry the new name.
-  const wants = new Set([want, ruleOf(bill.kind, bill.name)]);
+  const wants = new Set([want, ruleOf(bill.kind, bill.nameBeforeLabel ?? bill.name)]);
   const wantKind = bill.kind || 'bill';
   const wantName = norm(bill.origName ?? bill.name);
   const rows = new Map<string, HistoryRow>();
@@ -51,7 +51,7 @@ export function billHistory(
   const dayOk = (due?: string) => !day || (due ? due.slice(8, 10) === day : false);
   const paidAmt = (key: string) => meta[`paid:${key}`]?.amount;
   for (const d of dues) {
-    if (!wants.has(ruleOf(d.bill.kind, d.bill.origName ?? d.bill.name)) && !wants.has(ruleOf(d.bill.kind, d.bill.name)) || (day && d.bill.ruleDay !== day)) continue;
+    if (!wants.has(ruleOf(d.bill.kind, d.bill.origName ?? d.bill.name)) && !wants.has(ruleOf(d.bill.kind, d.bill.nameBeforeLabel ?? d.bill.name)) || (day && d.bill.ruleDay !== day)) continue;
     const paidOn = paidAt[d.key];
     rows.set(d.key, { key: d.key, due: d.orig || d.due, amount: paidOn ? paidAmt(d.key) ?? d.bill.amount : d.bill.amount, paidOn, state: paidOn ? 'paid' : d.skipped ? 'skipped' : 'open' });
   }

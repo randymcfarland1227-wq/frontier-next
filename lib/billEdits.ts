@@ -52,6 +52,8 @@ export type BillDay = {
   endName?: string;
   /** Renamed on Life Hub: every payment shows this name (the sheet keeps its own) */
   rename?: string;
+  /** A Life Hub label only. It never participates in sheet-row matching. */
+  displayName?: string;
   /** The sheet's name before the rename (the rule key is built from it) */
   renamedFrom?: string;
   /** Every payment of this bill: Non critical (orange) or Priority (red, first). Set on Life Hub. */
@@ -103,9 +105,26 @@ export function setBillName(ruleKey: string, name: string | null, sheetName?: st
   const all = loadBillDays();
   const prev = all[ruleKey] || { day: null, from: '' };
   const n = name?.trim();
-  all[ruleKey] = { ...prev, rename: n || undefined, renamedFrom: n ? sheetName ?? prev.renamedFrom : undefined, at: new Date().toISOString() };
+  all[ruleKey] = { ...prev, rename: n || undefined, displayName: undefined, renamedFrom: n ? sheetName ?? prev.renamedFrom : undefined, at: new Date().toISOString() };
   writeSaved(STORAGE_KEYS.billDays, all);
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BILL_DAYS_EVENT));
+}
+
+/** Change the label without rewriting a sheet row or its payment key. */
+export function setBillDisplayName(bill: Parameters<typeof billRuleKey>[0], name: string) {
+  const key = billRuleKey(bill);
+  const all = loadBillDays();
+  const prev = all[key] || { day: null, from: '' };
+  const next = name.trim();
+  const original = prev.rename || bill.origName || bill.name;
+  all[key] = { ...prev, displayName: next && next !== original.trim() ? next : undefined, at: new Date().toISOString() };
+  writeSaved(STORAGE_KEYS.billDays, all);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BILL_DAYS_EVENT));
+}
+
+export function billDisplayName(bill: Parameters<typeof billRuleKey>[0], days: BillDays): string {
+  const rule = days[billRuleKey(bill)];
+  return rule?.displayName || rule?.rename || bill.name;
 }
 
 /** A bill's level: Priority, Non critical, or normal. */
@@ -242,7 +261,15 @@ export function applyBillEdits(dues: BillDue[], edits: BillEdits, today = new Da
       if (rule?.amount !== undefined && rule.amountFrom && d.due.slice(0, 7) >= rule.amountFrom) d = { ...d, bill: { ...d.bill, amount: rule.amount } };
       // Levels are per payment now; an older bill-wide level only covers payments already due when it was set.
       if (rule && (rule.nonCritical !== undefined || rule.priority !== undefined) && (!rule.at || d.due <= rule.at.slice(0, 10))) d = { ...d, bill: { ...d.bill, nonCritical: rule.priority ? undefined : rule.nonCritical ?? d.bill.nonCritical, priority: rule.priority || undefined } };
-      if (rule?.rename && rule.rename !== d.bill.name) d = { ...d, bill: { ...d.bill, name: rule.rename, origName: d.bill.origName ?? d.bill.name } };
+      const name = rule?.displayName || rule?.rename;
+      if (name && name !== d.bill.name) {
+        d = { ...d, bill: {
+          ...d.bill,
+          name,
+          origName: d.bill.origName ?? d.bill.name,
+          nameBeforeLabel: rule?.displayName ? rule.rename || d.bill.name : undefined,
+        } };
+      }
       const e = edits[d.key];
       d = withBillFlags(d, e);
       if (!hasEdit(e)) return d;

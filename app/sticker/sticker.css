@@ -3426,7 +3426,7 @@
 .sk-app .skm-dash-all {
   display: inline-flex; align-items: center; gap: 3px; align-self: flex-start; width: max-content; margin: 2px 0 4px; padding: 1px 8px 1px 5px;
   border: 1px solid var(--sk-glass-rim); border-radius: 99px; background: var(--sk-glass-track); box-shadow: var(--sk-glass-shadow);
-  color: var(--sk-ink-2); font: 700 10px/1.4 "DM Sans", system-ui, sans-serif; cursor: pointer;
+  color: var(--sk-ink-2); font: 700 13px/1.4 "DM Sans", system-ui, sans-serif; cursor: pointer;
 }
 .sk-app .skm-dash-all:hover { color: var(--sk-ink); box-shadow: var(--sk-glass-lift); }
 .sk-app .sk-todaybar-slot .skm-slot-top { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; }

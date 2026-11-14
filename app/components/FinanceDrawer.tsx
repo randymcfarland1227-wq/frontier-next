@@ -117,3 +117,10 @@ export function useFinanceLabel(key: string, original: string) {
 export function FinanceLabel({ id, name }: { id: string; name: string }) {
   return useFinanceLabel(id, name).name;
 }
+
+/** A shared, readable type marker across finance details. */
+export function FinanceType({ children }: { children: ReactNode }) {
+  const text = typeof children === 'string' ? children.toLowerCase() : '';
+  const tone = text.includes('bill') ? 'bill' : text.includes('sub') ? 'subscription' : text.includes('account') || text.includes('coming') ? 'account' : text.includes('card') ? 'card' : 'other';
+  return <span className={`finance-type is-${tone}`}>{children}</span>;
+}

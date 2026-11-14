@@ -175,3 +175,36 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Shared hierarchy and related fields, without boxed sections. */
+.sk-app .finance-drawer { --finance-body: 14px; --finance-detail: 12px; }
+.sk-app .finance-drawer-content { font-size: var(--finance-body); line-height: 1.4; gap: 14px; }
+.sk-app .finance-drawer .finance-name-title h3 { font-family: inherit; font-size: 20px; line-height: 1.3; font-weight: 700; }
+.sk-app .finance-drawer .finance-type {
+  display: inline-flex; align-items: center; width: fit-content; padding: 2px 9px;
+  margin-bottom: 4px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  background: color-mix(in srgb, #c5a7ef 28%, var(--sk-paper)); color: var(--sk-ink);
+}
+.sk-app .finance-drawer .finance-type.is-bill { background: color-mix(in srgb, #e8bd37 36%, var(--sk-paper)); }
+.sk-app .finance-drawer .finance-type.is-subscription { background: color-mix(in srgb, #c5a7ef 36%, var(--sk-paper)); }
+.sk-app .finance-drawer .finance-type.is-account { background: color-mix(in srgb, #56b9a5 32%, var(--sk-paper)); }
+.sk-app .finance-drawer .finance-type.is-card { background: color-mix(in srgb, #79a9e7 32%, var(--sk-paper)); }
+.sk-app .finance-drawer :is(.finance-amount, .bal-drw-num, .mb-cp-figs b, .dbt-story-amt b) { font-size: 18px; line-height: 1.3; }
+.sk-app .finance-drawer :is(.bal-drw-sec h4, .mb-cp-h, .finance-history summary, .dbt-block > .sk-ghead) { font-family: inherit; font-size: var(--finance-body); line-height: 1.4; font-weight: 700; }
+.sk-app .finance-drawer :is(input, select, textarea, button, .bill-level label, .bal-form label) { font-family: inherit; font-size: var(--finance-body); line-height: 1.4; }
+.sk-app .finance-drawer :is(small, .bal-form-note, .bill-level-hint, .finance-status, .bal-drw-tiles span, .mb-cp-figs small) { font-family: inherit; font-size: var(--finance-detail); line-height: 1.4; }
+.sk-app .finance-drawer .finance-plan { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 0; border: 0; }
+.sk-app .finance-drawer .finance-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; align-items: start; }
+.sk-app .finance-drawer .finance-dates > label { display: flex; flex-direction: column; align-items: stretch; }
+.sk-app .finance-drawer .finance-dates .bill-change-field { flex-direction: column; align-items: stretch; gap: 5px; }
+.sk-app .finance-drawer .finance-dates .bill-flags { display: grid; align-content: start; }
+.sk-app .finance-drawer .finance-dates .bal-form-row { flex-wrap: wrap; }
+.sk-app .finance-drawer .finance-dates input { width: 100%; box-sizing: border-box; }
+.sk-app .finance-drawer .bal-form { gap: 8px; }
+.sk-app .finance-drawer .bal-pay { align-items: center; }
+@media (max-width: 520px) {
+  .sk-app .finance-drawer :is(input:not([type=radio]):not([type=checkbox]), select, textarea) { font-size: 16px; }
+  .sk-app .finance-drawer .finance-dates { gap: 8px; }
+}
+.sk-app .finance-drawer .finance-dates .bal-form-row input { width: auto; flex: 1 1 120px; }
+.sk-app .finance-drawer .finance-dates .bal-form-row button { flex: 0 0 auto; }

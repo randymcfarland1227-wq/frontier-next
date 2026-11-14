@@ -45,12 +45,13 @@ const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 =
  * suspension; it still counts as overdue after the due date). Saved on Life Hub right away (synced);
  * the sheet's "Item Flags" block on the Randy tab sets the starting values.
  */
-export function BillFlagsFields({ due }: { due: BillDue; dueKeys?: string[] }) {
+export function BillFlagsFields({ due, fields = 'all' }: { due: BillDue; dueKeys?: string[]; fields?: 'all' | 'level' | 'date' }) {
   const saved = useBillEdits()[due.key];
   const level = billLevel(due.bill);
   const payBy = saved?.payBy !== undefined ? saved.payBy : due.bill.payBy || '';
   return (
     <div className="bill-flags" role="group" aria-label={`Flags for ${due.bill.name}`}>
+      {fields !== 'date' ? <>
       <div className="bill-change-modes bill-level" role="radiogroup" aria-label={`${due.bill.name} level`}>
         {(
           [
@@ -66,6 +67,8 @@ export function BillFlagsFields({ due }: { due: BillDue; dueKeys?: string[] }) {
         ))}
       </div>
       <small className="bill-level-hint">This payment only ({shortDay(due.orig || due.due)}): non critical shows orange; priority shows red and goes first. Next month starts normal.</small>
+      </> : null}
+      {fields !== 'level' ? <>
       <label className="bill-change-field">
         <span>Pay by</span>
         <input type="date" value={payBy} min={due.orig || due.due} onChange={e => setBillFlags(due.key, { payBy: e.target.value })} aria-label={`Pay by date for ${due.bill.name}`} />
@@ -75,6 +78,7 @@ export function BillFlagsFields({ due }: { due: BillDue; dueKeys?: string[] }) {
           Clear pay by
         </button>
       ) : null}
+      </> : null}
     </div>
   );
 }

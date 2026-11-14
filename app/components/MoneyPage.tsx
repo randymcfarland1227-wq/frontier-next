@@ -1408,9 +1408,11 @@ function SubsView({ model, lifeSubs: allLifeSubs, paidAt, dues, onSave }: { mode
     .reduce((s, r) => s + (r.amount || 0), 0);
   const yearlyOnly = lifeSubs.filter(s => s.status === 'active' && s.cycle === 'yearly').reduce((s, x) => s + (x.amount || 0), 0);
   // Charged = you marked it (Paid on Life Hub) or crossed it off in the sheet. A passed date alone is not a charge.
-  const paidKeyOf = (r: SubRow) =>
-    r.from === 'hub' ? `money:lhsub:${r.sub!.id}:${r.date}` : dues.find(d => d.due === r.date && d.bill.kind === 'sub' && d.bill.name.trim().toLowerCase() === r.name.toLowerCase())?.key;
-  const isCharged = (r: SubRow) => r.status === 'skipped' || Boolean(r.date && paidAt[paidKeyOf(r) || '']);
+  // A sheet row's date is its last charge; this month's charge is the projected copy, so match by name in this month.
+  const monthDueOf = (r: SubRow) =>
+    r.from === 'hub' ? undefined : dues.find(d => d.bill.kind === 'sub' && d.bill.name.trim().toLowerCase() === r.name.toLowerCase() && fromDayKey(d.due).getMonth() === today.getMonth() && fromDayKey(d.due).getFullYear() === today.getFullYear());
+  const paidKeyOf = (r: SubRow) => (r.from === 'hub' ? `money:lhsub:${r.sub!.id}:${r.date}` : monthDueOf(r)?.key);
+  const isCharged = (r: SubRow) => r.status === 'skipped' || monthDueOf(r)?.bill.id.startsWith(CROSSED) || Boolean(r.date && paidAt[paidKeyOf(r) || '']);
   const chargedSoFar = all.filter(r => live(r) && isCharged(r)).reduce((s, r) => s + (r.amount || 0), 0);
   const order = (r: SubRow) => (live(r) ? 0 : r.status === 'trial' ? 1 : 2);
   const sorted = [...all].sort((a, b) => order(a) - order(b) || (a.day ?? 99) - (b.day ?? 99) || a.name.localeCompare(b.name));
@@ -1419,11 +1421,12 @@ function SubsView({ model, lifeSubs: allLifeSubs, paidAt, dues, onSave }: { mode
     if (r.status === 'cancelled') return { text: 'Cancelled', tone: 'is-quiet' };
     if (r.status === 'skipped') return { text: '✓ Paid', tone: 'is-paid' };
     if (!r.date) return { text: r.status === 'trial' ? 'Free trial' : '—', tone: r.status === 'trial' ? 'is-trial' : '' };
-    const days = Math.round((fromDayKey(r.date).getTime() - today.getTime()) / 86_400_000);
-    if (isCharged(r)) return { text: `✓ Charged ${shortDate(r.date)}`, tone: 'is-paid' };
-    if (days < 0) return { text: `Overdue · ${shortDate(r.date)}`, tone: 'is-late' };
+    const when = monthDueOf(r)?.due || r.date;
+    const days = Math.round((fromDayKey(when).getTime() - today.getTime()) / 86_400_000);
+    if (isCharged(r)) return { text: `✓ Paid ${shortDate(when)}`, tone: 'is-paid' };
+    if (days < 0) return { text: `Overdue · ${shortDate(when)}`, tone: 'is-late' };
     if (days === 0) return { text: 'Charges today', tone: 'is-soon' };
-    return { text: `Charges ${shortDate(r.date)}`, tone: days <= 3 ? 'is-soon' : '' };
+    return { text: `Charges ${shortDate(when)}`, tone: days <= 3 ? 'is-soon' : '' };
   };
   return (
     <div className="subs">
@@ -1453,7 +1456,7 @@ function SubsView({ model, lifeSubs: allLifeSubs, paidAt, dues, onSave }: { mode
         {sorted.map(r => {
           const st = stateOf(r);
           return (
-            <li key={r.key} className={`subs-row is-${r.status}`}>
+            <li key={r.key} className={`subs-row is-${r.status}${live(r) && isCharged(r) ? ' is-charged' : ''}`}>
               <span className="subs-avatar" aria-hidden="true" style={{ '--h': String((r.name.charCodeAt(0) * 37) % 360) } as React.CSSProperties}>
                 {r.name.charAt(0).toUpperCase()}
               </span>
@@ -3297,8 +3300,8 @@ const LEDGER_KINDS: Array<[string, string]> = [
   ['sub', 'Subscriptions'],
 ];
 
-function LedgerByCategory({ dues, paidAt, model, onPaid, hidePaid }: { dues: BillDue[]; paidAt: Record<string, string>; model: MoneyModel; onPaid: (d: BillDue) => void; hidePaid: boolean }) {
-  const today = startOfDay(new Date());
+function LedgerByCategory({ dues, paidAt, model, onPaid, hidePaid, month, strike = false }: { dues: BillDue[]; paidAt: Record<string, string>; model: MoneyModel; onPaid: (d: BillDue) => void; hidePaid: boolean; month?: Date; strike?: boolean }) {
+  const today = month || startOfDay(new Date());
   const all = ledgerMonthRows(dues, model.items, today);
   return (
     <div className="ledger-cats">
@@ -3326,12 +3329,12 @@ function LedgerByCategory({ dues, paidAt, model, onPaid, hidePaid }: { dues: Bil
                   const st = monthState(d, paidAt);
                   const isDone = ['paid', 'crossed', 'charged'].includes(st);
                   return (
-                    <li key={d.key} className={`ledger-row is-${st}${d.bill.nonCritical ? ' is-noncritical' : ''}${d.bill.priority ? ' is-priority' : ''}`}>
+                    <li key={d.key} className={`ledger-row is-${st}${strike && isDone ? ' is-struck' : ''}${d.bill.nonCritical ? ' is-noncritical' : ''}${d.bill.priority ? ' is-priority' : ''}`}>
                       <span className="ledger-day">{fromDayKey(d.due).getDate()}</span>
                       <span className="ledger-name"><BrandLogo name={d.bill.name} /><ItemName id={d.key}>{d.bill.name}</ItemName><FlagBadges d={d} /></span>
                       <span className="ledger-amt">{money(d.bill.amount) || '?'}</span>
                       {isDone ? (
-                        <span className="ledger-state">✓</span>
+                        <span className="ledger-state" title={STATE_TEXT[st](d, paidAt)}>✓</span>
                       ) : st === 'late' ? (
                         <button type="button" className="ledger-paid is-late" onClick={() => onPaid(d)} title="Past its day — mark paid">
                           Paid
@@ -3357,6 +3360,31 @@ function LedgerByCategory({ dues, paidAt, model, onPaid, hidePaid }: { dues: Bil
   );
 }
 
+/** Overview's month at a glance: one box per kind, every row shown, paid ones struck through in green. */
+function MonthBoard({ duesFor, thisMonth, paidAt, model, onPaid }: { duesFor?: (month: Date) => BillDue[]; thisMonth: BillDue[]; paidAt: Record<string, string>; model: MoneyModel; onPaid: (d: BillDue) => void }) {
+  const now = new Date();
+  const [offset, setOffset] = useState(0);
+  const month = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+  const list = useMemo(() => (offset === 0 || !duesFor ? thisMonth : duesFor(month)), [offset, duesFor, thisMonth]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rows = ledgerMonthRows(list, model.items, month).filter(d => !d.skipped);
+  const paidN = rows.filter(d => isLedgerPaid(d, paidAt)).length;
+  const left = rows.filter(d => !isLedgerPaid(d, paidAt)).reduce((s, d) => s + (d.bill.amount || 0), 0);
+  const label = month.toLocaleDateString([], { month: 'long', year: month.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
+  return (
+    <div className="mny-monthboard">
+      <div className="mny-monthnav">
+        <button type="button" className="sk-btn is-small" onClick={() => setOffset(o => o - 1)} aria-label="Previous month">‹</button>
+        <b>{label}</b>
+        <button type="button" className="sk-btn is-small" onClick={() => setOffset(o => o + 1)} aria-label="Next month" disabled={!duesFor}>›</button>
+        {offset !== 0 ? <button type="button" className="sk-btn is-small" onClick={() => setOffset(0)}>This month</button> : null}
+        <span className="mny-monthnav-sum">{paidN} of {rows.length} paid{left ? ` · ${money(left)} left` : ''}</span>
+      </div>
+      {offset < 0 ? <p className="mb-dim mny-monthnav-note">Past months count what was marked Paid on Life Hub; sheet cross-offs only exist for the months the sheet still holds.</p> : null}
+      <LedgerByCategory dues={list} paidAt={paidAt} model={model} onPaid={onPaid} hidePaid={false} month={month} strike />
+    </div>
+  );
+}
+
 const NEEDED_OPTIONS = ['Yes', 'Y Low', 'No', 'Ordered'];
 type TabId = 'plan' | 'overview' | 'flow' | 'accounts' | 'spend' | 'owed' | 'debts' | 'save';
 const TAB_IDS: TabId[] = ['overview', 'flow', 'accounts', 'spend', 'debts', 'owed', 'save'];
@@ -3372,6 +3400,7 @@ export function MoneyPage({
   model,
   dues: duesIn,
   monthDues: monthDuesIn,
+  duesForMonth,
   paidAt,
   lifeSubs,
   onPaid,
@@ -3384,6 +3413,8 @@ export function MoneyPage({
   dues: BillDue[];
   /** Every payment this month, paid ones included */
   monthDues: BillDue[];
+  /** Every payment in any month (Overview's month view) */
+  duesForMonth?: (month: Date) => BillDue[];
   /** Payment key → when it was marked paid */
   paidAt: Record<string, string>;
   lifeSubs: LifeSub[];
@@ -3944,6 +3975,9 @@ export function MoneyPage({
               ) : (
                 <p className="mny-empty">Nothing overdue.</p>
               )}
+            </Section>
+            <Section tone="due" title="Month view" hint="Bills, card payments, pay later, cash advances and subscriptions for the month. Paid ones stay, struck through in green." href={link('Randy')}>
+              <MonthBoard duesFor={duesForMonth} thisMonth={monthDues} paidAt={paidAt} model={model} onPaid={onPaid} />
             </Section>
             {financeTasks ? (
               <Section tone="plan" title="Financial focus" hint="The Radall tasks and what needs attention first — tickets, renewals, the big items.">

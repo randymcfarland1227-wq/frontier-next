@@ -3390,3 +3390,17 @@
 .sk-app .sk-brief .sk-brief-rest { display: grid; gap: 12px; min-width: 0; }
 .sk-app .sk-brief .sk-brief-sections .sk-brief-section { margin-bottom: 0; }
 @media (max-width: 520px) { .sk-app .sk-brief .sk-brief-sections { grid-template-columns: minmax(0, 1fr); } }
+
+/* Money › Overview month view + Subscriptions paid rows: paid stays visible, struck through in green */
+.mny-monthnav { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 8px; }
+.mny-monthnav b { min-width: 110px; text-align: center; font-size: 14px; }
+.mny-monthnav-sum { margin-left: auto; font-size: 12px; font-weight: 650; color: var(--muted); }
+.mny-monthnav-note { margin: 0 0 8px; font-size: 11px; }
+.ledger-row.is-struck { background: color-mix(in srgb, #16a34a 9%, var(--surface)) !important; }
+.ledger-row.is-struck .ledger-name, .ledger-row.is-struck .ledger-amt, .ledger-row.is-struck .ledger-day { text-decoration: line-through; text-decoration-color: #15803d; text-decoration-thickness: 1.5px; color: #15803d; }
+.ledger-row.is-struck .ledger-name .mny-item-link { text-decoration: inherit; color: inherit; }
+.frontier-shell[data-color-mode="dark"] .ledger-row.is-struck :is(.ledger-name, .ledger-amt, .ledger-day) { color: #4ade80; text-decoration-color: #4ade80; }
+.subs-row.is-charged, .subs-row.is-skipped { background: color-mix(in srgb, #16a34a 8%, var(--surface)); border-color: color-mix(in srgb, #16a34a 35%, var(--line, var(--row-line))); }
+.subs-row.is-charged .subs-name .mny-item-link, .subs-row.is-charged .subs-amt, .subs-row.is-charged .subs-day,
+.subs-row.is-skipped .subs-name .mny-item-link, .subs-row.is-skipped .subs-amt, .subs-row.is-skipped .subs-day { text-decoration: line-through; text-decoration-color: #15803d; text-decoration-thickness: 1.5px; color: #15803d; }
+.frontier-shell[data-color-mode="dark"] :is(.subs-row.is-charged, .subs-row.is-skipped) :is(.subs-name .mny-item-link, .subs-amt, .subs-day) { color: #4ade80; text-decoration-color: #4ade80; }

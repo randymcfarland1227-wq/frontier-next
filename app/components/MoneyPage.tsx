@@ -2,6 +2,7 @@
 
 import { hasSyncKey } from '../../lib/cloudSync';
 import { LinkDevicePrompt } from './LinkDevicePrompt';
+import { FinanceDrawer as Modal, FinanceLabel, FinanceName, useFinanceLabel } from './FinanceDrawer';
 import { MoneyZoom } from './MoneyZoom';
 import { createPortal } from 'react-dom';
 import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -42,7 +43,7 @@ import {
 } from '../../lib/money';
 import { addDays, dayKey, dayName, daysBetween, fromDayKey, money, startOfDay, startOfWeek, type BillDue } from '../../lib/schedule';
 import { readSaved, writeSaved, STORAGE_KEYS } from '../../lib/storage';
-import { billRuleKey, isEnded, loadBillDays, setBillEnd, isOverdue, loadBillEdits, useBillEdits } from '../../lib/billEdits';
+import { billDisplayName, setBillDisplayName, billRuleKey, isEnded, loadBillDays, setBillEnd, isOverdue, loadBillEdits, useBillEdits } from '../../lib/billEdits';
 import { deleteForGood, BillChangeForm, BillFlagsFields, BillPinButton, FlagBadges, billChangeText } from './BillControls';
 import { addExtraCard, updateExtraCard, useExtraCards, type ExtraCard } from '../../lib/extraCards';
 import { addLifeSub, loadLifeSubs, updateLifeSub, type LifeSub } from '../../lib/lifeSubs';
@@ -581,7 +582,7 @@ function IncomingRow({ d, showDay }: { d: IncomingDue; showDay: boolean }) {
       {showDay ? <span className="mny-due-day">{fromDayKey(d.due).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</span> : null}
       <span className="mny-due-kind">Incoming</span>
       <span className="mny-due-name">
-        {d.item.source}
+        <FinanceLabel id={`incoming:${d.item.id}`} name={d.item.source} />
         {d.item.cycle !== 'once' ? <small> · {d.item.cycle}</small> : null}
       </span>
       <span className="mny-due-amt is-in">+{money(d.item.amount) || '?'}</span>
@@ -689,7 +690,7 @@ function AccountName({ name }: { name: string }) {
   const panels = useMoneyPanels();
   return (
     <button type="button" className="mny-accts-name mny-item-link" onClick={() => panels.openAccount(name)} title="Account details">
-      {name}
+      <FinanceLabel id={`account:${metaName(name)}`} name={name} />
     </button>
   );
 }
@@ -1011,7 +1012,7 @@ function CardTiles({ model, dues, paidAt, onPaid, onSave }: { model: MoneyModel;
         return (
           <li key={c.name} className={`cc-tile ${level}`}>
             <div className="cc-head">
-              <button type="button" className="mny-item-link" onClick={() => panels.openCard(c.name.replace(/\s+/g, ' '))} title="Card details"><strong>{c.name}</strong>{last4Of(c.name) ? <small className="cc-l4"> •{last4Of(c.name)}</small> : null}</button>
+              <button type="button" className="mny-item-link" onClick={() => panels.openCard(c.name.replace(/\s+/g, ' '))} title="Card details"><strong><FinanceLabel id={`card:${metaName(c.name)}`} name={c.name} /></strong>{last4Of(c.name) ? <small className="cc-l4"> •{last4Of(c.name)}</small> : null}</button>
               {used !== undefined ? <span className="cc-used">{used}% used</span> : <span className="cc-used" title="Type its limit in More Cards (Randy tab, Limit column) to include it in % used">Limit unknown</span>}
             </div>
             <div className="cc-bal">
@@ -1408,8 +1409,12 @@ function SubsView({ model, lifeSubs: allLifeSubs, paidAt, dues, onSave }: { mode
     .reduce((s, r) => s + (r.amount || 0), 0);
   const yearlyOnly = lifeSubs.filter(s => s.status === 'active' && s.cycle === 'yearly').reduce((s, x) => s + (x.amount || 0), 0);
   // Charged = you marked it (Paid on Life Hub) or crossed it off in the sheet. A passed date alone is not a charge.
-  const paidKeyOf = (r: SubRow) =>
-    r.from === 'hub' ? `money:lhsub:${r.sub!.id}:${r.date}` : dues.find(d => d.due === r.date && d.bill.kind === 'sub' && d.bill.name.trim().toLowerCase() === r.name.toLowerCase())?.key;
+  const matchesSub = (d: BillDue, r: SubRow) => d.bill.kind === 'sub' && (
+    r.sub ? d.key.startsWith(`money:lhsub:${r.sub.id}:`) :
+      [d.bill.origName, d.bill.nameBeforeLabel ?? d.bill.name].some(name => name?.trim().toLowerCase() === r.name.toLowerCase())
+  );
+  const paidKeyOf = (r: SubRow) => r.from === 'hub' ? `money:lhsub:${r.sub!.id}:${r.date}`
+    : dues.find(d => d.due === r.date && matchesSub(d, r))?.key;
   const isCharged = (r: SubRow) => r.status === 'skipped' || Boolean(r.date && paidAt[paidKeyOf(r) || '']);
   const chargedSoFar = all.filter(r => live(r) && isCharged(r)).reduce((s, r) => s + (r.amount || 0), 0);
   const order = (r: SubRow) => (live(r) ? 0 : r.status === 'trial' ? 1 : 2);
@@ -1459,7 +1464,7 @@ function SubsView({ model, lifeSubs: allLifeSubs, paidAt, dues, onSave }: { mode
               </span>
               <span className="subs-name">
                 <BrandLogo name={r.name} />
-                <button type="button" className="mny-item-link" onClick={() => panels.openSub(r.name)} title="Subscription details">{r.name}</button>
+                <button type="button" className="mny-item-link" onClick={() => panels.openSub(r.name)} title="Subscription details">{dues.find(d => matchesSub(d, r))?.bill.name ?? billDisplayName({ kind: 'sub', name: r.name }, endRules)}</button>
                 {r.from === 'hub' ? <small>added here{r.sub?.note ? ` · ${r.sub.note}` : ''}</small> : null}
               </span>
               <span className="subs-day">{r.day ? `the ${ordinal(r.day)}${r.sub?.cycle === 'yearly' ? ` of ${new Date(2026, r.sub.month ?? 0, 1).toLocaleDateString([], { month: 'short' })}` : ''}` : ''}</span>
@@ -1591,7 +1596,7 @@ function IncomeSection({ list, upcoming }: { list: Incoming[]; upcoming: Incomin
             const nx = nextOf(it);
             return (
               <li key={it.id}>
-                <span className="mny-due-name">{it.source}</span>
+                <span className="mny-due-name"><FinanceLabel id={`incoming:${it.id}`} name={it.source} /></span>
                 <span className="mny-income-when">
                   {it.cycle === 'once' ? shortDate(it.date) : `${it.cycle === 'weekly' ? 'Every' : it.cycle === 'biweekly' ? 'Every other' : 'Monthly ·'} ${it.cycle === 'monthly' ? ordinal(fromDayKey(it.date).getDate()) : fromDayKey(it.date).toLocaleDateString([], { weekday: 'long' })}`}
                   {nx ? ` · next ${shortDate(nx)}` : ''}
@@ -1670,6 +1675,7 @@ type BalanceLine = {
   paid?: string;
   /** Typed in by Randy */
   custom?: boolean;
+  incomingId?: string;
   /** Remember key for this bill / source */
   src: string;
 };
@@ -1715,7 +1721,7 @@ function payLine(d: BillDue, paidAt: Record<string, string>): BalanceLine {
   };
 }
 function inLine(d: IncomingDue): BalanceLine {
-  return { key: d.key, kind: 'in', due: d.due, name: d.item.source, amount: d.item.amount, tag: 'Coming in', group: 'in', color: '#0f766e', open: true, src: srcKey('in', d.item.source) };
+  return { key: d.key, kind: 'in', due: d.due, name: d.item.source, incomingId: d.item.id, amount: d.item.amount, tag: 'Coming in', group: 'in', color: '#0f766e', open: true, src: srcKey('in', d.item.source) };
 }
 function customLine(key: string, it: CustomItem): BalanceLine {
   return { key, kind: it.kind, due: it.due, name: it.name, amount: it.amount, tag: 'Added by you', group: 'custom', color: it.kind === 'in' ? '#0f766e' : '#7c3aed', open: true, custom: true, src: `custom:${key}` };
@@ -1949,7 +1955,7 @@ function withPayBy(list: BillDue[], rules?: Array<{ match: string; kinds?: strin
     // A pay-by you set or cleared on Life Hub is final for that payment.
     if (edits[d.key]?.payBy !== undefined) return d;
     // A notice's pay-by belongs to the one payment it follows (due on or just before it), never later months.
-    const r = rules.find(x => normName(d.bill.name).includes(normName(x.match)) && (!x.kinds || x.kinds.includes(d.bill.kind || 'bill'))
+    const r = rules.find(x => normName(d.bill.nameBeforeLabel ?? d.bill.name).includes(normName(x.match)) && (!x.kinds || x.kinds.includes(d.bill.kind || 'bill'))
       && d.due <= x.date && daysBetween(fromDayKey(d.due), fromDayKey(x.date)) <= 45);
     return r ? { ...d, bill: { ...d.bill, payBy: r.date, notes: [d.bill.notes, r.why].filter(Boolean).join(' · ') } } : d;
   });
@@ -2036,7 +2042,7 @@ function CardCredit({ model }: { model: MoneyModel }) {
       {shut ? null : <ul>
         {rows.map(r => (
           <li key={r.key}>
-            <button type="button" className="mny-item-link" onClick={() => panels.openCard(r.name)} title="Card details">{r.name}</button>
+            <button type="button" className="mny-item-link" onClick={() => panels.openCard(r.name)} title="Card details"><FinanceLabel id={r.key} name={r.name} /></button>
             <b>{money(r.avail || 0)}</b>
             <small>
               {r.limit ? `of ${money(r.limit)} · ${Math.round(r.util ?? 0)}% used` : 'limit not set'}
@@ -2161,7 +2167,7 @@ function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week'
               title="Details"
             >
               <span className="bal-led-name">
-                {l.name}
+                {l.incomingId ? <FinanceLabel id={`incoming:${l.incomingId}`} name={l.name} /> : l.name}
                 <small>
                   {l.overdue && !book.payOnOf(l) ? <b className="bal-late">Late</b> : null}
                   {l.tag}
@@ -2193,7 +2199,7 @@ function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week'
                   <div key={ac.name} className="bal-led-row is-acct">
                     <span className="bal-led-name bal-acct">
                       <button type="button" className="bal-acct-name" onClick={() => panels.openAccount(ac.name)} title="Its outgoing, incoming and end of week">
-                        {ac.name}
+                        <FinanceLabel id={`account:${metaName(ac.name)}`} name={ac.name} />
                         {ac.note ? <small>{ac.note}</small> : null}
                       </button>
                       {ac.bal && firstWeek && !ac.bal.some(c => c.formula) ? (
@@ -2289,7 +2295,7 @@ function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week'
             >
               <span className="bal-day">{l.overdue ? 'Late' : shortDay(l.due).replace(/,.*/, '')}</span>
               <button type="button" className="bal-name bal-name-btn" onClick={() => panels.openLine(l.key)} title="Details">
-                {l.name}
+                {l.incomingId ? <FinanceLabel id={`incoming:${l.incomingId}`} name={l.name} /> : l.name}
                 <small>
                   {l.tag}
                   {l.overdue ? ` · was due ${shortDay(l.due)}` : ` · ${shortDay(l.due)}`}
@@ -2357,31 +2363,6 @@ function BalancingSheet({ period, book, model, onSave, tasks }: { period: 'week'
   );
 }
 
-function Modal({ label, onClose, onBack, wide, children }: { label: string; onClose: () => void; onBack?: () => void; wide?: boolean; children: React.ReactNode }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-  return (
-    <div className="bal-dlg-backdrop skm-dlg-wrap" onClick={onClose}>
-      <div className={`bal-dlg skm-dlg${wide ? ' mb-dlg-wide' : ''}`} role="dialog" aria-modal="true" aria-label={label} onClick={e => e.stopPropagation()}>
-        <div className="skm-dlg-bar">
-          {onBack ? (
-            <button type="button" className="sk-btn is-small" onClick={onBack}>
-              <Icon name="chevron" className="skm-back" /> Back
-            </button>
-          ) : <span />}
-          <button type="button" className="sk-btn is-small is-icon" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 const daysText = (days: number, kind: 'pay' | 'in') =>
   days === 0 ? 'Today' : days > 0 ? `${days} day${days === 1 ? '' : 's'}` : `${-days} day${days === -1 ? '' : 's'} ${kind === 'in' ? 'ago' : 'late'}`;
 
@@ -2416,6 +2397,9 @@ function LinePanel({
   const panels = useMoneyPanels();
   const [paying, setPaying] = useState(false);
   const l = book.line(id);
+  const title = useFinanceLabel(`incoming:${l?.incomingId ?? id}`, l?.name ?? '');
+  const accountName = l ? book.acctOf(l) : '';
+  const accountLabel = useFinanceLabel(`account:${metaName(accountName)}`, accountName).name;
   if (!l)
     return (
       <Modal label="Item" onClose={onClose} onBack={onBack}>
@@ -2424,9 +2408,15 @@ function LinePanel({
       </Modal>
     );
   const isIn = l.kind === 'in';
+  const payment = book.due(l.key);
+  const custom = book.plan.entries[l.key]?.item;
+  const rename = payment ? (name: string) => setBillDisplayName(payment.bill, name)
+    : custom ? (name: string) => updatePick(l.key, { item: { ...custom, name } })
+    : l.incomingId ? title.onRename : undefined;
+  const displayName = l.incomingId ? title.name : l.name;
   const pick = book.plan.entries[l.key];
   const onSheet = book.plan.picks.has(l.key);
-  const acctName = book.acctOf(l);
+  const acctName = accountName;
   const ac = acctName ? book.acct(acctName) : undefined;
   const method = book.methodOf(l);
   const payOn = book.payOnOf(l);
@@ -2448,7 +2438,7 @@ function LinePanel({
   const pay = async () => {
     const what = isIn ? `Mark ${l.name} received` : `Pay ${l.name}`;
     const msg = canWrite
-      ? `${what}${l.amount !== undefined ? ` (${money(l.amount)})` : ''}?\n\n${acctName}${method === 'savings' ? ' savings' : ''} goes ${money(nowAmt)} → ${signed(afterAmt)} in your sheet, ${isIn ? 'it' : 'it’s marked paid everywhere on Life Hub and'} comes off the balancing sheet.`
+      ? `${what}${l.amount !== undefined ? ` (${money(l.amount)})` : ''}?\n\n${accountLabel}${method === 'savings' ? ' savings' : ''} goes ${money(nowAmt)} → ${signed(afterAmt)} in your sheet, ${isIn ? 'it' : 'it’s marked paid everywhere on Life Hub and'} comes off the balancing sheet.`
       : `${what}?\n\nNo account${acctName ? ' amount Life Hub can change' : ' chosen'}, so no balance changes — ${isIn ? 'it' : 'it’s marked paid everywhere on Life Hub and'} comes off the balancing sheet.`;
     if (!window.confirm(msg)) return;
     setPaying(true);
@@ -2470,10 +2460,10 @@ function LinePanel({
   };
   const methods: PayMethod[] = isIn ? ['ach', ...(ac?.sav ? (['savings'] as const) : [])] : ['debit', 'ach', ...(ac?.sav ? (['savings'] as const) : [])];
   return (
-    <Modal label={`${l.name} details`} onClose={onClose} onBack={onBack}>
+    <Modal label={`${displayName} details`} onClose={onClose} onBack={onBack}>
       <div className="bal-drw-head">
         <p className="section-label">{isIn ? 'Money coming in' : l.tag}</p>
-        <h3>{l.name}</h3>
+        <FinanceName name={displayName} onRename={rename} />
         <p className="bal-drw-chips">
           {l.paid ? <span className="is-ok">Paid ✓</span> : planned ? <span className="is-ok">Planned</span> : onSheet ? <span className="is-pend">{acctName ? 'Needs a pay day' : 'Needs an account'}</span> : <span>Not planned</span>}
           {l.overdue ? <span className={l.nonCritical ? 'is-pend' : 'is-short'}>{l.nonCritical ? 'Overdue · non critical' : 'Overdue'}</span> : null}
@@ -2506,7 +2496,7 @@ function LinePanel({
         ) : null}
         <div className={acctName ? 'is-now' : ''}>
           <span>{isIn ? 'Into' : 'From'}</span>
-          <b>{acctName || '—'}</b>
+          <b>{accountLabel || '—'}</b>
           <small>{method ? METHOD_LABEL[method] : acctName ? '' : 'not set'}</small>
         </div>
       </div>
@@ -2514,11 +2504,11 @@ function LinePanel({
       {!l.paid && !reg?.landed ? (
         <div className="bal-pay">
           <button type="button" className="bal-btn is-pay" disabled={paying} onClick={() => void pay()}>
-            {paying ? 'Saving…' : isIn ? `Mark received${acctName ? ` into ${acctName}` : ''}` : `Pay${l.amount !== undefined ? ` ${money(l.amount)}` : ''}${acctName ? ` from ${acctName}` : ''}`}
+            {paying ? 'Saving…' : isIn ? `Mark received${acctName ? ` into ${accountLabel}` : ''}` : `Pay${l.amount !== undefined ? ` ${money(l.amount)}` : ''}${acctName ? ` from ${accountLabel}` : ''}`}
           </button>
           <small>
             {canWrite
-              ? `${acctName}${method === 'savings' ? ' savings' : ''} ${money(nowAmt)} → ${signed(afterAmt)} in your sheet · ${isIn ? 'comes off the sheet' : 'marked paid everywhere'}`
+              ? `${accountLabel}${method === 'savings' ? ' savings' : ''} ${money(nowAmt)} → ${signed(afterAmt)} in your sheet · ${isIn ? 'comes off the sheet' : 'marked paid everywhere'}`
               : acctName
                 ? 'Marks it paid; this account’s amount isn’t one Life Hub can change'
                 : 'No account chosen — marks it paid without changing a balance'}
@@ -2526,80 +2516,82 @@ function LinePanel({
         </div>
       ) : null}
 
-      {!isIn && book.due(l.key) ? (
+      <div className="finance-plan">
         <section className="bal-drw-sec">
-          <h4>Flags</h4>
-          <BillFlagsFields due={book.due(l.key)!} />
-        </section>
-      ) : null}
-
-      <section className="bal-drw-sec">
-        <h4>Plan</h4>
-        <div className="bal-form">
-          {!isIn ? (
+          <h4>Plan</h4>
+          <div className="bal-form">
+            {!isIn ? (
+              <label>
+                <span>Pay on</span>
+                <span className="bal-form-row">
+                  <input type="date" value={payOn || ''} onChange={e => set({ payOn: e.target.value || undefined })} />
+                  {payOn !== l.due ? (
+                    <button type="button" className="bal-btn" onClick={() => set({ payOn: l.due })}>
+                      Due day
+                    </button>
+                  ) : null}
+                  {payOn ? (
+                    <button type="button" className="bal-btn" onClick={() => updatePick(l.key, { payOn: undefined })}>
+                      Clear
+                    </button>
+                  ) : null}
+                </span>
+              </label>
+            ) : null}
             <label>
-              <span>Pay on</span>
-              <span className="bal-form-row">
-                <input type="date" value={payOn || ''} onChange={e => set({ payOn: e.target.value || undefined })} />
-                {payOn !== l.due ? (
-                  <button type="button" className="bal-btn" onClick={() => set({ payOn: l.due })}>
-                    Due day
-                  </button>
-                ) : null}
-                {payOn ? (
-                  <button type="button" className="bal-btn" onClick={() => updatePick(l.key, { payOn: undefined })}>
-                    Clear
-                  </button>
-                ) : null}
-              </span>
-            </label>
-          ) : null}
-          <label>
-            <span>{isIn ? 'Paid into' : 'Paid from'}</span>
-            <select className={`bal-from${acctName ? '' : ' is-unset'}`} value={acctName} onChange={e => set({ acct: e.target.value || undefined })}>
-              <option value="">Choose an account…</option>
-              {book.accounts.map(a => (
-                <option key={a.name} value={a.name}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          {acctName ? (
-            <label>
-              <span>How</span>
-              <select className={`bal-from${method ? '' : ' is-unset'}`} value={method || ''} onChange={e => set({ method: (e.target.value || undefined) as PayMethod | undefined })}>
-                <option value="">Not set</option>
-                {methods.map(m => (
-                  <option key={m} value={m}>
-                    {isIn ? (m === 'savings' ? 'Into savings' : 'Into checking') : m === 'debit' ? 'Debit card — leaves right away' : m === 'ach' ? 'From checking — 1–3 days to clear' : 'From savings'}
+              <span>{isIn ? 'Paid into' : 'Paid from'}</span>
+              <select className={`bal-from${acctName ? '' : ' is-unset'}`} value={acctName} onChange={e => set({ acct: e.target.value || undefined })}>
+                <option value="">Choose an account…</option>
+                {book.accounts.map(a => (
+                  <option key={a.name} value={a.name}>
+                    <FinanceLabel id={`account:${metaName(a.name)}`} name={a.name} />
                   </option>
                 ))}
               </select>
             </label>
-          ) : null}
-          <p className="bal-form-note">
-            {l.custom ? 'Added by you.' : `The account and how are remembered for ${l.name}’s other dates.`}
-            {method === 'ach' && !isIn ? ' Checking transfers take 1–3 days, so your bank balance can still show this money after you pay.' : ''}
-            {isIn && !reg?.landed && acctName ? ` On ${shortDay(l.due)}, Life Hub adds ${l.amount ? money(l.amount) : 'it'} to ${acctName} in your sheet once and crosses it out.` : ''}
-          </p>
-        </div>
-        <div className="bal-form-row">
-          {onSheet ? (
-            <button type="button" className="bal-btn is-quiet" onClick={() => setBalancePicks([l.key], false)}>
-              {l.custom ? 'Delete this item' : 'Take off the balancing sheet'}
-            </button>
-          ) : (
-            <button type="button" className="bal-btn is-primary" onClick={() => setBalancePicks([l.key], true)}>
-              Add to the balancing sheet
-            </button>
-          )}
-        </div>
-      </section>
+            {acctName ? (
+              <label>
+                <span>How</span>
+                <select className={`bal-from${method ? '' : ' is-unset'}`} value={method || ''} onChange={e => set({ method: (e.target.value || undefined) as PayMethod | undefined })}>
+                  <option value="">Not set</option>
+                  {methods.map(m => (
+                    <option key={m} value={m}>
+                      {isIn ? (m === 'savings' ? 'Into savings' : 'Into checking') : m === 'debit' ? 'Debit card — leaves right away' : m === 'ach' ? 'From checking — 1–3 days to clear' : 'From savings'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <p className="bal-form-note">
+              {l.custom ? 'Added by you.' : `The account and how are remembered for ${l.name}’s other dates.`}
+              {method === 'ach' && !isIn ? ' Checking transfers take 1–3 days, so your bank balance can still show this money after you pay.' : ''}
+              {isIn && !reg?.landed && acctName ? ` On ${shortDay(l.due)}, Life Hub adds ${l.amount ? money(l.amount) : 'it'} to ${accountLabel} in your sheet once and crosses it out.` : ''}
+            </p>
+          </div>
+          <div className="bal-form-row">
+            {onSheet ? (
+              <button type="button" className="bal-btn is-quiet" onClick={() => setBalancePicks([l.key], false)}>
+                {l.custom ? 'Delete this item' : 'Take off the balancing sheet'}
+              </button>
+            ) : (
+              <button type="button" className="bal-btn is-primary" onClick={() => setBalancePicks([l.key], true)}>
+                Add to the balancing sheet
+              </button>
+            )}
+          </div>
+        </section>
+
+        {!isIn && payment ? (
+          <section className="bal-drw-sec">
+            <h4>Flags</h4>
+            <BillFlagsFields due={payment} />
+          </section>
+        ) : null}
+      </div>
 
       {reg && reg.acct ? (
         <section className="bal-drw-sec">
-          <h4>Effect on {reg.acct}</h4>
+          <h4>Effect on {accountLabel}</h4>
           <p className="bal-drw-effect">
             {reg.landed ? (
               <>Already in its Now amount (added {shortDay(reg.landed)}).</>
@@ -2611,7 +2603,7 @@ function LinePanel({
             )}
           </p>
           <button type="button" className="bal-link" onClick={() => panels.openAccount(reg.acct)}>
-            Open {reg.acct} ›
+            Open {accountLabel} ›
           </button>
         </section>
       ) : null}
@@ -2636,8 +2628,8 @@ function LinePanel({
         </section>
       ) : null}
 
-      {due ? <PaidHistory list={allDues || [due]} paidAt={paidAt || {}} model={model} current={due} /> : null}
       {due ? <ChangeThisOne due={due} /> : null}
+      {due ? <PaidHistory list={allDues || [due]} paidAt={paidAt || {}} model={model} current={due} /> : null}
 
       <div className="bal-dlg-actions">
         {model.sheetUrl && !l.custom ? (
@@ -2662,10 +2654,10 @@ function LinePanel({
 function entityOfDue(d: BillDue, model: MoneyModel, monthDues: BillDue[], get: (key: string) => MetaEntry | undefined): { type: 'card' | 'sub' | 'loan'; id: string } | undefined {
   const kind = d.bill.kind || 'bill';
   if (kind === 'card') {
-    const row = cardRows(model, monthDues, get).find(r => r.due?.key === d.key) || nearest(d.bill.name, cardRows(model, monthDues, get), r => r.name);
+    const row = cardRows(model, monthDues, get).find(r => r.due?.key === d.key) || nearest(d.bill.nameBeforeLabel ?? d.bill.name, cardRows(model, monthDues, get), r => r.name);
     return row ? { type: 'card', id: row.name } : undefined;
   }
-  if (kind === 'sub') return { type: 'sub', id: d.bill.name.trim() };
+  if (kind === 'sub') return { type: 'sub', id: (d.bill.origName ?? d.bill.name).trim() };
   if (kind === 'bill') {
     const loan = loanRows(model, monthDues, get).find(r => r.due && r.due.bill.name === d.bill.name);
     return loan ? { type: 'loan', id: loan.name } : undefined;
@@ -2781,6 +2773,7 @@ function ChangeThisOne({ due, onGone }: { due: BillDue; onGone?: () => void }) {
 /** A loan's shared panel: the Credit tab's figures, whichever row you came from (Bills or Credit). */
 function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClose }: { name: string; model: MoneyModel; dues: BillDue[]; monthDues: BillDue[]; paidAt: Record<string, string>; onPaid: (d: BillDue) => void; onBack?: () => void; onClose: () => void }) {
   const { get } = useMoneyMeta();
+  const title = useFinanceLabel(`loan:${metaName(name)}`, name);
   const l = loanRows(model, monthDues, get).find(x => metaName(x.name) === metaName(name));
   if (!l)
     return (
@@ -2794,10 +2787,10 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
   const history = dues.filter(d => (d.bill.kind || 'bill') === 'bill' && l.due && d.bill.name === l.due.bill.name);
   const state = l.due ? monthState(l.due, paidAt) : undefined;
   return (
-    <Modal label={l.name} onClose={onClose} onBack={onBack}>
+    <Modal label={title.name} onClose={onClose} onBack={onBack}>
       <div className="bal-drw-head">
         <p className="section-label">Loan{l.closed ? ' · closed' : ''}</p>
-        <h3>{l.name}</h3>
+        <FinanceName {...title} />
         {l.what ? <p className="mb-dim">{l.what}</p> : null}
         {l.due && state ? <p className="bal-drw-chips"><span className={PAID_STATES.includes(state) ? 'is-ok' : state === 'late' ? 'is-short' : ''}>{STATE_TEXT[state](l.due, paidAt)}</span></p> : null}
       </div>
@@ -2882,7 +2875,7 @@ function NotesField({ src, hubSub }: { src: string; hubSub?: LifeSub }) {
 /** A subscription's shared panel: how long, this month's charge, next charge, where it's paid from. */
 function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name: string; model: MoneyModel; dues: BillDue[]; paidAt: Record<string, string>; onPaid: (d: BillDue) => void; onBack?: () => void; onClose: () => void }) {
   const fromOf = usePayFrom();
-  const list = dues.filter(d => d.bill.kind === 'sub' && d.bill.name.trim().toLowerCase() === name.trim().toLowerCase());
+  const list = dues.filter(d => d.bill.kind === 'sub' && [d.bill.origName, d.bill.nameBeforeLabel ?? d.bill.name].some(label => label?.trim().toLowerCase() === name.trim().toLowerCase()));
   const banks = bankRows(model).filter(r => !r.resale);
   const cards = cardSummaries(model).map(c => c.name.replace(/\s+/g, ' '));
   const cur = [...list].sort((a, b) => a.due.localeCompare(b.due));
@@ -2891,7 +2884,9 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
   const mine = cur.find(d => d.due.startsWith(thisMonth)) || cur[0];
   const state = mine ? monthState(mine, paidAt) : undefined;
   // Renamed on Life Hub: the hub sub and pay-from stay under the sheet / original name.
-  const orig = (list.find(d => d.bill.origName)?.bill.origName ?? name).trim();
+  const orig = (mine?.bill.origName ?? name).trim();
+  const ruleBill = mine?.bill ?? { kind: 'sub', name: orig };
+  const title = billDisplayName(ruleBill, loadBillDays());
   const hubSub = loadLifeSubs().find(x => !x.removed && x.name.trim().toLowerCase() === orig.toLowerCase());
   const src = srcKey('pay', orig);
   const pick = (acct: string) => {
@@ -2900,10 +2895,10 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
     updatePick(`src:${src}`, { mark: null, acct: bank ? bank.name : undefined });
   };
   return (
-    <Modal label={`${name} details`} onClose={onClose} onBack={onBack}>
+    <Modal label={`${title} details`} onClose={onClose} onBack={onBack}>
       <div className="bal-drw-head">
         <p className="section-label">Subscription</p>
-        <h3>{name.trim()}</h3>
+        <FinanceName name={title} onRename={next => setBillDisplayName(ruleBill, next)} />
         {mine && state ? <p className="bal-drw-chips"><span className={PAID_STATES.includes(state) ? 'is-ok' : state === 'late' ? 'is-short' : ''}>{PAID_STATES.includes(state) ? 'Paid this month' : 'Not paid yet this month'} · {STATE_TEXT[state](mine, paidAt)}</span></p> : null}
       </div>
       {mine ? <BillFlagsFields due={mine} dueKeys={list.map(x => x.key)} /> : null}
@@ -2939,7 +2934,7 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
           className="sk-btn is-small is-danger"
           onClick={() => {
             if (!window.confirm(`Delete ${name.trim()} for good? Every charge from now on comes off Life Hub (a cancelled trial, say). The sheet isn't changed.`)) return;
-            deleteForGood({ name, kind: 'sub', id: mine?.bill.id }, (open?.due || thisMonth).slice(0, 7) < thisMonth ? thisMonth : (open?.due || thisMonth).slice(0, 7));
+            deleteForGood({ name: orig, kind: 'sub', id: mine?.bill.id }, (open?.due || thisMonth).slice(0, 7) < thisMonth ? thisMonth : (open?.due || thisMonth).slice(0, 7));
             onClose();
           }}
         >
@@ -2971,6 +2966,7 @@ function CardFreshness({ c, readAt }: { c: CardRow; readAt: string }) {
 function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClose }: { name: string; model: MoneyModel; dues: BillDue[]; monthDues: BillDue[]; paidAt: Record<string, string>; onPaid: (d: BillDue) => void; onBack?: () => void; onClose: () => void }) {
   const panels = useMoneyPanels();
   const { get } = useMoneyMeta();
+  const title = useFinanceLabel(`card:${metaName(name)}`, name);
   const c = cardRows(model, monthDues, get).find(x => metaName(x.name) === metaName(name));
   if (!c)
     return (
@@ -2984,8 +2980,11 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
   const keep = (patch: Partial<Omit<MetaEntry, 'at'>>) => setMeta(c.key, patch);
   const num = (v: string) => (v.trim() === '' ? undefined : Number(v));
   return (
-    <Modal label={c.name} onClose={onClose} onBack={onBack} wide>
-      <h3>{c.name}{last4Of(c.name) ? <small className="cc-l4"> •{last4Of(c.name)}</small> : null}</h3>
+    <Modal label={title.name} onClose={onClose} onBack={onBack} wide>
+      <div className="bal-drw-head">
+        <p className="section-label">Credit card</p>
+        <FinanceName {...title} suffix={last4Of(c.name) ? <small className="cc-l4"> •{last4Of(c.name)}</small> : null} />
+      </div>
       <CardFreshness c={c} readAt={model.refreshedAt} />
       {c.due ? <BillFlagsFields due={c.due} /> : null}
       <div className="mb-cp-figs">
@@ -3037,7 +3036,7 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
       ) : null}
       <SinceField metaKey={c.key} label="Opened" />
       {c.due ? <ChangeThisOne due={c.due} onGone={onClose} /> : null}
-      <PaidHistory list={dues.filter(d => d.bill.kind === 'card' && nearest(d.bill.name, cardRows(model, monthDues, get), r => r.name)?.key === c.key)} paidAt={paidAt} model={model} current={c.due} />
+      <PaidHistory list={dues.filter(d => d.bill.kind === 'card' && nearest(d.bill.nameBeforeLabel ?? d.bill.name, cardRows(model, monthDues, get), r => r.name)?.key === c.key)} paidAt={paidAt} model={model} current={c.due} />
       {c.hub ? (
         <div className="bal-dlg-actions">
           <button type="button" className="sk-btn is-small is-danger" onClick={() => { if (window.confirm(`Delete ${c.name}? It comes off the card list and its payments stop.`)) { updateExtraCard(c.hub!.id, { removed: true }); onClose(); } }}>Delete card</button>
@@ -3060,7 +3059,7 @@ function ItemPanel({ id, dues, model, paidAt, onPaid, onBack, onClose }: { id: s
       </Modal>
     );
   const src = paySrc(d.bill);
-  const same = dues.filter(x => x.bill.name === d.bill.name && x.key !== d.key).sort((a, b) => b.due.localeCompare(a.due)).slice(0, 6);
+  const same = dues.filter(x => (x.bill.nameBeforeLabel ?? x.bill.name) === (d.bill.nameBeforeLabel ?? d.bill.name) && x.key !== d.key).sort((a, b) => b.due.localeCompare(a.due)).slice(0, 6);
   const state = monthState(d, paidAt);
   const pick = (acct: string) => {
     setMeta(`from:${src}`, { acct: acct || NO_ACCT });
@@ -3071,23 +3070,26 @@ function ItemPanel({ id, dues, model, paidAt, onPaid, onBack, onClose }: { id: s
     <Modal label={`${d.bill.name} details`} onClose={onClose} onBack={onBack}>
       <div className="bal-drw-head">
         <p className="section-label">{kindLabel(d)}</p>
-        <h3>{d.bill.name.trim()}</h3>
+        <FinanceName name={d.bill.name.trim()} onRename={name => setBillDisplayName(d.bill, name)} />
         <p className="bal-drw-chips"><span className={['paid', 'crossed', 'charged'].includes(state) ? 'is-ok' : state === 'late' ? 'is-short' : ''}>{STATE_TEXT[state](d, paidAt)}</span></p>
       </div>
-      <BillFlagsFields due={d} dueKeys={same.map(x => x.key)} />
       <div className="mb-cp-figs">
         <span><small>amount</small><b>{money(d.bill.amount) || '?'}</b></span>
         <span><small>due</small><b>{fromDayKey(d.due).toLocaleDateString([], { month: 'short', day: 'numeric' })}</b></span>
         {d.bill.payBy ? <span><small>pay by</small><b>{payByText(d.bill.payBy)}</b></span> : null}
       </div>
+      {['paid', 'crossed', 'charged', 'skipped'].includes(state) ? null : (
+        <button type="button" className="sk-btn is-small is-prominent finance-item-pay" onClick={() => { onPaid(d); onClose(); }}>Mark paid</button>
+      )}
+      <section className="bal-drw-sec">
+        <h4>Flags</h4>
+        <BillFlagsFields due={d} dueKeys={same.map(x => x.key)} />
+      </section>
       <h4 className="mb-cp-h">Paid from</h4>
       <PayFromSelect value={fromOf(d)} onPick={pick} banks={banks} cards={cards} label={`Pay ${d.bill.name} from`} />
       <NotesField src={src} hubSub={d.bill.kind === 'sub' ? loadLifeSubs().find(x => !x.removed && x.name.trim().toLowerCase() === (d.bill.origName ?? d.bill.name).trim().toLowerCase()) : undefined} />
-      <PaidHistory list={dues} paidAt={paidAt} model={model} current={d} />
       <ChangeThisOne due={d} onGone={onClose} />
-      {['paid', 'crossed', 'charged', 'skipped'].includes(state) ? null : (
-        <button type="button" className="sk-btn is-small" onClick={() => { onPaid(d); onClose(); }}>Mark paid</button>
-      )}
+      <PaidHistory list={dues} paidAt={paidAt} model={model} current={d} />
     </Modal>
   );
 }
@@ -3096,6 +3098,7 @@ function AccountPanel({ name, book, model, onSave, onBack, onClose }: { name: st
   const panels = useMoneyPanels();
   const [wi, setWi] = useState<number | 'month'>(0);
   const ac = book.acct(name);
+  const title = useFinanceLabel(`account:${metaName(ac?.name ?? name)}`, ac?.name ?? name);
   if (!ac)
     return (
       <Modal label="Account" onClose={onClose} onBack={onBack}>
@@ -3118,7 +3121,7 @@ function AccountPanel({ name, book, model, onSave, onBack, onClose }: { name: st
       <button type="button" className={`bal-rl is-${l.kind}${l.kind === 'in' && !l.landed ? ' is-coming' : ''}${l.landed ? ' is-landed' : ''}${l.overdue ? ` is-overdue${l.nonCritical ? ' is-noncritical' : ''}` : ''}${l.priority ? ' is-priority' : ''}`} style={{ '--ev': l.color } as React.CSSProperties} onClick={() => panels.openLine(l.key)}>
         <span className="bal-day">{dayNum(l.when)}</span>
         <span className="bal-name">
-          {l.name}
+          {l.incomingId ? <FinanceLabel id={`incoming:${l.incomingId}`} name={l.name} /> : l.name}
           <small>
             {l.tag}
             {l.method ? ` · ${METHOD_LABEL[l.method]}` : ''}
@@ -3130,10 +3133,10 @@ function AccountPanel({ name, book, model, onSave, onBack, onClose }: { name: st
     </li>
   );
   return (
-    <Modal label={`${ac.name} details`} onClose={onClose} onBack={onBack}>
+    <Modal label={`${title.name} details`} onClose={onClose} onBack={onBack}>
       <div className="bal-drw-head">
         <p className="section-label">Account</p>
-        <h3>{ac.name}</h3>
+        <FinanceName {...title} />
         <p>
           {ac.note ? `${ac.note} · ` : ''}
           {ac.bal ? 'On the balancing sheet' : 'In Debit Accounts'}
@@ -3464,6 +3467,8 @@ export function MoneyPage({
   useIncomingLanding(model, book, save);
   const owedDone = useOwedDone();
   const [panel, setPanel] = useState<PanelState | null>(null);
+  const detailDues = useMemo(() =>
+    ledgerMonthRows([...dues, ...monthDues], model?.items || [], new Date()), [dues, monthDues, model]);
   const panelApi = useMemo(
     () => ({
       openLine: (key: string) => setPanel(cur => ({ type: 'line' as const, id: key, back: cur || undefined })),
@@ -3474,13 +3479,13 @@ export function MoneyPage({
       openSub: (name: string) => setPanel(cur => ({ type: 'sub' as const, id: name, back: cur || undefined })),
       // One entity per card / subscription / loan: whichever row you click, the same panel opens.
       openDue: (key: string) => {
-        const d = [...dues, ...monthDues].find(x => x.key === key);
+        const d = detailDues.find(x => x.key === key);
         const e = d && model ? entityOfDue(d, model, monthDues, metaGet) : undefined;
         setPanel(cur => ({ type: e ? e.type : book.line(key) ? ('line' as const) : ('item' as const), id: e ? e.id : key, back: cur || undefined }));
       },
       has: (key: string) => !!book.line(key),
     }),
-    [book, dues, monthDues, model, metaGet],
+    [book, detailDues, monthDues, model, metaGet],
   );
 
   const sheetDues = dues.filter(d => d.bill.kind !== 'plan' && !d.skipped);
@@ -3499,7 +3504,7 @@ export function MoneyPage({
   // Pay-later payments seen in Gmail: mark the matching row paid once (and remember we did, so un-marking sticks).
   const plSeen = debtFile.file?.paylater || [];
   const plMatch = (e: (typeof plSeen)[number]) =>
-    monthDues.find(d => (d.bill.kind || 'bill') === 'paylater' && !d.skipped && normName(`${d.bill.name} ${d.bill.notes || ''}`).includes(normName(e.merchant)) && normName(`${d.bill.name} ${d.bill.notes || ''}`).includes(normName(e.provider)) && Math.abs(daysBetween(fromDayKey(d.due), fromDayKey(e.date))) <= 7);
+    monthDues.find(d => (d.bill.kind || 'bill') === 'paylater' && !d.skipped && normName(`${d.bill.nameBeforeLabel ?? d.bill.name} ${d.bill.notes || ''}`).includes(normName(e.merchant)) && normName(`${d.bill.nameBeforeLabel ?? d.bill.name} ${d.bill.notes || ''}`).includes(normName(e.provider)) && Math.abs(daysBetween(fromDayKey(d.due), fromDayKey(e.date))) <= 7);
   useEffect(() => {
     const applied = readSaved<string[]>('lifehub-pl-applied', []);
     const fresh: string[] = [];
@@ -4103,9 +4108,9 @@ export function MoneyPage({
       ) : panel?.type === 'loan' ? (
         <LoanPanel key={panel.id} name={panel.id} model={model} dues={[...dues, ...monthDues]} monthDues={monthDues} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : panel?.type === 'sub' ? (
-        <SubPanel key={panel.id} name={panel.id} model={model} dues={[...dues, ...monthDues]} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
+        <SubPanel key={panel.id} name={panel.id} model={model} dues={detailDues} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : panel?.type === 'item' ? (
-        <ItemPanel key={panel.id} id={panel.id} dues={[...dues, ...monthDues]} model={model} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
+        <ItemPanel key={panel.id} id={panel.id} dues={detailDues} model={model} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : null}
     </MoneyPanelCtx.Provider>
   );

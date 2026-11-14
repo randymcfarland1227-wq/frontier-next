@@ -1,4 +1,5 @@
-import type { MoneyItem } from './money';
+import { ruleDayOf, sameNameTwice, type MoneyItem } from './money';
+import { billDisplayName, loadBillDays } from './billEdits';
 import type { BillDue } from './schedule';
 
 /** Display filtering only: never changes the payment ledger or its totals. */
@@ -9,13 +10,18 @@ export function isLedgerPaid(d: BillDue, paidAt: Record<string, string>): boolea
 export function ledgerMonthRows(dues: BillDue[], items: MoneyItem[], today: Date): BillDue[] {
   const month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const rows = new Map(dues.map(d => [d.key, d]));
+  const billDays = loadBillDays();
+  const duplicateNames = sameNameTwice(items);
   for (const item of items) {
     if (!item.skipped || !item.date?.startsWith(month) || rows.has(item.id)) continue;
     const [y, m, day] = item.date.split('-').map(Number);
+    const source = { name: item.name, kind: item.kind, ruleDay: ruleDayOf(item, duplicateNames) };
+    const name = billDisplayName(source, billDays);
     rows.set(item.id, {
       key: item.id, due: item.date,
       days: Math.round((new Date(y, m - 1, day).getTime() - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86_400_000),
-      bill: { id: `crossed:${item.id}`, name: item.name, amount: item.amount, kind: item.kind,
+      bill: { ...source, id: `crossed:${item.id}`, name, amount: item.amount,
+        ...(name !== item.name ? { origName: item.name, nameBeforeLabel: item.name } : {}),
         notes: [item.kind, item.provider, item.installment].filter(Boolean).join(' · ') },
     });
   }

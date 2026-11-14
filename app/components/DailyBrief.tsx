@@ -191,7 +191,8 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
       <button type="button" className="sk-link sk-brief-refresh" onClick={() => window.dispatchEvent(new Event(REFRESH_EVENT))} title="Pull the latest available source feeds"><Icon name="refresh" size={14} />Refresh Sources</button>
     </>}>
       <div className="sk-brief-sections">
-        {cols.map(s => <section key={s.id} className={`sk-brief-section${s.compact ? ' is-compact' : ''}${s.id === 'doing' ? ' is-numbered' : ''}`} aria-label={s.title}>
+        {/* Action List is its own column; Mail → Coming Up always stack in the right column. */}
+        {(() => { const sec = (s: BCol) => <section key={s.id} className={`sk-brief-section${s.compact ? ' is-compact' : ''}${s.id === 'doing' ? ' is-numbered' : ''}`} aria-label={s.title}>
           <ListHead title={s.title} meta={s.rows.length} shut={Boolean(folds[s.id])} onToggle={() => toggle(s.id)} />
           {folds[s.id] ? null : <>
             {s.rows.length ? <ul className="sk-brief-items">{s.rows.map(r0 => {
@@ -209,7 +210,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
               </li>;
             })}</ul> : <p className="sk-brief-empty">{s.empty}</p>}
           </>}
-        </section>)}
+        </section>; return <>{sec(cols[0])}<div className="sk-brief-rest">{cols.slice(1).map(sec)}</div></>; })()}
       </div>
     </Group>
     {selected && selectedList ? <FocusEntryDialog item={selected} events={events} bills={bills} openFinance={openFinance} update={updateFocus} remove={() => selectedList[1](selectedList[0].filter(i => i.id !== selected.id))} close={() => setOpenFocusId(null)} /> : null}

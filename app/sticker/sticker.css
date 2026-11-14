@@ -3384,3 +3384,9 @@
   .sk-app #sk-brief .sk-todaybar-tools { display: flex; gap: 12px; align-items: center; }
   .sk-app #sk-brief .sk-todaybar-div { display: none; }
 }
+
+/* Daily Brief: Action List on its own at the left; Mail → Coming Up always stacked in the right column. */
+.sk-app .sk-brief .sk-brief-sections { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 12px 18px; align-items: start; columns: auto; }
+.sk-app .sk-brief .sk-brief-rest { display: grid; gap: 12px; min-width: 0; }
+.sk-app .sk-brief .sk-brief-sections .sk-brief-section { margin-bottom: 0; }
+@media (max-width: 520px) { .sk-app .sk-brief .sk-brief-sections { grid-template-columns: minmax(0, 1fr); } }

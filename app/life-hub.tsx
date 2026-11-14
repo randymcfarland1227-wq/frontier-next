@@ -872,22 +872,33 @@ export function LifeHub() {
     }
     return out;
   }, [visibleLedger]);
-  const monthDues = useMemo(() => {
+  // Every payment in one month, paid ones included. This month uses today; another month is
+  // projected from its 1st and its "days" are re-counted from the real today.
+  const duesForMonth = useCallback((month: Date) => {
     const none = new Set<string>();
-    const now = new Date();
+    const real = new Date();
+    const isNow = month.getFullYear() === real.getFullYear() && month.getMonth() === real.getMonth();
+    const now = isNow ? real : new Date(month.getFullYear(), month.getMonth(), 1);
     const inMonth = (d: BillDue) => {
       const day = fromDayKey(d.due);
       return day.getFullYear() === now.getFullYear() && day.getMonth() === now.getMonth();
     };
     const all = [
-      ...moneyBillDues(moneyModel, none),
-      ...payPlanDues(payPlans, none),
-      ...withoutSheetTwins(lifeSubDues(lifeSubs, none, now, 45, 120, true), moneyBillDues(moneyModel, none)),
+      ...moneyBillDues(moneyModel, none, now),
+      ...payPlanDues(payPlans, none, now),
+      ...withoutSheetTwins(lifeSubDues(lifeSubs, none, now, 45, 120, true), moneyBillDues(moneyModel, none, now)),
       ...hubCardDues(moneyModel, moneyMeta, extraCards, none, now, 45, 120, true),
       ...(schedule?.bills || []).flatMap(b => billDues(b, none, now, 45)),
     ];
-    return applyBillEdits(all, billEdits).filter(inMonth);
+    const out = applyBillEdits(all, billEdits).filter(inMonth);
+    if (isNow) return out;
+    const t0 = new Date(real.getFullYear(), real.getMonth(), real.getDate()).getTime();
+    const seen = new Set<string>();
+    return out
+      .filter(d => (seen.has(d.key) ? false : (seen.add(d.key), true)))
+      .map(d => ({ ...d, days: Math.round((fromDayKey(d.due).getTime() - t0) / 86_400_000) }));
   }, [moneyModel, payPlans, lifeSubs, schedule, billEdits, extraCards, moneyMeta]);
+  const monthDues = useMemo(() => duesForMonth(new Date()), [duesForMonth]);
 
   // Dated tasks for the calendar: Self tasks with a day, and Priority items given a day there
   // (that day stays in Priority — it never goes back to the task's own site).
@@ -1147,6 +1158,7 @@ goalsData ? (
           model={moneyModel}
           dues={moneyDues}
           monthDues={monthDues}
+          duesForMonth={duesForMonth}
           paidAt={paidAt}
           lifeSubs={lifeSubs}
           onPaid={payBill}

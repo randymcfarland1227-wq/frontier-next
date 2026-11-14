@@ -110,3 +110,68 @@
 }
 .sk-app .finance-plan .bal-drw-sec { align-content: start; }
 .sk-app .finance-drawer .bill-level-hint { margin: 0; }
+
+/* One leading amount, quiet supporting text, and whitespace between groups. */
+.sk-app .finance-drawer-content { gap: 10px; }
+.sk-app .finance-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 12px;
+  color: var(--sk-ink-2);
+}
+.sk-app .finance-overview .finance-amount {
+  color: var(--sk-ink);
+  font-size: 24px;
+  line-height: 1.12;
+  font-variant-numeric: tabular-nums;
+}
+.sk-app .finance-overview strong { color: var(--sk-ink); font-weight: 650; }
+.sk-app .finance-drawer .finance-status { margin: -6px 0 0; font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .finance-drawer .finance-status.mb-late { color: #b91c1c; }
+.sk-app .finance-drawer .finance-caution { color: #9a3412; }
+.frontier-shell[data-color-mode="dark"] .sk-app .finance-drawer .finance-status.mb-late { color: #fca5a5; }
+.frontier-shell[data-color-mode="dark"] .sk-app .finance-drawer .finance-caution { color: #fdba74; }
+.sk-app .finance-drawer :is(.bal-drw-tiles, .mb-cp-figs, .bal-drw-sec, .mb-cp-change, .dbt-block) { border: 0; padding-block: 0; }
+.sk-app .finance-drawer .bal-drw-chips span {
+  padding: 0;
+  background: none;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.sk-app .finance-drawer .bal-drw-chips span + span::before { content: "· "; color: var(--sk-ink-2); }
+.sk-app .finance-drawer .finance-plan { padding-top: 9px; border-top: 1px solid var(--sk-line); }
+.sk-app .finance-drawer .bill-change-modes.bill-level label:not(.is-on) { border-color: transparent; background: none; }
+.sk-app .finance-drawer .bill-flags .bill-change-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sk-app .finance-drawer .bill-level-hint { opacity: 1; color: var(--sk-ink-2); }
+.sk-app .finance-drawer .finance-effect { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px; }
+.sk-app .finance-drawer .finance-effect .bal-drw-effect { font: var(--sk-secondary); }
+.sk-app .finance-drawer .finance-effect .bal-link { margin-left: auto; }
+.sk-app .finance-drawer .mb-cp-change { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.sk-app .finance-drawer .mb-cp-change .mb-cp-h { margin: 0; }
+.sk-app .finance-drawer .mb-cp-change .bill-change,
+.sk-app .finance-drawer .mb-cp-change .mb-saved { flex-basis: 100%; }
+.sk-app .finance-drawer .mb-cp-change > button {
+  border: 0; box-shadow: none; background: transparent; color: var(--sk-tint); padding-inline: 2px;
+}
+.sk-app .finance-drawer .finance-history summary {
+  cursor: pointer;
+  padding-block: 5px;
+  color: var(--sk-ink);
+}
+.sk-app .finance-drawer .finance-history summary span { margin-inline-start: 8px; color: var(--sk-ink-2); }
+.sk-app .finance-drawer .finance-history-body { display: grid; gap: 8px; padding-block: 6px; }
+.sk-app .finance-drawer .bill-flags .bill-change-field > span { white-space: nowrap; }
+.sk-app .finance-drawer .bill-flags .bill-change-field input { width: auto; }
+.sk-app .finance-drawer .finance-screen-reader {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

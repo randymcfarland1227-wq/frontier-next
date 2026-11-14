@@ -1413,9 +1413,11 @@ function SubsView({ model, lifeSubs: allLifeSubs, paidAt, dues, onSave }: { mode
     r.sub ? d.key.startsWith(`money:lhsub:${r.sub.id}:`) :
       [d.bill.origName, d.bill.nameBeforeLabel ?? d.bill.name].some(name => name?.trim().toLowerCase() === r.name.toLowerCase())
   );
-  const paidKeyOf = (r: SubRow) => r.from === 'hub' ? `money:lhsub:${r.sub!.id}:${r.date}`
-    : dues.find(d => d.due === r.date && matchesSub(d, r))?.key;
-  const isCharged = (r: SubRow) => r.status === 'skipped' || Boolean(r.date && paidAt[paidKeyOf(r) || '']);
+  // A sheet row's date is its last charge; this month's charge is the projected copy, so match by name in this month.
+  const monthDueOf = (r: SubRow) =>
+    r.from === 'hub' ? undefined : dues.find(d => matchesSub(d, r) && fromDayKey(d.due).getMonth() === today.getMonth() && fromDayKey(d.due).getFullYear() === today.getFullYear());
+  const paidKeyOf = (r: SubRow) => (r.from === 'hub' ? `money:lhsub:${r.sub!.id}:${r.date}` : monthDueOf(r)?.key);
+  const isCharged = (r: SubRow) => r.status === 'skipped' || monthDueOf(r)?.bill.id.startsWith(CROSSED) || Boolean(r.date && paidAt[paidKeyOf(r) || '']);
   const chargedSoFar = all.filter(r => live(r) && isCharged(r)).reduce((s, r) => s + (r.amount || 0), 0);
   const order = (r: SubRow) => (live(r) ? 0 : r.status === 'trial' ? 1 : 2);
   const sorted = [...all].sort((a, b) => order(a) - order(b) || (a.day ?? 99) - (b.day ?? 99) || a.name.localeCompare(b.name));
@@ -1424,11 +1426,12 @@ function SubsView({ model, lifeSubs: allLifeSubs, paidAt, dues, onSave }: { mode
     if (r.status === 'cancelled') return { text: 'Cancelled', tone: 'is-quiet' };
     if (r.status === 'skipped') return { text: '✓ Paid', tone: 'is-paid' };
     if (!r.date) return { text: r.status === 'trial' ? 'Free trial' : '—', tone: r.status === 'trial' ? 'is-trial' : '' };
-    const days = Math.round((fromDayKey(r.date).getTime() - today.getTime()) / 86_400_000);
-    if (isCharged(r)) return { text: `✓ Charged ${shortDate(r.date)}`, tone: 'is-paid' };
-    if (days < 0) return { text: `Overdue · ${shortDate(r.date)}`, tone: 'is-late' };
+    const when = monthDueOf(r)?.due || r.date;
+    const days = Math.round((fromDayKey(when).getTime() - today.getTime()) / 86_400_000);
+    if (isCharged(r)) return { text: `✓ Paid ${shortDate(when)}`, tone: 'is-paid' };
+    if (days < 0) return { text: `Overdue · ${shortDate(when)}`, tone: 'is-late' };
     if (days === 0) return { text: 'Charges today', tone: 'is-soon' };
-    return { text: `Charges ${shortDate(r.date)}`, tone: days <= 3 ? 'is-soon' : '' };
+    return { text: `Charges ${shortDate(when)}`, tone: days <= 3 ? 'is-soon' : '' };
   };
   return (
     <div className="subs">
@@ -1458,7 +1461,7 @@ function SubsView({ model, lifeSubs: allLifeSubs, paidAt, dues, onSave }: { mode
         {sorted.map(r => {
           const st = stateOf(r);
           return (
-            <li key={r.key} className={`subs-row is-${r.status}`}>
+            <li key={r.key} className={`subs-row is-${r.status}${live(r) && isCharged(r) ? ' is-charged' : ''}`}>
               <span className="subs-avatar" aria-hidden="true" style={{ '--h': String((r.name.charCodeAt(0) * 37) % 360) } as React.CSSProperties}>
                 {r.name.charAt(0).toUpperCase()}
               </span>
@@ -2464,42 +2467,22 @@ function LinePanel({
       <div className="bal-drw-head">
         <p className="section-label">{isIn ? 'Money coming in' : l.tag}</p>
         <FinanceName name={displayName} onRename={rename} />
-        <p className="bal-drw-chips">
-          {l.paid ? <span className="is-ok">Paid ✓</span> : planned ? <span className="is-ok">Planned</span> : onSheet ? <span className="is-pend">{acctName ? 'Needs a pay day' : 'Needs an account'}</span> : <span>Not planned</span>}
-          {l.overdue ? <span className={l.nonCritical ? 'is-pend' : 'is-short'}>{l.nonCritical ? 'Overdue · non critical' : 'Overdue'}</span> : null}
-          {l.payBy ? <span className="is-pend">Pay by {payByText(l.payBy)}</span> : null}
-          {reg?.landed ? <span className="is-ok">Added to {acctName} ✓</span> : null}
-          {onSheet ? <span>On the balancing sheet</span> : null}
-        </p>
       </div>
 
-      <div className="bal-drw-tiles">
-        <div className={isIn ? 'is-in' : 'is-out'}>
-          <span>Amount</span>
-          <b>{l.amount === undefined ? '?' : `${isIn ? '+' : '−'}${money(l.amount)}`}</b>
-        </div>
-        <div>
-          <span>{isIn ? 'Paid on' : 'Due'}</span>
-          <b>{shortDay(l.due).replace(/^\w+, /, '')}</b>
-          <small>{fromDayKey(l.due).toLocaleDateString([], { weekday: 'long' })}</small>
-        </div>
-        <div className={l.overdue ? (l.nonCritical ? 'is-end is-noncritical' : 'is-end is-neg') : ''}>
-          <span>{days < 0 ? (isIn ? 'Since' : 'Late') : 'Days left'}</span>
-          <b>{daysText(days, l.kind)}</b>
-        </div>
-        {!isIn ? (
-          <div className={payOn ? 'is-now' : ''}>
-            <span>Pay on</span>
-            <b>{payOn ? shortDay(payOn).replace(/^\w+, /, '') : '—'}</b>
-            <small>{payOn ? daysText(payDays!, 'pay') : 'not set'}</small>
-          </div>
-        ) : null}
-        <div className={acctName ? 'is-now' : ''}>
-          <span>{isIn ? 'Into' : 'From'}</span>
-          <b>{accountLabel || '—'}</b>
-          <small>{method ? METHOD_LABEL[method] : acctName ? '' : 'not set'}</small>
-        </div>
+      <div className="finance-overview">
+        <b className="finance-amount">{l.amount === undefined ? '?' : `${isIn ? '+' : '−'}${money(l.amount)}`}</b>
+        <span>{isIn ? 'Paid on' : 'Due'} <strong>{shortDay(l.due)}</strong></span>
+        <span className={l.overdue ? (l.nonCritical ? 'finance-caution' : 'mb-late') : ''}>
+          {days > 0 ? `${daysText(days, l.kind)} left` : daysText(days, l.kind)}
+        </span>
+        {l.payBy ? <span className="finance-caution">Pay by {payByText(l.payBy)}</span> : null}
       </div>
+      <p className="finance-status">
+        {l.paid ? 'Paid ✓' : planned ? 'Planned' : onSheet ? (acctName ? 'Needs a pay day' : 'Needs an account') : 'Not planned'}
+        {l.overdue && l.nonCritical ? ' · Non critical' : ''}
+        {reg?.landed ? ` · Added to ${accountLabel} ✓` : ''}
+        {onSheet ? ' · On the balancing sheet' : ''}
+      </p>
 
       {!l.paid && !reg?.landed ? (
         <div className="bal-pay">
@@ -2518,7 +2501,7 @@ function LinePanel({
 
       <div className="finance-plan">
         <section className="bal-drw-sec">
-          <h4>Plan</h4>
+          <h4>Payment plan</h4>
           <div className="bal-form">
             {!isIn ? (
               <label>
@@ -2563,6 +2546,8 @@ function LinePanel({
               </label>
             ) : null}
             <p className="bal-form-note">
+              {payOn ? <>Planned {daysText(payDays!, 'pay').toLowerCase()} · </> : null}
+              {method ? <>{METHOD_LABEL[method]} · </> : null}
               {l.custom ? 'Added by you.' : `The account and how are remembered for ${l.name}’s other dates.`}
               {method === 'ach' && !isIn ? ' Checking transfers take 1–3 days, so your bank balance can still show this money after you pay.' : ''}
               {isIn && !reg?.landed && acctName ? ` On ${shortDay(l.due)}, Life Hub adds ${l.amount ? money(l.amount) : 'it'} to ${accountLabel} in your sheet once and crosses it out.` : ''}
@@ -2590,7 +2575,7 @@ function LinePanel({
       </div>
 
       {reg && reg.acct ? (
-        <section className="bal-drw-sec">
+        <section className="bal-drw-sec finance-effect">
           <h4>Effect on {accountLabel}</h4>
           <p className="bal-drw-effect">
             {reg.landed ? (
@@ -2715,33 +2700,38 @@ function PaidHistory({ list, paidAt, model, current }: { list: BillDue[]; paidAt
   const stateText = (r: (typeof h.rows)[number]) =>
     r.state === 'paid' ? `paid ${r.paidOn ? day(r.paidOn) : ''}` : r.state === 'crossed' ? 'crossed off in the sheet' : r.state === 'skipped' ? 'skipped' : r.due < dayKey(new Date()) ? 'not paid' : 'coming up';
   return (
-    <>
-      <h4 className="mb-cp-h">Payment history</h4>
-      <div className="mb-cp-figs">
-        <span><small>last paid</small><b>{h.lastPaid ? (h.lastPaid.amount !== undefined ? money(h.lastPaid.amount) : '?') : '—'}</b><small>{h.lastPaid ? (h.lastPaid.paidOn ? `on ${day(h.lastPaid.paidOn)}` : `${day(h.lastPaid.due)} bill`) : 'no payment marked yet'}</small></span>
-        <span><small>usual amount</small><b>{h.usual !== undefined ? money(h.usual) : '—'}</b></span>
-        {current && now !== undefined ? (
-          <span><small>this one</small><b className={diff > 0 ? 'mb-late' : diff < 0 ? 'mb-ok' : ''}>{money(now)}</b><small>{diff > 0 ? `${money(diff)} more than usual` : diff < 0 ? `${money(-diff)} less than usual` : 'same as usual'}</small></span>
-        ) : null}
-      </div>
-      <div className="mb-hist-range" role="tablist" aria-label="History range">
-        {([[3, 'Past 3 months'], [12, 'Past year']] as const).map(([n, label]) => (
-          <button key={n} type="button" role="tab" aria-selected={range === n} className={`sk-btn is-small${range === n ? ' is-on' : ''}`} onClick={() => setRange(n)}>{label}</button>
-        ))}
-        <span className="mb-dim">{paidShown.length} paid · {money(paidTotal) || '$0'} total</span>
-      </div>
-      {shown.length ? (
-        <ul className="mb-cp-list">
-          {shown.map(r => (
-            <li key={r.key}>
-              <span>{day(r.due)}</span>
-              <b className={h.usual !== undefined && r.amount !== undefined && r.amount > h.usual ? 'mb-late' : ''}>{r.amount !== undefined ? money(r.amount) : '?'}</b>
-              <small>{stateText(r)}</small>
-            </li>
+    <details className="finance-history">
+      <summary>
+        <strong>Payment history</strong>
+        <span>{h.lastPaid ? `Last paid ${h.lastPaid.amount === undefined ? '?' : money(h.lastPaid.amount)} · ${day(h.lastPaid.paidOn || h.lastPaid.due)}` : 'No payment marked yet'}</span>
+      </summary>
+      <div className="finance-history-body">
+        <div className="mb-cp-figs">
+          <span><small>last paid</small><b>{h.lastPaid ? (h.lastPaid.amount !== undefined ? money(h.lastPaid.amount) : '?') : '—'}</b><small>{h.lastPaid ? (h.lastPaid.paidOn ? `on ${day(h.lastPaid.paidOn)}` : `${day(h.lastPaid.due)} bill`) : 'no payment marked yet'}</small></span>
+          <span><small>usual amount</small><b>{h.usual !== undefined ? money(h.usual) : '—'}</b></span>
+          {current && now !== undefined ? (
+            <span><small>this one</small><b className={diff > 0 ? 'mb-late' : diff < 0 ? 'mb-ok' : ''}>{money(now)}</b><small>{diff > 0 ? `${money(diff)} more than usual` : diff < 0 ? `${money(-diff)} less than usual` : 'same as usual'}</small></span>
+          ) : null}
+        </div>
+        <div className="mb-hist-range" role="tablist" aria-label="History range">
+          {([[3, 'Past 3 months'], [12, 'Past year']] as const).map(([n, label]) => (
+            <button key={n} type="button" role="tab" aria-selected={range === n} className={`sk-btn is-small${range === n ? ' is-on' : ''}`} onClick={() => setRange(n)}>{label}</button>
           ))}
-        </ul>
-      ) : <p className="mb-dim">Nothing recorded in the past {range === 3 ? '3 months' : 'year'}.</p>}
-    </>
+          <span className="mb-dim">{paidShown.length} paid · {money(paidTotal) || '$0'} total</span>
+        </div>
+        {shown.length ? (
+          <ul className="mb-cp-list">
+            {shown.map(r => (
+              <li key={r.key}>
+                <span>{day(r.due)}</span>
+                <b className={h.usual !== undefined && r.amount !== undefined && r.amount > h.usual ? 'mb-late' : ''}>{r.amount !== undefined ? money(r.amount) : '?'}</b>
+                <small>{stateText(r)}</small>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="mb-dim">Nothing recorded in the past {range === 3 ? '3 months' : 'year'}.</p>}
+      </div>
+    </details>
   );
 }
 
@@ -2761,7 +2751,8 @@ function ChangeThisOne({ due, onGone }: { due: BillDue; onGone?: () => void }) {
         <BillChangeForm due={due} onDone={() => setOpen(false)} onGone={onGone} hideFlags onSaved={setSaid} />
       ) : (
         <button type="button" className="sk-btn is-small" onClick={() => { setSaid(''); setOpen(true); }}>
-          {changed ? 'Edit change' : 'Change amount / due date / name / note'}
+          {changed ? 'Edit change' : 'Edit amount, date or note'}
+          {changed ? null : <span className="finance-screen-reader">, or sheet name</span>}
         </button>
       )}
       {said && !open ? <p className="mb-saved" role="status">{said}</p> : null}
@@ -3071,23 +3062,27 @@ function ItemPanel({ id, dues, model, paidAt, onPaid, onBack, onClose }: { id: s
       <div className="bal-drw-head">
         <p className="section-label">{kindLabel(d)}</p>
         <FinanceName name={d.bill.name.trim()} onRename={name => setBillDisplayName(d.bill, name)} />
-        <p className="bal-drw-chips"><span className={['paid', 'crossed', 'charged'].includes(state) ? 'is-ok' : state === 'late' ? 'is-short' : ''}>{STATE_TEXT[state](d, paidAt)}</span></p>
       </div>
-      <div className="mb-cp-figs">
-        <span><small>amount</small><b>{money(d.bill.amount) || '?'}</b></span>
-        <span><small>due</small><b>{fromDayKey(d.due).toLocaleDateString([], { month: 'short', day: 'numeric' })}</b></span>
-        {d.bill.payBy ? <span><small>pay by</small><b>{payByText(d.bill.payBy)}</b></span> : null}
+      <div className="finance-overview">
+        <b className="finance-amount">{money(d.bill.amount) || '?'}</b>
+        <span>Due <strong>{fromDayKey(d.due).toLocaleDateString([], { month: 'short', day: 'numeric' })}</strong></span>
+        {d.bill.payBy ? <span className="finance-caution">Pay by {payByText(d.bill.payBy)}</span> : null}
       </div>
-      {['paid', 'crossed', 'charged', 'skipped'].includes(state) ? null : (
+      <p className={`finance-status${state === 'late' ? ' mb-late' : ''}`}>{STATE_TEXT[state](d, paidAt)}</p>
+      {PAID_STATES.includes(state) ? null : (
         <button type="button" className="sk-btn is-small is-prominent finance-item-pay" onClick={() => { onPaid(d); onClose(); }}>Mark paid</button>
       )}
-      <section className="bal-drw-sec">
-        <h4>Flags</h4>
-        <BillFlagsFields due={d} dueKeys={same.map(x => x.key)} />
-      </section>
-      <h4 className="mb-cp-h">Paid from</h4>
-      <PayFromSelect value={fromOf(d)} onPick={pick} banks={banks} cards={cards} label={`Pay ${d.bill.name} from`} />
-      <NotesField src={src} hubSub={d.bill.kind === 'sub' ? loadLifeSubs().find(x => !x.removed && x.name.trim().toLowerCase() === (d.bill.origName ?? d.bill.name).trim().toLowerCase()) : undefined} />
+      <div className="finance-plan">
+        <section className="bal-drw-sec">
+          <h4>Paid from</h4>
+          <PayFromSelect value={fromOf(d)} onPick={pick} banks={banks} cards={cards} label={`Pay ${d.bill.name} from`} />
+          <NotesField src={src} hubSub={d.bill.kind === 'sub' ? loadLifeSubs().find(x => !x.removed && x.name.trim().toLowerCase() === (d.bill.origName ?? d.bill.name).trim().toLowerCase()) : undefined} />
+        </section>
+        <section className="bal-drw-sec">
+          <h4>Flags</h4>
+          <BillFlagsFields due={d} dueKeys={same.map(x => x.key)} />
+        </section>
+      </div>
       <ChangeThisOne due={d} onGone={onClose} />
       <PaidHistory list={dues} paidAt={paidAt} model={model} current={d} />
     </Modal>
@@ -3300,8 +3295,8 @@ const LEDGER_KINDS: Array<[string, string]> = [
   ['sub', 'Subscriptions'],
 ];
 
-function LedgerByCategory({ dues, paidAt, model, onPaid, hidePaid }: { dues: BillDue[]; paidAt: Record<string, string>; model: MoneyModel; onPaid: (d: BillDue) => void; hidePaid: boolean }) {
-  const today = startOfDay(new Date());
+function LedgerByCategory({ dues, paidAt, model, onPaid, hidePaid, month, strike = false }: { dues: BillDue[]; paidAt: Record<string, string>; model: MoneyModel; onPaid: (d: BillDue) => void; hidePaid: boolean; month?: Date; strike?: boolean }) {
+  const today = month || startOfDay(new Date());
   const all = ledgerMonthRows(dues, model.items, today);
   return (
     <div className="ledger-cats">
@@ -3329,12 +3324,12 @@ function LedgerByCategory({ dues, paidAt, model, onPaid, hidePaid }: { dues: Bil
                   const st = monthState(d, paidAt);
                   const isDone = ['paid', 'crossed', 'charged'].includes(st);
                   return (
-                    <li key={d.key} className={`ledger-row is-${st}${d.bill.nonCritical ? ' is-noncritical' : ''}${d.bill.priority ? ' is-priority' : ''}`}>
+                    <li key={d.key} className={`ledger-row is-${st}${strike && isDone ? ' is-struck' : ''}${d.bill.nonCritical ? ' is-noncritical' : ''}${d.bill.priority ? ' is-priority' : ''}`}>
                       <span className="ledger-day">{fromDayKey(d.due).getDate()}</span>
                       <span className="ledger-name"><BrandLogo name={d.bill.name} /><ItemName id={d.key}>{d.bill.name}</ItemName><FlagBadges d={d} /></span>
                       <span className="ledger-amt">{money(d.bill.amount) || '?'}</span>
                       {isDone ? (
-                        <span className="ledger-state">✓</span>
+                        <span className="ledger-state" title={STATE_TEXT[st](d, paidAt)}>✓</span>
                       ) : st === 'late' ? (
                         <button type="button" className="ledger-paid is-late" onClick={() => onPaid(d)} title="Past its day — mark paid">
                           Paid
@@ -3360,6 +3355,31 @@ function LedgerByCategory({ dues, paidAt, model, onPaid, hidePaid }: { dues: Bil
   );
 }
 
+/** Overview's month at a glance: one box per kind, every row shown, paid ones struck through in green. */
+function MonthBoard({ duesFor, thisMonth, paidAt, model, onPaid }: { duesFor?: (month: Date) => BillDue[]; thisMonth: BillDue[]; paidAt: Record<string, string>; model: MoneyModel; onPaid: (d: BillDue) => void }) {
+  const now = new Date();
+  const [offset, setOffset] = useState(0);
+  const month = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+  const list = useMemo(() => (offset === 0 || !duesFor ? thisMonth : duesFor(month)), [offset, duesFor, thisMonth]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rows = ledgerMonthRows(list, model.items, month).filter(d => !d.skipped);
+  const paidN = rows.filter(d => isLedgerPaid(d, paidAt)).length;
+  const left = rows.filter(d => !isLedgerPaid(d, paidAt)).reduce((s, d) => s + (d.bill.amount || 0), 0);
+  const label = month.toLocaleDateString([], { month: 'long', year: month.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
+  return (
+    <div className="mny-monthboard">
+      <div className="mny-monthnav">
+        <button type="button" className="sk-btn is-small" onClick={() => setOffset(o => o - 1)} aria-label="Previous month">‹</button>
+        <b>{label}</b>
+        <button type="button" className="sk-btn is-small" onClick={() => setOffset(o => o + 1)} aria-label="Next month" disabled={!duesFor}>›</button>
+        {offset !== 0 ? <button type="button" className="sk-btn is-small" onClick={() => setOffset(0)}>This month</button> : null}
+        <span className="mny-monthnav-sum">{paidN} of {rows.length} paid{left ? ` · ${money(left)} left` : ''}</span>
+      </div>
+      {offset < 0 ? <p className="mb-dim mny-monthnav-note">Past months count what was marked Paid on Life Hub; sheet cross-offs only exist for the months the sheet still holds.</p> : null}
+      <LedgerByCategory dues={list} paidAt={paidAt} model={model} onPaid={onPaid} hidePaid={false} month={month} strike />
+    </div>
+  );
+}
+
 const NEEDED_OPTIONS = ['Yes', 'Y Low', 'No', 'Ordered'];
 type TabId = 'plan' | 'overview' | 'flow' | 'accounts' | 'spend' | 'owed' | 'debts' | 'save';
 const TAB_IDS: TabId[] = ['overview', 'flow', 'accounts', 'spend', 'debts', 'owed', 'save'];
@@ -3375,6 +3395,7 @@ export function MoneyPage({
   model,
   dues: duesIn,
   monthDues: monthDuesIn,
+  duesForMonth,
   paidAt,
   lifeSubs,
   onPaid,
@@ -3387,6 +3408,8 @@ export function MoneyPage({
   dues: BillDue[];
   /** Every payment this month, paid ones included */
   monthDues: BillDue[];
+  /** Every payment in any month (Overview's month view) */
+  duesForMonth?: (month: Date) => BillDue[];
   /** Payment key → when it was marked paid */
   paidAt: Record<string, string>;
   lifeSubs: LifeSub[];
@@ -3949,6 +3972,9 @@ export function MoneyPage({
               ) : (
                 <p className="mny-empty">Nothing overdue.</p>
               )}
+            </Section>
+            <Section tone="due" title="Month view" hint="Bills, card payments, pay later, cash advances and subscriptions for the month. Paid ones stay, struck through in green." href={link('Randy')}>
+              <MonthBoard duesFor={duesForMonth} thisMonth={monthDues} paidAt={paidAt} model={model} onPaid={onPaid} />
             </Section>
             {financeTasks ? (
               <Section tone="plan" title="Financial focus" hint="The Radall tasks and what needs attention first — tickets, renewals, the big items.">

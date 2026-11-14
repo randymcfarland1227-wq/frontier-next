@@ -3404,3 +3404,33 @@
 .subs-row.is-charged .subs-name .mny-item-link, .subs-row.is-charged .subs-amt, .subs-row.is-charged .subs-day,
 .subs-row.is-skipped .subs-name .mny-item-link, .subs-row.is-skipped .subs-amt, .subs-row.is-skipped .subs-day { text-decoration: line-through; text-decoration-color: #15803d; text-decoration-thickness: 1.5px; color: #15803d; }
 .frontier-shell[data-color-mode="dark"] :is(.subs-row.is-charged, .subs-row.is-skipped) :is(.subs-name .mny-item-link, .subs-amt, .subs-day) { color: #4ade80; text-decoration-color: #4ade80; }
+
+/* Money: section tabs (Overview, Ledger…) as glass pills like the sidebar / Single·Split, ~30% smaller */
+.sk-app .skm-tabs { gap: 5px; margin-top: 8px; }
+.sk-app .skm-tab {
+  gap: 0 6px; padding: 4px 10px 5px; border: 1px solid var(--sk-glass-rim); border-radius: 99px;
+  background: var(--sk-glass-track); box-shadow: var(--sk-glass-shadow); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  transition: box-shadow .15s, transform .15s, background .15s;
+}
+.sk-app .skm-tab .sk-sw { width: 8px; height: 8px; }
+.sk-app[data-page] .skm-tab .skm-tab-l { font: 700 10.5px/1.15 "DM Sans", system-ui, sans-serif !important; }
+.sk-app[data-tabs="compact"][data-page] .skm-tab .skm-tab-l { font-size: 9px !important; }
+.sk-app[data-tabs="large"][data-page] .skm-tab .skm-tab-l { font-size: 11px !important; }
+.sk-app .skm-tab .skm-tab-f { font: 600 8.5px/1.15 "DM Sans", system-ui, sans-serif; }
+.sk-app .skm-tab:hover { transform: translateY(-1px); box-shadow: var(--sk-glass-lift); }
+.sk-app .skm-tab.is-on { background: var(--sk-glass-on); color: #16141f; box-shadow: 0 3px 10px #1b124033, inset 0 0 0 1.5px color-mix(in srgb, var(--skf) 70%, transparent); }
+.frontier-shell[data-color-mode="dark"] .sk-app .skm-tab.is-on { background: var(--sk-glass-on); color: #16141f; }
+@media (max-width: 560px) { .sk-app .skm-tab { flex: 0 1 auto; } }
+
+/* Money dash: "Data" folds the whole box row; in a Today pane its buttons sit in the tab line */
+.sk-app .skm-dash-all {
+  display: inline-flex; align-items: center; gap: 3px; align-self: flex-start; width: max-content; margin: 2px 0 4px; padding: 1px 8px 1px 5px;
+  border: 1px solid var(--sk-glass-rim); border-radius: 99px; background: var(--sk-glass-track); box-shadow: var(--sk-glass-shadow);
+  color: var(--sk-ink-2); font: 700 10px/1.4 "DM Sans", system-ui, sans-serif; cursor: pointer;
+}
+.sk-app .skm-dash-all:hover { color: var(--sk-ink); box-shadow: var(--sk-glass-lift); }
+.sk-app .sk-todaybar-slot .skm-slot-top { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; }
+.sk-app .sk-todaybar-slot .skm-slot-top .mny-stand-meta { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; font: 600 10px/1.2 "DM Sans", system-ui, sans-serif; color: var(--sk-ink-2); }
+.sk-app .sk-todaybar-slot .skm-slot-top .money-note { margin: 0; font-size: 10px; }
+.sk-app .sk-todaybar .skm-zoom { display: inline-flex; border: 1px solid var(--sk-glass-rim); border-radius: 99px; background: var(--sk-glass-track); box-shadow: var(--sk-glass-shadow); overflow: hidden; }
+.sk-app .sk-todaybar .skm-zoom button { border: 0; background: transparent; color: var(--sk-ink); font: 700 10px/1 "DM Sans", system-ui, sans-serif; padding: 3px 6px; cursor: pointer; }

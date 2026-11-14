@@ -23,7 +23,7 @@ import { bankRows } from './MoneyBoards';
 import { UpdateFiguresButton } from './UpdateFigures';
 import { BrandLogo } from './BrandLogo';
 import { Icon } from '../sticker/Icon';
-import { ListHead } from '../sticker/kit';
+import { ListHead, PaneHeadContext } from '../sticker/kit';
 import { useFold } from './Collapsible';
 import { useDebtFile } from '../../lib/debtFile';
 import {
@@ -3427,6 +3427,8 @@ export function MoneyPage({
 }) {
   const debtFile = useDebtFile();
   const billEditsNow = useBillEdits();
+  // Inside a Today pane the tab line is the header (same as the other tabs); undefined on the Money page itself.
+  const paneSlot = useContext(PaneHeadContext);
   // Pay-by dates read from Gmail notices (e.g. Verizon's suspension date) fill in where the sheet / Life Hub has none.
   const dues = useMemo(() => withPayBy(duesIn, debtFile.file?.payby, billEditsNow), [duesIn, debtFile.file?.payby, billEditsNow]);
   // Randy's Nov 8 list: pay-from + notes for subs and pay laters that have none yet (lib/moneyMethods.ts)
@@ -3681,9 +3683,11 @@ export function MoneyPage({
   ];
 
   return (
+    <PaneHeadContext.Provider value={undefined}>
     <MoneyPanelCtx.Provider value={panelApi}>
     <div className="settings-view money-view mny skm">
       <MoneyDash
+        paneSlot={paneSlot}
         model={model}
         overdue={overdue.filter(d => !paidAt[d.key])}
         monthPaid={monthPaid}
@@ -3695,13 +3699,15 @@ export function MoneyPage({
         onOpenCard={panelApi.openCard}
         top={
           <>
-            <MoneyZoom />
+            {paneSlot === undefined ? <MoneyZoom /> : null}
             <span className="mny-stand-meta">
-              Radall sheet · {new Date(model.refreshedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · {model.cashOnHand?.text || '—'} on hand · {money(dueWeek)} due this week
+              {paneSlot === undefined ? 'Radall sheet · ' : ''}{paneSlot === undefined ? new Date(model.refreshedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' · ' : ''} {model.cashOnHand?.text || '—'} on hand · {money(dueWeek)} due this week
               <UpdateFiguresButton model={model} monthDues={monthDues} onSave={save} />
-              <button type="button" className="sk-btn is-small" onClick={onRefresh} disabled={syncing}>
-                {syncing ? 'Syncing…' : 'Refresh'}
-              </button>
+              {paneSlot === undefined ? (
+                <button type="button" className="sk-btn is-small" onClick={onRefresh} disabled={syncing}>
+                  {syncing ? 'Syncing…' : 'Refresh'}
+                </button>
+              ) : null}
               {model.sheetUrl ? (
                 <a className="sk-btn is-small" href={model.sheetUrl} target="_blank" rel="noopener noreferrer">
                   Open sheet ↗
@@ -4142,6 +4148,7 @@ export function MoneyPage({
         <ItemPanel key={panel.id} id={panel.id} dues={[...dues, ...monthDues]} model={model} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : null}
     </MoneyPanelCtx.Provider>
+    </PaneHeadContext.Provider>
   );
 }
 

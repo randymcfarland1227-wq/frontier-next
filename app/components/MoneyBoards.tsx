@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   amountOf,
   cardSummaries,
@@ -1528,7 +1529,10 @@ export function MoneyDash({
   onOpenCard,
   top,
   tabs,
+  paneSlot,
 }: {
+  /** Today pane: the tab line's slot (the dash drops its Money title row and puts its buttons there) */
+  paneSlot?: HTMLElement | null;
   model: MoneyModel;
   overdue: BillDue[];
   monthPaid: number;
@@ -1552,6 +1556,9 @@ export function MoneyDash({
   useCardSeen(cards, get);
   const [foldedCols, setFoldedCols] = useState<Record<string, boolean>>(() => readSaved<Record<string, boolean>>(DASH_FOLD_KEY, {}));
   const isFolded = (id: string) => Boolean(foldedCols[id]);
+  // The whole box row folds to a small "Data" line; each box still folds on its own.
+  const [allShut, setAllShut] = useState<boolean>(() => Boolean(readSaved<boolean>(DASH_FOLD_KEY + "-all", false)));
+  const toggleAll = () => setAllShut(v => { writeSaved(DASH_FOLD_KEY + "-all", !v); return !v; });
   const fold = (id: string) => {
     setFoldedCols(prev => {
       const next = { ...prev, [id]: !prev[id] };
@@ -1603,10 +1610,17 @@ export function MoneyDash({
   const paidPct = monthCount ? Math.round((monthPaid / monthCount) * 100) : undefined;
   return (
     <section className="skm-dash" aria-label="Money at a glance">
-      <div className="skm-dash-top">
-        <h1 className="sk-large">Money</h1>
-        {top}
-      </div>
+      {paneSlot === undefined ? (
+        <div className="skm-dash-top">
+          <h1 className="sk-large">Money</h1>
+          {top}
+        </div>
+      ) : paneSlot ? createPortal(<span className="skm-slot-top">{top}</span>, paneSlot) : null}
+      <button type="button" className={`skm-dash-all${allShut ? " is-shut" : ""}`} aria-expanded={!allShut} onClick={toggleAll} title={allShut ? "Show the balance boxes" : "Fold all the balance boxes"}>
+        <Icon name={allShut ? "chevron" : "chevronDown"} size={11} />
+        Data
+      </button>
+      {allShut ? null : (
       <div className="skm-dash-cols" style={{ '--dash-cols': dashCols } as CSSProperties}>
         <DashCol id="cash-accounts" title="Cash · pend" stamp={cashStamp} folded={isFolded("cash-accounts")} onFold={() => fold("cash-accounts")} tone="cash" go="accounts" onGo={onGo}>
           <div className="skm-grid is-3">
@@ -1786,6 +1800,7 @@ export function MoneyDash({
           <DashSums sums={[["total", usd(owedSum)]]} />
         </DashCol>
       </div>
+      )}
       {tabs}
     </section>
   );

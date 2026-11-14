@@ -50,6 +50,7 @@ import {
   useShortTermFocus,
 } from "./FocusSection";
 import { HomeTop } from "../sticker/HomeTop";
+import { MoneyZoom } from "./MoneyZoom";
 import { ListHead, PaneHeadContext, PaneZoomButtons, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
 import { CapPane } from "../sticker/CapPane";
 import { SegTabs } from "../sticker/SegTabs";
@@ -553,8 +554,8 @@ export function HomeView({
             ] as const).map(([t, pick], i) => (
               <div key={i} className="sk-splitcol">
                 {/* Money has its own − / + (it starts at 60%), so the pane zoom leaves it alone. */}
-                {todayBar(t, pick, t === "money" ? null : <PaneZoomButtons zoom={splitZoom[i]} set={(v) => setSplitZoom(i, v)} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, i === 0, i + 1)}
-                <PaneHeadContext.Provider value={t === "money" ? undefined : paneSlots[i + 1]}>
+                {todayBar(t, pick, t === "money" ? <MoneyZoom /> : <PaneZoomButtons zoom={splitZoom[i]} set={(v) => setSplitZoom(i, v)} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, i === 0, i + 1)}
+                <PaneHeadContext.Provider value={paneSlots[i + 1]}>
                   <div className="sk-splitzoom" style={t === "money" || splitZoom[i] === 100 ? undefined : { zoom: splitZoom[i] / 100 }}>
                     <CapPane key={t} cap="split" label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>
                       {renderTab(t)}
@@ -570,7 +571,7 @@ export function HomeView({
             {todayBar(tab, pickTodayTab, tab === "money"
               ? <PaneZoomButtons zoom={moneyZoom} set={setMoneyZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />
               : <PaneZoomButtons zoom={singleZoom} set={setSingleZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, true, 0)}
-            <PaneHeadContext.Provider value={tab === "money" ? undefined : paneSlots[0]}>
+            <PaneHeadContext.Provider value={paneSlots[0]}>
               <div className="sk-splitzoom" style={(tab === "money" ? moneyZoom : singleZoom) === 100 ? undefined : { zoom: (tab === "money" ? moneyZoom : singleZoom) / 100 }}>
                 <CapPane key={tab} cap="page" label={TODAY_TABS.find(([id]) => id === tab)?.[1] || "Today"}>
                   {renderTab(tab)}

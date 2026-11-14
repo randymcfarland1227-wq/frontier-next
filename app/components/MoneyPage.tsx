@@ -2469,6 +2469,8 @@ function LinePanel({
         <FinanceName name={displayName} onRename={rename} />
       </div>
 
+      <div className="finance-summary-grid">
+        <div className="finance-summary-facts">
       <div className="finance-overview">
         <b className="finance-amount">{l.amount === undefined ? '?' : `${isIn ? '+' : '−'}${money(l.amount)}`}</b>
         <span>{isIn ? 'Paid on' : 'Due'} <strong>{shortDay(l.due)}</strong></span>
@@ -2482,6 +2484,17 @@ function LinePanel({
         {reg?.landed ? ` · Added to ${accountLabel} ✓` : ''}
         {onSheet ? ' · On the balancing sheet' : ''}
       </p>
+      {due ? <ChangeThisOne due={due} /> : null}
+        </div>
+        <div className="finance-summary-priority">
+        {!isIn && payment ? (
+          <section className="bal-drw-sec">
+            <h4>Priority</h4>
+            <BillFlagsFields due={payment} fields="level" />
+          </section>
+        ) : null}
+        </div>
+      </div>
 
 
       <div className="finance-plan">
@@ -2544,12 +2557,7 @@ function LinePanel({
 
         </section>
 
-        {!isIn && payment ? (
-          <section className="bal-drw-sec">
-            <h4>Priority</h4>
-            <BillFlagsFields due={payment} fields="level" />
-          </section>
-        ) : null}
+
       </div>
 
       {!l.paid && !reg?.landed ? (
@@ -2607,7 +2615,6 @@ function LinePanel({
         </section>
       ) : null}
 
-      {due ? <ChangeThisOne due={due} /> : null}
       {due ? <PaidHistory list={allDues || [due]} paidAt={paidAt || {}} model={model} current={due} /> : null}
 
       <div className="bal-dlg-actions">
@@ -2750,7 +2757,6 @@ function ChangeThisOne({ due, onGone }: { due: BillDue; onGone?: () => void }) {
   const changed = Boolean(edit && (edit.skip || edit.moveTo || edit.amount !== undefined || edit.note));
   return (
     <div className="mb-cp-change">
-      <h4 className="mb-cp-h">This payment</h4>
       {changed && !open ? <p className="mb-dim">Changed for this one: {billChangeText(due) || 'edited'}{due.editNote ? ` · ${due.editNote}` : ''}</p> : null}
       {open ? (
         <BillChangeForm due={due} onDone={() => setOpen(false)} onGone={onGone} hideFlags onSaved={setSaid} />
@@ -2790,6 +2796,8 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
         {l.what ? <p className="mb-dim">{l.what}</p> : null}
         {l.due && state ? <p className="bal-drw-chips"><span className={PAID_STATES.includes(state) ? 'is-ok' : state === 'late' ? 'is-short' : ''}>{STATE_TEXT[state](l.due, paidAt)}</span></p> : null}
       </div>
+      <div className="finance-summary-grid">
+        <div className="finance-summary-facts">
       <div className="mb-cp-figs">
         <span><small>balance left</small><b>{l.bal !== undefined ? money(l.bal) : '—'}</b></span>
         <span><small>principal</small><b>{l.principal ? money(l.principal) : '—'}</b></span>
@@ -2799,7 +2807,14 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
         <span><small>due</small><b>{l.due ? fromDayKey(l.due.due).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '—'}</b></span>
         <span><small>% paid</small><b>{l.principal && l.bal !== undefined ? `${Math.round(((l.principal - l.bal) / l.principal) * 100)}%` : '—'}</b></span>
       </div>
-      {l.due ? <BillFlagsFields due={l.due} dueKeys={history.map(x => x.key)} /> : null}
+      {l.due ? <ChangeThisOne due={l.due} onGone={onClose} /> : null}
+        </div>
+        <section className="bal-drw-sec finance-summary-priority">
+          <h4>Priority</h4>
+      {l.due ? <BillFlagsFields due={l.due} dueKeys={history.map(x => x.key)} fields="level" /> : null}
+        </section>
+      </div>
+      {l.due ? <BillFlagsFields due={l.due} dueKeys={history.map(x => x.key)} fields="date" /> : null}
       <h4 className="mb-cp-h">Yours to edit</h4>
       <div className="mb-cp-edit">
         <label>Principal $<input type="number" step="0.01" defaultValue={m?.principal ?? ''} onBlur={e => setMeta(l.key, { principal: num(e.target.value) })} /></label>
@@ -2816,7 +2831,6 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
       ) : null}
       <SinceField metaKey={l.key} label="Loan started" />
       <PaidHistory list={history} paidAt={paidAt} model={model} current={l.due} />
-      {l.due ? <ChangeThisOne due={l.due} onGone={onClose} /> : null}
       <div className="bal-dlg-actions">
         <button type="button" className="sk-btn is-small" onClick={() => { setMeta(l.key, { closed: l.closed ? undefined : true }); if (l.hub) updateLifeSub(l.hub.id, { status: l.closed ? 'active' : 'cancelled' }); }}>{l.closed ? 'Reopen' : 'Mark closed'}</button>
         {l.hub ? (
@@ -2897,17 +2911,25 @@ function SubPanel({ name, model, dues, paidAt, onPaid, onBack, onClose }: { name
         <FinanceName name={title} onRename={next => setBillDisplayName(ruleBill, next)} />
         {mine && state ? <p className="bal-drw-chips"><span className={PAID_STATES.includes(state) ? 'is-ok' : state === 'late' ? 'is-short' : ''}>{PAID_STATES.includes(state) ? 'Paid this month' : 'Not paid yet this month'} · {STATE_TEXT[state](mine, paidAt)}</span></p> : null}
       </div>
+      <div className="finance-summary-grid">
+        <div className="finance-summary-facts">
       <div className="mb-cp-figs">
         <span><small>amount</small><b>{mine ? money(mine.bill.amount) || '?' : '—'}</b></span>
         <span><small>next charge</small><b>{open ? fromDayKey(open.due).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '—'}</b></span>
       </div>
-      {mine ? <BillFlagsFields due={mine} dueKeys={list.map(x => x.key)} /> : null}
+      {mine ? <ChangeThisOne due={mine} onGone={onClose} /> : null}
+        </div>
+        <section className="bal-drw-sec finance-summary-priority">
+          <h4>Priority</h4>
+      {mine ? <BillFlagsFields due={mine} dueKeys={list.map(x => x.key)} fields="level" /> : null}
+        </section>
+      </div>
+      {mine ? <BillFlagsFields due={mine} dueKeys={list.map(x => x.key)} fields="date" /> : null}
       <SinceField metaKey={`sub:${metaName(name)}`} label="Subscribed since" />
       <h4 className="mb-cp-h">Paid from</h4>
       <PayFromSelect value={mine ? fromOf(mine) : ''} onPick={pick} banks={banks} cards={cards} label={`Pay ${name} from`} />
       <NotesField src={src} hubSub={hubSub} />
       <PaidHistory list={list} paidAt={paidAt} model={model} current={mine} />
-      {mine ? <ChangeThisOne due={mine} onGone={onClose} /> : null}
       {hubSub ? (
         <>
           <h4 className="mb-cp-h">Yours to edit</h4>
@@ -2989,7 +3011,6 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
         <span><small>used</small><b className={c.util !== undefined && c.util >= 90 ? 'mb-late' : ''}>{c.util !== undefined ? `${Math.round(c.util)}%` : '—'}</b></span>
         <span><small>minimum</small><b>{c.min !== undefined ? money(c.min) : '—'}</b></span>
       </div>
-      {c.due ? <BillFlagsFields due={c.due} /> : null}
       <CardPayoff key={c.key} c={c} m={m} paid={!!c.due && PAID_STATES.includes(monthState(c.due, paidAt))} />
       <h4 className="mb-cp-h">Upcoming &amp; this month</h4>
       {c.due ? (
@@ -2999,6 +3020,8 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
             <b>{money(c.due.bill.amount || 0)}</b>
             <small>due {longDate(c.due.due)} · {STATE_TEXT[monthState(c.due, paidAt)](c.due, paidAt)}</small>
           </button>
+      {c.due ? <ChangeThisOne due={c.due} onGone={onClose} /> : null}
+      {c.due ? <BillFlagsFields due={c.due} /> : null}
           {PAID_STATES.includes(monthState(c.due, paidAt)) ? null : <button type="button" className="sk-btn is-small" onClick={() => { onPaid(c.due!); onClose(); }}>Mark paid</button>}
         </>
       ) : (
@@ -3031,7 +3054,6 @@ function CardPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
         </>
       ) : null}
       <SinceField metaKey={c.key} label="Opened" />
-      {c.due ? <ChangeThisOne due={c.due} onGone={onClose} /> : null}
       <PaidHistory list={dues.filter(d => d.bill.kind === 'card' && nearest(d.bill.nameBeforeLabel ?? d.bill.name, cardRows(model, monthDues, get), r => r.name)?.key === c.key)} paidAt={paidAt} model={model} current={c.due} />
       {c.hub ? (
         <div className="bal-dlg-actions">
@@ -3068,27 +3090,34 @@ function ItemPanel({ id, dues, model, paidAt, onPaid, onBack, onClose }: { id: s
         <FinanceType>{kindLabel(d)}</FinanceType>
         <FinanceName name={d.bill.name.trim()} onRename={name => setBillDisplayName(d.bill, name)} />
       </div>
+      <div className="finance-summary-grid">
+        <div className="finance-summary-facts">
       <div className="finance-overview">
         <b className="finance-amount">{money(d.bill.amount) || '?'}</b>
         <span>Due <strong>{fromDayKey(d.due).toLocaleDateString([], { month: 'short', day: 'numeric' })}</strong></span>
       </div>
       <p className={`finance-status${state === 'late' ? ' mb-late' : ''}`}>{STATE_TEXT[state](d, paidAt)}</p>
+      <ChangeThisOne due={d} onGone={onClose} />
+        </div>
+        <div className="finance-summary-priority">
+        <section className="bal-drw-sec">
+          <h4>Priority</h4>
+          <BillFlagsFields due={d} dueKeys={same.map(x => x.key)} fields="level" />
+        </section>
+        </div>
+      </div>
       <BillFlagsFields due={d} fields="date" />
       <div className="finance-plan">
         <section className="bal-drw-sec">
           <h4>Paid from</h4>
           <PayFromSelect value={fromOf(d)} onPick={pick} banks={banks} cards={cards} label={`Pay ${d.bill.name} from`} />
         </section>
-        <section className="bal-drw-sec">
-          <h4>Priority</h4>
-          <BillFlagsFields due={d} dueKeys={same.map(x => x.key)} fields="level" />
-        </section>
+
       </div>
       {PAID_STATES.includes(state) ? null : (
         <button type="button" className="sk-btn is-small is-prominent finance-item-pay" onClick={() => { onPaid(d); onClose(); }}>Mark paid</button>
       )}
           <NotesField src={src} hubSub={d.bill.kind === 'sub' ? loadLifeSubs().find(x => !x.removed && x.name.trim().toLowerCase() === (d.bill.origName ?? d.bill.name).trim().toLowerCase()) : undefined} />
-      <ChangeThisOne due={d} onGone={onClose} />
       <PaidHistory list={dues} paidAt={paidAt} model={model} current={d} />
     </Modal>
   );

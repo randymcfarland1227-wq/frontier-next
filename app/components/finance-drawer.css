@@ -208,3 +208,24 @@
 }
 .sk-app .finance-drawer .finance-dates .bal-form-row input { width: auto; flex: 1 1 120px; }
 .sk-app .finance-drawer .finance-dates .bal-form-row button { flex: 0 0 auto; }
+
+/* Overview tools sit beside the facts they affect. */
+.sk-app .finance-summary-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 20px; align-items: start; }
+.sk-app .finance-summary-facts { display: grid; gap: 8px; min-width: 0; }
+.sk-app .finance-summary-priority { min-width: 0; }
+.sk-app .finance-summary-grid .finance-status { margin: 0; }
+.sk-app .finance-summary-grid .mb-cp-change { margin: 0; }
+.sk-app .finance-summary-grid .mb-cp-change:has(.bill-change) { grid-column: 1 / -1; }
+.sk-app .finance-summary-grid:has(.bill-change) { grid-template-columns: minmax(0, 1fr); }
+.sk-app .finance-summary-priority:empty { display: none; }
+.sk-app .finance-summary-grid:not(:has(.finance-summary-priority .bill-flags)) { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 520px) {
+  .sk-app .finance-summary-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+}
+.sk-app .finance-summary-priority { position: relative; }
+.sk-app .finance-summary-priority .bill-level { gap: 2px; }
+.sk-app .finance-summary-priority .bill-level label { padding-inline: 4px; }
+.sk-app .finance-summary-priority .finance-priority-help { flex-basis: 100%; }
+.sk-app .finance-priority-help summary { position: absolute; top: -2px; right: 0; cursor: pointer; list-style: none; padding: 2px 8px; color: var(--sk-ink-2); }
+.sk-app .finance-priority-help summary::-webkit-details-marker { display: none; }
+.sk-app .finance-priority-help[open] small { display: block; padding-top: 4px; }

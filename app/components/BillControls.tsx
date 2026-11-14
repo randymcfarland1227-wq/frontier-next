@@ -66,7 +66,12 @@ export function BillFlagsFields({ due, fields = 'all' }: { due: BillDue; dueKeys
           </label>
         ))}
       </div>
-      <small className="bill-level-hint">This payment only ({shortDay(due.orig || due.due)}): non critical shows orange; priority shows red and goes first. Next month starts normal.</small>
+      {fields === 'level' ? (
+        <details className="finance-priority-help">
+          <summary aria-label="About priority">ⓘ</summary>
+          <small className="bill-level-hint">This payment only ({shortDay(due.orig || due.due)}): non critical shows orange; priority shows red and goes first. Next month starts normal.</small>
+        </details>
+      ) : <small className="bill-level-hint">This payment only ({shortDay(due.orig || due.due)}): non critical shows orange; priority shows red and goes first. Next month starts normal.</small>}
       </> : null}
       {fields !== 'level' ? <>
       <label className="bill-change-field">

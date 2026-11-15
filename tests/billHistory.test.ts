@@ -54,3 +54,20 @@ test('this-payment change writes the sheet row in the cell’s own format', () =
   assert.equal(sheetMoneyText(146, '109'), '146');
   assert.equal(sheetMoneyText(146.5, '$109'), '$146.50');
 });
+
+test('a display name cannot pick up another bill’s history and keeps earlier sheet renames linked', () => {
+  const bill = due('2026-11-04', 109);
+  const other = { ...due('2026-10-07', 230), key: 'other', bill: { id: 'other', name: 'Internet', amount: 230, kind: 'bill' as const } };
+  const sheetRenamed = { ...bill, bill: { ...bill.bill, name: 'Mobile plan' } };
+  const renamed = applyBillEdits([sheetRenamed, other], {}, new Date('2026-11-04T12:00:00'), {
+    [billRuleKey(bill.bill)]: {
+      day: null, from: '', at: 'x', rename: 'Mobile plan', renamedFrom: 'V Mobile', displayName: 'Internet',
+    },
+  });
+  const subject = renamed.find(d => d.key === bill.key)!;
+  assert.equal(subject.bill.name, 'Internet');
+  assert.equal(billRuleKey(subject.bill), billRuleKey(bill.bill));
+  const previous = { ...item('2026-10-04', 109, true), name: 'Mobile plan' };
+  const history = billHistory(subject.bill, renamed, [previous], { other: '2026-10-07T15:00:00Z' }, {});
+  assert.deepEqual(history.rows.map(row => row.key), [bill.key, previous.id]);
+});

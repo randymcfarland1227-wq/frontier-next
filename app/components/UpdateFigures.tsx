@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { amountOf, cardSummaries, type Cell, type CellEdit, type EditResult, type MoneyModel } from '../../lib/money';
+import { FinanceDrawer } from './FinanceDrawer';
 import { loanRows } from './MoneyBoards';
 import { metaName, setMeta, useMoneyMeta } from '../../lib/moneyMeta';
 
@@ -76,12 +77,6 @@ function UpdateFigures({ model, monthDues, onSave, onClose }: { model: MoneyMode
   const [busy, setBusy] = useState(false);
   const [fails, setFails] = useState<string[]>([]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const changes = shown
     .filter(f => !f.cell.formula && vals[f.id] !== undefined)
     .map(f => ({ f, next: normalize(vals[f.id]) }))
@@ -106,9 +101,7 @@ function UpdateFigures({ model, monthDues, onSave, onClose }: { model: MoneyMode
 
   const groups = ['Accounts', 'Cards', 'Loans', 'Outstanding'];
   return (
-    <div className="bal-dlg-backdrop" onClick={onClose}>
-      <div className="bal-dlg uf-dlg" role="dialog" aria-modal="true" aria-label="Update figures" onClick={e => e.stopPropagation()}>
-        <button type="button" className="bal-dlg-x" onClick={onClose} aria-label="Close">✕</button>
+    <FinanceDrawer label="Update figures" onClose={onClose}>
         <p className="section-label">Update figures</p>
         {step === 'edit' ? (
           <>
@@ -194,7 +187,6 @@ function UpdateFigures({ model, monthDues, onSave, onClose }: { model: MoneyMode
             </div>
           </>
         ) : null}
-      </div>
-    </div>
+    </FinanceDrawer>
   );
 }

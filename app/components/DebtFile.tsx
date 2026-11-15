@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Cell, MoneyModel } from "../../lib/money";
 import type { BillDue } from "../../lib/schedule";
+import { FinanceDrawer, FinanceLabel, FinanceName, useFinanceLabel } from "./FinanceDrawer";
 import { OutstandingView } from "./OutstandingView";
 import { clearPendingDebt, pendingDebt } from "../../lib/finLinks";
 import {
@@ -322,7 +323,7 @@ function CreditView({
                 onClick={() => onOpen(i.id)}
               >
                 <span className="dbt-name" data-l="Account">
-                  <b>{i.name}</b>
+                  <b><FinanceLabel id={`debt:${i.id}`} name={i.name} /></b>
                   <small>{i.status}</small>
                 </span>
                 <span className="dbt-who" data-l="Owner now">
@@ -489,7 +490,7 @@ function CreditView({
                 onClick={() => onOpen(i.id)}
               >
                 <span className="dbt-name">
-                  <b>{i.name}</b>
+                  <b><FinanceLabel id={`debt:${i.id}`} name={i.name} /></b>
                   <small>
                     {pb ? `pay by ${shortDate(pb.date)} · ${pb.why}` : i.sub}
                   </small>
@@ -533,7 +534,7 @@ export function TicketRow({
       onClick={() => onOpen(item.id)}
       title={item.sub}
     >
-      <span className="dbt-tk-name">{compactName(item.name)}</span>
+      <span className="dbt-tk-name"><FinanceLabel id={`debt:${item.id}`} name={compactName(item.name)} /></span>
       {item.unverified ? <em className="dbt-mark">unverified</em> : null}
       {item.plan ? <PlanChip plan={item.plan} /> : null}
       <MarkChip mark={marks[item.id]} />
@@ -564,11 +565,7 @@ export function Story({
   onLetter: (id: string) => void;
 }) {
   const [note, setNote] = useState(mark?.note || "");
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const title = useFinanceLabel(`debt:${item.id}`, item.name);
   const letters = (item.letters || [])
     .map((id) => file.letters.find((l) => l.id === id))
     .filter(Boolean);
@@ -576,25 +573,10 @@ export function Story({
     a.date.localeCompare(b.date),
   );
   return (
-    <div className="bal-dlg-backdrop" onClick={onClose}>
-      <div
-        className="bal-dlg dbt-story"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${item.name} story`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          className="bal-dlg-x"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          ✕
-        </button>
+    <FinanceDrawer label={`${title.name} story`} onClose={onClose} wide>
         <header className="dbt-story-head sk-group tone-owed">
           <div>
-            <h3>{item.name}</h3>
+            <FinanceName {...title} />
             <p>{item.sub}</p>
           </div>
           <div className="dbt-story-amt">
@@ -864,8 +846,7 @@ export function Story({
             {item.next ? <p className="dbt-next">{item.next}</p> : null}
           </Block>
         ) : null}
-      </div>
-    </div>
+    </FinanceDrawer>
   );
 }
 
@@ -925,32 +906,12 @@ export function LetterStory({
   onOpen: (id: string) => void;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
   const inIt = useMemo(
     () => file.items.filter((i) => i.letters?.includes(letter.id)),
     [file.items, letter.id],
   );
   return (
-    <div className="bal-dlg-backdrop" onClick={onClose}>
-      <div
-        className="bal-dlg dbt-story"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${letter.title}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          className="bal-dlg-x"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          ✕
-        </button>
+    <FinanceDrawer label={letter.title} onClose={onClose} wide>
         <header className="dbt-story-head sk-group tone-owed">
           <div>
             <h3>{letter.from}</h3>
@@ -980,7 +941,6 @@ export function LetterStory({
             ))}
           </div>
         </Block>
-      </div>
-    </div>
+    </FinanceDrawer>
   );
 }

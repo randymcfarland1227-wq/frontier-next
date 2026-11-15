@@ -55,6 +55,8 @@ export type Bill = {
   notes?: string;
   /** Its name before a Life Hub rename (rules, pay-from and history stay keyed to this) */
   origName?: string;
+  /** Source label before a display-only rename, including any earlier sheet rename. */
+  nameBeforeLabel?: string;
   /** Day of month ('06') when the sheet lists two bills under one name (two Verizons): keeps their rules apart */
   ruleDay?: string;
   /** Set for items from the Radall money tabs (bill, card min, subscription, pay later) */

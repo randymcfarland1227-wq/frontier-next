@@ -259,6 +259,7 @@ export function StickerShell({
         >
           <Icon name={theme === "dark" ? "sun" : "moon"} size={14} />
         </button>
+        <DisplayControls settings={display} onChange={changeDisplay} />
       </div>
     </>
   );
@@ -355,7 +356,6 @@ export function StickerShell({
       </aside>
 
       <div className="sk-main">
-        <DisplayControls settings={display} onChange={changeDisplay} />
         {active === "home" ? (
           <div className="sk-content">{children}</div>
         ) : (

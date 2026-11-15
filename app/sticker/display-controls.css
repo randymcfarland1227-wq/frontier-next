@@ -54,3 +54,16 @@
 .sk-app[data-headers="large"][data-page] .sk-main h3 { font-size: 19px; }
 .sk-app[data-headers="compact"][data-page] .sk-main h4 { font-size: 13px; }
 .sk-app[data-headers="large"][data-page] .sk-main h4 { font-size: 17px; }
+
+/* Site size + Display now live in the sidebar's bottom tools; the panel opens beside the sidebar */
+.sk-app .sk-display.is-side { position: static; z-index: auto; background: none; border: 0; color: inherit; }
+.sk-app .sk-display.is-side > .sk-display-toggle { font: 800 12px/1 "DM Sans", system-ui, sans-serif; letter-spacing: -.02em; }
+.sk-app .sk-display.is-side .sk-display-options {
+  position: fixed; top: auto; right: auto; left: 240px; bottom: 14px; z-index: 60; color: var(--sk-ink);
+  width: min(320px, calc(100vw / var(--page-zoom, 1) - 24px)); border-radius: 12px; font: 500 12px/1.4 "DM Sans", sans-serif; text-align: left;
+}
+.sk-app[data-side="slim"] .sk-display.is-side .sk-display-options { left: 76px; }
+.sk-app .sk-display.is-side .sk-display-options .zoom-control { display: flex; gap: 4px; }
+.sk-app .sk-display.is-side .sk-display-options .zoom-control button { flex: 1; min-height: 30px; }
+.sk-app .sk-display.is-side .sk-display-options fieldset:first-child { margin-top: 0; }
+@media (max-width: 960px) { .sk-app .sk-display.is-side .sk-display-options, .sk-app[data-side="slim"] .sk-display.is-side .sk-display-options { left: 12px; bottom: 90px; } }

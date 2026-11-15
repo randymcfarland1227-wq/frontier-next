@@ -27,13 +27,11 @@ export function DisplayControls({ settings, onChange }: { settings: DisplaySetti
     };
   }, [open]);
   return (
-    <div className="sk-display" ref={root}>
-      <div className="sk-display-bar">
-        <span className="sk-display-label">Site size</span>
-        <ZoomControl />
-        <button type="button" className="sk-display-toggle" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>Display <span aria-hidden="true">{open ? '−' : '+'}</span></button>
-      </div>
+    <div className="sk-display is-side" ref={root}>
+      {/* Lives in the sidebar's bottom tools (Randy: not a bar across the top of the page) */}
+      <button type="button" className="sk-btn is-small is-icon sk-display-toggle" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)} aria-label="Site size and display" title="Site size and display">Aa</button>
       {open && <div id={id} className="sk-display-options" aria-label="Display settings">
+        <fieldset><legend>Site size</legend><ZoomControl /></fieldset>
         <p>Heading and tab sizes leave task text unchanged.</p>
         {(['headers', 'tabs'] as const).map(key => <fieldset key={key}>
           <legend>{key === 'headers' ? 'Headings' : 'Tabs'}</legend>

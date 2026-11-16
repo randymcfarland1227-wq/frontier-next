@@ -3495,3 +3495,66 @@
   .sk-sched .sk-sched-grid.is-stacked .sk-month .sk-ditem { display: block !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sk-sched .sk-sched-grid.is-stacked .sk-month .sk-ddots { display: none !important; }
 }
+
+/* Daily Brief urgency buckets (2026-11-16): Do today / This week / Focus next steps as rounded glass panels, same family as the sidebar discs + tab pills. */
+#sk-brief-buckets { --bk: #e5484d; display: grid; gap: 14px; min-width: 0; }
+#sk-brief-buckets .sk-bucket.is-week { --bk: #e8a317; }
+#sk-brief-buckets .sk-bucket.is-focus { --bk: #7c5cff; }
+#sk-brief-buckets .sk-bucket {
+  --bk: inherit; position: relative; padding: 12px 12px 10px; border-radius: 24px; border: 1px solid var(--sk-glass-rim, #ffffffb8);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--bk) 15%, #ffffffb3), color-mix(in srgb, var(--bk) 5%, #ffffff8c) 70%);
+  box-shadow: var(--sk-glass-shadow); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4);
+}
+#sk-brief-buckets .sk-bucket.is-today { --bk: #e5484d; }
+#sk-brief-buckets .sk-bucket::before { content: ""; position: absolute; left: 18px; right: 18px; top: 0; height: 2px; border-radius: 0 0 4px 4px; background: color-mix(in srgb, var(--bk) 70%, transparent); }
+#sk-brief-buckets .sk-bucket-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 8px; }
+#sk-brief-buckets .sk-bucket-fold { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; }
+#sk-brief-buckets .sk-bucket-fold:focus-visible { outline: 2px solid var(--bk); outline-offset: 3px; }
+#sk-brief-buckets .sk-bucket-title { font-size: 14px; font-weight: 800; letter-spacing: -.01em; color: var(--sk-ink); }
+#sk-brief-buckets .sk-bucket-count { min-width: 22px; height: 20px; padding: 0 7px; box-sizing: border-box; display: inline-grid; place-items: center; border-radius: 999px; font-size: 11px; font-weight: 800; color: #fff; background: var(--bk); box-shadow: inset 0 1px 0 #ffffff59, 0 2px 6px color-mix(in srgb, var(--bk) 40%, transparent); }
+#sk-brief-buckets .sk-bucket-fold[aria-expanded="false"] .sk-bucket-count { background: color-mix(in srgb, var(--bk) 45%, #9a96a8); }
+#sk-brief-buckets .sk-bucket-hint { font-size: 11px; color: var(--sk-ink-2); opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#sk-brief-buckets .sk-bucket-empty { margin: 0; padding: 8px 10px 4px; font-size: 12px; color: var(--sk-ink-2); }
+#sk-brief-buckets .sk-bucket-rows, #sk-brief-buckets .sk-brow-kids { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+#sk-brief-buckets .sk-brow-line { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 8px; border-radius: 16px; background: #ffffff6b; border: 1px solid #ffffff8c; transition: background .2s ease, box-shadow .25s cubic-bezier(.22, 1, .36, 1), transform .25s cubic-bezier(.22, 1, .36, 1); }
+#sk-brief-buckets .sk-brow-line:hover { background: #ffffffb3; box-shadow: var(--sk-glass-lift); transform: translateY(-1px); }
+#sk-brief-buckets .sk-btag { flex: none; min-width: 38px; box-sizing: border-box; padding: 3px 8px; border-radius: 999px; text-align: center; font-size: 9.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: color-mix(in srgb, var(--tg, var(--bk)) 80%, #16141f); background: color-mix(in srgb, var(--tg, var(--bk)) 16%, #ffffffcc); border: 1px solid color-mix(in srgb, var(--tg, var(--bk)) 28%, transparent); }
+#sk-brief-buckets .sk-btag[data-tag="ship"] { --tg: #0e9f6e; }
+#sk-brief-buckets .sk-btag[data-tag="$"] { --tg: #e5484d; }
+#sk-brief-buckets .sk-btag[data-tag="task"] { --tg: #2f6fec; }
+#sk-brief-buckets .sk-btag[data-tag="reply"] { --tg: #d6409f; }
+#sk-brief-buckets .sk-btag[data-tag="appt"] { --tg: #d98a00; }
+#sk-brief-buckets .sk-btag[data-tag="focus"] { --tg: #7c5cff; }
+#sk-brief-buckets .sk-btag[data-tag="mail"] { --tg: #6b6880; }
+#sk-brief-buckets .sk-brow-main { all: unset; cursor: pointer; flex: 1; min-width: 0; display: grid; gap: 1px; }
+#sk-brief-buckets .sk-brow-main:focus-visible { outline: 2px solid var(--bk); outline-offset: 2px; border-radius: 10px; }
+#sk-brief-buckets .sk-brow-title { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; font-weight: 650; line-height: 1.3; color: var(--sk-ink); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#sk-brief-buckets .sk-brow.is-group > .sk-brow-line .sk-brow-title { font-weight: 800; }
+#sk-brief-buckets .sk-brow.is-late > .sk-brow-line .sk-brow-title { color: color-mix(in srgb, #e5484d 75%, var(--sk-ink)); }
+#sk-brief-buckets .sk-brow-main small { font-size: 11px; line-height: 1.3; color: var(--sk-ink-2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#sk-brief-buckets .sk-brow-when { flex: none; font-style: normal; font-size: 10.5px; font-weight: 750; padding: 1px 7px; border-radius: 999px; color: #8a5a00; background: #ffd27a59; }
+#sk-brief-buckets .sk-brow-focus { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; color: #5b3fd9; background: #7c5cff1f; border: 1px solid #7c5cff33; }
+#sk-brief-buckets .sk-brow-chev { flex: none; opacity: .55; transform: rotate(90deg); transition: transform .25s cubic-bezier(.22, 1, .36, 1); }
+#sk-brief-buckets .sk-brow.is-open > .sk-brow-line .sk-brow-chev { transform: rotate(-90deg); }
+#sk-brief-buckets .sk-brow-pin, #sk-brief-buckets .sk-brow-clear { all: unset; cursor: pointer; flex: none; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; color: var(--sk-ink-2); transition: background .2s ease, color .2s ease, opacity .2s ease, transform .2s ease; }
+#sk-brief-buckets .sk-brow-pin { background: var(--sk-glass-disc); border: 1px solid var(--sk-glass-rim); box-shadow: inset 0 1px 0 #ffffffb3; }
+#sk-brief-buckets .sk-brow-pin:hover { color: var(--sk-ink); transform: scale(1.06); }
+#sk-brief-buckets .sk-brow-pin.is-on { color: #fff; background: var(--bk); border-color: transparent; box-shadow: 0 2px 8px color-mix(in srgb, var(--bk) 45%, transparent), inset 0 1px 0 #ffffff59; }
+#sk-brief-buckets .sk-brow-clear { width: 22px; height: 22px; opacity: 0; }
+#sk-brief-buckets .sk-brow-line:hover .sk-brow-clear, #sk-brief-buckets .sk-brow-clear:focus-visible { opacity: .7; }
+#sk-brief-buckets .sk-brow-clear:hover { opacity: 1; background: #16141f12; }
+@media (hover: none) { #sk-brief-buckets .sk-brow-clear { opacity: .55; } }
+#sk-brief-buckets .sk-brow-kids { margin: 4px 0 2px 22px; padding-left: 10px; border-left: 2px solid color-mix(in srgb, var(--bk) 30%, transparent); }
+#sk-brief-buckets .sk-brow-kids .sk-brow-line { padding: 4px 6px; background: #ffffff47; }
+#sk-brief-buckets .sk-brow-kids .sk-btag { display: none; }
+#sk-brief-buckets .sk-brow.is-off .sk-brow-title { text-decoration: line-through; opacity: .6; }
+.frontier-shell[data-color-mode="dark"] #sk-brief-buckets .sk-bucket { background: linear-gradient(160deg, color-mix(in srgb, var(--bk) 22%, #ffffff0d), color-mix(in srgb, var(--bk) 8%, #ffffff05) 70%); }
+.frontier-shell[data-color-mode="dark"] #sk-brief-buckets .sk-brow-line { background: #ffffff0f; border-color: #ffffff17; }
+.frontier-shell[data-color-mode="dark"] #sk-brief-buckets .sk-brow-line:hover { background: #ffffff1c; }
+.frontier-shell[data-color-mode="dark"] #sk-brief-buckets .sk-btag { color: color-mix(in srgb, var(--tg, var(--bk)) 55%, #fff); background: color-mix(in srgb, var(--tg, var(--bk)) 22%, transparent); }
+.frontier-shell[data-color-mode="dark"] #sk-brief-buckets .sk-brow-when { color: #ffd27a; background: #ffd27a26; }
+.frontier-shell[data-color-mode="dark"] #sk-brief-buckets .sk-brow-focus { color: #c4b5ff; }
+.frontier-shell[data-color-mode="dark"] #sk-brief-buckets .sk-brow-clear:hover { background: #ffffff1a; }
+@media (prefers-reduced-motion: reduce) { #sk-brief-buckets .sk-brow-line, #sk-brief-buckets .sk-brow-chev { transition: none; } }
+#sk-brief-buckets .sk-brow-title { white-space: normal; text-overflow: clip; }
+#sk-brief-buckets .sk-brow-text { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }

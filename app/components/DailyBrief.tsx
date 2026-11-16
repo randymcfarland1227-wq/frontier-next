@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { buildBrief, type BriefSection } from '../../lib/dailyBrief';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { briefBuckets, buildBrief, type BriefSection, type BucketRow, type BucketTag } from '../../lib/dailyBrief';
+import { focusPinItems } from '../../lib/focusPins';
 import { REFRESH_EVENT } from '../../lib/syncNow';
-import { doneInMix, endMix, groupSteps, openTaskPanel, requestOpenMix, unpin } from '../../lib/priorityPins';
+import { createMix, doneInMix, endMix, groupSteps, openTaskPanel, placePin, PLAN, requestOpenMix, unpin, updatePinDetails } from '../../lib/priorityPins';
 import { useFeaturedLevels } from '../../lib/featuredLevels';
 import { openMoneyDue } from './MoneyPage';
 import type { PriorityItem } from './PriorityPanel';
@@ -58,15 +59,8 @@ function restoreAll() {
   window.dispatchEvent(new Event(DISMISS_EVENT));
 }
 const FOLDS_KEY = 'sk-fold-brief-sections';
+const TAG_LABEL: Record<BucketTag, string> = { ship: 'ship', $: '$', task: 'task', reply: 'reply', appt: 'appt', focus: 'focus', mail: 'mail' };
 
-/** Column names (Title Case) for the brief's sections. */
-const HEADS: Record<BriefSection['id'], string> = {
-  money: 'Finance · due & overdue',
-  tasks: 'Tasks due today',
-  mail: 'Other Mail',
-  roles: 'Replies & Role Inquiries',
-  sales: 'Shipping & Sales',
-};
 const SHORT: Record<BriefSection['id'], [string, string]> = {
   money: ['bill due', 'bills due'],
   tasks: ['task due', 'tasks due'],
@@ -100,13 +94,7 @@ export function BriefSummary({ snapshots, bills }: { snapshots: Record<SourceId,
   return <>{parts.length ? parts.join(' · ') : 'All clear: nothing waiting on you'}</>;
 }
 
-const WEEKS_AHEAD = 3;
-/** "Today" / "Tomorrow" / "in 5 days" for an upcoming date. */
-const whenLabel = (d: Date) => {
-  const t = new Date();
-  const n = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime()) / 86400000);
-  return n <= 0 ? 'Today' : n === 1 ? 'Tomorrow' : `in ${n} days`;
-};
+const WEEKS_AHEAD = 1;
 type BRow = { id: string; title: string; note: string; tone?: string; pin?: string; go?: SpaceId; mix?: string; focusId?: string; priority?: FocusPriority; marker?: string; when?: string; finish?: () => void; off?: string };
 type BCol = { id: string; title: string; rows: BRow[]; compact?: boolean; keepAll?: boolean; empty: string };
 
@@ -175,14 +163,45 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
     { id: 'doing', title: 'Action List', keepAll: true, empty: 'Nothing selected in your Action List yet.', rows: groupSteps(plan, lanes).map((st): BRow => st.kind === 'one'
       ? { id: `plan:${st.item.key}`, title: st.item.title, note: sourceById[st.item.source].shortName, pin: st.item.key, finish: complete ? () => finishPlan(st.item) : undefined }
       : { id: `mix:${st.id}`, title: st.name, mix: st.id, note: [st.done.length ? `${st.done.length} of ${st.items.length + st.done.length} done` : `${st.items.length} items`, [...new Set(st.items.map(i => sourceById[i.source].shortName))].join(' · ')].join(' · ') }) },
-    { id: 'mail', title: 'Mail', empty: 'Nothing waiting in the current feed.', rows: (['roles', 'sales', 'mail'] as const).flatMap(id => (sections.find(s => s.id === id)?.rows || []).map(r => ({ ...r, marker: id === 'roles' ? 'Role reply' : id === 'sales' ? 'Sales / shipping' : 'Other mail' }))) },
-    { id: 'money', title: HEADS.money, compact: true, empty: 'Nothing due today or overdue.', rows: sections.find(s => s.id === 'money')?.rows || [] },
-    ...((sections.find(s => s.id === 'tasks')?.rows.length || 0) ? [{ id: 'tasks', title: HEADS.tasks, compact: true, empty: 'Nothing due today.', rows: sections.find(s => s.id === 'tasks')!.rows }] : []),
-    { id: 'soon', title: `Coming Up · ${WEEKS_AHEAD} Weeks`, empty: 'No upcoming events in the current calendar.', rows: soon.map(e => ({ id: `ev:${e.id}`, title: e.title, when: whenLabel(eventStart(e)), note: e.allDay ? eventStart(e).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : `${eventStart(e).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} · ${eventStart(e).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` })).filter(r => !gone[r.id]) },
   ];
-  const all = sections.flatMap(s => s.rows.map(r => r.id));
+  const focusCards = useMemo(() => [...focus.now[0], ...focus.weeks[0]].filter(c => c.date || c.eventId).map(c => ({ id: c.id, title: c.title, date: c.date, eventId: c.eventId })), [focus.now, focus.weeks]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const steps = useMemo(() => focusPinItems().filter(i => i.id.startsWith('ftask:')).map(i => ({ id: i.id, title: i.title, detail: i.detail })), [focus.now, focus.weeks, focus.ongoing]);
+  const buckets = briefBuckets(sections, bills,
+    soon.map(e => ({ id: e.id, title: e.title, start: eventStart(e), allDay: e.allDay })),
+    focusCards, steps, new Date(nowMs))
+    .map(b => ({ ...b, rows: b.rows.filter(r => !r.ids.every(id => gone[id])) }));
+  const [unfold, setUnfold] = useState<Record<string, boolean>>({});
+  const onList = (r: BucketRow) => r.pins.length > 0 && r.pins.every(k => lanes[k]?.lane === PLAN);
+  const sendToList = (r: BucketRow) => {
+    if (onList(r)) { r.pins.forEach(unpin); return; }
+    // Hub-only pins (appointments) carry their own title; the catalog reads it from the pin.
+    for (const k of r.pins) if (k.startsWith('self:brief:')) updatePinDetails(k, { title: r.pinTitle || r.title });
+    if (r.pins.length > 1) createMix(r.pinTitle || r.title, r.pins);
+    else placePin(r.pins[0], PLAN);
+  };
+  const all = [...sections.flatMap(s => s.rows.map(r => r.id)), ...buckets.flatMap(b => b.rows.flatMap(r => r.ids))];
   const fresh = all.filter(id => !seen.includes(id)).length;
   const markSeen = () => { writeSaved(SEEN_KEY, all); setSeen(all); };
+  const bucketRow = (r: BucketRow, depth: number): ReactNode => {
+    const kids = r.children;
+    const isOpen = Boolean(unfold[r.id]);
+    const isNew = r.ids.some(id => !seen.includes(id));
+    const open = kids ? () => setUnfold(u => ({ ...u, [r.id]: !u[r.id] })) : r.billKey ? () => openMoneyDue(r.billKey!) : r.openPin ? () => openTaskPanel(r.openPin!) : r.go && r.go !== 'money' ? () => enter(r.go as SpaceId) : undefined;
+    const pinned = onList(r);
+    return <li key={r.id} className={`sk-brow${r.tone ? ` is-${r.tone}` : ''}${kids ? ' is-group' : ''}${isOpen ? ' is-open' : ''}${r.off ? ' is-off' : ''}`}>
+      <div className="sk-brow-line">
+        <span className="sk-btag" data-tag={r.tag}>{TAG_LABEL[r.tag]}</span>
+        <button type="button" className="sk-brow-main" onClick={open} aria-expanded={kids ? isOpen : undefined} title={[r.title, r.note].filter(Boolean).join(' · ')}>
+          <span className="sk-brow-title">{isNew && !depth ? <Dot tone="needs" hint="New since you last looked" /> : null}<span className="sk-brow-text">{r.title}</span>{r.when ? <em className="sk-brow-when">{r.when}</em> : null}{r.focusTag ? <span className="sk-brow-focus" title="Linked to a short-term focus card">◎ {r.focusTag}</span> : null}{kids ? <Icon name="chevron" size={11} className="sk-brow-chev" /> : null}</span>
+          {r.note || r.off ? <small>{[r.off, r.note].filter(Boolean).join(' · ')}</small> : null}
+        </button>
+        {r.pins.length ? <button type="button" className={`sk-brow-pin${pinned ? ' is-on' : ''}`} aria-pressed={pinned} aria-label={pinned ? `Take ${r.title} off the Action List` : `Send ${r.title} to the Action List`} title={pinned ? 'On your Action List (tap to take it off)' : kids ? 'Send all of these to the Action List as one list' : 'Send to the Action List'} onClick={() => sendToList(r)}><Icon name="pin" size={12} /></button> : null}
+        {depth ? null : <button type="button" className="sk-brow-clear" aria-label={`Clear ${r.title} from today’s brief`} title="Clear from today’s brief (it can come back tomorrow)" onClick={() => dismissIds(r.ids)}><Icon name="close" size={11} /></button>}
+      </div>
+      {kids && isOpen ? <ul className="sk-brow-kids">{kids.map(k => bucketRow(k, depth + 1))}</ul> : null}
+    </li>;
+  };
   return <>
     <Group tone="needs" icon="sun" title="Daily Brief" className="sk-brief" meta={fresh ? `${fresh} new since you last looked` : 'Your actions, replies, focus and due items'} actions={<>
       <span className="sk-updated" title="Newest source update; each section uses its latest available feed"><Icon name="refresh" size={12} />{updated ? `Updated ${updated}` : 'Not updated yet'}</span>
@@ -210,7 +229,15 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
               </li>;
             })}</ul> : <p className="sk-brief-empty">{s.empty}</p>}
           </>}
-        </section>; return <>{sec(cols[0])}<div className="sk-brief-rest">{cols.slice(1).map(sec)}</div></>; })()}
+        </section>; return <>{sec(cols[0])}<div className="sk-brief-rest sk-buckets" id="sk-brief-buckets">{buckets.map(b => <section key={b.id} className={`sk-bucket is-${b.id}`} aria-label={b.title}>
+          <header className="sk-bucket-head">
+            <button type="button" className="sk-bucket-fold" aria-expanded={!folds[`b:${b.id}`]} onClick={() => toggle(`b:${b.id}`)}>
+              <span className="sk-bucket-title">{b.title}</span><span className="sk-bucket-count">{b.rows.length}</span>
+            </button>
+            <span className="sk-bucket-hint">{b.hint}</span>
+          </header>
+          {folds[`b:${b.id}`] ? null : b.rows.length ? <ul className="sk-bucket-rows">{b.rows.map(r => bucketRow(r, 0))}</ul> : <p className="sk-bucket-empty">{b.id === 'today' ? 'Nothing due today. Nice.' : b.id === 'week' ? 'Nothing on the calendar this week.' : 'No open focus tasks.'}</p>}
+        </section>)}</div></>; })()}
       </div>
     </Group>
     {selected && selectedList ? <FocusEntryDialog item={selected} events={events} bills={bills} openFinance={openFinance} update={updateFocus} remove={() => selectedList[1](selectedList[0].filter(i => i.id !== selected.id))} close={() => setOpenFocusId(null)} /> : null}

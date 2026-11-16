@@ -5,7 +5,7 @@
  * Doing Now marks it done on the card (saved like the card's own editor saves: change stamp + event,
  * so the cloud backup merges it).
  */
-import { readSaved, writeSaved } from './storage';
+import { readSaved, writeSaved, STORAGE_KEYS } from './storage';
 import { FOCUS_LIST_EVENT, ONGOING_KEY } from './ongoingGoals';
 import { stampChanges } from './focusSync';
 import type { FeaturedItem } from './types';
@@ -26,7 +26,14 @@ export const focusCardId = (code: string, cardId: string) => `fcard:${code}:${ca
 export const focusListId = (code: string, cardId: string, listId: string) => `flist:${code}:${cardId}:${listId}`;
 export const focusTaskId = (code: string, cardId: string, listId: string, taskId: string) =>
   `ftask:${code}:${cardId}:${listId}:${taskId}`;
-export const isFocusPinId = (id: string) => id.startsWith('fcard:') || id.startsWith('flist:') || id.startsWith('ftask:');
+export const isFocusPinId = (id: string) => id.startsWith('fcard:') || id.startsWith('flist:') || id.startsWith('ftask:') || id.startsWith('brief:');
+/** Daily Brief rows with no site item (calendar appointments) pin as `self:brief:<id>`; the title lives on the pin itself. */
+function briefPinItems(): Array<FeaturedItem & { id: string }> {
+  const lanes = readSaved<Record<string, { lane?: string | null; title?: string }>>(STORAGE_KEYS.priorityLanes, {});
+  return Object.entries(lanes)
+    .filter(([k, e]) => k.startsWith('self:brief:') && e?.lane && e.title)
+    .map(([k, e]) => ({ id: k.slice(5), title: e.title!, detail: 'From the Daily Brief', meta: 'Appointment', completable: true, tag: 'Brief' }) as FeaturedItem & { id: string });
+}
 
 const load = (key: string) => readSaved<Saved>(key, { scope: '', items: [] });
 const shown = (code: string, c: Card) => !c.done && (code !== 'o' || Boolean(c.inFocus));
@@ -77,7 +84,7 @@ export function focusPinItems(): Array<FeaturedItem & { id: string }> {
       }
     }
   }
-  return out;
+  return [...out, ...briefPinItems()];
 }
 
 /**
@@ -85,6 +92,7 @@ export function focusPinItems(): Array<FeaturedItem & { id: string }> {
  * Returns true when it found the card record.
  */
 export function completeFocusPin(id: string, done = true): boolean {
+  if (id.startsWith('brief:')) return true;
   for (const { code, key } of FOCUS_PIN_LISTS) {
     const saved = load(key);
     const items = saved.items || [];

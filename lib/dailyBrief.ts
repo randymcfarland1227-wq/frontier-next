@@ -139,6 +139,116 @@ export function buildBrief(snapsIn: Record<SourceId, SourceSnapshot>, bills: Bil
 }
 
 // ---------------------------------------------------------------------------
+// Urgency buckets (2026-11-16, Randy's option B): Do today / This week / Focus next steps.
+// ---------------------------------------------------------------------------
+
+export type BucketTag = 'ship' | '$' | 'task' | 'reply' | 'appt' | 'focus' | 'mail';
+export type BucketRow = {
+  id: string;
+  title: string;
+  note?: string;
+  tag: BucketTag;
+  tone?: 'late' | 'today' | 'week';
+  /** Action List keys this row sends (more than one → they go as one mix named after the row) */
+  pins: string[];
+  /** Title stored on a hub-only pin (calendar events have no site item) */
+  pinTitle?: string;
+  /** Brief row ids this row stands for (clear ✕ / new marks) */
+  ids: string[];
+  go?: SourceId | 'money';
+  billKey?: string;
+  openPin?: string;
+  when?: string;
+  focusTag?: string;
+  amount?: number;
+  off?: string;
+  /** Grouped line: tap to unfold */
+  children?: BucketRow[];
+};
+export type Bucket = { id: 'today' | 'week' | 'focus'; title: string; hint: string; rows: BucketRow[] };
+export type BucketEvent = { id: string; title: string; start: Date; allDay?: boolean };
+export type BucketFocus = { id: string; title: string; date?: string; eventId?: string };
+export type FocusStep = { id: string; title: string; detail?: string };
+
+const STOP = new Set('made sale sold your item items listing listings end ending depop ebay poshmark mercari please ship shipping order with from that this have the and for you was been just new size'.split(' '));
+const words = (s: string) => new Set(s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !STOP.has(w)));
+const itemName = (s: string) => s.replace(/^.*?(?:you made (?:a|the) sale(?: for| of|:)?|you sold|end listing:?|sold:?)\s*/i, '').replace(/^[-:·\s"“]+|["”]+$/g, '').trim() || s;
+const md = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+const names = (rows: BucketRow[], n = 3) => rows.slice(0, n).map(r => r.title.replace(/^Pay /, '')).join(', ') + (rows.length > n ? ` +${rows.length - n}` : '');
+const sum = (rows: BucketRow[]) => rows.reduce((t, r) => t + (r.amount || 0), 0);
+
+function group(id: string, label: string, tag: BucketTag, tone: BucketRow['tone'], rows: BucketRow[]): BucketRow[] {
+  if (rows.length < 2) return rows;
+  const total = sum(rows);
+  return [{
+    id, tag, tone, title: label, pinTitle: `${label} ${tag === '$' ? 'bills' : 'mail'}`.replace(' mail mail', ' mail'), note: [names(rows), total ? money(total) : ''].filter(Boolean).join(' · '),
+    pins: rows.flatMap(r => r.pins), ids: rows.flatMap(r => r.ids), children: rows,
+  }];
+}
+
+/** Buckets for the right column. `sections` are buildBrief's (already filtered for cleared rows). */
+export function briefBuckets(sections: BriefSection[], bills: BillDue[], events: BucketEvent[], focusCards: BucketFocus[], steps: FocusStep[], now = new Date()): Bucket[] {
+  const rows = (id: BriefSection['id']) => sections.find(s => s.id === id)?.rows || [];
+  const live = new Set(rows('money').map(r => r.id));
+  // Sales: a "you made the sale" email and its End Listing row become one Ship + end listing row.
+  const sales = rows('sales');
+  const ends = sales.filter(r => /end listing/i.test(r.title));
+  const used = new Set<string>();
+  const ship: BucketRow[] = [];
+  for (const r of sales) {
+    if (ends.includes(r)) continue;
+    const w = words(itemName(r.title));
+    const end = ends.find(e => !used.has(e.id) && [...words(itemName(e.title))].some(x => w.has(x)));
+    if (end) used.add(end.id);
+    const name = itemName(r.title);
+    ship.push({ id: `ship:${r.id}`, tag: 'ship', tone: 'today', title: end ? `Ship ${name} + end listing` : `Ship ${name}`, note: [r.note, end?.note].filter(Boolean).join(' · '),
+      pins: [r.pin, end?.pin].filter((k): k is string => Boolean(k)), ids: [r.id, ...(end ? [end.id] : [])], openPin: r.pin, go: r.go });
+  }
+  for (const e of ends) if (!used.has(e.id)) ship.push({ id: `ship:${e.id}`, tag: 'ship', tone: 'today', title: e.title, note: e.note, pins: e.pin ? [e.pin] : [], ids: [e.id], openPin: e.pin, go: e.go });
+  // Bills: overdue and due today, one grouped line each.
+  const billRow = (d: BillDue): BucketRow => ({ id: `bill:${d.key}`, tag: '$', tone: d.days < 0 ? 'late' : 'today', title: d.bill.name, amount: d.bill.amount || 0,
+    note: [d.bill.amount ? money(d.bill.amount) : '', d.days < 0 ? `${-d.days}d overdue` : 'due today'].filter(Boolean).join(' · '),
+    pins: [`radall:${d.key}`], ids: [`bill:${d.key}`], billKey: d.key, go: 'money' });
+  const open = bills.filter(d => live.has(`bill:${d.key}`)).sort((a, b) => a.due.localeCompare(b.due));
+  const late = open.filter(d => d.days < 0).map(billRow);
+  const due = open.filter(d => d.days === 0).map(billRow);
+  const tasks: BucketRow[] = rows('tasks').map(r => ({ id: r.id, tag: 'task', tone: 'today', title: r.title, note: r.note, pins: r.pin ? [r.pin] : [], ids: [r.id], openPin: r.pin, go: r.go, off: r.off }));
+  const replies: BucketRow[] = rows('roles').map(r => ({ id: r.id, tag: 'reply', tone: 'today', title: r.title, note: r.note, pins: r.pin ? [r.pin] : [], ids: [r.id], openPin: r.pin, go: r.go }));
+  // This week: events in the next 7 days; a "visit on 11/20" email folds into its appointment.
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7).getTime();
+  const mail = [...rows('mail')];
+  const week: BucketRow[] = events.filter(e => e.start.getTime() < end).map(e => {
+    const day = md(e.start);
+    const fold = mail.filter(m => /visit|appointment|appt|check.?in/i.test(m.title) && new RegExp(`\\b${day.replace('/', '\\/')}\\b`).test(`${m.title} ${m.note}`));
+    for (const f of fold) mail.splice(mail.indexOf(f), 1);
+    const card = focusCards.find(c => (c.eventId && c.eventId === e.id) || (c.date && c.date === `${e.start.getFullYear()}-${String(e.start.getMonth() + 1).padStart(2, '0')}-${String(e.start.getDate()).padStart(2, '0')}`));
+    const t = e.allDay ? '' : e.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const n = Math.round((new Date(e.start.getFullYear(), e.start.getMonth(), e.start.getDate()).getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / DAY);
+    return { id: `ev:${e.id}`, tag: 'appt' as const, tone: 'week' as const, title: e.title,
+      when: sameDay(e.start, now) ? 'Today' : n === 1 ? 'Tomorrow' : e.start.toLocaleDateString([], { weekday: 'short' }),
+      note: [e.start.toLocaleDateString([], { month: 'short', day: 'numeric' }), t, ...fold.map(f => `✉ ${f.title}`)].filter(Boolean).join(' · '),
+      focusTag: card?.title, pins: [`self:brief:ev:${e.id}`, ...fold.flatMap(f => f.pin ? [f.pin] : [])], pinTitle: `${e.title} · ${day}${t ? ` ${t}` : ''}`,
+      ids: [`ev:${e.id}`, ...fold.map(f => f.id)] };
+  });
+  const other: BucketRow[] = mail.map(r => ({ id: r.id, tag: 'mail', title: r.title, note: r.note, pins: r.pin ? [r.pin] : [], ids: [r.id], openPin: r.pin, go: r.go }));
+  // Focus next steps: the next open task of each short-term focus card.
+  const seenCard = new Set<string>();
+  const focus: BucketRow[] = [];
+  for (const s of steps) {
+    const card = s.id.split(':').slice(1, 3).join(':');
+    if (seenCard.has(card)) continue;
+    seenCard.add(card);
+    focus.push({ id: `fstep:${s.id}`, tag: 'focus', title: s.title, note: s.detail, pins: [`self:${s.id}`], ids: [`fstep:${s.id}`], openPin: `self:${s.id}` });
+  }
+  return [
+    { id: 'today', title: 'Do today', hint: 'Ship, pay, reply, do', rows: [...ship, ...group('g:late', `${late.length} overdue`, '$', 'late', late), ...group('g:due', `${due.length} due today`, '$', 'today', due), ...replies, ...tasks] },
+    { id: 'week', title: 'This week', hint: 'Next 7 days', rows: [...week, ...group('g:mail', `${other.length} other mail`, 'mail', undefined, other)] },
+    { id: 'focus', title: 'Focus next steps', hint: 'Next open task per focus card', rows: focus },
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // Morning digest feed: Home pushes this to the Worker (PUT /api/brief) so Queen Bee's routine can read it.
 // ---------------------------------------------------------------------------
 

@@ -201,8 +201,10 @@ export function usePlan(
 ) {
   const { pins, lanes } = usePriorityPins();
   const catalog = useMemo(
+    // Pins too: a focus task or brief appointment only joins the catalog once it is pinned.
     () => buildCatalog(snapshots, bills),
-    [snapshots, bills],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snapshots, bills, pins],
   );
   const plan = useMemo(
     () =>

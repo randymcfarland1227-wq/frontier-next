@@ -193,19 +193,20 @@ export function briefBuckets(sections: BriefSection[], bills: BillDue[], events:
   const live = new Set(rows('money').map(r => r.id));
   // Sales: a "you made the sale" email and its End Listing row become one Ship + end listing row.
   const sales = rows('sales');
-  const ends = sales.filter(r => /end listing/i.test(r.title));
+  const ends = sales.filter(r => /end listing/i.test(`${r.title} ${r.note}`));
   const used = new Set<string>();
   const ship: BucketRow[] = [];
   for (const r of sales) {
     if (ends.includes(r)) continue;
     const w = words(itemName(r.title));
-    const end = ends.find(e => !used.has(e.id) && [...words(itemName(e.title))].some(x => w.has(x)));
+    // Same item = two shared words (one when the listing name only has one).
+    const end = ends.find(e => { const ew = [...words(itemName(e.title))]; return !used.has(e.id) && ew.filter(x => w.has(x)).length >= Math.min(2, ew.length || 9); });
     if (end) used.add(end.id);
     const name = itemName(r.title);
     ship.push({ id: `ship:${r.id}`, tag: 'ship', tone: 'today', title: end ? `Ship ${name} + end listing` : `Ship ${name}`, note: [r.note, end?.note].filter(Boolean).join(' · '),
       pins: [r.pin, end?.pin].filter((k): k is string => Boolean(k)), ids: [r.id, ...(end ? [end.id] : [])], openPin: r.pin, go: r.go });
   }
-  for (const e of ends) if (!used.has(e.id)) ship.push({ id: `ship:${e.id}`, tag: 'ship', tone: 'today', title: e.title, note: e.note, pins: e.pin ? [e.pin] : [], ids: [e.id], openPin: e.pin, go: e.go });
+  for (const e of ends) if (!used.has(e.id)) ship.push({ id: `ship:${e.id}`, tag: 'ship', tone: 'today', title: /end listing/i.test(e.title) ? e.title : `End listing: ${e.title}`, note: e.note, pins: e.pin ? [e.pin] : [], ids: [e.id], openPin: e.pin, go: e.go });
   // Bills: overdue and due today, one grouped line each.
   const billRow = (d: BillDue): BucketRow => ({ id: `bill:${d.key}`, tag: '$', tone: d.days < 0 ? 'late' : 'today', title: d.bill.name, amount: d.bill.amount || 0,
     note: [d.bill.amount ? money(d.bill.amount) : '', d.days < 0 ? `${-d.days}d overdue` : 'due today'].filter(Boolean).join(' · '),

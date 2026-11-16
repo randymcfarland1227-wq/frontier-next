@@ -2201,7 +2201,7 @@
 @container today-pane (max-width: 900px) {
   .sk-app .sk-splitcol :is(.sk-aff, .skm-dash-cols) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sk-app .sk-splitcol .skm-acct-row.is-two { grid-template-columns: minmax(0, 1fr); }
-  .sk-app .sk-splitcol .sk-fcards { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
+  .sk-app .sk-splitcol .sk-fcards { grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); }
   .sk-app .sk-splitcol .sk-wgrid { grid-template-columns: minmax(0, 1fr); }
   .sk-app .sk-splitcol .sk-wday { min-height: 0 !important; flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
   .sk-app .sk-splitcol .sk-wday > header { border-bottom: 0; min-width: 64px; flex-direction: column; gap: 2px; }
@@ -3558,3 +3558,75 @@
 @media (prefers-reduced-motion: reduce) { #sk-brief-buckets .sk-brow-line, #sk-brief-buckets .sk-brow-chev { transition: none; } }
 #sk-brief-buckets .sk-brow-title { white-space: normal; text-overflow: clip; }
 #sk-brief-buckets .sk-brow-text { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+
+/* Daily Brief rows, smaller pass (2026-11-16): titles/chevrons/tags sit at the Action List's text size. */
+#sk-brief-buckets .sk-brow-title { font-size: 12px; gap: 5px; }
+#sk-brief-buckets .sk-brow-main small { font-size: 10.5px; }
+#sk-brief-buckets .sk-brow-chev { width: 9px; height: 9px; opacity: .45; }
+#sk-brief-buckets .sk-btag { min-width: 32px; padding: 2px 6px; font-size: 8.5px; }
+#sk-brief-buckets .sk-brow-when, #sk-brief-buckets .sk-brow-focus { font-size: 9.5px; padding: 0 6px; }
+#sk-brief-buckets .sk-brow-line { gap: 6px; padding: 4px 5px 4px 7px; border-radius: 14px; }
+#sk-brief-buckets .sk-brow-pin { width: 22px; height: 22px; }
+#sk-brief-buckets .sk-brow-pin .sk-icon { width: 11px; height: 11px; }
+#sk-brief-buckets .sk-brow-clear { width: 20px; height: 20px; }
+
+/* Daily Rhythm, glass pass (2026-11-16): three glass columns (Nutrition & Fitness | Marvel | Habits) like the Brief buckets, compact rows. */
+#sk-rhythm { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+#sk-rhythm:has(> .sk-rhythm-stack) { grid-template-columns: var(--rhythm-cols); }
+#sk-rhythm .sk-group {
+  --bk: #0e9f6e; position: relative; margin: 0; padding: 4px 10px 10px; border-radius: 24px; border: 1px solid var(--sk-glass-rim, #ffffffb8);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--bk) 14%, #ffffffb3), color-mix(in srgb, var(--bk) 5%, #ffffff8c) 70%);
+  box-shadow: var(--sk-glass-shadow); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); outline: 0;
+}
+#sk-rhythm .sk-group.is-marvel { --bk: #d98a00; }
+#sk-rhythm .sk-group.is-habits { --bk: #7c5cff; }
+#sk-rhythm .sk-group::before { content: ""; position: absolute; left: 18px; right: 18px; top: 0; height: 2px; border-radius: 0 0 4px 4px; background: color-mix(in srgb, var(--bk) 70%, transparent); }
+#sk-rhythm .sk-ghead { padding: 8px 4px 8px; border: 0; gap: 8px; flex-wrap: nowrap; }
+#sk-rhythm .sk-gfold { gap: 6px; }
+#sk-rhythm .sk-ghead .sk-hl { font-size: 14px; font-weight: 800; letter-spacing: -.01em; white-space: nowrap; }
+#sk-rhythm .sk-ghead .sk-icon { width: 15px; height: 15px; color: var(--bk); }
+#sk-rhythm .sk-ghead-meta { flex: 0 1 auto; margin-left: auto; min-width: 0; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; background: var(--bk); }
+#sk-rhythm .sk-group.is-shut .sk-ghead-meta { background: color-mix(in srgb, var(--bk) 45%, #9a96a8); }
+#sk-rhythm .sk-gbody { padding: 0; display: grid; gap: 8px; }
+#sk-rhythm .sk-listh { margin: 2px 0 0; padding: 0 4px; }
+#sk-rhythm .sk-listh .sk-hl, #sk-rhythm .sk-cap { font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--sk-ink-2); }
+#sk-rhythm .sk-cap { margin: 0 0 4px 4px; }
+#sk-rhythm .sk-daysplit { gap: 8px; }
+#sk-rhythm .sk-daytasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+#sk-rhythm .sk-daytasks > li { display: flex; align-items: center; gap: 6px; min-height: 26px; padding: 3px 7px; border-radius: 12px; font-size: 12px; line-height: 1.3; background: #ffffff6b; border: 1px solid #ffffff8c; }
+#sk-rhythm .sk-daytasks > li > span { min-width: 0; overflow-wrap: anywhere; }
+#sk-rhythm .sk-daytasks > li .sk-icon { flex: none; width: 12px; height: 12px; opacity: .6; }
+#sk-rhythm .sk-habit-head { padding: 4px 4px 3px; font-size: 11px; }
+#sk-rhythm .sk-habit-group + .sk-habit-group { margin-top: 4px; }
+#sk-rhythm .sk-habit-act { font-size: 10px; }
+#sk-rhythm .sk-mv { border-radius: 16px; }
+.frontier-shell[data-color-mode="dark"] #sk-rhythm .sk-group { background: linear-gradient(160deg, color-mix(in srgb, var(--bk) 20%, #ffffff0d), color-mix(in srgb, var(--bk) 7%, #ffffff05) 70%); }
+.frontier-shell[data-color-mode="dark"] #sk-rhythm .sk-daytasks > li { background: #ffffff0f; border-color: #ffffff17; }
+@media (max-width: 1100px) { #sk-rhythm, #sk-rhythm:has(> .sk-rhythm-stack) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container today-pane (max-width: 760px) { #sk-rhythm, #sk-rhythm:has(> .sk-rhythm-stack) { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { #sk-rhythm, #sk-rhythm:has(> .sk-rhythm-stack) { grid-template-columns: 1fr; } }
+
+/* Today › Sites (2026-11-16): back to the site list + open-item count on each site pill. */
+.sk-app .sk-sitepick-back { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px 0 9px; border-radius: 999px; font-size: 12px; font-weight: 750; color: var(--sk-ink); background: var(--sk-glass-disc); border: 1px solid var(--sk-glass-rim); box-shadow: var(--sk-glass-shadow); transition: transform .2s ease, box-shadow .2s ease; }
+.sk-app .sk-sitepick-back:hover { transform: translateY(-1px); box-shadow: var(--sk-glass-lift); }
+.sk-app .sk-sitepick-back:focus-visible { outline: 2px solid var(--sk-tint); outline-offset: 2px; }
+.sk-app .sk-sitepick-back .sk-icon { transform: rotate(180deg); }
+.sk-app .sk-sitepick-bar .sk-sitepick-back span { font: inherit; }
+.sk-app .sk-sitepick-btn { position: relative; }
+.sk-app .sk-sitepick-count { position: absolute; top: -7px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; display: grid; place-items: center; border-radius: 999px; font-size: 10px; font-weight: 800; line-height: 1; color: #fff; background: #e5484d; box-shadow: 0 2px 6px #e5484d59, inset 0 1px 0 #ffffff59; }
+.sk-app .sk-sitepick-grid section > div { padding-top: 6px; }
+/* Daily Rhythm compact rows: no box-in-box, one list per row (fewer wraps), smaller This-or-That pills. */
+#sk-rhythm .sk-day-panel { padding: 0; border: 0; background: none; box-shadow: none; }
+#sk-rhythm .sk-daysplit { display: grid; grid-template-columns: 1fr; gap: 6px; }
+#sk-rhythm .sk-daytasks > li { min-height: 22px; padding: 2px 7px; gap: 5px; }
+#sk-rhythm .sk-daytasks { gap: 2px; }
+#sk-rhythm .sk-habit-act { padding: 1px 6px; font-size: 9.5px; }
+#sk-rhythm .sk-mv { padding: 4px 0; }
+#sk-rhythm .sk-opt { padding: 3px 9px; border-radius: 12px; }
+#sk-rhythm .sk-opt-t { font-size: 12px; }
+#sk-rhythm .sk-opt-d { font-size: 10px; }
+#sk-rhythm .sk-bottles { padding: 4px 0 2px; }
+@media (hover: hover) {
+  #sk-rhythm .sk-habits .sk-daytasks > li:not(:hover):not(:focus-within) .sk-habit-act { display: none; }
+}
+#sk-rhythm .sk-habits .sk-daytasks > li > span { flex: 1; }

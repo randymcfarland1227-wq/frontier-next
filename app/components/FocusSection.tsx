@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { Circle, Group, ListHead, Section } from "../sticker/kit";
+import { Circle, Group, ListHead, PaneHeadContext, Section } from "../sticker/kit";
 import { useFold } from "./Collapsible";
 import { habitOptions } from "../../lib/locks";
 import { FocusCards, useFinSummary, type LinkItem, type OpenFinance } from "./FocusCards";
@@ -674,6 +674,7 @@ export function FocusSection({
       shut={nfShut}
       onToggle={toggleNf}
       tone="habit"
+      className="is-nutrition"
       icon="apple"
       title="Nutrition & Fitness"
       meta={`${water} of ${BOTTLES} bottles`}
@@ -719,6 +720,7 @@ export function FocusSection({
       shut={mvShut}
       onToggle={toggleMv}
       tone="marvel"
+      className="is-marvel"
       icon="paw"
       title="Marvel · This or That"
       meta={`${marvelDone} of ${MARVEL_MENU.length}`}
@@ -735,6 +737,7 @@ export function FocusSection({
       shut={hbShut}
       onToggle={toggleHb}
       tone="habit"
+      className="is-habits"
       icon="repeat"
       title="TickTick habits"
       meta={`${habitsOpen} left today`}
@@ -756,7 +759,7 @@ export function FocusSection({
   }
   const template = cols.map((c) => (c.shut ? "minmax(200px, .55fr)" : `minmax(0, ${c.weight}fr)`)).join(" ");
   const body = (
-      <div className="sk-trio sk-rhythm" data-day={day} style={{ "--rhythm-cols": template } as CSSProperties}>
+      <div id={bare ? "sk-rhythm" : undefined} className="sk-trio sk-rhythm" data-day={day} style={{ "--rhythm-cols": template } as CSSProperties}>
         {cols.map((c) =>
           c.shut ? (
             <div key={c.key} className="sk-rhythm-stack">
@@ -768,7 +771,8 @@ export function FocusSection({
         )}
       </div>
   );
-  return bare ? body : (
+  // In a Today pane the columns keep their own titles (fold buttons), like the Daily Brief buckets.
+  return bare ? <PaneHeadContext.Provider value={undefined}>{body}</PaneHeadContext.Provider> : (
     <Section id="focus" title="Daily Rhythm & Routine" summary={summary}>
       {body}
     </Section>

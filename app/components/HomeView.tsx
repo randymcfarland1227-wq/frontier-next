@@ -459,7 +459,20 @@ export function HomeView({
       </div>
     );
   };
-  const renderTab = (t: TodayTab) =>
+  // Per-site body extras: Self = captures | focus tasks, Radall = money due, TickTick = rings (Home's site tabs and Today › Sites).
+  const siteExtra = Object.fromEntries(SITE_ROWS.flatMap(r => r.ids).map(id => [id, <div key={id}>
+            {id === 'self' ? (
+              // Self tasks | the tasks inside Short-term focus cards, side by side (stacks only when the box is narrow).
+              <div className="sk-self-split">
+                <div className="sk-self-split-grid">
+                  <div>{capturesPanel}</div>
+                  <div><FocusTaskBoard compact bills={bills} /></div>
+                </div>
+              </div>
+            ) : id === 'radall' ? (bills.length ? financeBills : null) : id === 'ticktick' ? ticktickRings : null}
+            <AssignedFocus target={id} focus={shortTerm} events={linkItems} bills={bills} openFinance={(debtId, tab) => { requestOpenDebt(debtId, tab); enter("money"); }} />
+          </div>]));
+  const renderTab = (t: TodayTab, pane = 0) =>
         t === "rhythm" ? (
           <FocusSection bare snapshots={snapshots} ledger={ledger} completeHabit={(x) => onCompleteTask("ticktick", x)} enter={enter} focus={shortTerm} events={linkItems} bills={bills} openFinance={(id, tab) => { requestOpenDebt(id, tab); enter("money"); }} />
         ) : t === "sites" ? (
@@ -470,6 +483,8 @@ export function HomeView({
             onCompleteFeatured={onCompleteFeatured}
             onCompleteTask={onCompleteTask}
             onStarTask={onStarTask}
+            extra={siteExtra}
+            storeKey={pane === 2 ? "sk-today-site-2" : "sk-today-site"}
           />
         ) : t === "money" ? (
           <div className="sk-money-tab">{money}</div>
@@ -594,7 +609,7 @@ export function HomeView({
                 <PaneHeadContext.Provider value={paneSlots[i + 1]}>
                   <div className="sk-splitzoom" style={t === "money" || splitZoom[i] === 100 ? undefined : { zoom: splitZoom[i] / 100 }}>
                     <CapPane key={t} cap="split" label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>
-                      {renderTab(t)}
+                      {renderTab(t, i + 1)}
                     </CapPane>
                   </div>
                 </PaneHeadContext.Provider>
@@ -636,18 +651,7 @@ export function HomeView({
           onCompleteFeatured={onCompleteFeatured}
           onCompleteTask={onCompleteTask}
           onStarTask={onStarTask}
-          extra={Object.fromEntries(SITE_ROWS.flatMap(r => r.ids).map(id => [id, <div key={id}>
-            {id === 'self' ? (
-              // Self tasks | the tasks inside Short-term focus cards, side by side (stacks only when the box is narrow).
-              <div className="sk-self-split">
-                <div className="sk-self-split-grid">
-                  <div>{capturesPanel}</div>
-                  <div><FocusTaskBoard compact bills={bills} /></div>
-                </div>
-              </div>
-            ) : id === 'radall' ? (bills.length ? financeBills : null) : id === 'ticktick' ? ticktickRings : null}
-            <AssignedFocus target={id} focus={shortTerm} events={linkItems} bills={bills} openFinance={(debtId, tab) => { requestOpenDebt(debtId, tab); enter("money"); }} />
-          </div>]))}
+          extra={siteExtra}
         />
         </PriorityBoard>
       </Section>

@@ -1394,6 +1394,8 @@ export function SitePicker({
   onCompleteFeatured,
   onCompleteTask,
   onStarTask,
+  extra,
+  storeKey = "sk-today-site",
 }: {
   snapshots: Record<SourceId, SourceSnapshot>;
   enter: (id: SpaceId) => void;
@@ -1401,17 +1403,31 @@ export function SitePicker({
   onCompleteFeatured: (source: SourceId, item: FeaturedItem) => void;
   onCompleteTask: (source: SourceId, task: TaskItem) => void;
   onStarTask: (source: SourceId, task: TaskItem) => void;
+  /** Per-site body extras, same as Home's site tabs (Self = its captures + focus tasks). */
+  extra?: Partial<Record<SourceId, ReactNode>>;
+  /** Saved pick: each Split pane has its own, so the two panes don't mirror each other. */
+  storeKey?: string;
 }) {
+  const { lanes } = usePriorityPins();
+  const focusLinks = useFocusLinks();
   const all = SITE_ROWS.flatMap((r) => r.ids) as string[];
-  const [saved, setSaved] = useState(() => readSaved<string>("sk-today-site", ""));
+  const [saved, setSaved] = useState(() => readSaved<string>(storeKey, ""));
   const id = all.includes(saved) ? (saved as SourceId) : null;
   const pick = (next: string) => {
     setSaved(next);
-    writeSaved("sk-today-site", next);
+    writeSaved(storeKey, next);
   };
+  // Same count as Home's site tabs: what's in Doing Now or organized into a focus isn't counted again.
+  const countOf = (sid: SourceId) => shownMetric(sid, snapshots[sid], lanes, (k, t) => inFocusPlan(focusLinks, k, t)).value || 0;
   return (
     <div className="sk-sitepick">
-      <label className="sk-sitepick-bar">
+      <div className="sk-sitepick-bar">
+        {id ? (
+          <button type="button" className="sk-sitepick-back" onClick={() => pick("")} aria-label="Back to all sites" title="Back to all sites">
+            <Icon name="chevron" size={12} />
+            <span>All sites</span>
+          </button>
+        ) : null}
         <span>Site</span>
         <select value={id || ""} onChange={(e) => pick(e.target.value)} aria-label="Pick a site">
           <option value="">Choose a site…</option>
@@ -1423,7 +1439,7 @@ export function SitePicker({
             </optgroup>
           ))}
         </select>
-      </label>
+      </div>
       {id ? (
         <div className="sk-pane" key={id}>
           <SiteBlock
@@ -1435,6 +1451,7 @@ export function SitePicker({
             onCompleteFeatured={(item) => onCompleteFeatured(id, item)}
             onCompleteTask={(task) => onCompleteTask(id, task)}
             onStarTask={(task) => onStarTask(id, task)}
+            extra={extra?.[id]}
           />
         </div>
       ) : (
@@ -1446,6 +1463,7 @@ export function SitePicker({
                 {r.ids.map((sid) => (
                   <button key={sid} type="button" className="sk-sitepick-btn" onClick={() => pick(sid)}>
                     {sourceById[sid].name}
+                    {countOf(sid) ? <span className="sk-sitepick-count" aria-label={`${countOf(sid)} open`}>{countOf(sid)}</span> : null}
                   </button>
                 ))}
               </div>

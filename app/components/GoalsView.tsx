@@ -5,12 +5,13 @@
  * type — a goal's own "Goal type", else the site / section it belongs to. + adds a goal into an existing
  * type or a new one; the goal's pop-out has the type field and a Gallery for reference images.
  */
-import { useState, type FormEvent } from 'react';
+import { useContext, useState, type FormEvent } from 'react';
 import { focusListView } from '../../lib/focusRouting';
 import { goalGroupOf } from '../../lib/goalTypes';
 import { dayKey } from '../../lib/schedule';
 import type { BillDue } from '../../lib/schedule';
-import { Group, Section } from '../sticker/kit';
+import { Group, PaneHeadContext, Section } from '../sticker/kit';
+import { createPortal } from 'react-dom';
 import { Icon } from '../sticker/Icon';
 import { FocusCards, type LinkItem, type OpenFinance } from './FocusCards';
 import { useShortTermFocus } from './FocusSection';
@@ -18,6 +19,8 @@ import { useShortTermFocus } from './FocusSection';
 const NEW = '__new__';
 
 export function GoalsView({ events = [], bills = [], openFinance }: { events?: LinkItem[]; bills?: BillDue[]; openFinance?: OpenFinance }) {
+  // Inside a Today pane the tab line is the header: no Section box, the + goes up into the tab line's slot.
+  const paneHead = useContext(PaneHeadContext);
   const focus = useShortTermFocus();
   const [items, save] = focus.ongoing;
   const groups = [...new Set(items.map(goalGroupOf))].sort((a, b) => (a === 'Other' ? 1 : b === 'Other' ? -1 : a.localeCompare(b)));
@@ -39,14 +42,8 @@ export function GoalsView({ events = [], bills = [], openFinance }: { events?: L
     setAdding(null);
   };
   const open_ = items.filter((i) => !i.done).length;
-  return (
-    <div className="sk-goals">
-      <Section
-        id="goals"
-        title="Goals"
-        summary={`${open_} ongoing · ${groups.length} type${groups.length === 1 ? '' : 's'}`}
-        actions={<button type="button" className="sk-fc-plus" aria-label="Add a goal" title="Add a goal" onClick={() => open()}><Icon name="plus" size={16} /></button>}
-      >
+  const body = (
+    <>
         {adding !== null ? (
           <form className="sk-goal-add" onSubmit={add}>
             <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="The goal — e.g. Find a 2-bed near work" aria-label="Goal" maxLength={120} />
@@ -71,6 +68,25 @@ export function GoalsView({ events = [], bills = [], openFinance }: { events?: L
             </Group>
           );
         }) : <p className="sk-empty">No goals yet. Press + to add your first one and give it a type.</p>}
+    </>
+  );
+  if (paneHead !== undefined) {
+    return (
+      <div className="sk-goals is-pane">
+        {paneHead ? createPortal(<span className="sk-ghead-actions"><button type="button" className="sk-fc-plus" aria-label="Add a goal" title="Add a goal" onClick={() => open()}><Icon name="plus" size={16} /></button></span>, paneHead) : null}
+        <PaneHeadContext.Provider value={undefined}>{body}</PaneHeadContext.Provider>
+      </div>
+    );
+  }
+  return (
+    <div className="sk-goals">
+      <Section
+        id="goals"
+        title="Goals"
+        summary={`${open_} ongoing · ${groups.length} type${groups.length === 1 ? '' : 's'}`}
+        actions={<button type="button" className="sk-fc-plus" aria-label="Add a goal" title="Add a goal" onClick={() => open()}><Icon name="plus" size={16} /></button>}
+      >
+        {body}
       </Section>
     </div>
   );

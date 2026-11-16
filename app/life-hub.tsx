@@ -104,7 +104,6 @@ import {
 import { ruleFor, saveTaskRule, sourceRuleKey, taskRuleKey, useTaskRules } from '../lib/taskRules';
 import { FlowSyncReview } from './components/FlowSyncReview';
 import { WhyView } from './components/WhyView';
-import { GoalsView } from './components/GoalsView';
 import { DailyGrounding } from './components/DailyGrounding';
 import { isHidden, loadHidden, restoreItem, useHiddenItems } from '../lib/siteMoves';
 import { SiteListHost } from './components/SiteListDialog';
@@ -1188,7 +1187,7 @@ goalsData ? (
 
   return (
     <SiteListsContext.Provider value={{ store: siteListStore, snapshots: baseSnapshots, complete: (site, taskId) => completeOnHub(site, taskId), reopen: (site, taskId) => reopenOnHub(site, taskId), doneOf: (site, taskId) => { const e = ledger.entries[`${site}::${taskId}`]; return e?.title ? { title: e.title, at: e.completedAt } : undefined; } }}>
-    <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' || active === 'goals' ? 'home' : active}`} data-color-mode={theme}>
+    <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' ? 'home' : active}`} data-color-mode={theme}>
       <StickerShell
         active={active}
         enter={enter}
@@ -1293,8 +1292,6 @@ goalsData ? (
         moneyPage
       ) : active === 'logs' ? (
         <LogsView />
-      ) : active === 'goals' ? (
-        <GoalsView events={(schedule?.events || []).map(e => ({ id: e.id, title: e.title, start: e.start, allDay: e.allDay }))} bills={moneyDues} openFinance={(id, tab) => { requestOpenDebt(id, tab); enter('money'); }} />
       ) : active === 'why' ? (
         <WhyView goalsPanel={whyPanel} goals={goalsData} />
       ) : active === 'settings' ? (

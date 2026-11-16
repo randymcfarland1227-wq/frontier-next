@@ -17,7 +17,7 @@ export type SourceId =
 export type LegacySourceId = 'search';
 
 /** 'settings' = Task sorting page · 'why' = goals page · 'logs' = embedded log sites */
-export type SpaceId = 'home' | 'settings' | 'why' | 'money' | 'logs' | 'goals' | SourceId;
+export type SpaceId = 'home' | 'settings' | 'why' | 'money' | 'logs' | SourceId;
 
 /** A step the origin site tracks on a task (Peculiar Candle's stepped tasks); Life Hub shows them read-only. */
 export type OriginStep = { id: string; text: string; done: boolean };

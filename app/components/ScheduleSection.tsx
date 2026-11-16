@@ -740,14 +740,14 @@ function MonthMini({ month, items, picked, onPick }: { month: Date; items: CalIt
             title={dayItems.map(it => it.title).join('\n') || undefined}
           >
             <span className="sk-dnum">{d.getDate()}</span>
-            {/* Two lines per day: two titles, or one title and "+N". */}
-            {dayItems.slice(0, dayItems.length > 3 ? 2 : 3).map(it => (
+            {/* Up to four lines per day: titles, or three titles and "+N". */}
+            {dayItems.slice(0, dayItems.length > 4 ? 3 : 4).map(it => (
               <span key={it.id} className={`sk-ditem kind-${it.kind}`} style={it.color ? ({ '--ev': it.color } as React.CSSProperties) : undefined}>
                 {it.kind === 'bill' ? '$ ' : it.kind === 'task' ? (it.task?.done ? '✓ ' : '☐ ') : ''}
                 {it.title}
               </span>
             ))}
-            {dayItems.length > 3 ? <span className="sk-ditem is-more">+{dayItems.length - 2} more</span> : null}
+            {dayItems.length > 4 ? <span className="sk-ditem is-more">+{dayItems.length - 3} more</span> : null}
             <span className="sk-ddots" aria-hidden="true">
               {dayItems.slice(0, 4).map(it => (
                 <i key={it.id} style={it.color ? ({ '--ev': it.color } as React.CSSProperties) : undefined} />
@@ -1103,17 +1103,7 @@ export function ScheduleSection({
       }
     >
       {!expanded ? (
-        <div className="sk-sched-grid">
-          <div className="sk-col">
-            <ListHead title="Upcoming" meta="Next 7 days" />
-            <Upcoming events={events} bills={shownBills} tasks={shownTasks} schedule={schedule} onShow={show} limit={16} />
-            <Overdue bills={bills} onBillPaid={onBillPaid} />
-          </div>
-          <div className="sk-col">
-            <MaybeList title="Needs to Confirm" invites={invites} plans={openPlans} events={events} onShow={show} onAnswer={answer} />
-            <EventsList title="Events" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
-            <EventsList list="appt" title="Appointments" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
-          </div>
+        <div className="sk-sched-grid is-stacked">
           <div className="sk-month" ref={monthBox} data-month={month.getMonth()}>
             <div className="sk-mtop">
               <h3 className="sk-mtitle" aria-live="polite">
@@ -1151,26 +1141,21 @@ export function ScheduleSection({
               />
             ) : null}
           </div>
+          <div className="sk-sched-lists">
+            <div className="sk-col">
+              <ListHead title="Upcoming" meta="Next 7 days" />
+              <Upcoming events={events} bills={shownBills} tasks={shownTasks} schedule={schedule} onShow={show} limit={16} />
+              <Overdue bills={bills} onBillPaid={onBillPaid} />
+            </div>
+            <div className="sk-col">
+              <MaybeList title="Needs to Confirm" invites={invites} plans={openPlans} events={events} onShow={show} onAnswer={answer} />
+              <EventsList title="Events" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
+              <EventsList list="appt" title="Appointments" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="sched-grid">
-          <aside className="sched-rail sk-col" aria-label="Coming up, events, not confirmed, bills">
-            <ListHead title="Coming Up" meta="Next 7 days" />
-            <Upcoming events={events} schedule={schedule} onShow={show} />
-            <Overdue bills={bills} onBillPaid={onBillPaid} />
-            <EventsList title="Events" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
-            <EventsList list="appt" title="Appointments" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
-            <MaybeList title="Not Confirmed Yet" invites={invites} plans={openPlans} events={events} onShow={show} onAnswer={answer} />
-            <ListHead title="Money Due" meta="From the Radall sheet" />
-            <BillsList
-              dues={shownBills.filter(b => b.days >= 0 && b.days <= 14)}
-              onPaid={onBillPaid}
-              compact
-              limit={5}
-              empty={schedule ? 'No bills due in the next two weeks.' : 'Shows bills from the Finances "Bills" tab once it’s connected.'}
-            />
-          </aside>
-
+        <div className="sched-grid is-stacked">
           <div className="sched-cal">
             {selected ? (
               <div className={`cal-detail kind-${selected.kind}`} style={selected.color ? ({ '--ev': selected.color } as React.CSSProperties) : undefined}>
@@ -1244,6 +1229,28 @@ export function ScheduleSection({
               </div>
             ) : null}
             <WeekStrip items={items} focus={focus} onSelect={setSelected} selectedId={selected?.id} />
+          </div>
+          <div className="sched-rail sk-sched-lists" role="group" aria-label="Coming up, events, not confirmed, bills">
+            <div className="sk-col">
+              <ListHead title="Coming Up" meta="Next 7 days" />
+              <Upcoming events={events} schedule={schedule} onShow={show} />
+              <Overdue bills={bills} onBillPaid={onBillPaid} />
+            </div>
+            <div className="sk-col">
+              <MaybeList title="Not Confirmed Yet" invites={invites} plans={openPlans} events={events} onShow={show} onAnswer={answer} />
+              <EventsList title="Events" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
+              <EventsList list="appt" title="Appointments" events={events} plans={plans} onShow={show} onDropPlan={dropPlan} />
+            </div>
+            <div className="sk-col">
+              <ListHead title="Money Due" meta="From the Radall sheet" />
+              <BillsList
+                dues={shownBills.filter(b => b.days >= 0 && b.days <= 14)}
+                onPaid={onBillPaid}
+                compact
+                limit={5}
+                empty={schedule ? 'No bills due in the next two weeks.' : 'Shows bills from the Finances "Bills" tab once it’s connected.'}
+              />
+            </div>
           </div>
         </div>
       )}

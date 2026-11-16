@@ -57,12 +57,6 @@ const PAGES: { id: SpaceId; label: string; icon: IconName; hint: string }[] = [
     hint: "Bills, cards, pay later and plans from the Radall sheet",
   },
   {
-    id: "goals",
-    label: "Goals",
-    icon: "target",
-    hint: "Ongoing goals grouped by type",
-  },
-  {
     id: "logs",
     label: "Logs",
     icon: "logs",

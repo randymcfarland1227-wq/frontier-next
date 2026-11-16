@@ -3471,3 +3471,22 @@
   .sk-app .sk-goal-add { grid-template-columns: 1fr; }
   .sk-app .sk-tabbar button { font-size: 11px; padding: 4px 2px; }
 }
+
+/* Calendar, full-height pass (2026-11-16): month grid full width and as tall as the screen, lists stacked below it. */
+.sk-app .sk-sched-grid.is-stacked { display: flex; flex-direction: column; align-items: stretch; gap: var(--sk-s4); }
+.sk-app .sk-sched-grid.is-stacked > .sk-month { display: flex; flex-direction: column; min-height: max(560px, calc(100dvh - 150px)); }
+.sk-app .sk-sched-grid.is-stacked > .sk-month .sk-mgrid { flex: 1; grid-template-rows: auto; grid-auto-rows: minmax(96px, 1fr); }
+.sk-app .sk-sched-grid.is-stacked .sk-day { min-height: 0; overflow: hidden; justify-content: flex-start; }
+.sk-app .sk-sched-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--sk-s4) var(--sk-s5); align-items: start; }
+.sk-app .sk-sched-lists > .sk-col { min-width: 0; }
+.sk-app .sk-sched.is-expanded .sched-grid.is-stacked { grid-template-columns: minmax(0, 1fr); }
+.sk-app .sk-sched.is-expanded .sched-rail.sk-sched-lists { display: grid; }
+.sk-app .sk-sched.is-expanded .cal-scroll { max-height: max(420px, calc(100dvh - 300px)); }
+@media (max-width: 640px) {
+  .sk-app .sk-sched-grid.is-stacked > .sk-month { min-height: max(440px, calc(100dvh - 190px)); padding: var(--sk-s2); }
+  .sk-app .sk-sched-grid.is-stacked > .sk-month .sk-mgrid { grid-template-columns: repeat(7, minmax(0, 1fr)); grid-auto-rows: minmax(56px, 1fr); gap: 2px; }
+  .sk-app .sk-sched-grid.is-stacked > .sk-month .sk-wk, .sk-app .sk-sched-grid.is-stacked > .sk-month .sk-wkh { display: none; }
+}
+/* Inside a capped Today pane, "full screen" = the pane's own visible height (it scrolls), minus its tab line. */
+.sk-app .sk-splitwrap[data-cap="split"] .sk-sched-grid.is-stacked > .sk-month { min-height: calc(clamp(360px, 72vh, 760px) - 64px); }
+.sk-app .sk-splitwrap[data-cap="page"] .sk-sched-grid.is-stacked > .sk-month { min-height: calc(clamp(480px, 86vh, 1000px) - 64px); }

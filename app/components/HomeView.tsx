@@ -58,13 +58,15 @@ import { readSaved, writeSaved } from "../../lib/storage";
 import { TickTickRings } from "./TickTickRings";
 import { Icon } from "../sticker/Icon";
 import { AssignedFocus } from "./AssignedFocus";
+import { GoalsView } from "./GoalsView";
 import { SITE_ROWS, SitesTabs, SitePicker } from "../sticker/Sites";
 
-type TodayTab = "brief" | "rhythm" | "grounding" | "calendar" | "focus" | "money" | "sites";
+type TodayTab = "brief" | "rhythm" | "grounding" | "calendar" | "focus" | "goals" | "money" | "sites";
 const TODAY_TABS: [TodayTab, string][] = [
   ["brief", "Daily Brief"],
   ["rhythm", "Daily Rhythm"],
   ["focus", "Short-term focus"],
+  ["goals", "Goals"],
   ["calendar", "Calendar"],
   ["grounding", "Grounding"],
   ["money", "Money"],
@@ -495,6 +497,15 @@ export function HomeView({
             tasks={calTasks}
             onTaskDone={onTaskDone}
             onAddPrep={onAddPrep}
+          />
+        ) : t === "goals" ? (
+          <GoalsView
+            events={linkItems}
+            bills={bills}
+            openFinance={(id, tab) => {
+              requestOpenDebt(id, tab);
+              enter("money");
+            }}
           />
         ) : t === "focus" ? (
           <ShortTermFocus

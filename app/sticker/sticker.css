@@ -3630,3 +3630,49 @@
   #sk-rhythm .sk-habits .sk-daytasks > li:not(:hover):not(:focus-within) .sk-habit-act { display: none; }
 }
 #sk-rhythm .sk-habits .sk-daytasks > li > span { flex: 1; }
+
+/* Brief rows read like Short-term focus card titles; tighter buckets (2026-11-16, round 2). */
+#sk-brief-buckets .sk-brow-title, #sk-brief-buckets .sk-brow-text { font-family: Unbounded, system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: -.01em; line-height: 1.25; color: var(--sk-ink); }
+#sk-brief-buckets .sk-bucket { padding: 7px 8px 6px; }
+#sk-brief-buckets .sk-bucket-head { padding: 0 4px 5px; }
+#sk-brief-buckets .sk-bucket-rows { gap: 3px; }
+#sk-brief-buckets .sk-brow-line { padding: 2px 5px 2px 7px; gap: 5px; }
+#sk-brief-buckets .sk-brow-main { gap: 0; }
+#sk-brief-buckets .sk-brow-pin { width: 20px; height: 20px; }
+#sk-brief-buckets .sk-brow-clear { width: 18px; height: 18px; }
+#sk-brief-buckets .sk-brow-kids { margin: 2px 0 0; padding-left: 10px; display: grid; gap: 2px; }
+#sk-brief-buckets .sk-brow.is-group:not(.is-open) .sk-brow-line { padding-top: 1px; padding-bottom: 1px; }
+#sk-brief-buckets .sk-bucket-empty, #sk-brief-buckets .sk-bucket-hint { margin: 2px 4px; }
+
+/* Daily Rhythm, four columns (2026-11-16): Nutrition | Fitness | Marvel | Habits side by side, dense like Short-term focus. */
+#sk-rhythm.sk-trio, #sk-rhythm.sk-trio:has(> .sk-rhythm-stack) { grid-template-columns: var(--rhythm-cols, repeat(4, minmax(0, 1fr))) !important; gap: 10px; }
+@container today-pane (max-width: 520px) { #sk-rhythm.sk-trio, #sk-rhythm.sk-trio:has(> .sk-rhythm-stack) { grid-template-columns: 1fr !important; } }
+@media (max-width: 520px) { #sk-rhythm.sk-trio, #sk-rhythm.sk-trio:has(> .sk-rhythm-stack) { grid-template-columns: 1fr !important; } }
+#sk-rhythm .sk-group { padding: 2px 8px 8px; border-radius: 20px; }
+#sk-rhythm .sk-group.is-fitness { --bk: #2f80ed; }
+#sk-rhythm .sk-ghead { padding: 6px 2px; }
+#sk-rhythm .sk-ghead .sk-hl { font-size: 13px; }
+#sk-rhythm .sk-gbody { gap: 5px; }
+#sk-rhythm .sk-listh { margin: 3px 0 0; min-height: 0; padding: 0 2px; }
+#sk-rhythm .sk-day-panel { margin: 0; }
+#sk-rhythm .sk-fcards { grid-template-columns: minmax(0, 1fr) !important; gap: 5px; }
+#sk-rhythm .sk-fc-log { margin: 0; padding: 2px 4px; font-size: 11.5px; }
+#sk-rhythm .sk-bottles { padding: 2px 0 0; }
+/* This or that: one line per choice, small pills, description on hover */
+#sk-rhythm .sk-mv { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 3px 0; }
+#sk-rhythm .sk-mv-head { margin: 0; flex: 0 0 auto; max-width: 34%; }
+#sk-rhythm .sk-mv-head .sk-hl { font-size: 11px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#sk-rhythm .sk-mv-head .sk-sec { display: none; }
+#sk-rhythm .sk-either { flex: 1 1 0; min-width: 0; gap: 4px; }
+#sk-rhythm .sk-either-cell { gap: 3px; }
+#sk-rhythm .sk-or { font-size: 10px; }
+#sk-rhythm .sk-opt { padding: 2px 7px; border-width: 1px; box-shadow: none; }
+#sk-rhythm .sk-opt-t { font-size: 11.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#sk-rhythm .sk-opt-d { display: none; }
+#sk-rhythm .sk-mv-done { flex-basis: 100%; margin: 0; padding: 0 2px; font-size: 11px; }
+#sk-rhythm .sk-mv-today { margin: 0; }
+#sk-rhythm .sk-fc-plusrow { margin: 0; min-height: 0; padding: 0; }
+#sk-rhythm .sk-fc-plus { width: 22px; height: 22px; min-height: 0; }
+#sk-rhythm .sk-fc-plus .sk-icon { width: 12px; height: 12px; }
+#sk-rhythm .sk-empty { margin: 0; padding: 4px 6px; font-size: 11.5px; line-height: 1.3; }
+#sk-rhythm .sk-fc-log { min-height: 0; height: auto; }

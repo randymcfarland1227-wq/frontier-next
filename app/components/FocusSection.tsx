@@ -661,6 +661,7 @@ export function FocusSection({
   const nutToday = tickTickToday(NUTRITION_RE, snapshots?.ticktick, ledger, day, off, habitName).filter(notMarvel);
   const marvelToday = tickTickToday(/marvel/i, snapshots?.ticktick, ledger, day, off, habitName);
   const [nfShut, toggleNf] = useFold("rhythm-nutrition");
+  const [ftShut, toggleFt] = useFold("rhythm-fitness");
   const [mvShut, toggleMv] = useFold("rhythm-marvel");
   const [hbShut, toggleHb] = useFold("rhythm-habits");
   const marvelDone = MARVEL_MENU.filter((g) => picks[g.id]?.done).length;
@@ -669,38 +670,29 @@ export function FocusSection({
   // Each group folds to its header (remembered). Folded groups stack in one column, at the spot of the first
   // folded one; open groups take a column each and stretch to the bottom of the row.
   const groups: Array<{ id: string; shut: boolean; weight: number; el: ReactNode }> = [
-    { id: "nutrition", shut: nfShut, weight: 1.2, el: (
+    { id: "nutrition", shut: nfShut, weight: 1, el: (
     <Group
       shut={nfShut}
       onToggle={toggleNf}
       tone="habit"
       className="is-nutrition"
       icon="apple"
-      title="Nutrition & Fitness"
+      title="Nutrition"
       meta={`${water} of ${BOTTLES} bottles`}
     >
       <div className="sk-mv-today sk-day-panel">
         <ListHead
-          title="Today’s tasks & habits"
-          meta={`${fitToday.filter((t) => t.done).length + nutToday.filter((t) => t.done).length} of ${fitToday.length + nutToday.length} done${[...fitToday, ...nutToday].some((t) => !t.done && t.off) ? ` · ${[...fitToday, ...nutToday].filter((t) => !t.done && t.off).length} skipped` : ""}`}
+          title="Nutrition today"
+          meta={`${nutToday.filter((t) => t.done).length} of ${nutToday.length} done`}
           shut={daysShut}
           onToggle={toggleDays}
         />
-        {daysShut ? null : (
-          <div className="sk-daysplit" aria-label="Today's tasks and habits">
-            <div>
-              <p className="sk-cap">Fitness today</p>
-              <DayTasks tasks={fitToday} />
-            </div>
-            <div>
-              <p className="sk-cap">Nutrition today</p>
-              <DayTasks tasks={nutToday} />
-            </div>
-          </div>
-        )}
+        {daysShut ? null : <DayTasks tasks={nutToday} />}
       </div>
       <ListHead title="Nutrition focus" />
       <FocusCards list={nutritionLists[3]} extra={nutritionLists.filter((_, i) => i !== 3)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'nutrition', ongoing: true }} label="Add a nutrition focus" empty="Add what you’re working on with nutrition." />
+      <ListHead title="Drink tracker" />
+      <Water water={water} setWater={setWater} />
       <button
         type="button"
         className="sk-link sk-fc-log"
@@ -709,10 +701,29 @@ export function FocusSection({
         Log in the tracker
         <Icon name="chevron" size={14} />
       </button>
+    </Group>
+    ) },
+    { id: "fitness", shut: ftShut, weight: 1, el: (
+    <Group
+      shut={ftShut}
+      onToggle={toggleFt}
+      tone="habit"
+      className="is-fitness"
+      icon="steps"
+      title="Fitness"
+      meta={`${fitToday.filter((t) => t.done).length} of ${fitToday.length} done`}
+    >
+      <div className="sk-mv-today sk-day-panel">
+        <ListHead
+          title="Fitness today"
+          meta={fitToday.some((t) => !t.done && t.off) ? `${fitToday.filter((t) => !t.done && t.off).length} skipped` : undefined}
+          shut={daysShut}
+          onToggle={toggleDays}
+        />
+        {daysShut ? null : <DayTasks tasks={fitToday} />}
+      </div>
       <ListHead title="Fitness focus" />
       <FocusCards list={fitnessLists[4]} extra={fitnessLists.filter((_, i) => i !== 4)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'fitness', ongoing: true, push: 2, since: localDayKey() }} label="Add a fitness focus" empty="Add what you’re working on with fitness." />
-      <ListHead title="Drink tracker" />
-      <Water water={water} setWater={setWater} />
     </Group>
     ) },
     { id: "marvel", shut: mvShut, weight: 1, el: (
@@ -732,7 +743,7 @@ export function FocusSection({
       <MarvelMenu st={picks} setSt={setPicks} />
     </Group>
     ) },
-    { id: "habits", shut: hbShut, weight: 0.8, el: (
+    { id: "habits", shut: hbShut, weight: 1, el: (
     <Group
       shut={hbShut}
       onToggle={toggleHb}

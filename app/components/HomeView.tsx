@@ -605,7 +605,7 @@ export function HomeView({
             ] as const).map(([t, pick], i) => (
               <div key={i} className="sk-splitcol">
                 {/* Money has its own − / + (it starts at 60%), so the pane zoom leaves it alone. */}
-                {todayBar(t, pick, t === "money" ? <MoneyZoom /> : <PaneZoomButtons zoom={splitZoom[i]} set={(v) => setSplitZoom(i, v)} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, i === 0, i + 1)}
+                {todayBar(t, pick, t === "money" ? <MoneyZoom pane /> : <PaneZoomButtons zoom={splitZoom[i]} set={(v) => setSplitZoom(i, v)} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, i === 0, i + 1)}
                 <PaneHeadContext.Provider value={paneSlots[i + 1]}>
                   <div className="sk-splitzoom" style={t === "money" || splitZoom[i] === 100 ? undefined : { zoom: splitZoom[i] / 100 }}>
                     <CapPane key={t} cap="split" label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>

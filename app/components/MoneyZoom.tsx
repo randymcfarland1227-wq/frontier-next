@@ -10,7 +10,7 @@ const STEP = 10;
 const DEFAULT = 60;
 
 /** − / + for Money's size in split view only (each device keeps its own; a laptop and a big monitor differ). */
-export function MoneyZoom() {
+export function MoneyZoom({ pane = false }: { pane?: boolean } = {}) {
   const [zoom, setZoom] = useState(() => {
     const v = readSaved<number>(MONEY_ZOOM_KEY, DEFAULT);
     return typeof v === 'number' ? Math.min(MAX, Math.max(MIN, v)) : DEFAULT;
@@ -24,9 +24,9 @@ export function MoneyZoom() {
     writeSaved(MONEY_ZOOM_KEY, v);
   };
   return (
-    <span className="skm-zoom" role="group" aria-label="Money size in split view">
+    <span className={pane ? "sk-panezoom" : "skm-zoom"} role="group" aria-label="Money size in split view">
       <button type="button" onClick={() => pick(zoom - STEP)} disabled={zoom <= MIN} aria-label="Smaller" title="Smaller">−</button>
-      <button type="button" className="skm-zoom-val" onClick={() => pick(DEFAULT)} title="Back to the default size">{zoom}%</button>
+      <button type="button" className={pane ? "sk-panezoom-pct" : "skm-zoom-val"} onClick={() => pick(DEFAULT)} title="Back to the default size">{zoom}%</button>
       <button type="button" onClick={() => pick(zoom + STEP)} disabled={zoom >= MAX} aria-label="Bigger" title="Bigger">+</button>
     </span>
   );

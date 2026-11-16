@@ -3679,3 +3679,10 @@
 /* Right-click TickTick menu can list many cards/goals: keep it on screen. */
 .row-menu { max-height: min(70vh, 520px); overflow-y: auto; }
 #sk-rhythm .sk-daytasks > li .sk-circle { flex: none; width: 16px; height: 16px; min-width: 16px; }
+
+/* Split: the first pane's Refresh sources sits under its − % + without widening it, so the size control
+   stays on the tab line in every pane (Money's wrapped to its own row before). */
+@media (min-width: 521px) {
+  .sk-app #sk-brief .sk-split .sk-todaybar-tools { grid-template-columns: auto; }
+  .sk-app #sk-brief .sk-split .sk-todaybar-refresh { justify-self: end; width: 0; display: inline-flex; justify-content: flex-end; white-space: nowrap; overflow: visible; }
+}

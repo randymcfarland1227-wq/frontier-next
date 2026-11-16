@@ -3676,3 +3676,6 @@
 #sk-rhythm .sk-fc-plus .sk-icon { width: 12px; height: 12px; }
 #sk-rhythm .sk-empty { margin: 0; padding: 4px 6px; font-size: 11.5px; line-height: 1.3; }
 #sk-rhythm .sk-fc-log { min-height: 0; height: auto; }
+/* Right-click TickTick menu can list many cards/goals: keep it on screen. */
+.row-menu { max-height: min(70vh, 520px); overflow-y: auto; }
+#sk-rhythm .sk-daytasks > li .sk-circle { flex: none; width: 16px; height: 16px; min-width: 16px; }

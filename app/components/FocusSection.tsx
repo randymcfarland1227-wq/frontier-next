@@ -3,6 +3,8 @@
 import { Fragment, useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Circle, Group, ListHead, PaneHeadContext, Section } from "../sticker/kit";
 import { useFold } from "./Collapsible";
+import { useRowMenu, type RowMenuItem } from "./RowMenu";
+import { goalGroupOf } from "../../lib/goalTypes";
 import { habitOptions } from "../../lib/locks";
 import { FocusCards, useFinSummary, type LinkItem, type OpenFinance } from "./FocusCards";
 import type { BillDue } from "../../lib/schedule";
@@ -261,29 +263,80 @@ const MARVEL_MENU: {
 ];
 type MarvelPicks = Record<string, { pick?: string; done?: boolean }>;
 
-type DayTask = { title: string; done: boolean; off?: LogOutcome };
+type DayTask = { title: string; done: boolean; off?: LogOutcome; id?: string; habit?: boolean };
 const dayRowClass = (t: DayTask) => (t.done ? "is-done" : t.off ? "is-off" : "");
 
+/** Right-click / long-press menu for a TickTick row: built when it opens. */
+export type TickMenu = (t: { id: string; title: string; habit?: boolean }, here?: FocusSectionId) => RowMenuItem[];
+
+/** A list row with a right-click / long-press menu (falls back to a plain row without one). */
+function MenuLi({ items, label, className, children }: { items?: () => RowMenuItem[]; label: string; className?: string; children: ReactNode }) {
+  const { bind, menu } = useRowMenu(items || [], label);
+  return (
+    <li className={className} {...(items ? bind : {})}>
+      {children}
+      {menu}
+    </li>
+  );
+}
+
 /** Today's tasks and habits for an area (from TickTick), struck through once done, skipped or uncompleted. */
-function DayTasks({ tasks }: { tasks: DayTask[] }) {
+function DayTasks({ tasks, complete, reopen, menu, here }: { tasks: DayTask[]; complete?: (id: string) => void; reopen?: (id: string) => void; menu?: TickMenu; here?: FocusSectionId }) {
   if (!tasks.length) return <p className="sk-empty">Nothing today</p>;
   return (
     <ul className="sk-daytasks" aria-label="Today's tasks and habits">
       {tasks.map((t) => (
-        <li key={t.title} className={dayRowClass(t)}>
-          <Icon name={t.done ? "check" : "minus"} size={13} />
+        <MenuLi key={t.title} className={dayRowClass(t)} label={t.title} items={menu && t.id ? () => menu({ id: t.id!, title: t.title, habit: t.habit }, here) : undefined}>
+          {t.done && t.id && reopen ? (
+            <button type="button" className="sk-circle is-done" onClick={() => reopen(t.id!)} aria-label={`Uncheck ${t.title}`} title="Uncheck (undo today’s check-off)">
+              <Icon name="check" size={12} />
+            </button>
+          ) : !t.done && !t.off && t.id && complete ? (
+            <Circle onDone={() => complete(t.id!)} label={`${t.habit ? "Check in" : "Complete"}: ${t.title}`} />
+          ) : (
+            <Icon name={t.done ? "check" : "minus"} size={13} />
+          )}
           <span>{t.title}</span>
           {t.off ? <em className="sk-habit-tag">{LOG_LABEL[t.off]}</em> : null}
-        </li>
+        </MenuLi>
       ))}
     </ul>
   );
 }
+
+/** Manual Daily Rhythm list membership (right-click add / remove): TickTick id → sections. Never deletes anything. */
+const RHYTHM_KEY = "lifehub-rhythm-lists";
+const RHYTHM_EVENT = "lifehub:rhythm-lists";
+type RhythmLists = { add: Record<string, FocusSectionId[]>; hide: Record<string, FocusSectionId[]> };
+function useRhythmLists() {
+  const [v, setV] = useState<RhythmLists>(() => readSaved<RhythmLists>(RHYTHM_KEY, { add: {}, hide: {} }));
+  useEffect(() => {
+    const on = () => setV(readSaved<RhythmLists>(RHYTHM_KEY, { add: {}, hide: {} }));
+    window.addEventListener(RHYTHM_EVENT, on);
+    return () => window.removeEventListener(RHYTHM_EVENT, on);
+  }, []);
+  const save = (next: RhythmLists) => {
+    writeSaved(RHYTHM_KEY, next);
+    setV(next);
+    window.dispatchEvent(new Event(RHYTHM_EVENT));
+  };
+  const flip = (m: Record<string, FocusSectionId[]>, id: string, sec: FocusSectionId, on: boolean) => {
+    const cur = (m[id] || []).filter((x) => x !== sec);
+    const out = { ...m, [id]: on ? [...cur, sec] : cur };
+    if (!out[id].length) delete out[id];
+    return out;
+  };
+  return {
+    lists: v,
+    add: (id: string, sec: FocusSectionId) => save({ add: flip(v.add, id, sec, true), hide: flip(v.hide, id, sec, false) }),
+    remove: (id: string, sec: FocusSectionId) => save({ add: flip(v.add, id, sec, false), hide: flip(v.hide, id, sec, true) }),
+  };
+}
+const SECTION_NAME: Record<FocusSectionId, string> = { nutrition: "Nutrition", fitness: "Fitness", marvel: "Marvel" };
 const NUTRITION_RE =
   /nutri|protein|meal|eat\b|food|calorie|vitamin|supplement|creatine|breakfast|lunch|dinner|water|bottle|drink|fiber|veg/i;
 const FITNESS_RE =
   /workout|gym|lift|run\b|walk|stretch|fitness|exercise|cardio|steps|mobility|posture|abs\b|strength|squat|push.?up|yoga|recovery|physical therapy|\bpt\b/i;
-const notMarvel = (t: { title: string }) => !/marvel/i.test(t.title);
 
 const isHabit = (t: TaskItem) => t.kind === "habit" || t.id.startsWith("habit-");
 
@@ -327,11 +380,13 @@ function TickTickHabits({
   ledger,
   day,
   complete,
+  menu,
 }: {
   ticktick?: SourceSnapshot;
   ledger?: CompletionLedger;
   day: string;
   complete?: (t: TaskItem) => void;
+  menu?: TickMenu;
 }) {
   const { reopen } = useSiteLists();
   const logged = useLoggedToday();
@@ -400,7 +455,7 @@ function TickTickHabits({
             {shut ? null : (
               <ul className="sk-daytasks">
                 {mine.map((t) => (
-                  <li key={t.id}>
+                  <MenuLi key={t.id} label={t.title} items={menu ? () => menu({ id: t.id, title: t.title, habit: true }) : undefined}>
                     {complete ? <Circle onDone={() => complete(t)} label={`Check in: ${t.title}`} /> : <Icon name="minus" size={12} />}
                     <span>{t.title}</span>
                     <button type="button" className="sk-habit-act" onClick={() => void skip(t)} title="Skip today: you're choosing not to do it (TickTick Skip)">
@@ -409,7 +464,7 @@ function TickTickHabits({
                     <button type="button" className="sk-habit-act" onClick={() => void notDone(t)} title="Uncompleted: you didn't get it done (TickTick Uncompleted)">
                       Uncompleted
                     </button>
-                  </li>
+                  </MenuLi>
                 ))}
                 {fin.map((t) => (
                   <li key={t.key} className="is-done">
@@ -446,30 +501,15 @@ function TickTickHabits({
 }
 
 /** Today's Marvel tasks and habits from TickTick, above the menu, each marked done or not. */
-function MarvelToday({ tasks }: { tasks: DayTask[] }) {
+function MarvelToday({ tasks, ...rest }: { tasks: DayTask[]; complete?: (id: string) => void; reopen?: (id: string) => void; menu?: TickMenu }) {
   const [shut, toggle] = useShut("focus-marvel-today");
   if (!tasks.length) return null;
   const done = tasks.filter((t) => t.done).length;
   const off = tasks.filter((t) => !t.done && t.off).length;
   return (
-    <div className="sk-mv-today">
-      <ListHead
-        title="Marvel today"
-        meta={`${done} of ${tasks.length} done${off ? ` · ${off} skipped` : ""}`}
-        shut={shut}
-        onToggle={toggle}
-      />
-      {shut ? null : (
-        <ul>
-          {tasks.map((t) => (
-            <li key={t.title} className={dayRowClass(t)}>
-              <Icon name={t.done ? "check" : "minus"} size={13} />
-              <span>{t.title}</span>
-              <em>{t.done ? "done" : t.off ? LOG_LABEL[t.off] : "not yet"}</em>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="sk-mv-today sk-day-panel">
+      <ListHead title="Marvel today" meta={`${done} of ${tasks.length} done${off ? ` · ${off} skipped` : ""}`} shut={shut} onToggle={toggle} />
+      {shut ? null : <DayTasks tasks={tasks} {...rest} here="marvel" />}
     </div>
   );
 }
@@ -657,9 +697,69 @@ export function FocusSection({
   // Skipped / uncompleted today (here or in the TickTick app) shows struck through in every group, not just Habits.
   const off = useTickTickOff();
   const habitName = habitTitle;
-  const fitToday = tickTickToday(FITNESS_RE, snapshots?.ticktick, ledger, day, off, habitName).filter(notMarvel);
-  const nutToday = tickTickToday(NUTRITION_RE, snapshots?.ticktick, ledger, day, off, habitName).filter(notMarvel);
-  const marvelToday = tickTickToday(/marvel/i, snapshots?.ticktick, ledger, day, off, habitName);
+  const rl = useRhythmLists();
+  const { reopen } = useSiteLists();
+  const BASE: Record<FocusSectionId, (title: string) => boolean> = {
+    nutrition: (t) => NUTRITION_RE.test(t) && !/marvel/i.test(t),
+    fitness: (t) => FITNESS_RE.test(t) && !/marvel/i.test(t),
+    marvel: (t) => /marvel/i.test(t),
+  };
+  const inList = (sec: FocusSectionId) => (id: string, title: string) =>
+    Boolean(rl.lists.add[id]?.includes(sec)) || (!rl.lists.hide[id]?.includes(sec) && BASE[sec](title));
+  const fitToday = tickTickToday(inList("fitness"), snapshots?.ticktick, ledger, day, off, habitName);
+  const nutToday = tickTickToday(inList("nutrition"), snapshots?.ticktick, ledger, day, off, habitName);
+  const marvelToday = tickTickToday(inList("marvel"), snapshots?.ticktick, ledger, day, off, habitName);
+  const tickTask = (id: string) => (snapshots?.ticktick?.tasks || []).find((t) => t.id === id);
+  const completeId = (id: string) => {
+    const t = tickTask(id);
+    if (t) completeHabit?.(t);
+  };
+  const reopenId = (id: string) => reopen?.("ticktick", id);
+  // Drink tracker: reaching every bottle checks off the matching TickTick water habit too.
+  const setWaterAndLog = (n: number) => {
+    setWater(n);
+    if (n < BOTTLES) return;
+    const hit = nutToday.find((t) => !t.done && !t.off && t.id && /water|bottle/i.test(t.title));
+    if (hit?.id) completeId(hit.id);
+  };
+  // Right-click any TickTick row: add it to / take it off a Daily Rhythm list, a Short-term focus card or a goal.
+  const focusLists = [focus.now, focus.weeks, focus.nutrition, focus.fitness, focus.marvel];
+  const cardMenu = (lists: Array<readonly [Entry[], (next: Entry[]) => void]>, kind: string, t: { id: string; title: string; habit?: boolean }) =>
+    lists.flatMap(([items, save]) =>
+      items.filter((e) => !e.done).map((e): RowMenuItem => {
+        const on = Boolean(e.links?.some((l) => l.id === t.id));
+        return {
+          label: `${on ? "Remove from" : "Add to"} ${kind} · ${e.title}`,
+          on,
+          onSelect: () =>
+            save(items.map((x) => (x.id !== e.id ? x : {
+              ...x,
+              links: on ? (x.links || []).filter((l) => l.id !== t.id) : [...(x.links || []), { id: t.id, title: t.title, kind: t.habit ? "habit" : "task" }],
+              at: new Date().toISOString(),
+            }))),
+        };
+      }),
+    );
+  const tickMenu: TickMenu = (t) => [
+    ...(["nutrition", "fitness", "marvel"] as FocusSectionId[]).map((sec): RowMenuItem => {
+      const on = inList(sec)(t.id, t.title);
+      return { label: `${on ? "Remove from" : "Add to"} ${SECTION_NAME[sec]} today`, on, onSelect: () => (on ? rl.remove(t.id, sec) : rl.add(t.id, sec)) };
+    }),
+    ...cardMenu(focusLists, "focus", t),
+    ...cardMenu([focus.ongoing], "goal", t),
+  ];
+  // Goals typed for this area (Goals page group "Nutrition", "Fitness", "Marvel") that aren't already in its focus list.
+  const areaGoals = (sec: FocusSectionId) =>
+    focusListView(focus.ongoing, (i) => !i.done && i.section !== sec && goalGroupOf(i).toLowerCase().includes(sec === "fitness" ? "fit" : sec));
+  const goalsBlock = (sec: FocusSectionId) => {
+    const g = areaGoals(sec);
+    return g[0].length ? (
+      <>
+        <ListHead title={`${SECTION_NAME[sec]} goals`} />
+        <FocusCards list={g} events={events} bills={bills} openFinance={openFinance} defaults={{ ongoing: true, goalType: SECTION_NAME[sec] }} label={`Add a ${SECTION_NAME[sec].toLowerCase()} goal`} empty="" />
+      </>
+    ) : null;
+  };
   const [nfShut, toggleNf] = useFold("rhythm-nutrition");
   const [ftShut, toggleFt] = useFold("rhythm-fitness");
   const [mvShut, toggleMv] = useFold("rhythm-marvel");
@@ -680,6 +780,9 @@ export function FocusSection({
       title="Nutrition"
       meta={`${water} of ${BOTTLES} bottles`}
     >
+      {goalsBlock("nutrition")}
+      <ListHead title="Nutrition focus" />
+      <FocusCards list={nutritionLists[3]} extra={nutritionLists.filter((_, i) => i !== 3)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'nutrition', ongoing: true }} label="Add a nutrition focus" empty="Add what you’re working on with nutrition." />
       <div className="sk-mv-today sk-day-panel">
         <ListHead
           title="Nutrition today"
@@ -687,12 +790,10 @@ export function FocusSection({
           shut={daysShut}
           onToggle={toggleDays}
         />
-        {daysShut ? null : <DayTasks tasks={nutToday} />}
+        {daysShut ? null : <DayTasks tasks={nutToday} complete={completeId} reopen={reopenId} menu={tickMenu} here="nutrition" />}
       </div>
-      <ListHead title="Nutrition focus" />
-      <FocusCards list={nutritionLists[3]} extra={nutritionLists.filter((_, i) => i !== 3)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'nutrition', ongoing: true }} label="Add a nutrition focus" empty="Add what you’re working on with nutrition." />
       <ListHead title="Drink tracker" />
-      <Water water={water} setWater={setWater} />
+      <Water water={water} setWater={setWaterAndLog} />
       <button
         type="button"
         className="sk-link sk-fc-log"
@@ -713,6 +814,9 @@ export function FocusSection({
       title="Fitness"
       meta={`${fitToday.filter((t) => t.done).length} of ${fitToday.length} done`}
     >
+      {goalsBlock("fitness")}
+      <ListHead title="Fitness focus" />
+      <FocusCards list={fitnessLists[4]} extra={fitnessLists.filter((_, i) => i !== 4)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'fitness', ongoing: true, push: 2, since: localDayKey() }} label="Add a fitness focus" empty="Add what you’re working on with fitness." />
       <div className="sk-mv-today sk-day-panel">
         <ListHead
           title="Fitness today"
@@ -720,10 +824,8 @@ export function FocusSection({
           shut={daysShut}
           onToggle={toggleDays}
         />
-        {daysShut ? null : <DayTasks tasks={fitToday} />}
+        {daysShut ? null : <DayTasks tasks={fitToday} complete={completeId} reopen={reopenId} menu={tickMenu} here="fitness" />}
       </div>
-      <ListHead title="Fitness focus" />
-      <FocusCards list={fitnessLists[4]} extra={fitnessLists.filter((_, i) => i !== 4)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'fitness', ongoing: true, push: 2, since: localDayKey() }} label="Add a fitness focus" empty="Add what you’re working on with fitness." />
     </Group>
     ) },
     { id: "marvel", shut: mvShut, weight: 1, el: (
@@ -736,9 +838,10 @@ export function FocusSection({
       title="Marvel · This or That"
       meta={`${marvelDone} of ${MARVEL_MENU.length}`}
     >
-      <MarvelToday tasks={marvelToday} />
+      {goalsBlock("marvel")}
       <ListHead title="Short-term goals" />
       <FocusCards list={marvelLists[5]} extra={marvelLists.filter((_, i) => i !== 5)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'marvel', ongoing: true }} label="Add a Marvel focus" empty="Add what you’re working on with Marvel right now." />
+      <MarvelToday tasks={marvelToday} complete={completeId} reopen={reopenId} menu={tickMenu} />
       <ListHead title="This or that" />
       <MarvelMenu st={picks} setSt={setPicks} />
     </Group>
@@ -753,7 +856,7 @@ export function FocusSection({
       title="TickTick habits"
       meta={`${habitsOpen} left today`}
     >
-      <TickTickHabits ticktick={snapshots?.ticktick} ledger={ledger} day={day} complete={completeHabit} />
+      <TickTickHabits ticktick={snapshots?.ticktick} ledger={ledger} day={day} complete={completeHabit} menu={tickMenu} />
     </Group>
     ) },
   ];

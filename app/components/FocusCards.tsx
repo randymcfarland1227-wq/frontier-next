@@ -7,7 +7,9 @@ import {
   useState,
   type FormEvent,
   type KeyboardEvent,
+  type ReactNode,
 } from "react";
+import { useRowMenu } from "./RowMenu";
 import { useFold } from "./Collapsible";
 import { Icon } from "../sticker/Icon";
 import { deleteRemote, docTag, downloadRef, fetchRefBlob, formatSize, linkLabel, normalizeUrl, openRef, sortRefs, uploadRef, type FocusRef } from "../../lib/focusRefs";
@@ -359,16 +361,30 @@ function Ring({ pct }: { pct: number | null }) {
   );
 }
 
+/** A linked TickTick row on a card: right-click / long-press takes it off this card without deleting it. */
+function LinkRow({ className, title, label, onRemove, children }: { className: string; title: string; label: string; onRemove?: () => void; children: ReactNode }) {
+  const { bind, menu } = useRowMenu(onRemove ? [{ label: "Remove from this card (stays in TickTick)", onSelect: onRemove }] : [], label);
+  return (
+    <li className={className} title={title} {...(onRemove ? bind : {})}>
+      {children}
+      {menu}
+    </li>
+  );
+}
+
 function Card({
   item,
   events,
   ctx,
   open,
+  unlink,
 }: {
   item: Entry;
   events: LinkItem[];
   ctx: FinCtx;
   open: () => void;
+  /** Take a linked TickTick item off this card (it stays in TickTick) */
+  unlink?: (linkId: string) => void;
 }) {
   const p = progressOf(item, ctx);
   const w = whenOf(item, events);
@@ -441,10 +457,10 @@ function Card({
             const st = linkStatus(l, ctx.ledger);
             const off = st.doneToday ? undefined : tickTickOffMap()[l.id];
             return (
-              <li key={l.id} className={st.doneToday ? "is-done" : off ? "is-off" : ""} title={`${l.kind === "habit" ? "Habit" : "Task"} · done ${st.last7} of the last 7 days`}>
+              <LinkRow key={l.id} className={st.doneToday ? "is-done" : off ? "is-off" : ""} title={`${l.kind === "habit" ? "Habit" : "Task"} · done ${st.last7} of the last 7 days`} label={l.title} onRemove={unlink ? () => unlink(l.id) : undefined}>
                 <span aria-hidden="true">{st.doneToday ? "✓" : "○"}</span> {l.title}
                 <small>{st.doneToday ? "today" : off ? LOG_LABEL[off] : `${st.last7}/7`}</small>
-              </li>
+              </LinkRow>
             );
           })}
         </ul>
@@ -1463,7 +1479,7 @@ export function FocusCards({
   const [doneShut, toggleDone] = useFold(`focus-done-${label || "cards"}`);
   const openItem = all.find((a) => a.item.id === openId)?.item;
   const cardOf = (i: Entry) => (
-    <Card key={i.id} item={i} events={events} ctx={ctx} open={() => setOpenId(i.id)} />
+    <Card key={i.id} item={i} events={events} ctx={ctx} open={() => setOpenId(i.id)} unlink={(linkId) => patchIn(i.id, (x) => ({ ...x, links: (x.links || []).filter((l) => l.id !== linkId), at: new Date().toISOString() }))} />
   );
   const addTitle = label || "Add one";
   return (

@@ -60,7 +60,8 @@ import {
   reopenCompletion,
   type CompletionStats,
 } from '../lib/completions';
-import { addCapture, loadCaptures, markPromoted, setCaptureStatus, type Capture } from '../lib/captures';
+import { addCapture, loadCaptures, markPromoted, setCaptureStatus, updateCapture, catchListOf, type Capture } from '../lib/captures';
+import { CatchLists, catchPatch } from './components/CatchLists';
 import { CapturesPanel } from './components/CapturesPanel';
 import { REFRESH_EVENT, syncGoogleNow } from '../lib/syncNow';
 import { applyFinanceSeed } from '../lib/financeSeed';
@@ -103,6 +104,7 @@ import {
 import { ruleFor, saveTaskRule, sourceRuleKey, taskRuleKey, useTaskRules } from '../lib/taskRules';
 import { FlowSyncReview } from './components/FlowSyncReview';
 import { WhyView } from './components/WhyView';
+import { GoalsView } from './components/GoalsView';
 import { DailyGrounding } from './components/DailyGrounding';
 import { isHidden, loadHidden, restoreItem, useHiddenItems } from '../lib/siteMoves';
 import { SiteListHost } from './components/SiteListDialog';
@@ -1186,7 +1188,7 @@ goalsData ? (
 
   return (
     <SiteListsContext.Provider value={{ store: siteListStore, snapshots: baseSnapshots, complete: (site, taskId) => completeOnHub(site, taskId), reopen: (site, taskId) => reopenOnHub(site, taskId), doneOf: (site, taskId) => { const e = ledger.entries[`${site}::${taskId}`]; return e?.title ? { title: e.title, at: e.completedAt } : undefined; } }}>
-    <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' ? 'home' : active}`} data-color-mode={theme}>
+    <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' || active === 'goals' ? 'home' : active}`} data-color-mode={theme}>
       <StickerShell
         active={active}
         enter={enter}
@@ -1282,6 +1284,7 @@ goalsData ? (
               onTaskStar={id => syncSelf(toggleSelfStar(id))}
               onTaskMove={(id, home) => syncSelf(setSelfHome(id, home))}
               onStatus={(id, status) => setCaptures(setCaptureStatus(id, status))}
+              onPatch={(id, patch) => setCaptures(updateCapture(id, patch))}
               onPromote={promoteCapture}
             />
           }
@@ -1290,6 +1293,8 @@ goalsData ? (
         moneyPage
       ) : active === 'logs' ? (
         <LogsView />
+      ) : active === 'goals' ? (
+        <GoalsView events={(schedule?.events || []).map(e => ({ id: e.id, title: e.title, start: e.start, allDay: e.allDay }))} bills={moneyDues} openFinance={(id, tab) => { requestOpenDebt(id, tab); enter('money'); }} />
       ) : active === 'why' ? (
         <WhyView goalsPanel={whyPanel} goals={goalsData} />
       ) : active === 'settings' ? (
@@ -1319,11 +1324,15 @@ goalsData ? (
           onSelfComplete={id => syncSelf(toggleSelfComplete(id))}
           onSelfStar={id => syncSelf(toggleSelfStar(id))}
           voiceMemos={
-            <VoiceMemoList
-              memos={captures.filter(c => c.kind === 'voice' && c.status !== 'dropped')}
-              onStatus={(id, status) => setCaptures(setCaptureStatus(id, status))}
-              onPromote={promoteCapture}
-            />
+            <>
+              <VoiceMemoList
+                memos={captures.filter(c => c.kind === 'voice' && c.status !== 'dropped' && !catchListOf(c))}
+                onStatus={(id, status) => setCaptures(setCaptureStatus(id, status))}
+                onSort={(m, to) => setCaptures(updateCapture(m.id, catchPatch(m, to)))}
+                onPromote={promoteCapture}
+              />
+              <CatchLists captures={captures.filter(c => c.status !== 'dropped')} onStatus={(id, status) => setCaptures(setCaptureStatus(id, status))} onPatch={(id, patch) => setCaptures(updateCapture(id, patch))} />
+            </>
           }
         />
       )}

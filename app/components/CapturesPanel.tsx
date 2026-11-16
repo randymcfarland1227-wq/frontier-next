@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   CAPTURE_KINDS,
+  catchListOf,
   type Capture,
   type CaptureKind,
   type CaptureStatus,
@@ -13,6 +14,7 @@ import { useRowMenu, type RowMenuItem } from './RowMenu';
 import { Circle, ListHead, Row, Tag } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
 import { VoiceMemoList } from './VoiceMemoList';
+import { CatchLists, catchPatch } from './CatchLists';
 import { PLAN, openTaskPanel, pinDragProps, pinKey, usePriorityPins } from '../../lib/priorityPins';
 import { addOngoingGoal } from '../../lib/ongoingGoals';
 import { addToSiteList, createSiteList, listOfTask, openSiteList, useSiteListStore } from '../../lib/siteLists';
@@ -108,6 +110,7 @@ export function CapturesPanel({
   selfItems,
   onAdd,
   onStatus,
+  onPatch,
   onPromote,
   onAddTask,
   onLogTask,
@@ -122,6 +125,8 @@ export function CapturesPanel({
   selfItems: SelfItem[];
   onAdd: (input: { kind: CaptureKind; title: string; notes: string; url: string; focusAreaId: string }) => void;
   onStatus: (id: string, status: Exclude<CaptureStatus, 'promoted'>) => void;
+  /** Re-sort a capture (voice memo type or typed kind) into another catch list */
+  onPatch?: (id: string, patch: Partial<Capture>) => void;
   onPromote: (capture: Capture) => void;
   onAddTask: (title: string, detail: string, focusAreaId: string, due?: string) => void;
   /** Record something already done (off-site) so it counts */
@@ -220,8 +225,10 @@ export function CapturesPanel({
   const starredTasks = allOpen.filter(t => t.starred);
   const openTasks = allOpen.filter(t => !t.starred);
   // Voice memos get their own foldable list; the tabs keep the typed captures.
-  const memos = captures.filter(c => c.kind === 'voice' && c.status !== 'dropped');
-  const typed = captures.filter(c => c.kind !== 'voice');
+  // Voice memos already sorted (Thought / Idea / Reminder / Inspiration) and typed catches live in their own lists.
+  const memos = captures.filter(c => c.kind === 'voice' && c.status !== 'dropped' && !catchListOf(c));
+  const typed = captures.filter(c => c.kind !== 'voice' && !catchListOf(c));
+  const patch = onPatch || (() => {});
   // Finished ones are kept on the Self page, not on the Daily Ops card.
   const counts: Record<Tab, number> = Object.fromEntries(
     TABS.map(t => [t.id, t.id === 'tasks' ? openTasks.length + myLists.length : typed.filter(c => c.status === t.id).length]),
@@ -409,7 +416,8 @@ export function CapturesPanel({
         </div>
       ) : null}
 
-      <VoiceMemoList memos={memos} onStatus={onStatus} onPromote={onPromote} />
+      <VoiceMemoList memos={memos} onStatus={onStatus} onPromote={onPromote} onSort={(m, to) => patch(m.id, catchPatch(m, to))} />
+      <CatchLists captures={captures.filter(c => c.status !== 'dropped')} onStatus={onStatus} onPatch={patch} />
 
       <div className="sk-chips sk-captabs" role="tablist" aria-label="Capture status">
         {/* Empty tabs step aside (the open one always shows). */}

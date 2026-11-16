@@ -3440,3 +3440,34 @@
   .sk-app .skm-tabs::-webkit-scrollbar { display: none; }
   .sk-app .skm-tabs > * { flex: none; scroll-snap-align: start; }
 }
+
+/* 2026-11-16 upgrades: + add buttons, Goals page, Today › Sites, Gallery, Self catch lists. */
+.sk-app .sk-tabbar { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; }
+.sk-app .sk-fc-plusrow { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+.sk-app .sk-fc-plus { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--sk-edge); background: var(--sk-tint); color: var(--sk-paper); cursor: pointer; box-shadow: 0 2px 0 var(--sk-edge); }
+.sk-app .sk-fc-plus.is-small { width: 28px; height: 28px; }
+.sk-app .sk-fc-plus:hover { filter: brightness(1.1); }
+.sk-app .sk-fc-plus:focus-visible { outline: 2px solid var(--sk-tint); outline-offset: 2px; }
+.sk-app .sk-goals .sk-goal-group { margin-top: 14px; }
+.sk-app .sk-goal-add { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px; margin: 0 0 12px; padding: 12px; border: 1px solid var(--sk-line); border-radius: 12px; }
+.sk-app .sk-goal-add > input:first-child { grid-column: 1 / -1; }
+.sk-app .sk-goal-add > .sk-ref-btns { grid-column: 1 / -1; display: flex; gap: 8px; }
+.sk-app .sk-goal-add :is(input, select) { min-height: 38px; }
+.sk-app .sk-sitepick-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.sk-app .sk-sitepick-bar span { font: var(--sk-label); }
+.sk-app .sk-sitepick-bar select { flex: 1; min-width: 0; max-width: 360px; min-height: 38px; }
+.sk-app .sk-sitepick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.sk-app .sk-sitepick-grid h4 { margin: 0 0 6px; font: var(--sk-label); color: var(--sk-ink-2); }
+.sk-app .sk-sitepick-grid section > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.sk-app .sk-sitepick-btn { min-height: 36px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--sk-line); background: color-mix(in srgb, var(--sk-paper) 70%, transparent); color: inherit; font: var(--sk-secondary); cursor: pointer; }
+.sk-app .sk-sitepick-btn:hover { border-color: var(--sk-tint); }
+.sk-app .sk-fd-refs.is-gallery .sk-ref-thumbs { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+.sk-app .sk-fd-refs.is-gallery .sk-ref-thumb img { aspect-ratio: 1; object-fit: cover; width: 100%; height: auto; }
+.sk-app .sk-vm-sort { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-right: 6px; }
+.sk-app .sk-vm-sort .sk-chip { min-height: 28px; padding: 2px 10px; }
+.sk-app .sk-catches { display: grid; gap: 6px; margin: 10px 0; }
+.sk-app .sk-catch-move { min-height: 28px; max-width: 140px; }
+@media (max-width: 520px) {
+  .sk-app .sk-goal-add { grid-template-columns: 1fr; }
+  .sk-app .sk-tabbar button { font-size: 11px; padding: 4px 2px; }
+}

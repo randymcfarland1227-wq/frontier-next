@@ -1385,3 +1385,74 @@ export function SitesTabs({
     </div>
   );
 }
+
+/** Today › Sites: a list of every site grouped like the sidebar; picking one opens that site right here. */
+export function SitePicker({
+  snapshots,
+  enter,
+  openSource,
+  onCompleteFeatured,
+  onCompleteTask,
+  onStarTask,
+}: {
+  snapshots: Record<SourceId, SourceSnapshot>;
+  enter: (id: SpaceId) => void;
+  openSource: (id: SourceId) => void;
+  onCompleteFeatured: (source: SourceId, item: FeaturedItem) => void;
+  onCompleteTask: (source: SourceId, task: TaskItem) => void;
+  onStarTask: (source: SourceId, task: TaskItem) => void;
+}) {
+  const all = SITE_ROWS.flatMap((r) => r.ids) as string[];
+  const [saved, setSaved] = useState(() => readSaved<string>("sk-today-site", ""));
+  const id = all.includes(saved) ? (saved as SourceId) : null;
+  const pick = (next: string) => {
+    setSaved(next);
+    writeSaved("sk-today-site", next);
+  };
+  return (
+    <div className="sk-sitepick">
+      <label className="sk-sitepick-bar">
+        <span>Site</span>
+        <select value={id || ""} onChange={(e) => pick(e.target.value)} aria-label="Pick a site">
+          <option value="">Choose a site…</option>
+          {SITE_ROWS.map((r) => (
+            <optgroup key={r.title} label={r.title}>
+              {r.ids.map((sid) => (
+                <option key={sid} value={sid}>{sourceById[sid].name}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
+      {id ? (
+        <div className="sk-pane" key={id}>
+          <SiteBlock
+            tabbed
+            source={sourceById[id]}
+            snapshot={snapshots[id]}
+            onEnter={() => enter(id)}
+            onOpen={() => openSource(id)}
+            onCompleteFeatured={(item) => onCompleteFeatured(id, item)}
+            onCompleteTask={(task) => onCompleteTask(id, task)}
+            onStarTask={(task) => onStarTask(id, task)}
+          />
+        </div>
+      ) : (
+        <div className="sk-sitepick-grid">
+          {SITE_ROWS.map((r) => (
+            <section key={r.title}>
+              <h4>{r.title}</h4>
+              <div>
+                {r.ids.map((sid) => (
+                  <button key={sid} type="button" className="sk-sitepick-btn" onClick={() => pick(sid)}>
+                    {sourceById[sid].name}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

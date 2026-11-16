@@ -1,5 +1,6 @@
 "use client";
 
+import { goalGroupOf, readGoalTypes } from "../../lib/goalTypes";
 import {
   useEffect,
   useRef,
@@ -1005,7 +1006,8 @@ function Detail({
             </button>
           </form>
 
-          <RefsBox item={item} update={update} />
+          {item.ongoing ? <RefsBox item={item} update={update} mode="gallery" /> : null}
+          <RefsBox item={item} update={update} mode={item.ongoing ? "files" : "all"} />
         </div>
 
         <div className="sk-fd-panels">
@@ -1043,6 +1045,20 @@ function Detail({
               ))}
             </select>
           </label>
+          {item.ongoing ? (
+            <label>
+              <span className="sk-cap">Goal type</span>
+              <input
+                list="sk-goal-types"
+                aria-label="Goal type"
+                placeholder={goalGroupOf({ ...item, goalType: undefined })}
+                defaultValue={item.goalType || ""}
+                onBlur={(e) => update({ goalType: e.target.value.trim() || undefined })}
+                maxLength={40}
+              />
+              <datalist id="sk-goal-types">{readGoalTypes().map((t) => <option key={t} value={t} />)}</datalist>
+            </label>
+          ) : null}
           {item.section === 'fitness' || item.push !== undefined ? <>
             <label><span className="sk-cap">Effort</span><select aria-label="Fitness effort" value={item.push || 2} onChange={e => update({ push: Number(e.target.value) })}><option value={1}>Steady</option><option value={2}>More</option><option value={3}>All in</option></select></label>
             <label><span className="sk-cap">Started</span><input type="date" aria-label="Fitness start date" value={item.since || ''} max={dayKey(new Date())} onChange={e => update({ since: e.target.value || undefined })} /></label>
@@ -1419,6 +1435,7 @@ export function FocusCards({
     : eventsIn;
   const [openId, setOpenId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
+  const [adding, setAdding] = useState(false);
   const lists = [list, ...extra];
   const all = lists.flatMap(([items], li) => items.map((item) => ({ item, li })));
   const patchIn = (id: string, fn: (x: Entry) => Entry | null) => {
@@ -1437,6 +1454,7 @@ export function FocusCards({
     const id = `${Date.now()}`;
     list[1]([...list[0], { ...defaults, id, title: title.trim(), added: dayKey(new Date()) }]);
     setTitle("");
+    setAdding(false);
     setOpenId(id);
   };
   const ordered = orderFocus(all.map((a) => a.item));
@@ -1447,8 +1465,30 @@ export function FocusCards({
   const cardOf = (i: Entry) => (
     <Card key={i.id} item={i} events={events} ctx={ctx} open={() => setOpenId(i.id)} />
   );
+  const addTitle = label || "Add one";
   return (
     <>
+      {noAdd ? null : adding ? (
+        <form className="sk-fc-add" onSubmit={add}>
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Escape") { setTitle(""); setAdding(false); } }}
+            onBlur={() => { if (!title.trim()) setAdding(false); }}
+            placeholder="Name it, then fill in the rest"
+            aria-label={addTitle}
+            maxLength={120}
+          />
+          <button type="submit" className="sk-btn is-small" disabled={!title.trim()}>Add</button>
+        </form>
+      ) : (
+        <div className="sk-fc-plusrow">
+          <button type="button" className="sk-fc-plus" aria-label={addTitle} title={addTitle} onClick={() => setAdding(true)}>
+            <Icon name="plus" size={16} />
+          </button>
+        </div>
+      )}
       {active.length ? (
         <div className="sk-fcards">{active.map(cardOf)}</div>
       ) : empty && !finished.length ? (
@@ -1464,25 +1504,6 @@ export function FocusCards({
           {doneShut ? null : <div className="sk-fcards">{finished.map(cardOf)}</div>}
         </div>
       ) : null}
-      {noAdd ? null : (
-        <form className="sk-fc-add" onSubmit={add}>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={label}
-            aria-label={label}
-            maxLength={120}
-          />
-          <button
-            type="submit"
-            className="sk-btn is-small"
-            disabled={!title.trim()}
-          >
-            <Icon name="plus" size={14} />
-            Add
-          </button>
-        </form>
-      )}
       {openItem ? (
         <Detail
           item={!openItem.site && !openItem.section && !openItem.unassigned && defaults?.section ? { ...openItem, section: defaults.section, ongoing: true } : openItem}
@@ -1684,8 +1705,8 @@ function HabitGoalBox({ item, update, count }: { item: Entry; update: (patch: Pa
 }
 
 /** References: links, documents and images for this focus. Files live on the Worker (lib/focusRefs.ts). */
-function RefsBox({ item, update }: { item: Entry; update: (patch: Partial<Entry>) => void }) {
-  const refs = sortRefs(item.refs || []);
+function RefsBox({ item, update, mode = "all" }: { item: Entry; update: (patch: Partial<Entry>) => void; mode?: "all" | "gallery" | "files" }) {
+  const refs = sortRefs(item.refs || []).filter((r) => (mode === "gallery" ? r.kind === "image" : mode === "files" ? r.kind !== "image" : true));
   const [url, setUrl] = useState("");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState("");
@@ -1752,15 +1773,15 @@ function RefsBox({ item, update }: { item: Entry; update: (patch: Partial<Entry>
   const images = refs.filter((r) => r.kind === "image");
   const rows = refs.filter((r) => r.kind !== "image");
   return (
-    <section className="sk-fd-box sk-fd-list sk-fd-refs" aria-label="References">
+    <section className={`sk-fd-box sk-fd-list sk-fd-refs${mode === "gallery" ? " is-gallery" : ""}`} aria-label={mode === "gallery" ? "Gallery" : "References"}>
       <header>
         <b>
-          <Icon name="clip" size={13} />
-          References
+          <Icon name={mode === "gallery" ? "image" : "clip"} size={13} />
+          {mode === "gallery" ? "Gallery" : "References"}
         </b>
         {refs.length ? <small>{refs.length}</small> : null}
       </header>
-      <p className="sk-fd-hint">Links, documents and images for this focus.</p>
+      <p className="sk-fd-hint">{mode === "gallery" ? "Reference images for this goal. Tap one to see it full size." : mode === "files" ? "Links and documents for this goal." : "Links, documents and images for this focus."}</p>
       {images.length ? (
         <div className="sk-ref-thumbs">
           {images.map((r) => (
@@ -1809,6 +1830,15 @@ function RefsBox({ item, update }: { item: Entry; update: (patch: Partial<Entry>
           ))}
         </ul>
       ) : null}
+      {mode === "gallery" ? (
+        <div className="sk-ref-btns">
+          <button type="button" className="sk-btn is-small" disabled={Boolean(busy)} onClick={() => fileInput.current?.click()}>
+            <Icon name="plus" size={13} />
+            Add images
+          </button>
+          <input ref={fileInput} type="file" hidden multiple accept="image/*,.heic" onChange={(e) => addFiles(e.target.files)} />
+        </div>
+      ) : (
       <form className="sk-ref-add" onSubmit={addLink}>
         <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste a link" aria-label="Link address" inputMode="url" />
         {url.trim() ? <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label (optional)" aria-label="Link label" maxLength={120} /> : null}
@@ -1819,11 +1849,12 @@ function RefsBox({ item, update }: { item: Entry; update: (patch: Partial<Entry>
           </button>
           <button type="button" className="sk-btn is-small" disabled={Boolean(busy)} onClick={() => fileInput.current?.click()}>
             <Icon name="plus" size={13} />
-            Image / document
+            {mode === "files" ? "Document" : "Image / document"}
           </button>
         </div>
-        <input ref={fileInput} type="file" hidden multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.pages,.numbers,.key,.heic" onChange={(e) => addFiles(e.target.files)} />
+        <input ref={fileInput} type="file" hidden multiple accept={mode === "files" ? ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.pages,.numbers,.key" : "image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.pages,.numbers,.key,.heic"} onChange={(e) => addFiles(e.target.files)} />
       </form>
+      )}
       {busy ? <p className="sk-fd-hint" role="status">{busy}</p> : null}
       {err ? <p className="sk-ref-err" role="alert">{err}</p> : null}
       {view ? (

@@ -114,6 +114,8 @@ export type Entry = {
   inFocus?: boolean;
   /** An ongoing goal: a direction, not a one-time task (made from Self) */
   ongoing?: boolean;
+  /** Goals page grouping ("Move", "Fitness"…); empty = grouped by its site / section */
+  goalType?: string;
   /** Finance lists linked in as sub-task lists (key says which debt-file items: see lib/finLinks) */
   fin?: Array<{ key: string; label: string }>;
   /** Finished by itself once a TickTick habit is checked in N times (then a "delete the habit" task is added) */
@@ -564,7 +566,6 @@ export function ShortTermFocus({
   bills = [],
   openFinance,
   snapshots,
-  ledger,
 }: {
   focus: ReturnType<typeof useShortTermFocus>;
   events?: LinkItem[];
@@ -573,14 +574,11 @@ export function ShortTermFocus({
   snapshots?: Partial<Record<SourceId, SourceSnapshot>>;
   ledger?: CompletionLedger;
 }) {
-  const [ongoingShut, toggleOngoing] = useShut("focus-ongoing");
   const [pursuitsShut, togglePursuits] = useShut("focus-pursuits");
   const pursuits = activePursuits(snapshots?.income);
   // A goal promoted to Short-term focus is the SAME record (so edits show in both places): it appears in the
   // top grid and on its site, and is left out of the "Ongoing goals" row below so it isn't shown twice here.
   const promoted = focusListView(focus.ongoing, (i) => Boolean(i.inFocus));
-  const rest = focusListView(focus.ongoing, (i) => !i.inFocus);
-  const ongoingCount = rest[0].filter((i) => !i.done).length;
   return (
     <Group
       tone="focus"
@@ -594,31 +592,10 @@ export function ShortTermFocus({
         events={events}
         bills={bills}
         openFinance={openFinance}
-        label="What needs real attention — type it, then fill in the rest"
-        empty="Type what needs real attention right now."
+        label="Add to short-term focus"
+        empty="Nothing here yet. Press + to add what needs real attention."
       />
-      {rest[0].length ? (
-        <>
-          <ListHead
-            title="Ongoing goals"
-            meta={`${ongoingCount} · directions, not one-time tasks`}
-            shut={ongoingShut}
-            onToggle={toggleOngoing}
-          />
-          {ongoingShut ? null : (
-            <FocusCards
-              list={rest}
-              events={events}
-              bills={bills}
-              openFinance={openFinance}
-              ticktick={snapshots?.ticktick}
-              ledger={ledger}
-              label=""
-              noAdd
-            />
-          )}
-        </>
-      ) : null}
+      <p className="sk-fd-hint">Ongoing goals now live on the Goals page, grouped by type.</p>
       <ListHead
         title="Active Pursuits"
         meta={`${pursuits.length} · Venture Lab ideas marked active or building`}
@@ -653,7 +630,10 @@ export function FocusSection({
   bills = [],
   openFinance,
   completeHabit,
+  bare,
 }: {
+  /** Inside a Today tab: no Section box or title row of its own */
+  bare?: boolean;
   /** Check in a TickTick habit (same path as the TickTick tab used) */
   completeHabit?: (t: TaskItem) => void;
   focus: ReturnType<typeof useShortTermFocus>;
@@ -775,8 +755,7 @@ export function FocusSection({
     }
   }
   const template = cols.map((c) => (c.shut ? "minmax(200px, .55fr)" : `minmax(0, ${c.weight}fr)`)).join(" ");
-  return (
-    <Section id="focus" title="Daily Rhythm & Routine" summary={summary}>
+  const body = (
       <div className="sk-trio sk-rhythm" data-day={day} style={{ "--rhythm-cols": template } as CSSProperties}>
         {cols.map((c) =>
           c.shut ? (
@@ -788,6 +767,10 @@ export function FocusSection({
           ),
         )}
       </div>
+  );
+  return bare ? body : (
+    <Section id="focus" title="Daily Rhythm & Routine" summary={summary}>
+      {body}
     </Section>
   );
 }

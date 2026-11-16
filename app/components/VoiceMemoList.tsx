@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Capture, CaptureStatus } from '../../lib/captures';
+import { CATCH_LISTS, type Capture, type CaptureStatus, type CatchList } from '../../lib/captures';
 import { useFold } from './Collapsible';
 import { ListHead, Row, Tag } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
@@ -36,7 +36,10 @@ export function VoiceMemoList({
   memos,
   onStatus,
   onPromote,
+  onSort,
 }: {
+  /** File the memo into a Self catch list (Thoughts / Ideas / Reminders / Inspiration catch) */
+  onSort?: (memo: Capture, to: CatchList) => void;
   memos: Capture[];
   onStatus: (id: string, status: Exclude<CaptureStatus, 'promoted'>) => void;
   onPromote: (capture: Capture) => void;
@@ -61,7 +64,7 @@ export function VoiceMemoList({
         title={
           <>
             <Icon name="mic" size={14} />
-            Voice memos
+            Voice memos · to sort
           </>
         }
         meta={live.length ? `${live.length}${minutes ? ` · ${minutes} min` : ''}` : 0}
@@ -101,6 +104,13 @@ export function VoiceMemoList({
                   value={m.memoType ? <Tag>{m.memoType}</Tag> : undefined}
                 >
                   <div className="sk-ract">
+                    {onSort && m.status !== 'parked' ? (
+                      <span className="sk-vm-sort" role="group" aria-label="Sort this memo">
+                        {CATCH_LISTS.map(l => (
+                          <button key={l.id} type="button" className="sk-chip" onClick={() => onSort(m, l.id)}>{l.memo}</button>
+                        ))}
+                      </span>
+                    ) : null}
                     {m.status === 'inbox' ? (
                       <button type="button" className="sk-link" onClick={() => onPromote(m)}>
                         Make a task

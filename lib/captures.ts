@@ -5,7 +5,7 @@ import type { FocusAreaId } from './focusAreas';
 import { readSaved, writeSaved, STORAGE_KEYS } from './storage';
 
 /** 'voice' = a recording from the voice-memos site (separate repo); never offered in the quick-add form. */
-export type CaptureKind = 'research' | 'learn' | 'lookinto' | 'idea' | 'thought' | 'voice';
+export type CaptureKind = 'research' | 'learn' | 'lookinto' | 'idea' | 'thought' | 'inspiration' | 'reminder' | 'voice';
 
 /** A voice memo's recording, stored on the Worker (/api/files, KV `file:<id>`, backup key). */
 export type CaptureAudio = { fileId: string; type: string; seconds: number; size: number };
@@ -34,8 +34,10 @@ export type Capture = {
 };
 
 export const CAPTURE_KINDS: Array<{ id: CaptureKind; label: string }> = [
+  { id: 'inspiration', label: 'Inspiration catch' },
   { id: 'thought', label: 'Thought' },
   { id: 'idea', label: 'Idea' },
+  { id: 'reminder', label: 'Reminder' },
   { id: 'research', label: 'Research' },
   { id: 'lookinto', label: 'Look into' },
   { id: 'learn', label: 'Learn' },
@@ -94,4 +96,24 @@ export function setCaptureStatus(id: string, status: Exclude<CaptureStatus, 'pro
 
 export function markPromoted(id: string, promotedTo: { source: SourceId; taskId: string }): Capture[] {
   return updateCapture(id, { status: 'promoted', promotedTo });
+}
+
+/** Self's own catch lists: typed captures of these kinds and voice memos sorted into them. */
+export type CatchList = 'inspiration' | 'thought' | 'idea' | 'reminder';
+export const CATCH_LISTS: Array<{ id: CatchList; label: string; memo: string }> = [
+  { id: 'inspiration', label: 'Inspiration catch', memo: 'Inspiration' },
+  { id: 'thought', label: 'Thoughts', memo: 'Thought' },
+  { id: 'idea', label: 'Ideas', memo: 'Idea' },
+  { id: 'reminder', label: 'Reminders', memo: 'Reminder' },
+];
+
+/** Which catch list a capture lives in; undefined = a voice memo still to sort (or another kind). */
+export function catchListOf(c: Capture): CatchList | undefined {
+  if (c.kind !== 'voice') return (CATCH_LISTS.some(l => l.id === c.kind) ? c.kind : undefined) as CatchList | undefined;
+  const t = (c.memoType || '').toLowerCase();
+  if (t.includes('inspir')) return 'inspiration';
+  if (t.includes('thought')) return 'thought';
+  if (t.includes('idea')) return 'idea';
+  if (t.includes('remind')) return 'reminder';
+  return undefined;
 }

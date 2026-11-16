@@ -58,15 +58,17 @@ import { readSaved, writeSaved } from "../../lib/storage";
 import { TickTickRings } from "./TickTickRings";
 import { Icon } from "../sticker/Icon";
 import { AssignedFocus } from "./AssignedFocus";
-import { SITE_ROWS, SitesTabs } from "../sticker/Sites";
+import { SITE_ROWS, SitesTabs, SitePicker } from "../sticker/Sites";
 
-type TodayTab = "brief" | "grounding" | "calendar" | "focus" | "money";
+type TodayTab = "brief" | "rhythm" | "grounding" | "calendar" | "focus" | "money" | "sites";
 const TODAY_TABS: [TodayTab, string][] = [
   ["brief", "Daily Brief"],
+  ["rhythm", "Daily Rhythm"],
   ["focus", "Short-term focus"],
   ["calendar", "Calendar"],
   ["grounding", "Grounding"],
   ["money", "Money"],
+  ["sites", "Sites"],
 ];
 
 /** "3 on your list · 13 on deck · 1 critical" for the Doing Now head. */
@@ -341,6 +343,10 @@ export function HomeView({
       <ScheduleSummary schedule={schedule} bills={bills} />
     ) : tab === "focus" ? (
       shortTermSummary(shortTerm.open)
+    ) : tab === "rhythm" ? (
+      "Habits, routines and the shape of the day"
+    ) : tab === "sites" ? (
+      "Pick a site to open it here"
     ) : (
       <BriefSummary snapshots={snapshots} bills={bills} />
     );
@@ -452,7 +458,18 @@ export function HomeView({
     );
   };
   const renderTab = (t: TodayTab) =>
-        t === "money" ? (
+        t === "rhythm" ? (
+          <FocusSection bare snapshots={snapshots} ledger={ledger} completeHabit={(x) => onCompleteTask("ticktick", x)} enter={enter} focus={shortTerm} events={linkItems} bills={bills} openFinance={(id, tab) => { requestOpenDebt(id, tab); enter("money"); }} />
+        ) : t === "sites" ? (
+          <SitePicker
+            snapshots={noHabits}
+            enter={enter}
+            openSource={openSource}
+            onCompleteFeatured={onCompleteFeatured}
+            onCompleteTask={onCompleteTask}
+            onStarTask={onStarTask}
+          />
+        ) : t === "money" ? (
           <div className="sk-money-tab">{money}</div>
         ) : t === "grounding" ? (
           <div className="sk-mountain">
@@ -589,8 +606,6 @@ export function HomeView({
           </>
         )}
       </Section>
-
-      <FocusSection snapshots={snapshots} ledger={ledger} completeHabit={(t) => onCompleteTask("ticktick", t)} enter={enter} focus={shortTerm} events={linkItems} bills={bills} openFinance={(id, tab) => { requestOpenDebt(id, tab); enter("money"); }} />
 
       <Section
         id="priority"

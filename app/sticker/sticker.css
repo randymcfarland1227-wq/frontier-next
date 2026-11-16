@@ -3490,3 +3490,8 @@
 /* Inside a capped Today pane, "full screen" = the pane's own visible height (it scrolls), minus its tab line. */
 .sk-app .sk-splitwrap[data-cap="split"] .sk-sched-grid.is-stacked > .sk-month { min-height: calc(clamp(360px, 72vh, 760px) - 64px); }
 .sk-app .sk-splitwrap[data-cap="page"] .sk-sched-grid.is-stacked > .sk-month { min-height: calc(clamp(480px, 86vh, 1000px) - 64px); }
+/* The full-width month has room for titles again (the older ≤900px pane rule hid them for dots). */
+@container today-pane (min-width: 521px) {
+  .sk-sched .sk-sched-grid.is-stacked .sk-month .sk-ditem { display: block !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sk-sched .sk-sched-grid.is-stacked .sk-month .sk-ddots { display: none !important; }
+}

@@ -2692,10 +2692,8 @@
 .sk-app .sk-top .sk-ribbon.is-compact :is(.sk-sun, .sk-moon) { grid-auto-flow: column; align-items: center; gap: 3px; }
 .sk-app .sk-top .sk-ribbon.is-compact .sk-moon .sk-icon { width: 13px; height: 13px; padding: 1px; }
 
-/* Phone: shrink everything ~40% (page zoom, same mechanism as the zoom control). */
+/* Phone: full size (the old forced 60% zoom made text ~6px and taps ~11px). Site size (Aa) can still shrink it. */
 @media (max-width: 520px) {
-  html { zoom: .6; --page-zoom: .6; }
-  .sk-app .sk-tabbar button { min-height: 72px; }
   .sk-app .sk-circle::before { inset: -20px; }
   .sk-app .sk-seg button::before { inset: -14px -4px; }
   .sk-app .ldp { margin-top: 18px; }
@@ -3434,3 +3432,11 @@
 .sk-app .sk-todaybar-slot .skm-slot-top .money-note { margin: 0; font-size: 10px; }
 .sk-app .sk-todaybar .skm-zoom { display: inline-flex; border: 1px solid var(--sk-glass-rim); border-radius: 99px; background: var(--sk-glass-track); box-shadow: var(--sk-glass-shadow); overflow: hidden; }
 .sk-app .sk-todaybar .skm-zoom button { border: 0; background: transparent; color: var(--sk-ink); font: 700 10px/1 "DM Sans", system-ui, sans-serif; padding: 3px 6px; cursor: pointer; }
+
+/* Phone pass 2026-11-16: no Split on phones, Money tabs in one swipeable row, 44px tap rows. */
+@media (max-width: 520px) {
+  .sk-app .sk-viewseg { display: none; }
+  .sk-app .skm-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -4px; padding: 2px 4px; scroll-snap-type: x proximity; }
+  .sk-app .skm-tabs::-webkit-scrollbar { display: none; }
+  .sk-app .skm-tabs > * { flex: none; scroll-snap-align: start; }
+}

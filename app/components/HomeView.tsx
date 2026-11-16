@@ -246,6 +246,14 @@ export function HomeView({
     setSplitState(v);
     writeSaved("sk-today-split", v);
   };
+  // Phones never split: two stacked scroll boxes trap the page. The saved choice comes back on wider screens.
+  const [phone, setPhone] = useState<boolean>(() => typeof window !== "undefined" && window.matchMedia("(max-width: 520px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 520px)");
+    const on = () => setPhone(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
   // Split view zoom per pane (desktop vs laptop differ, so this stays on this device).
   const [splitZoom, setSplitZoomState] = useState<[number, number]>(() => {
     const z = readSaved<number[]>("sk-today-split-zoom", [100, 100]);
@@ -546,7 +554,7 @@ export function HomeView({
           </div>
         }
       >
-        {split ? (
+        {split && !phone ? (
           <div className="sk-split">
             {([
               [tab, pickTodayTab],

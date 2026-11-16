@@ -5,7 +5,7 @@ import { readSaved, writeSaved, STORAGE_KEYS } from '../../lib/storage';
 
 const EXPANDED_KEY = 'lifehub-expanded-sections';
 /** Section ids (or id prefixes) that stay open on a phone by default */
-const PHONE_OPEN = ['brief', 'priority'];
+const PHONE_OPEN = ['brief', 'priority', 'goals'];
 const isPhone = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
 
 /**

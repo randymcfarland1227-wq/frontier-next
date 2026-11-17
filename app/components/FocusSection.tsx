@@ -76,11 +76,13 @@ export type SubTask = {
   fills?: { key: string; label: string };
   /** Habits lists: the TickTick habit this row shows today's state of (bare id, no "habit-") */
   habitId?: string;
+  /** Waits for another step in the same card (its id): locked until that one is done */
+  after?: string;
 };
 /** tasks (default): checkable steps + finance rows · notes: plain bullet details · habits: today's TickTick habits. Only tasks count toward %. */
-export type SubListKind = "tasks" | "notes" | "habits";
+export type SubListKind = "tasks" | "pay" | "buy" | "notes" | "habits";
 export type SubList = { id: string; name: string; tasks: SubTask[]; kind?: SubListKind };
-export const isTaskList = (l: SubList) => !l.kind || l.kind === "tasks";
+export const isTaskList = (l: SubList) => l.kind !== "notes" && l.kind !== "habits";
 
 export type Entry = {
   id: string;

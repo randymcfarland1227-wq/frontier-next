@@ -10,7 +10,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { useRowMenu } from "./RowMenu";
+import { MenuRow, useRowMenu, type RowMenuItem } from "./RowMenu";
 import { useFold } from "./Collapsible";
 import { Icon } from "../sticker/Icon";
 import { deleteRemote, docTag, downloadRef, fetchRefBlob, formatSize, linkLabel, normalizeUrl, openRef, sortRefs, uploadRef, type FocusRef } from "../../lib/focusRefs";
@@ -439,6 +439,19 @@ function KindList({ l, ctx, patch, remove }: { l: SubList; ctx: FinCtx; patch: (
         </ul>
       ) : (
         <ul className="sk-fd-habits">
+          {l.tasks.length ? (
+            <li className="sk-fd-hdays" aria-hidden="true">
+              <span /><span /><span />
+              <span className="sk-fd-week">
+                {Array.from({ length: 7 }, (_, i) => {
+                  const d = new Date();
+                  d.setDate(d.getDate() - (6 - i));
+                  return <b key={i} className={i === 6 ? "is-today" : ""}>{i === 6 ? "Today" : d.toLocaleDateString([], { weekday: "narrow" })}</b>;
+                })}
+              </span>
+              <span />
+            </li>
+          ) : null}
           {l.tasks.map((t) => {
             const h = habitDay(t.habitId || "", ledger, off);
             return (
@@ -446,9 +459,9 @@ function KindList({ l, ctx, patch, remove }: { l: SubList; ctx: FinCtx; patch: (
                 <span className="sk-fd-hstate" aria-hidden="true">{h.state === "done" ? "✓" : h.state === "off" ? "–" : h.state === "notdue" ? "·" : ""}</span>
                 <span className="sk-fd-hname">{t.text}</span>
                 <small className="sk-fd-hlabel">{h.state === "done" ? "Done today" : h.state === "off" ? "Skipped" : h.state === "notdue" ? "Not due today" : "Open"}</small>
-                <span className="sk-fd-week" title="Last 7 days">
-                  {h.week.map((d) => (
-                    <i key={d.k} className={d.done ? "is-done" : d.due ? "" : "is-off"} title={`${d.k}${d.done ? " · done" : d.due ? "" : " · not due"}`} />
+                <span className="sk-fd-week" title="Last 7 days · today on the right">
+                  {h.week.map((d, i) => (
+                    <i key={d.k} className={`${d.done ? "is-done" : d.due ? "" : "is-off"}${i === 6 ? " is-today" : ""}`} title={`${d.k}${d.done ? " · done" : d.due ? "" : " · not due"}`} />
                   ))}
                 </span>
                 <button type="button" className="sk-fd-notex" aria-label={`Remove ${t.text}`} title="Remove" onClick={() => drop(t.id)}>
@@ -485,6 +498,53 @@ function KindList({ l, ctx, patch, remove }: { l: SubList; ctx: FinCtx; patch: (
         />
       )}
     </section>
+  );
+}
+
+
+const KIND_LABELS: Array<[SubListKind, string]> = [["tasks", "Steps"], ["pay", "To pay"], ["buy", "To buy"], ["notes", "Notes"], ["habits", "Habits"]];
+const KIND_HINT: Record<SubListKind, string> = {
+  tasks: "Things to do: check-off steps (count toward %)",
+  pay: "Bills and liabilities to pay: link them from Money (count toward %)",
+  buy: "Things to buy: each one shows in Money › Purchases › Task-based",
+  notes: "Plain bullet points: tips, details (not counted)",
+  habits: "TickTick habits with today's state (not counted)",
+};
+/** A list card's header: name, type tag, progress; right-click to change its type or delete it. */
+function ListHead({ l, ctx, patch, remove, children }: { l: SubList; ctx: FinCtx; patch: (p: Partial<SubList>) => void; remove: () => void; children: ReactNode }) {
+  const kind = l.kind || "tasks";
+  const rows = l.tasks;
+  const done = rows.filter((t) => taskDone(t, ctx)).length;
+  let meta = `${done} of ${rows.length}`;
+  if (kind === "pay" || kind === "buy") {
+    let paid = 0, all = 0;
+    for (const t of rows) {
+      if (!t.fin) continue;
+      const fr = finRows(t.fin, ctx);
+      const a = fr.reduce((n, r) => n + (r.amount || 0), 0);
+      all += a;
+      if (fr.length && fr.every((r) => r.settled)) paid += a;
+    }
+    if (all) meta = `${usd(paid)} of ${usd(all)}`;
+  }
+  const { bind, menu } = useRowMenu(
+    () => [
+      ...KIND_LABELS.filter(([k]) => k !== kind).map(([k, label]) => ({ label: `Make it ${label}`, onSelect: () => patch({ kind: k === "tasks" ? undefined : k }) })),
+      { label: "Delete list", danger: true, onSelect: remove },
+    ],
+    l.name,
+  );
+  return (
+    <>
+      <header className="sk-fd-lhead" {...bind}>
+        <i className={`sk-fd-dot is-${kind}`} />
+        {children}
+        <span className={`sk-fd-ltype is-${kind}`}>{KIND_LABELS.find(([k]) => k === kind)?.[1]}</span>
+        <span className="sk-fd-lmeta">{meta}</span>
+      </header>
+      <div className="sk-fd-lbar"><i className={`is-${kind}`} style={{ width: `${rows.length ? (done / rows.length) * 100 : 0}%` }} /></div>
+      {menu}
+    </>
   );
 }
 
@@ -766,8 +826,9 @@ function Detail({
     e.preventDefault();
     const text = (taskText[l.id] || "").trim();
     if (!text) return;
+    const fin = l.kind === "buy" ? { key: addOwnItem(text, { buy: true, task: item.title }), label: text } : undefined;
     patchList(l.id, {
-      tasks: [...l.tasks, { id: uid(), text, done: false }],
+      tasks: [...l.tasks, { id: uid(), text, done: false, ...(fin ? { fin } : {}) }],
     });
     setTaskText({ ...taskText, [l.id]: "" });
   };
@@ -784,6 +845,76 @@ function Detail({
   const p = progressOf(item, ctx);
   const added = addedOf(item);
   const finOpts = financeOptions(ctx);
+  const planRef = useRef<HTMLDetailsElement>(null);
+  const lede = (item.note || item.why || "").split(/(?<=[.!?])\s/)[0].slice(0, 160);
+  // Money across this card's lists: paid · still to pay · to buy (task purchases)
+  const money = { paid: 0, pay: 0, buy: 0, total: 0 };
+  for (const l of lists.filter(isTaskList))
+    for (const t of l.tasks) {
+      if (!t.fin) continue;
+      const rows = finRows(t.fin, ctx);
+      const amt = rows.reduce((n, r) => n + (r.amount || 0), 0);
+      if (!amt) continue;
+      if (rows.every((r) => r.settled)) money.paid += amt;
+      else if (ctx.findings?.[t.fin.key]?.buy) money.buy += amt;
+      else money.pay += amt;
+    }
+  money.total = money.paid + money.pay + money.buy;
+  const habitRows = lists.filter((l) => l.kind === "habits").flatMap((l) => l.tasks);
+  const habitsToday = habitRows.length
+    ? (() => {
+        const off = tickTickOffMap() as Record<string, string>;
+        const st = habitRows.map((t) => habitDay(t.habitId || "", ctx.ledger || loadLedger(), off).state);
+        return { done: st.filter((x) => x === "done").length, due: st.filter((x) => x !== "notdue").length };
+      })()
+    : null;
+  // Wait for: a step locked until another step in this card is done (returns that step's name).
+  const allSteps = lists.flatMap((l) => l.tasks);
+  const lockOf = (t: SubTask) => {
+    if (!t.after) return "";
+    const w8 = allSteps.find((x) => x.id === t.after);
+    return w8 && !taskDone(w8, ctx) ? w8.text : "";
+  };
+  const patchTask = (l: SubList, id: string, q: Partial<SubTask>) => patchList(l.id, { tasks: l.tasks.map((x) => (x.id === id ? { ...x, ...q } : x)) });
+  const rowMenu = (l: SubList, t: SubTask): RowMenuItem[] => [
+    { label: t.fin ? "Notes…" : "Date and notes…", onSelect: () => setSubOpen({ list: l.id, task: t.id }) },
+    ...allSteps
+      .filter((x) => x.id !== t.id && !x.fin && !taskDone(x, ctx))
+      .slice(0, 8)
+      .map((x) => ({ label: `Wait for: ${x.text}`, on: t.after === x.id, onSelect: () => patchTask(l, t.id, { after: t.after === x.id ? undefined : x.id }) })),
+    { label: "Stop waiting", hidden: !t.after, onSelect: () => patchTask(l, t.id, { after: undefined }) },
+    {
+      label: "🛒 Make it a task purchase",
+      hidden: Boolean(t.fin),
+      onSelect: () => {
+        const key = addOwnItem(t.text, { buy: true, task: item.title, ...(t.done ? { paid: true } : {}) });
+        patchTask(l, t.id, { fin: { key, label: t.text } });
+      },
+    },
+    ...lists
+      .filter((x) => x.id !== l.id && isTaskList(x))
+      .map((x) => ({
+        label: `Move to ${x.name || "list"}`,
+        onSelect: () => setLists(lists.map((y) => (y.id === l.id ? { ...y, tasks: y.tasks.filter((z) => z.id !== t.id) } : y.id === x.id ? { ...y, tasks: [...y.tasks, t] } : y))),
+      })),
+    { label: "Remove", danger: true, onSelect: () => patchList(l.id, { tasks: l.tasks.filter((x) => x.id !== t.id) }) },
+  ];
+  const markDone = () => {
+    if (!item.done) {
+      const keys = [...(item.fin || []), ...(item.lists || []).flatMap((l) => l.tasks.flatMap((x) => (x.fin ? [x.fin] : [])))].map((f) => f.key);
+      for (const k of keys) if (settable(k)) settleLink(k, true, ctx);
+    }
+    update({ done: !item.done });
+  };
+  const cardMenu = useRowMenu(
+    () => [
+      { label: "Plan and settings…", onSelect: () => { if (planRef.current) { planRef.current.open = true; planRef.current.scrollIntoView({ behavior: "smooth", block: "start" }); } } },
+      { label: item.inFocus ? "Take out of Short-term focus" : "Show in Short-term focus", hidden: !item.ongoing, on: Boolean(item.inFocus), onSelect: () => update({ inFocus: !item.inFocus }) },
+      { label: item.done ? "Marked done — undo" : "Mark the whole focus done", on: Boolean(item.done), onSelect: markDone },
+      { label: "Remove this focus", danger: true, onSelect: () => { remove(); close(); } },
+    ],
+    item.title,
+  );
   const dateOpts: Opt[] = events
     .filter((e) => daysBetween(new Date(), eventStart(e)) >= -30)
     .sort((a, b) => eventStart(a).getTime() - eventStart(b).getTime())
@@ -802,65 +933,48 @@ function Detail({
       backClassName="sk-fdetail-back"
       dataSite={item.site || undefined}
     >
-        <header className="sk-fd-top">
-          <div className="sk-fd-pct">
+        <header className="sk-fd-hero">
+          <div className="sk-fd-ring" style={{ "--p": p.pct ?? 0 } as React.CSSProperties}>
             <b>{p.pct === null ? "–" : `${p.pct}%`}</b>
-            <small>completed</small>
+            <small>{p.total ? `${p.done} of ${p.total} done` : "no steps yet"}</small>
           </div>
-          <input
-            className="sk-fd-title"
-            value={item.title}
-            onChange={(e) => update({ title: e.target.value })}
-            maxLength={120}
-            aria-label="Focus"
-          />
-          <div className="sk-fd-when">
-            <div>
-              <b>{w.big}</b>
-              {w.cap ? <small>{w.cap}</small> : null}
+          <div className="sk-fd-hmain">
+            <input className="sk-fd-title" value={item.title} onChange={(e) => update({ title: e.target.value })} maxLength={120} aria-label="Focus" />
+            {lede ? <p className="sk-fd-lede">{lede}</p> : null}
+            <div className="sk-fd-stats">
+              {money.total ? (
+                <span className="sk-fd-stat"><small>Money left</small><b>{usd(money.pay + money.buy)}</b></span>
+              ) : null}
+              {money.paid ? <span className="sk-fd-stat"><small>Paid</small><b>{usd(money.paid)}</b></span> : null}
+              {item.priority ? <span className="sk-fd-stat"><small>Priority</small><b>{FOCUS_PRIORITY_LABEL[item.priority]}</b></span> : null}
+              {habitsToday ? <span className="sk-fd-stat"><small>Habits today</small><b>{habitsToday.done} of {habitsToday.due}</b></span> : null}
+              <span className="sk-fd-stat"><small>Lists</small><b>{lists.length}</b></span>
             </div>
-            <span className="sk-fcard-date">
-              {w.linked ? <Icon name="calendar" size={12} /> : null}
-              {w.num}
-            </span>
           </div>
-          <button
-            data-autofocus
-            type="button"
-            className="sk-btn is-small is-icon"
-            onClick={close}
-            aria-label="Close"
-            title="Close"
-          >
-            <Icon name="close" size={16} />
-          </button>
+          <div className={`sk-fd-count${target && daysBetween(new Date(), target.date) <= 14 ? " is-near" : ""}`}>
+            <b>{w.big}</b>
+            {w.cap ? <small>{w.cap}</small> : null}
+            <span>{w.linked ? <Icon name="calendar" size={11} /> : null}{w.num}</span>
+          </div>
+          <div className="sk-fd-hbtns">
+            <button type="button" className="sk-btn is-small is-icon" aria-label="More for this focus" title="More: plan, short-term focus, done, remove" onClick={(e) => cardMenu.open(e.currentTarget)}>
+              <Icon name="more" size={16} />
+            </button>
+            <button data-autofocus type="button" className="sk-btn is-small is-icon" onClick={close} aria-label="Close" title="Close">
+              <Icon name="close" size={16} />
+            </button>
+          </div>
+          {cardMenu.menu}
         </header>
 
-        <div className="sk-fd-two">
-          <label className="sk-fd-box">
-            <span>Scope</span>
-            <textarea
-              value={item.note || ""}
-              onChange={(e) => update({ note: e.target.value || undefined })}
-              placeholder="What it is — e.g. people at our home for Savannah’s baby shower"
-            />
-          </label>
-          <label className="sk-fd-box">
-            <span>Why</span>
-            <textarea
-              value={item.why || ""}
-              onChange={(e) => update({ why: e.target.value || undefined })}
-              placeholder="Why it matters — e.g. so we can do his dog DNA test"
-            />
-          </label>
-        </div>
-
+        <div className="sk-fd-grid">
+        <div className="sk-fd-main">
         <div className="sk-fd-three">
-          {lists.map((l) => l.kind === "notes" || l.kind === "habits" ? (
+          {[...lists].filter((l) => l.kind !== "notes").sort((x, y) => (y.kind === "habits" ? 1 : 0) - (x.kind === "habits" ? 1 : 0)).map((l) => l.kind === "habits" ? (
             <KindList key={l.id} l={l} ctx={ctx} patch={(p) => patchList(l.id, p)} remove={() => setLists(lists.filter((x) => x.id !== l.id))} />
           ) : (
-            <section key={l.id} className="sk-fd-box sk-fd-list">
-              <header>
+            <section key={l.id} className={`sk-fd-box sk-fd-list is-${l.kind || "tasks"}`}>
+              <ListHead l={l} ctx={ctx} patch={(q) => patchList(l.id, q)} remove={() => setLists(lists.filter((x) => x.id !== l.id))}>
                 <input
                   value={l.name}
                   aria-label="List name"
@@ -876,10 +990,10 @@ function Detail({
                 >
                   <Icon name="close" size={14} />
                 </button>
-              </header>
+              </ListHead>
               <ul>
                 {l.tasks.map((t) => (
-                  <li key={t.id} className={`${taskDone(t, ctx) ? "is-done" : ""}${t.fin ? " sk-fd-finrow" : ""}`}>
+                  <MenuRow as="li" key={t.id} title={t.text} items={() => rowMenu(l, t)} className={`${taskDone(t, ctx) ? "is-done" : ""}${t.fin ? " sk-fd-finrow" : ""}${lockOf(t) ? " is-locked" : ""}`}>
                     {t.fin && settable(t.fin.key) ? (
                       <button
                         type="button"
@@ -956,6 +1070,7 @@ function Detail({
                     ) : t.fin.key.startsWith("own:") && ctx.findings?.[t.fin.key]?.buy ? (
                       <span className="sk-fd-buytag" title="Task-based purchase">🛒</span>
                     ) : null}
+                    {lockOf(t) ? <small className="sk-fd-lock" title={`Waits for “${lockOf(t)}”`}>🔒 after {lockOf(t)}</small> : null}
                     {!t.fin && t.due ? <small className="sk-fd-due">{shortDate(new Date(`${t.due}T12:00`))}</small> : null}
                     {t.fills ? (() => {
                       const rows = finRows(t.fills, ctx);
@@ -1000,7 +1115,7 @@ function Detail({
                     >
                       <Icon name="close" size={13} />
                     </button>
-                  </li>
+                  </MenuRow>
                 ))}
               </ul>
               <form className="sk-fc-add" onSubmit={(e) => addTask(e, l)}>
@@ -1222,9 +1337,9 @@ function Detail({
           <form className="sk-fd-box sk-fd-newlist" onSubmit={addList}>
             <span className="sk-cap">New list</span>
             <span className="sk-fd-kinds" role="radiogroup" aria-label="List type">
-              {([["tasks", "Tasks"], ["notes", "Notes"], ["habits", "Habits"]] as const).map(([k, label]) => (
+              {(KIND_LABELS).map(([k, label]) => (
                 <button key={k} type="button" role="radio" aria-checked={listKind === k} className={listKind === k ? "is-on" : ""} onClick={() => setListKind(k)}
-                  title={k === "tasks" ? "Check-off steps and finance items (count toward %)" : k === "notes" ? "Plain bullet points: tips, details (not counted)" : "TickTick habits with today's state (not counted)"}>
+                  title={KIND_HINT[k]}>
                   {label}
                 </button>
               ))}
@@ -1246,10 +1361,46 @@ function Detail({
             </button>
           </form>
 
-          {item.ongoing ? <RefsBox item={item} update={update} mode="gallery" /> : null}
-          <RefsBox item={item} update={update} mode={item.ongoing ? "files" : "all"} />
+        </div>
         </div>
 
+        <aside className="sk-fd-side">
+          {money.total ? (
+            <section className="sk-fd-box sk-fd-money">
+              <h3 className="sk-fd-sideh"><i className="sk-fd-dot is-pay" />Money for this</h3>
+              <div className="sk-fd-moneybig"><b>{usd(money.pay + money.buy)}</b> <span>left of {usd(money.total)}</span></div>
+              <div className="sk-fd-stack">
+                <i className="is-paid" style={{ width: `${(money.paid / money.total) * 100}%` }} />
+                <i className="is-pay" style={{ width: `${(money.pay / money.total) * 100}%` }} />
+                <i className="is-buy" style={{ width: `${(money.buy / money.total) * 100}%` }} />
+              </div>
+              <div className="sk-fd-legend">
+                <span><i className="is-paid" />Paid {usd(money.paid)}</span>
+                <span><i className="is-pay" />To pay {usd(money.pay)}</span>
+                {money.buy ? <span><i className="is-buy" />To buy {usd(money.buy)}</span> : null}
+              </div>
+            </section>
+          ) : null}
+          {item.ongoing || (item.refs || []).some((r) => r.kind === "image") ? <RefsBox item={item} update={update} mode="gallery" /> : null}
+          <section className="sk-fd-box sk-fd-why">
+            <label>
+              <span className="sk-fd-ql">Why</span>
+              <textarea value={item.why || ""} onChange={(e) => update({ why: e.target.value || undefined })} placeholder="Why it matters — e.g. so we can do his dog DNA test" />
+            </label>
+            <label>
+              <span className="sk-fd-ql">Scope</span>
+              <textarea className="is-scope" value={item.note || ""} onChange={(e) => update({ note: e.target.value || undefined })} placeholder="What it is — e.g. people at our home for Savannah’s baby shower" />
+            </label>
+          </section>
+          {lists.filter((l) => l.kind === "notes").map((l) => (
+            <details key={l.id} className="sk-fd-box sk-fd-fold" open={lists.filter((x) => x.kind === "notes")[0]?.id === l.id}>
+              <summary>{l.name || "Notes"} <span>{l.tasks.length}</span></summary>
+              <KindList l={l} ctx={ctx} patch={(q) => patchList(l.id, q)} remove={() => setLists(lists.filter((x) => x.id !== l.id))} />
+            </details>
+          ))}
+          <RefsBox item={item} update={update} mode={item.ongoing ? "files" : "all"} />
+          <details className="sk-fd-box sk-fd-fold sk-fd-planfold" ref={planRef}>
+            <summary>Plan and settings <span>priority · date · links</span></summary>
         <div className="sk-fd-panels">
           <section className="sk-fd-panel" aria-label="Plan">
             <h3 className="sk-fd-panelh"><Icon name="calendar" size={14} />Plan</h3>
@@ -1434,8 +1585,11 @@ function Detail({
         {item.ongoing ? <LinkedActionsBox item={item} update={update} ledger={ctx.ledger} ticktick={ctx.ticktick} /> : null}
 
         <HabitGoalBox item={item} update={update} count={ctx.habitCount} />
+          </details>
+        </aside>
+        </div>
 
-        <footer className="sk-fd-foot">
+        <footer className="sk-fd-foot" hidden>
           {item.ongoing ? (
             <button
               type="button"

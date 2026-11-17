@@ -46,7 +46,7 @@ export function focusPinItems(): Array<FeaturedItem & { id: string }> {
     for (const card of load(key).items || []) {
       if (!card || !shown(code, card)) continue;
       // The whole short-term goal: every task in all its lists.
-      const all = (card.lists || []).filter((l) => !l.kind || l.kind === 'tasks').flatMap((l) => l.tasks.filter(real));
+      const all = (card.lists || []).filter((l) => l.kind !== 'notes' && l.kind !== 'habits').flatMap((l) => l.tasks.filter(real));
       const allOpen = all.filter((t) => !t.done);
       if (allOpen.length)
         out.push({
@@ -59,7 +59,7 @@ export function focusPinItems(): Array<FeaturedItem & { id: string }> {
           steps: all.map((t) => ({ id: t.id, text: t.text, done: t.done })),
         } as FeaturedItem & { id: string });
       for (const l of card.lists || []) {
-        if (l.kind && l.kind !== 'tasks') continue;
+        if (l.kind === 'notes' || l.kind === 'habits') continue;
         const tasks = l.tasks.filter(real);
         const open = tasks.filter((t) => !t.done);
         if (!open.length) continue;

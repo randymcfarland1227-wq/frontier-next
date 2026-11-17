@@ -1,38 +1,60 @@
 {
-  "note": "Why → Summary. Recaps are written by hand (Claude) from Randy's own reviews; refresh each month. Music: Google Doc 'Monthly Music Review'. Marvel: TickTick Marvel list → 'Monthly Reviews' section (e.g. 'Marvel-August 2026 Review').",
-  "updated": "2026-10-08",
+  "note": "Why → Summary. Recaps from Randy's own monthly reviews, refreshed November 16. Music: Google Doc 'Monthly Music Review', October 2026. Marvel: Marvel's Den → Behavior Log, October 2026 (saved November 9).",
+  "updated": "2026-11-16",
   "reviews": [
     {
       "id": "music",
       "icon": "🎵",
       "title": "Music",
-      "month": "September 2026",
+      "month": "October 2026",
       "link": "https://docs.google.com/document/d/1nxgWIYZ-1jaaYeraiSaXYPbr-58amkJT5ZbuWHTCwgQ/edit",
       "linkLabel": "Full review in Google Docs",
-      "gist": "A packed month (job search, income routines, digital reorganizing, finances) left little room for the open, vulnerable headspace sessions need. The win: Music Hub got a big upgrade. Now it's about actually using it.",
+      "gist": "Less variety this month, but the sessions you felt called to produced things you liked. Vocals still feel like home. The challenge is connecting words, feeling and a track into something consistent.",
       "points": [
-        { "label": "Guitar", "text": "A real, rooted connection. Barre chords and strumming still need work, and the new guitar section on the site is built for that. Songwriting comes easily on guitar." },
-        { "label": "Songwriting & vocals", "text": "Still the biggest pull, a calling to perform. Perfectionism and judging your own delivery get in the way. The loop is: start, get lost, deliver nothing, feel upset, skip next time. You picked up a book on how to write songs." },
-        { "label": "Ableton", "text": "Your workflow is optimized and you're still learning mastering. Next direction: cohesion, where every element serves one vision instead of being a mix of everything you like." }
+        {
+          "label": "Songwriting & vocals",
+          "text": "The words are not the obstacle; connecting their meaning to the feeling and track is. The songwriting book is still there to work through."
+        },
+        {
+          "label": "Production",
+          "text": "Experimenting with Ableton’s note shifting and splitting inside samples, and intervals between drums, bass and melody, has opened up new ways to layer sound. Sometimes less is more. Basslines and bass drops are areas you want to explore."
+        },
+        {
+          "label": "Guitar",
+          "text": "Less present this month. Strumming and barre chords still need attention, but the amount of information is overwhelming while the basics and movements feel uncertain."
+        }
       ],
-      "carry": ["Record some guitar and sing over it", "Use the songwriting book to break the start-and-stall loop", "Build tracks around one vision; keep learning mastering"]
+      "carry": [
+        "Read the songwriting book",
+        "Explore basslines and bass drops",
+        "Research guitar basics, strumming and barre chords"
+      ]
     },
     {
       "id": "marvel",
       "icon": "🐾",
       "title": "Marvel",
-      "month": "August 2026",
-      "monthNote": "Latest review on file (written in September). No September review yet.",
-      "link": "https://ticktick.com/webapp/#p/69dd705c1bd491a95e9a99ca/tasks/6a97ae00443fc5b861dea735",
-      "linkLabel": "Full review in TickTick",
-      "gist": "Marvel is doing better but needs more stimulation. Your attention has been stretched while you work toward a home that's better for you both.",
+      "month": "October 2026",
+      "link": "https://marvels-den.randymcfarland1227.workers.dev/#behavior",
+      "linkLabel": "Full review in Marvel’s Den",
+      "gist": "Not much of the plan was put into practice this month, but the structure is built. The next focus in your review is getting Marvel ready for his doggy DNA test.",
       "points": [
-        { "label": "Training", "text": "Research a calm-down command other than \"place\". He reads you well, but otherwise winds himself up." },
-        { "label": "Impulses", "text": "Improving, and you want that to come from understanding, not fear. He may not know the ladder yet." },
-        { "label": "Grooming", "text": "Doing it yourself for now (baths, brushing). He likes being groomed. The vac brush is there, it just needs using." },
-        { "label": "Walks", "text": "He needs more. His pulling makes brisk walks overwhelming, and you worry about reinforcing bad habits. He loves to learn, so figure out what to teach him." }
+        {
+          "label": "Putting it into practice",
+          "text": "The infrastructure is in place; October had limited follow-through rather than a new training breakthrough."
+        },
+        {
+          "label": "Behavior ratings",
+          "text": "Moving calmly, waiting, energy and settling, whining, leash and stairs, and mouth manners were each rated 3/5 — getting there."
+        },
+        {
+          "label": "Needs more support",
+          "text": "Being calm by himself and greeting people were each rated 2/5 — shaky."
+        }
       ],
-      "carry": ["Find a calm-down command to train", "Research leash and pulling work for walks", "Groom regularly with the vac brush", "Pick new things to teach him"]
+      "carry": [
+        "Get Marvel ready for his doggy DNA test"
+      ]
     }
   ],
   "goalsIntro": "Your goals across six areas. The names update live from the Life and Present Goals sheet; the one-line summaries were written Oct 8.",

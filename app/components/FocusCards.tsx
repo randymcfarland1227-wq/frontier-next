@@ -945,7 +945,8 @@ function Detail({
             <div className="sk-fd-titlerow">
               <input className="sk-fd-title" value={item.title} onChange={(e) => update({ title: e.target.value })} maxLength={120} aria-label="Focus" />
               {item.section ? <span className={`sk-fd-cat is-${item.section}`}>{FOCUS_SECTION_LABELS[item.section]}</span> : item.site ? <span className="sk-fd-cat is-site">{sourceById[item.site]?.shortName}</span> : null}
-              {item.ongoing ? <span className="sk-fd-cat is-goal">{goalGroupOf(item)}</span> : null}
+              {item.ongoing && goalGroupOf(item).toLowerCase() !== (item.section ? FOCUS_SECTION_LABELS[item.section] : "").toLowerCase() ? <span className="sk-fd-cat is-goal">{goalGroupOf(item)}</span> : null}
+              {item.ongoing ? <span className="sk-fd-cat is-goal">Ongoing</span> : null}
             </div>
             {lede ? <p className="sk-fd-lede">{lede}</p> : null}
             <div className="sk-fd-stats">

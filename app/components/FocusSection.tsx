@@ -346,7 +346,7 @@ const NUTRITION_HABIT_IDS = new Set([
 const baseHabitId = (id: string) => id.replace(/^habit-/, "").split("::")[0];
 /** The cut's daily target (Body site, 2026-11-17): cutting toward 95–97 kg. */
 const CUT_MACROS = { kcal: "2,450", p: 205, c: 250, f: 70 };
-const BODY_FOOD_URL = "https://randymcfarland1227-wq.github.io/";
+const BODY_FOOD_URL = "https://randymcfarland1227-wq.github.io/#/food/plan";
 const NUTRITION_RE =
   /nutri|protein|meal|eat\b|food|calorie|vitamin|supplement|creatine|breakfast|lunch|dinner|water|bottle|drink|fiber|veg/i;
 const FITNESS_RE =

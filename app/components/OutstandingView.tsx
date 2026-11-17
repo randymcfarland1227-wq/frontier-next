@@ -396,9 +396,13 @@ export function outstandingParts(
       note: next ? `next ${money(next.bill.amount)}` : undefined,
     };
   });
-  const cashAdv: OwedLine[] = rowsOf(model?.cashAdvances).map((r) =>
-    sheetLine(r, 1, 2, undefined, 0),
-  );
+  // A cash advance paid on Life Hub (Ledger / Month view) is done here too, not only when struck in the sheet.
+  const moneySlug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "x";
+  const cashAdv: OwedLine[] = rowsOf(model?.cashAdvances).map((r) => {
+    const l = sheetLine(r, 1, 2, undefined, 0);
+    const id = `money:cash:${moneySlug(l.name)}:${l.date || moneySlug(r[0]?.text || "nodate")}`;
+    return paidAt[id] ? { ...l, done: true } : l;
+  });
   const liab = nc(/non.?car|liabilit/i);
   const advances: OwedLine[] = rowsOf(liab)
     .filter((r) => !/t-?mobile/i.test(r.map((c) => c.text).join(" ")))

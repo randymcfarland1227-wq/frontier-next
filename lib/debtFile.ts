@@ -145,6 +145,8 @@ export function applyFindings(file: DebtFile | null, marks: DebtMarks, findings:
   const nextMarks: DebtMarks = { ...marks };
   for (const o of ownItems(findings)) {
     if (OWN_COUNTED_ELSEWHERE.has(o.key)) continue;
+    // Task-based purchases live in Money › Purchases, not in what you owe.
+    if (o.buy) continue;
     const reg = OWN_REGISTRATION.has(o.key);
     const step = o.schedule?.length ? scheduleNow(o.schedule) : undefined;
     items.push({

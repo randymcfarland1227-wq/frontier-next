@@ -4,6 +4,7 @@ import { hasSyncKey } from '../../lib/cloudSync';
 import { LinkDevicePrompt } from './LinkDevicePrompt';
 import { FinanceDrawer as Modal, FinanceLabel, FinanceName, FinanceType, useFinanceLabel } from './FinanceDrawer';
 import { MoneyZoom } from './MoneyZoom';
+import { TaskPurchaseList, useTaskPurchases } from './TaskPurchases';
 import { createPortal } from 'react-dom';
 import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PayPlanner } from './PayPlanner';
@@ -3610,6 +3611,7 @@ export function MoneyPage({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardSigs, model?.refreshedAt]);
+  const taskBuys = useTaskPurchases();
   if (!model) {
     return (
       <div className="settings-view money-view">
@@ -4166,6 +4168,15 @@ export function MoneyPage({
                   <SheetTable table={openWants} onSave={save} opts={{ check: 'Bought', hide: [0, 3, 6], actions: row => moveTo(row, model.restockNeeded, 'Needed') }} />
                 </Fold>
               ) : null}
+              <Fold title="Task-based" meta={`${taskBuys.open.length} open${taskBuys.open.some((f) => f.amount) ? ` · $${taskBuys.open.reduce((s, f) => s + (f.amount || 0), 0).toLocaleString()}` : ''}`} open={taskBuys.open.length > 0}>
+                <TaskPurchaseList items={taskBuys.open} />
+                {taskBuys.bought.length ? (
+                  <details className="tp-done">
+                    <summary>{taskBuys.bought.length} bought</summary>
+                    <TaskPurchaseList items={taskBuys.bought} />
+                  </details>
+                ) : null}
+              </Fold>
               {bought ? (
                 <Fold title="Bought" meta={`${bought.rows.length} crossed off`}>
                   <SheetTable table={bought} onSave={save} opts={{ check: 'Bought', hide: [0, 3, 6] }} />

@@ -3,6 +3,7 @@
 import { goalGroupOf, readGoalTypes } from "../../lib/goalTypes";
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -16,7 +17,10 @@ import { deleteRemote, docTag, downloadRef, fetchRefBlob, formatSize, linkLabel,
 import { openTaskPanel, pinKey } from "../../lib/priorityPins";
 import { openDebtPop } from "./DebtPop";
 import { FindingPop, type FindingTarget } from "./FindingPop";
-import { addOwnItem, findingOf, ownItems, planLine, planShort, useFindings, type FindingStore, type PlanState } from "../../lib/finFindings";
+import { addOwnItem, findingOf, ownItems, planLine, planShort, setFinding, useFindings, type FindingStore, type PlanState } from "../../lib/finFindings";
+import { setOwedDone, useOwedDone } from "../../lib/owedComplete";
+import { loadCachedMoney, parseMoney } from "../../lib/money";
+import { paidBillKeys } from "../../lib/schedule";
 import { latestLine, useGroupLog } from "../../lib/groupLog";
 import { openSiteList, renameSiteList, useSiteLists, viewOfList, type SiteListsContextValue } from "../../lib/siteLists";
 import { Dialog } from "../sticker/Dialog";
@@ -36,7 +40,7 @@ import {
   type DebtItem,
   type DebtMarks,
 } from "../../lib/debtFile";
-import { mdSources, oosSources } from "./OutstandingView";
+import { mdSources, oosSources, outstandingParts, type OwedLine } from "./OutstandingView";
 import type { Entry, SubList, SubTask } from "./FocusSection";
 import { habitOptions, todayIso, useHabitCounts } from "../../lib/locks";
 import { linkOptions, linkStatus } from "../../lib/goalLinks";
@@ -60,7 +64,8 @@ export type LinkItem = {
 
 type CardList = readonly [Entry[], (next: Entry[]) => void];
 /** What a finance link needs to be read live. */
-type FinCtx = { file: DebtFile | null; marks: DebtMarks; bills: BillDue[]; sl?: SiteListsContextValue; habitCount?: (habitId: string, from: string) => number | undefined; findings?: FindingStore; ledger?: CompletionLedger; ticktick?: SourceSnapshot };
+type OwedRef = OwedLine & { group: string };
+type FinCtx = { owed?: Record<string, OwedRef>; file: DebtFile | null; marks: DebtMarks; bills: BillDue[]; sl?: SiteListsContextValue; habitCount?: (habitId: string, from: string) => number | undefined; findings?: FindingStore; ledger?: CompletionLedger; ticktick?: SourceSnapshot };
 export type OpenFinance = (itemId?: string, tab?: "owed" | "flow") => void;
 
 const DAY = 86400000;
@@ -142,6 +147,11 @@ function finRows(
         settled: true,
       },
     ];
+  }
+  if (link.key.startsWith("owed:")) {
+    const l = ctx.owed?.[link.key.slice(5)];
+    if (!l) return [];
+    return [{ id: link.key, kind: "debt" as const, name: l.name || link.label, amount: l.amount ?? null, status: l.done ? "paid" : "open", settled: Boolean(l.done) }];
   }
   if (link.key.startsWith("own:")) {
     const f = ctx.findings ? findingOf(ctx.findings, link.key) : undefined;
@@ -240,8 +250,10 @@ function financeOptions(ctx: FinCtx): Opt[] {
       sub: `${usd(b.bill.amount)} · due ${shortDate(fromDayKey(b.due))}`,
       group: "Bills & payments due",
     });
+  for (const l of Object.values(ctx.owed || {}).filter((x) => !x.done && x.name))
+    out.push({ key: `owed:${l.key}`, label: l.name, sub: `${l.group} · ${usd(l.amount)}`, group: `Current liabilities · ${l.group}` });
   for (const f of ctx.findings ? ownItems(ctx.findings) : [])
-    out.push({ key: f.key, label: f.name || "Money item", sub: `yours · ${usd(f.amount)}`, group: "Your money items" });
+    out.push({ key: f.key, label: f.name || "Money item", sub: `${f.buy ? "task purchase" : "yours"} · ${usd(f.amount)}`, group: f.buy ? "Task purchases" : "Your money items" });
   for (const i of file?.items || [])
     out.push({
       key: `item:${i.id}`,
@@ -301,6 +313,44 @@ function progressOf(i: Entry, ctx: FinCtx) {
   }
   if (!total) return { pct: i.done ? 100 : null, done: 0, total: 0 } as const;
   return { pct: Math.round((done / total) * 100), done, total };
+}
+
+
+/** Current liabilities (Money › Liabilities: Projects / Required, Taxes / Legal, cash advances…), by line key,
+ *  so a focus can link one and see / set it paid. Paid = struck in the sheet, marked complete there, or paid on Life Hub. */
+function useOwedLines(file: DebtFile | null, marks: DebtMarks, bills: BillDue[]): Record<string, OwedRef> {
+  const owedDone = useOwedDone();
+  const snap = loadCachedMoney();
+  const sig = snap?.refreshedAt || "";
+  const model = useMemo(() => {
+    try {
+      const m = loadCachedMoney();
+      return m ? parseMoney(m) : null;
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig]);
+  const paidAt = Object.fromEntries([...paidBillKeys(loadLedger())].map((k) => [k, "1"]));
+  const parts = outstandingParts(model, file, marks, bills, paidAt, owedDone);
+  const out: Record<string, OwedRef> = {};
+  const add = (xs: OwedLine[], group: string) => xs.forEach((x) => { if (x.key) out[x.key] = { ...x, group }; });
+  add(parts.projects, "Projects / Required");
+  add(parts.taxes, "Taxes / Legal");
+  add(parts.cashAdv, "Cash advances");
+  add(parts.advances, "Older advances");
+  add(parts.payLater, "Pay laters");
+  return out;
+}
+
+
+/** Links whose paid state Life Hub can set itself: liabilities (owed:) and your own items / task purchases (own:). */
+const settable = (key: string) => key.startsWith("owed:") || key.startsWith("own:");
+function settleLink(key: string, on: boolean, ctx: FinCtx) {
+  if (key.startsWith("owed:")) {
+    const l = ctx.owed?.[key.slice(5)];
+    setOwedDone(key.slice(5), on, Boolean(l?.recurring));
+  } else if (key.startsWith("own:")) setFinding(key, { paid: on });
 }
 
 /* ── Dates ── */
@@ -694,7 +744,18 @@ function Detail({
               <ul>
                 {l.tasks.map((t) => (
                   <li key={t.id} className={`${taskDone(t, ctx) ? "is-done" : ""}${t.fin ? " sk-fd-finrow" : ""}`}>
-                    {t.fin ? (
+                    {t.fin && settable(t.fin.key) ? (
+                      <button
+                        type="button"
+                        className={`sk-circle${taskDone(t, ctx) ? " is-on" : ""}`}
+                        aria-pressed={taskDone(t, ctx)}
+                        aria-label={`Mark ${t.text} ${taskDone(t, ctx) ? "not paid" : "paid"}`}
+                        title={t.fin.key.startsWith("owed:") ? "Marks it paid in Money › Liabilities too" : "Marks it bought / paid in Money too"}
+                        onClick={() => settleLink(t.fin!.key, !taskDone(t, ctx), ctx)}
+                      >
+                        <Icon name="check" size={12} />
+                      </button>
+                    ) : t.fin ? (
                       <span className={`sk-fin-dot${taskDone(t, ctx) ? " is-on" : ""}`} aria-label={taskDone(t, ctx) ? "Cleared in Finance" : "Linked to Finance"} />
                     ) : <button
                       type="button"
@@ -722,7 +783,9 @@ function Detail({
                         onClick={() =>
                           t.fin!.key.startsWith("bill:")
                             ? openFinance?.(undefined, "flow")
-                            : t.fin!.key.startsWith("own:")
+                            : t.fin!.key.startsWith("owed:")
+                              ? openFinance?.(undefined, "owed")
+                              : t.fin!.key.startsWith("own:")
                               ? setFindOpen({ link: t.fin! })
                               : openDebtPop(t.fin!.key, t.text)
                         }
@@ -740,6 +803,23 @@ function Detail({
                         {t.note ? <Icon name="pencil" size={12} className="sk-fd-hasnote" /> : null}
                       </button>
                     )}
+                    {!t.fin ? (
+                      <button
+                        type="button"
+                        className="sk-fd-buy"
+                        title="Make this a task-based purchase (shows in Money › Spend › Purchases › Task-based)"
+                        aria-label={`Make ${t.text} a task purchase`}
+                        onClick={() => {
+                          const key = addOwnItem(t.text, { buy: true, task: item.title, paid: t.done || undefined });
+                          patchList(l.id, { tasks: l.tasks.map((x) => (x.id === t.id ? { ...x, fin: { key, label: t.text } } : x)) });
+                          setFindOpen({ link: { key, label: t.text } });
+                        }}
+                      >
+                        🛒
+                      </button>
+                    ) : t.fin.key.startsWith("own:") && ctx.findings?.[t.fin.key]?.buy ? (
+                      <span className="sk-fd-buytag" title="Task-based purchase">🛒</span>
+                    ) : null}
                     {!t.fin && t.due ? <small className="sk-fd-due">{shortDate(new Date(`${t.due}T12:00`))}</small> : null}
                     {t.fills ? (() => {
                       const rows = finRows(t.fills, ctx);
@@ -759,7 +839,7 @@ function Detail({
                       if (rows.some((r) => !r.settled && r.amount == null)) return "Amount unknown";
                       return usd(finStats(rows).owed);
                     })()}</small> : null}
-                    {t.fin && !t.fin.key.startsWith("bill:") ? (() => {
+                    {t.fin && !t.fin.key.startsWith("bill:") && !ctx.findings?.[t.fin.key]?.buy ? (() => {
                       const pl = planOf(t.fin, ctx);
                       return (
                         <button
@@ -1228,7 +1308,14 @@ function Detail({
             type="button"
             className={`sk-btn is-small${item.done ? " is-on" : ""}`}
             aria-pressed={Boolean(item.done)}
-            onClick={() => update({ done: !item.done })}
+            onClick={() => {
+              // Finishing the focus marks its linked liabilities / task purchases paid in Money too.
+              if (!item.done) {
+                const keys = [...(item.fin || []), ...(item.lists || []).flatMap((l) => l.tasks.flatMap((x) => (x.fin ? [x.fin] : [])))].map((f) => f.key);
+                for (const k of keys) if (settable(k)) settleLink(k, true, ctx);
+              }
+              update({ done: !item.done });
+            }}
           >
             <Icon name="check" size={14} />
             {item.done ? "Marked done — undo" : "Mark the whole focus done"}
@@ -1365,7 +1452,8 @@ export function FocusEntryDialog({ bills, events: eventsIn, ...props }: Omit<Par
     allDay: true,
     kind: "Finance",
   }] : eventsIn;
-  return <Detail {...props} events={events} ctx={{ file, marks, bills, sl, findings, ledger: loadLedger(), ticktick: savedTickTick() }} />;
+  const owed = useOwedLines(file, marks, bills);
+  return <Detail {...props} events={events} ctx={{ owed, file, marks, bills, sl, findings, ledger: loadLedger(), ticktick: savedTickTick() }} />;
 }
 
 /** Short-term focus as cards: the square shows focus, scope, why and the lists; tap it for the full pop-out. */
@@ -1407,7 +1495,8 @@ export function FocusCards({
   const goals = lists0.flatMap(([items]) => items.flatMap((x) => (x.habitGoal ? [{ habitId: x.habitGoal.habitId, from: x.habitGoal.from }] : [])));
   const habitCount = useHabitCounts(goals);
   const findings = useFindings();
-  const ctx: FinCtx = { file, marks, bills, sl, habitCount, findings, ...linkCtx(lists0, ledger, ticktick) };
+  const owed = useOwedLines(file, marks, bills);
+  const ctx: FinCtx = { owed, file, marks, bills, sl, habitCount, findings, ...linkCtx(lists0, ledger, ticktick) };
   // One-time: the MD registration card gets its Research / Payments / Tax-flags-fee lists (never twice).
   useEffect(() => {
     if (!file) return;
@@ -1895,7 +1984,8 @@ function RefsBox({ item, update, mode = "all" }: { item: Entry; update: (patch: 
 export function useFinSummary(bills: BillDue[] = []) {
   const { raw: file, rawMarks: marks } = useDebtFile();
   const findings = useFindings();
-  const ctx: FinCtx = { file, marks, bills, findings };
+  const owed = useOwedLines(file, marks, bills);
+  const ctx: FinCtx = { owed, file, marks, bills, findings };
   return (fin: { key: string; label: string }) => {
     // Without the bill list a bill link can't be read (it would look paid), so say nothing.
     if (fin.key.startsWith("bill:") && !bills.length) return { text: "", cleared: false, plan: "" };
@@ -1922,7 +2012,8 @@ export function useFocusProgress(lists: CardList[], bills: BillDue[] = [], event
   const goals = lists.flatMap(([items]) => items.flatMap((x) => (x.habitGoal ? [{ habitId: x.habitGoal.habitId, from: x.habitGoal.from }] : [])));
   const habitCount = useHabitCounts(goals);
   const findings = useFindings();
-  const ctx: FinCtx = { file, marks, bills, sl, habitCount, findings, ...linkCtx(lists, ledger, ticktick) };
+  const owed = useOwedLines(file, marks, bills);
+  const ctx: FinCtx = { owed, file, marks, bills, sl, habitCount, findings, ...linkCtx(lists, ledger, ticktick) };
   return (e: Entry) => {
     const added = addedOf(e);
     const target = targetOf(e, events);

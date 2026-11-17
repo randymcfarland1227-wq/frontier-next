@@ -40,10 +40,15 @@ export type Finding = {
   note?: string;
   /** own: items: pay-by steps (amount owed if paid by each date), e.g. a county tax ticket that adds interest monthly */
   schedule?: Array<{ by: string; amount: number }>;
-  /** own: items: paid off */
+  /** own: items: paid off (a task purchase: bought) */
   paid?: boolean;
   /** own: items: 'project' = lands in Current liabilities → Projects / required (an asset task), else Taxes / Legal */
   group?: 'project';
+  /** own: items: a task-based purchase (Money › Spend › Purchases › Task-based) */
+  buy?: boolean;
+  /** Task purchases: the focus / task it belongs to, and where to buy it */
+  task?: string;
+  where?: string;
   /** Day (YYYY-MM-DD) it was last checked */
   checked?: string;
   at: string;

@@ -51,6 +51,7 @@ import {
 } from "./FocusSection";
 import { HomeTop } from "../sticker/HomeTop";
 import { MoneyZoom } from "./MoneyZoom";
+import { HubBoard } from "./HubBoard";
 import { ListHead, PaneHeadContext, PaneZoomButtons, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
 import { CapPane } from "../sticker/CapPane";
 import { SegTabs } from "../sticker/SegTabs";
@@ -249,6 +250,13 @@ export function HomeView({
   const setSplit = (v: boolean) => {
     setSplitState(v);
     writeSaved("sk-today-split", v);
+    setBoard(false);
+  };
+  // Dashboard: the always-on second screen view (this device only).
+  const [board, setBoardState] = useState<boolean>(() => readSaved<boolean>("sk-today-board", false));
+  const setBoard = (v: boolean) => {
+    setBoardState(v);
+    writeSaved("sk-today-board", v);
   };
   // Phones never split: two stacked scroll boxes trap the page. The saved choice comes back on wider screens.
   const [phone, setPhone] = useState<boolean>(() => typeof window !== "undefined" && window.matchMedia("(max-width: 520px)").matches);
@@ -578,7 +586,7 @@ export function HomeView({
           <div className="sk-seg sk-viewseg" role="group" aria-label="Today view">
             <button
               type="button"
-              aria-pressed={!split}
+              aria-pressed={!split && !board}
               onClick={() => setSplit(false)}
               title="One tab at a time"
             >
@@ -587,17 +595,38 @@ export function HomeView({
             </button>
             <button
               type="button"
-              aria-pressed={split}
+              aria-pressed={split && !board}
               onClick={() => setSplit(true)}
               title="Two tabs side by side"
             >
               <svg viewBox="0 0 16 12" aria-hidden="true"><rect x="1" y="1" width="6" height="10" rx="2" /><rect x="9" y="1" width="6" height="10" rx="2" /></svg>
               Split
             </button>
+            <button
+              type="button"
+              aria-pressed={board}
+              onClick={() => setBoard(true)}
+              title="Dashboard for an always-on screen: clock, weather, calendar, bills, focus"
+            >
+              <svg viewBox="0 0 16 12" aria-hidden="true"><rect x="1" y="1" width="5" height="10" rx="1.5" /><rect x="7.5" y="1" width="7.5" height="4.5" rx="1.5" /><rect x="7.5" y="6.5" width="7.5" height="4.5" rx="1.5" /></svg>
+              Dashboard
+            </button>
           </div>
         }
       >
-        {split && !phone ? (
+        {board ? (
+          <HubBoard
+            snapshots={snapshots}
+            bills={bills}
+            schedule={schedule}
+            focus={shortTerm}
+            rings={ticktickRings}
+            openTab={(t) => {
+              setBoard(false);
+              pickTodayTab(t);
+            }}
+          />
+        ) : split && !phone ? (
           <div className="sk-split">
             {([
               [tab, pickTodayTab],

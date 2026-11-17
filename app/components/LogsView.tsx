@@ -17,7 +17,7 @@ type LogSite = {
 };
 
 const SITES: LogSite[] = [
-  { id: 'body', label: 'Nutrition & movement', name: 'Daylight Matrix', url: 'https://randymcfarland1227-wq.github.io/', embed: true },
+  { id: 'body', label: 'Nutrition & movement', name: 'Body', url: 'https://randymcfarland1227-wq.github.io/', embed: true },
   {
     id: 'marvel',
     label: 'Marvel',

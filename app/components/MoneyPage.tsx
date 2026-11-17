@@ -17,6 +17,8 @@ import { billHistory } from '../../lib/billHistory';
 import { AccountsBoard, CardsTable, LoansTable, MoneyDash, PaySources, WeekBoard, cardRows, loanRows, nearest, type CardRow, type CellView, type DashCredit } from './MoneyBoards';
 import { cardSig, figsKey, freshLabel, freshPatches } from '../../lib/cardFresh';
 import { outstandingParts, ticketTotals } from './OutstandingView';
+import { AssetBlock, AssetPanel, AssetsBoard } from './AssetsBoard';
+import { ASSETS, assetKey, loanSeenKey, type AssetId } from '../../lib/assets';
 import { useOwedDone } from '../../lib/owedComplete';
 import { metaName, setMeta, useMoneyMeta, type MetaEntry } from '../../lib/moneyMeta';
 import { isSettled, owedOf } from '../../lib/debtFile';
@@ -1924,13 +1926,14 @@ function useIncomingLanding(model: MoneyModel | null, book: Book, save: Save) {
 }
 
 /** Open any item's panel from anywhere on the Money page. */
-type PanelState = { type: 'line' | 'acct' | 'card' | 'item' | 'loan' | 'sub'; id: string; back?: PanelState };
-const MoneyPanelCtx = createContext<{ openLine: (key: string) => void; openAccount: (name: string) => void; openCard: (name: string) => void; openItem: (key: string) => void; openLoan: (name: string) => void; openSub: (name: string) => void; openDue: (key: string) => void; has: (key: string) => boolean }>({
+type PanelState = { type: 'line' | 'acct' | 'card' | 'item' | 'loan' | 'sub' | 'asset'; id: string; back?: PanelState };
+const MoneyPanelCtx = createContext<{ openLine: (key: string) => void; openAccount: (name: string) => void; openCard: (name: string) => void; openItem: (key: string) => void; openLoan: (name: string) => void; openAsset: (id: string) => void; openSub: (name: string) => void; openDue: (key: string) => void; has: (key: string) => boolean }>({
   openLine: () => {},
   openAccount: () => {},
   openCard: () => {},
   openItem: () => {},
   openLoan: () => {},
+  openAsset: () => {},
   openSub: () => {},
   openDue: () => {},
   has: () => false,
@@ -2787,6 +2790,7 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
   const m = get(l.key);
   const num = (v: string) => (v.trim() === '' ? undefined : Number(v));
   const history = dues.filter(d => (d.bill.kind || 'bill') === 'bill' && l.due && d.bill.name === l.due.bill.name);
+  const asset = ASSETS.find(x => x.loan && metaName(x.loan) === metaName(l.name));
   const state = l.due ? monthState(l.due, paidAt) : undefined;
   return (
     <Modal label={title.name} onClose={onClose} onBack={onBack}>
@@ -2799,13 +2803,18 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
       <div className="finance-summary-grid">
         <div className="finance-summary-facts">
       <div className="mb-cp-figs">
-        <span><small>balance left</small><b>{l.bal !== undefined ? money(l.bal) : '—'}</b></span>
-        <span><small>principal</small><b>{l.principal ? money(l.principal) : '—'}</b></span>
-        <span><small>payments left</small><b>{l.paymentsLeft ?? '—'}</b></span>
+        {asset ? null : (
+          <>
+            <span><small>balance left</small><b>{l.bal !== undefined ? money(l.bal) : '—'}</b></span>
+            <span><small>principal</small><b>{l.principal ? money(l.principal) : '—'}</b></span>
+            <span><small>payments left</small><b>{l.paymentsLeft ?? '—'}</b></span>
+          </>
+        )}
+        {asset && l.principal ? <span><small>principal</small><b>{money(l.principal)}</b></span> : null}
         <span><small>rate</small><b>{m?.apr !== undefined ? `${m.apr}%` : '—'}</b></span>
         <span><small>payment</small><b>{l.payment ? money(l.payment) : '—'}</b></span>
         <span><small>due</small><b>{l.due ? fromDayKey(l.due.due).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '—'}</b></span>
-        <span><small>% paid</small><b>{l.principal && l.bal !== undefined ? `${Math.round(((l.principal - l.bal) / l.principal) * 100)}%` : '—'}</b></span>
+        {asset ? null : <span><small>% paid</small><b>{l.principal && l.bal !== undefined ? `${Math.round(((l.principal - l.bal) / l.principal) * 100)}%` : '—'}</b></span>}
       </div>
       {l.due ? <ChangeThisOne due={l.due} onGone={onClose} /> : null}
         </div>
@@ -2815,10 +2824,16 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
         </section>
       </div>
       {l.due ? <BillFlagsFields due={l.due} dueKeys={history.map(x => x.key)} fields="date" /> : null}
-      <h4 className="mb-cp-h">Yours to edit</h4>
+      {asset ? (
+        <section className="bal-drw-sec skm-as-inloan">
+          <h4>{asset.name} · {asset.what}</h4>
+          <AssetBlock id={asset.id} model={model} dues={dues} monthDues={monthDues} paidAt={paidAt} />
+        </section>
+      ) : null}
+      <h4 className="mb-cp-h">Loan terms</h4>
       <div className="mb-cp-edit">
         <label>Principal $<input type="number" step="0.01" defaultValue={m?.principal ?? ''} onBlur={e => setMeta(l.key, { principal: num(e.target.value) })} /></label>
-        <label>Payments left<input type="number" step="1" defaultValue={m?.paymentsLeft ?? ''} onBlur={e => setMeta(l.key, { paymentsLeft: num(e.target.value) })} /></label>
+        <label>Payments left<input type="number" step="1" defaultValue={m?.paymentsLeft ?? ''} onBlur={e => { const v = num(e.target.value); if (v === m?.paymentsLeft) return; setMeta(l.key, { paymentsLeft: v }); if (asset) setMeta(assetKey(asset.id), { asOf: new Date().toLocaleDateString('en-CA') }); }} /></label>
         <label>Rate (APR %)<input type="number" step="0.01" defaultValue={m?.apr ?? ''} onBlur={e => setMeta(l.key, { apr: num(e.target.value) })} /></label>
       </div>
       {l.hub ? (
@@ -3421,7 +3436,7 @@ const TAB_IDS: TabId[] = ['overview', 'flow', 'accounts', 'spend', 'debts', 'owe
 const LEGACY_TAB: Record<string, TabId> = { week: 'flow', month: 'flow', due: 'flow', cards: 'accounts', bills: 'spend', subs: 'spend', shop: 'spend' };
 const FLOW_IDS = ['week', 'month', 'ledger'] as const;
 const LEDGER_IDS = ['date', 'category', 'selector'] as const;
-const ACCT_IDS = ['checking', 'savings', 'cards'] as const;
+const ACCT_IDS = ['checking', 'cards', 'assets'] as const;
 const SPEND_IDS = ['out', 'bills', 'from', 'paylater', 'cash', 'subs', 'shop'] as const;
 const TAB_KEY = 'lifehub-money-tab';
 
@@ -3535,6 +3550,7 @@ export function MoneyPage({
       openCard: (name: string) => setPanel(cur => ({ type: 'card' as const, id: name, back: cur || undefined })),
       openItem: (key: string) => setPanel(cur => ({ type: 'item' as const, id: key, back: cur || undefined })),
       openLoan: (name: string) => setPanel(cur => ({ type: 'loan' as const, id: name, back: cur || undefined })),
+      openAsset: (id: string) => setPanel(cur => ({ type: 'asset' as const, id, back: cur || undefined })),
       openSub: (name: string) => setPanel(cur => ({ type: 'sub' as const, id: name, back: cur || undefined })),
       // One entity per card / subscription / loan: whichever row you click, the same panel opens.
       openDue: (key: string) => {
@@ -3583,6 +3599,15 @@ export function MoneyPage({
   useEffect(() => {
     if (!model) return;
     for (const p of freshPatches(sheetCards, metaGet, model.refreshedAt)) setMeta(p.key, { sig: p.sig, seenAt: p.seenAt, first: p.first });
+    // Same for an asset loan's sheet balance: payments marked paid after it changed come off it (Balances › Assets).
+    for (const a of ASSETS) {
+      const l = a.loan ? loanRows(model, monthDues, metaGet).find(x => !x.hub && metaName(x.name) === metaName(a.loan!)) : undefined;
+      if (!l || l.bal === undefined) continue;
+      const key = loanSeenKey(l.name);
+      const was = metaGet(key);
+      if (was?.sig === String(l.bal) || (was?.seenAt && Date.parse(was.seenAt) > Date.parse(model.refreshedAt))) continue;
+      setMeta(key, { sig: String(l.bal), seenAt: model.refreshedAt, first: was ? undefined : true });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardSigs, model?.refreshedAt]);
   if (!model) {
@@ -3698,7 +3723,7 @@ export function MoneyPage({
   const goDash = (where: string) => {
     if (where === 'accounts') go('accounts', () => setAcctView('checking'));
     else if (where === 'cards') go('accounts', () => setAcctView('cards'));
-    else if (where === 'savings') go('accounts', () => setAcctView('savings'));
+    else if (where === 'savings') go('accounts', () => setAcctView('checking'));
     else if (where === 'week') go('flow', () => setFlowView('week'));
     else if (where === 'credit') setTab('debts');
     else setTab('owed');
@@ -3790,7 +3815,7 @@ export function MoneyPage({
             label="Accounts"
             value={acctView}
             onChange={setAcctView}
-            options={[['checking', 'Checking', model.accounts?.total?.[1]?.text], ['savings', 'Savings', model.accounts?.total?.[2]?.text], ['cards', 'Credit Cards', model.cards?.total?.[1]?.text ? `${model.cards.total[1].text} owed` : '']]}
+            options={[['checking', 'Checking & savings', model.cashOnHand?.text ? `${model.cashOnHand.text} on hand` : model.accounts?.total?.[1]?.text], ['cards', 'Credit Cards', model.cards?.total?.[1]?.text ? `${model.cards.total[1].text} owed` : ''], ['assets', 'Assets', '']]}
           />
         ) : null}
         {tab === 'spend' ? (
@@ -4044,8 +4069,22 @@ export function MoneyPage({
           </div>
         ) : null}
 
-        {tab === 'accounts' && acctView === 'savings' ? (
+        {tab === 'accounts' && acctView === 'assets' ? (
           <div className="mny-stack">
+            <AssetsBoard
+              model={model}
+              dues={dues}
+              monthDues={monthDues}
+              paidAt={paidAt}
+              parts={parts}
+              onOpen={a => (a.loan ? panelApi.openLoan(a.loan.name) : panelApi.openAsset(a.def.id))}
+            />
+          </div>
+        ) : null}
+
+        {tab === 'accounts' && acctView === 'checking' ? (
+          <div className="mny-stack">
+            <AccountsBoard model={model} cell={cell} />
             <Section tone="save" title="Savings" figure={model.accounts?.total?.[2]?.text} figureLabel="in savings" href={link('Randy')}>
               <AccountsList model={model} onSave={save} only={2} />
               {model.savings ? (
@@ -4054,12 +4093,6 @@ export function MoneyPage({
                 </Fold>
               ) : null}
             </Section>
-          </div>
-        ) : null}
-
-        {tab === 'accounts' && acctView === 'checking' ? (
-          <div className="mny-stack">
-            <AccountsBoard model={model} cell={cell} />
             {model.balancing ? (
               <Section tone="cash" title="Balancing rows in the sheet" figure={model.cashOnHand?.text} figureLabel={model.balancedCash?.text ? `on hand · ${model.balancedCash.text} balanced` : 'on hand'} href={link('Randy')}>
                 <Fold title="Balancing" meta="accounts + pending money → cash on hand">
@@ -4173,6 +4206,8 @@ export function MoneyPage({
         <CardPanel key={panel.id} name={panel.id} model={model} dues={[...dues, ...monthDues]} monthDues={monthDues} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : panel?.type === 'loan' ? (
         <LoanPanel key={panel.id} name={panel.id} model={model} dues={[...dues, ...monthDues]} monthDues={monthDues} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
+      ) : panel?.type === 'asset' ? (
+        <AssetPanel key={panel.id} id={panel.id as AssetId} model={model} dues={dues} monthDues={monthDues} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : panel?.type === 'sub' ? (
         <SubPanel key={panel.id} name={panel.id} model={model} dues={detailDues} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : panel?.type === 'item' ? (
@@ -4209,6 +4244,7 @@ export function MoneyPanelHost({ model, dues, monthDues, paidAt, onPaid }: { mod
       openCard: (name: string) => setPanel(cur => ({ type: 'card' as const, id: name, back: cur || undefined })),
       openItem: (key: string) => setPanel(cur => ({ type: 'item' as const, id: key, back: cur || undefined })),
       openLoan: (name: string) => setPanel(cur => ({ type: 'loan' as const, id: name, back: cur || undefined })),
+      openAsset: (id: string) => setPanel(cur => ({ type: 'asset' as const, id, back: cur || undefined })),
       openSub: (name: string) => setPanel(cur => ({ type: 'sub' as const, id: name, back: cur || undefined })),
       openDue: (key: string) => setPanel(cur => ({ type: 'item' as const, id: key, back: cur || undefined })),
       has: () => false,
@@ -4225,6 +4261,8 @@ export function MoneyPanelHost({ model, dues, monthDues, paidAt, onPaid }: { mod
         <CardPanel key={panel.id} name={panel.id} model={model} dues={all} monthDues={monthDues} paidAt={paidAt} onPaid={onPaid} onBack={back} onClose={close} />
       ) : panel.type === 'loan' ? (
         <LoanPanel key={panel.id} name={panel.id} model={model} dues={all} monthDues={monthDues} paidAt={paidAt} onPaid={onPaid} onBack={back} onClose={close} />
+      ) : panel.type === 'asset' ? (
+        <AssetPanel key={panel.id} id={panel.id as AssetId} model={model} dues={dues} monthDues={monthDues} paidAt={paidAt} onPaid={onPaid} onBack={back} onClose={close} />
       ) : panel.type === 'sub' ? (
         <SubPanel key={panel.id} name={panel.id} model={model} dues={all} paidAt={paidAt} onPaid={onPaid} onBack={back} onClose={close} />
       ) : (

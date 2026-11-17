@@ -11,6 +11,7 @@
  *   from:<src>   → { acct }                           which account or card pays a bill / sub / pay later
  *   note:<src>   → { note }                           Randy's note on a bill / sub / pay later (other saved cards, balance left)
  *   last4:<name> → { last4 }                          last 4 digits of a card or bank account (lib/moneyMethods.ts)
+ *   asset:<id>   → { value, valueAt, note, links, total, payment, bal, asOf, paymentsLeft, start, billKey }  Balances → Assets (lib/assets.ts)
  * A removed entry keeps `gone: true` so the removal syncs too.
  */
 
@@ -56,6 +57,16 @@ export type MetaEntry = {
   sig?: string;
   seenAt?: string;
   first?: boolean;
+  /** asset:<id> (lib/assets.ts): car value + the day it was typed, linked Current liabilities line keys,
+   *  total financed, monthly payment, the day bal / paymentsLeft were true, first payment month, paying bill's due-key prefix */
+  value?: number;
+  valueAt?: string;
+  links?: string[];
+  total?: number;
+  payment?: number;
+  asOf?: string;
+  start?: string;
+  billKey?: string;
 };
 export type MoneyMeta = Record<string, MetaEntry>;
 

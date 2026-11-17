@@ -406,13 +406,14 @@ export function outstandingParts(
 
   const liabItems = (file?.items || []).filter((i) => i.group === "liability");
   const taxes: OwedLine[] = [
-    ...liabItems.filter((i) => !/t-?mobile/i.test(i.name)).map(item),
+    ...liabItems.filter((i) => !i.project && !/t-?mobile/i.test(i.name)).map(item),
     ...rowsOf(nc(/regulat/i))
       .filter((r) => !/tax/i.test(r[0].text))
       .map((r) => sheetLine(r, 0, 3, 1)),
   ];
   const projects: OwedLine[] = [
     ...rowsOf(nc(/repair/i)).map((r) => sheetLine(r, 0, 3, 1)),
+    ...liabItems.filter((i) => i.project).map(item),
     ...liabItems.filter((i) => /t-?mobile/i.test(i.name)).map(item),
     ...rowsOf(model?.outstanding)
       .filter((r) => !/ticket/i.test(r[0].text))

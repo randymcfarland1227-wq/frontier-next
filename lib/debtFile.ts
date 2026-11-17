@@ -48,6 +48,8 @@ export type DebtItem = {
   plan?: DebtPlan;
   /** Which Maryland registration step this item belongs to */
   step?: string;
+  /** Hand-typed project / repair (an asset task): shown under Projects / required */
+  project?: boolean;
   /** Combination letters (MVA invoices, CCU) this item appears in */
   letters?: string[];
   timeline: DebtEvent[];
@@ -148,6 +150,7 @@ export function applyFindings(file: DebtFile | null, marks: DebtMarks, findings:
     items.push({
       id: o.key,
       group: reg ? 'md' : 'liability',
+      ...(o.group === 'project' ? { project: true } : {}),
       ...(reg ? { step: RENEWAL_STEP, blocksRegistration: true } : {}),
       name: o.name || 'Money item',
       amount: step ? step.amount : (o.amount ?? null),

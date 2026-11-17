@@ -42,6 +42,8 @@ export type Finding = {
   schedule?: Array<{ by: string; amount: number }>;
   /** own: items: paid off */
   paid?: boolean;
+  /** own: items: 'project' = lands in Current liabilities → Projects / required (an asset task), else Taxes / Legal */
+  group?: 'project';
   /** Day (YYYY-MM-DD) it was last checked */
   checked?: string;
   at: string;

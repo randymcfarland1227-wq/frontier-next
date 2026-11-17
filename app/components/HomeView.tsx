@@ -258,6 +258,13 @@ export function HomeView({
     setBoardState(v);
     writeSaved("sk-today-board", v);
   };
+  // Dashboard size (this device): the big monitor still cuts the bottom off at 100%.
+  const [boardZoom, setBoardZoomState] = useState<number>(() => Number(readSaved<number>("sk-today-board-zoom", 100)) || 100);
+  const setBoardZoom = (v: number) => {
+    const n = Math.min(ZOOM_MAX, Math.max(50, v));
+    setBoardZoomState(n);
+    writeSaved("sk-today-board-zoom", n);
+  };
   // Phones never split: two stacked scroll boxes trap the page. The saved choice comes back on wider screens.
   const [phone, setPhone] = useState<boolean>(() => typeof window !== "undefined" && window.matchMedia("(max-width: 520px)").matches);
   useEffect(() => {
@@ -583,6 +590,8 @@ export function HomeView({
         title="Today"
         summary={todaySummary}
         actions={
+          <>
+          {board ? <PaneZoomButtons zoom={boardZoom} set={setBoardZoom} min={50} max={ZOOM_MAX} step={ZOOM_STEP} /> : null}
           <div className="sk-seg sk-viewseg" role="group" aria-label="Today view">
             <button
               type="button"
@@ -612,21 +621,27 @@ export function HomeView({
               Dashboard
             </button>
           </div>
+          </>
         }
       >
         {board ? (
-          <HubBoard
-            snapshots={snapshots}
-            bills={bills}
-            schedule={schedule}
-            focus={shortTerm}
-            ledger={ledger}
-            events={linkItems}
-            openTab={(t) => {
-              setBoard(false);
-              pickTodayTab(t);
-            }}
-          />
+          <div className="sk-boardzoom" style={boardZoom === 100 ? undefined : { zoom: boardZoom / 100 }}>
+            <HubBoard
+              snapshots={snapshots}
+              bills={bills}
+              schedule={schedule}
+              focus={shortTerm}
+              ledger={ledger}
+              events={linkItems}
+              openTab={(t) => {
+                setBoard(false);
+                pickTodayTab(t);
+              }}
+              sites={openBySite}
+              openSite={(id) => enter(id as SpaceId)}
+              completeTask={(t) => onCompleteTask("ticktick", t)}
+            />
+          </div>
         ) : split && !phone ? (
           <div className="sk-split">
             {([

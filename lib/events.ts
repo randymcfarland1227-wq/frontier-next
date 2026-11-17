@@ -17,7 +17,7 @@ import type { CalEvent } from './schedule';
 import { readSaved, writeSaved, STORAGE_KEYS } from './storage';
 
 export const EVENT_MARKS_EVENT = 'lifehub:event-marks';
-export type EventMarks = Record<string, { mark: string | null; at: string }>;
+export type EventMarks = Record<string, { mark: string | null; at: string; title?: string; date?: string }>;
 
 /** How far ahead the Events list looks. */
 export const EVENTS_AHEAD_DAYS = 120;
@@ -114,6 +114,22 @@ export function useEventMarks() {
     };
   }, []);
   return marks;
+}
+
+/** Dashboard countdowns ("Randy's birthday · 15 days"): any calendar event or Life Hub plan can be put on
+ *  the countdown. Kept in eventMarks under `cd:<id>` (cloud-synced) with its title + day, so it shows
+ *  even after the calendar feed stops listing it. */
+export function setCountdown(id: string, on: boolean, title: string, date: string) {
+  const marks = loadEventMarks();
+  marks[`cd:${id}`] = { mark: on ? 'countdown' : null, at: new Date().toISOString(), title, date };
+  writeSaved(STORAGE_KEYS.eventMarks, marks);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(EVENT_MARKS_EVENT));
+}
+export const isCountdown = (marks: EventMarks, id: string) => marks[`cd:${id}`]?.mark === 'countdown';
+export function countdowns(marks: EventMarks): Array<{ id: string; title: string; date: string; at: string }> {
+  return Object.entries(marks)
+    .filter(([k, v]) => k.startsWith('cd:') && v.mark === 'countdown' && v.date)
+    .map(([k, v]) => ({ id: k.slice(3), title: v.title || 'Event', date: v.date!, at: v.at }));
 }
 
 export type ListKind = 'event' | 'appt';

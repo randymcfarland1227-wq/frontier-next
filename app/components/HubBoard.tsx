@@ -8,7 +8,8 @@ import { isOverdue } from "../../lib/billEdits";
 import { describe, useWeather } from "../../lib/weather";
 import { sunTimes, towsonTime } from "../../lib/sun";
 import { loadCachedMoney, parseMoney } from "../../lib/money";
-import { readSaved } from "../../lib/storage";
+import { readSaved, writeSaved } from "../../lib/storage";
+import { countdowns, useEventMarks } from "../../lib/events";
 import { useDayKey } from "../../lib/dayKey";
 import { useBrief } from "./DailyBrief";
 import { useTickTickDay } from "./TickTickRings";
@@ -23,7 +24,7 @@ import type { Entry } from "./FocusSection";
 
 type List = readonly [Entry[], (next: Entry[]) => void];
 type Focus = { now: List; weeks: List; ongoing: List };
-type Tab = "calendar" | "money" | "focus" | "brief" | "rhythm";
+type Tab = "calendar" | "money" | "focus" | "brief" | "rhythm" | "goals";
 
 const H = 3600000;
 const hm = (d: Date) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).replace(":00", "");
@@ -211,138 +212,206 @@ function SkyClock({ now, events }: { now: Date; events: CalEvent[] }) {
   );
 }
 
-/* ── Today timeline ── */
-function Timeline({ now, events, onOpen }: { now: Date; events: CalEvent[]; onOpen: () => void }) {
-  const timed = events.filter((e) => !e.allDay);
-  const allDay = events.filter((e) => e.allDay);
-  const nowH = hourOf(now);
-  const first = timed.length ? Math.floor(Math.min(...timed.map((e) => hourOf(eventStart(e))))) : 8;
-  const last = timed.length ? Math.ceil(Math.max(...timed.map(endH))) : 21;
-  const h0 = Math.max(0, Math.min(7, first, Math.floor(nowH) - 1));
-  const h1 = Math.min(24, Math.max(22, last, Math.ceil(nowH) + 1));
-  const span = h1 - h0;
-  const y = (h: number) => `${((h - h0) / span) * 100}%`;
-  const current = timed.find((e) => going(e) && eventStart(e) <= now && new Date(e.end) > now);
-  const next = timed.find((e) => going(e) && eventStart(e) > now);
-  const toNext = next ? eventStart(next).getTime() - now.getTime() : 0;
-  const busy = timed.filter(going).reduce((s, e) => s + Math.max(0, endH(e) - hourOf(eventStart(e))), 0);
-  const shown = current || next;
-
-  return (
-    <Panel title="Today" icon="📅" accent="#7aa7ff" meta={`${timed.filter(going).length} events · ${busy ? `${Math.round(busy * 10) / 10}h booked` : "wide open"}`} onOpen={onOpen} className="hb-today">
-      <div className={`hb-next${current ? " is-now" : next ? "" : " is-free"}`}>
-        {next && !current ? (
-          <Ring pct={100 - clamp((toNext / (3 * H)) * 100)} color="#7aa7ff" size={60} stroke={7}>
-            <b className="hb-ring-sm">{until(toNext)}</b>
-          </Ring>
-        ) : (
-          <span className="hb-next-dot" aria-hidden="true">{current ? "●" : "✓"}</span>
-        )}
-        <div>
-          <small>{current ? "Happening now" : next ? "Up next" : "Nothing else today"}</small>
-          <b>{shown?.title || "The rest of the day is yours"}</b>
-          {shown ? (
-            <span>
-              {current ? `until ${hm(new Date(current.end))}` : hm(eventStart(next!))}
-              {shown.location ? ` · ${shown.location}` : ""}
-            </span>
-          ) : null}
-        </div>
-      </div>
-      {allDay.length ? (
-        <div className="hb-allday">
-          {allDay.map((e, i) => (
-            <span key={e.id} style={{ "--c": colorOf(e, i) } as CSSProperties}>{e.title}</span>
-          ))}
-        </div>
-      ) : null}
-      <div className="hb-tl">
-        {Array.from({ length: span + 1 }, (_, i) => h0 + i).map((hr) => (
-          <div key={hr} className="hb-tl-hr" style={{ top: y(hr) }}>
-            <span>{hr === 0 || hr === 24 ? "12a" : hr === 12 ? "12p" : hr < 12 ? `${hr}a` : `${hr - 12}p`}</span>
-          </div>
-        ))}
-        {timed.map((e, i) => {
-          const s = hourOf(eventStart(e));
-          const en = Math.max(s + 0.45, endH(e));
-          const past = new Date(e.end) <= now;
-          return (
-            <div
-              key={e.id}
-              className={`hb-tl-ev${past ? " is-past" : ""}${e === current ? " is-now" : ""}${going(e) ? "" : " is-maybe"}`}
-              style={{ top: y(s), height: `calc(${((en - s) / span) * 100}% - 2px)`, "--c": colorOf(e, i) } as CSSProperties}
-            >
-              <b>{e.title}</b>
-              <small>
-                {hm(eventStart(e))}–{hm(new Date(e.end))}
-              </small>
-            </div>
-          );
-        })}
-        {nowH >= h0 && nowH <= h1 ? (
-          <div className="hb-tl-now" style={{ top: y(nowH) }}>
-            <i />
-            <span>{hm(now)}</span>
-          </div>
-        ) : null}
-      </div>
-    </Panel>
-  );
-}
-
-/* ── Pulse: habits / tasks / water ── */
-function Pulse({ snapshots, ledger, onOpen }: { snapshots: Record<SourceId, SourceSnapshot>; ledger: CompletionLedger; onOpen: () => void }) {
+/* ── Pulse: habits / tasks / water (tap to log) ── */
+function Pulse({ snapshots, ledger, onOpen, complete }: { snapshots: Record<SourceId, SourceSnapshot>; ledger: CompletionLedger; onOpen: () => void; complete: (t: TaskItem) => void }) {
   const day = useDayKey();
   const tt = useTickTickDay(ledger);
+  const [show, setShow] = useState<"habits" | "tasks" | null>(null);
   const tasks = (snapshots.ticktick?.tasks || []) as TaskItem[];
   const isHabit = (t: TaskItem) => t.kind === "habit" || t.id.startsWith("habit-");
-  const openHabits = tasks.filter((t) => t.status !== "done" && isHabit(t) && !tt.offIds.has(t.id)).length;
-  const openTasks = tasks.filter((t) => t.status !== "done" && !isHabit(t)).length;
-  const hTotal = tt.habitsDone + tt.skippedHabits + openHabits;
-  const tTotal = tt.tasksDone + tt.wontDoTasks + openTasks;
+  const doneToday = new Set(Object.values(ledger.entries).filter((e) => e.source === "ticktick" && new Date(e.completedAt).toDateString() === new Date().toDateString()).map((e) => e.taskId));
+  const habitsOpen = tasks.filter((t) => t.status !== "done" && isHabit(t) && !tt.offIds.has(t.id) && !doneToday.has(t.id));
+  const tasksOpen = tasks.filter((t) => t.status !== "done" && !isHabit(t) && !doneToday.has(t.id));
+  const hTotal = tt.habitsDone + tt.skippedHabits + habitsOpen.length;
+  const tTotal = tt.tasksDone + tt.wontDoTasks + tasksOpen.length;
   const hPct = hTotal ? (tt.habitsDone / hTotal) * 100 : 0;
   const tPct = tTotal ? (tt.tasksDone / tTotal) * 100 : 0;
-  const w = readSaved<{ day: string; v: number } | null>("lifehub-focus-water", null);
-  const water = w && w.day === day ? Number(w.v) || 0 : 0;
+  const [water, setWaterState] = useState(() => {
+    const w = readSaved<{ day: string; v: number } | null>("lifehub-focus-water", null);
+    return w && w.day === day ? Number(w.v) || 0 : 0;
+  });
+  const setWater = (v: number) => {
+    setWaterState(v);
+    writeSaved("lifehub-focus-water", { day, v });
+  };
   const wPct = (water / 5) * 100;
   const score = Math.round((hPct + tPct + wPct) / 3);
+  const list = show === "habits" ? habitsOpen : show === "tasks" ? tasksOpen : [];
+  const toggle = (k: "habits" | "tasks") => setShow(show === k ? null : k);
   return (
     <Panel title="Today's pulse" icon="💓" accent="#7be0a6" meta={`${score}% of the day done`} onOpen={onOpen} className="hb-pulse">
       <div className="hb-rings3">
-        <div>
+        <button type="button" className={`hb-ringbtn${show === "habits" ? " is-on" : ""}`} onClick={() => toggle("habits")} title="Show today's habits to check off">
           <Ring pct={hPct} color="#7be0a6">
             <b>{Math.round(hPct)}%</b>
           </Ring>
-          <span>Habits</span>
+          <span>Habits ▾</span>
           <small>
             {tt.habitsDone} of {hTotal}
           </small>
-        </div>
-        <div>
+        </button>
+        <button type="button" className={`hb-ringbtn${show === "tasks" ? " is-on" : ""}`} onClick={() => toggle("tasks")} title="Show open tasks to check off">
           <Ring pct={tPct} color="#b48cff">
             <b>{Math.round(tPct)}%</b>
           </Ring>
-          <span>Tasks</span>
+          <span>Tasks ▾</span>
           <small>
             {tt.tasksDone} of {tTotal}
           </small>
-        </div>
-        <div>
+        </button>
+        <div className="hb-ringbtn">
           <Ring pct={wPct} color="#5fd4e6">
             <b>{water}/5</b>
           </Ring>
           <span>Water</span>
-          <small className="hb-bottles">
+          <span className="hb-bottles" role="group" aria-label="Bottles of water today">
             {Array.from({ length: 5 }, (_, i) => (
-              <i key={i} className={i < water ? "is-full" : ""} />
+              <button
+                key={i}
+                type="button"
+                className={i < water ? "is-full" : ""}
+                onClick={() => setWater(water === i + 1 ? i : i + 1)}
+                aria-label={`${i + 1} bottle${i ? "s" : ""}`}
+                title={`Log ${i + 1} of 5`}
+              />
             ))}
-          </small>
+          </span>
         </div>
       </div>
-      <div className="hb-score" title={`${score}% of today's habits, tasks and water`}>
-        <span style={{ width: `${score}%` }} />
-      </div>
+      {show ? (
+        <ul className="hb-checks">
+          {list.map((t) => (
+            <li key={t.id}>
+              <button type="button" className="hb-check" onClick={() => complete(t)} aria-label={`Check off ${t.title}`} title="Check off (logs it in TickTick)">
+                ✓
+              </button>
+              <span>{t.title}</span>
+            </li>
+          ))}
+          {!list.length ? <li className="hb-allclear">All {show} done 🎉</li> : null}
+        </ul>
+      ) : (
+        <div className="hb-score" title={`${score}% of today's habits, tasks and water`}>
+          <span style={{ width: `${score}%` }} />
+        </div>
+      )}
     </Panel>
+  );
+}
+
+/* ── Sites: open tasks per site ── */
+function Sites({ sites, open }: { sites: Array<{ id: string; name: string; count: number }>; open: (id: string) => void }) {
+  const max = Math.max(1, ...sites.map((s) => s.count));
+  const total = sites.reduce((s, x) => s + x.count, 0);
+  return (
+    <Panel title="Open by site" icon="🧭" accent="#7aa7ff" meta={`${total} open`} className="hb-sites">
+      <ul className="hb-sitelist">
+        {sites.map((s, i) => (
+          <li key={s.id}>
+            <button type="button" onClick={() => open(s.id)} title={`Open ${s.name}`} style={{ "--c": PALETTE[i % PALETTE.length] } as CSSProperties}>
+              <span className="hb-site-n">{s.name}</span>
+              <span className="hb-site-bar">
+                <i style={{ width: `${(s.count / max) * 100}%` }} />
+              </span>
+              <b className="hb-site-c">{s.count}</b>
+            </button>
+          </li>
+        ))}
+        {!sites.length ? <li className="hb-allclear">Nothing open anywhere 🎉</li> : null}
+      </ul>
+    </Panel>
+  );
+}
+
+/* ── Countdowns ── */
+function holidays(now: Date) {
+  const y = now.getFullYear();
+  const thanks = (yr: number) => {
+    const d = new Date(yr, 10, 1);
+    const first = (11 - d.getDay()) % 7; // first Thursday offset
+    return new Date(yr, 10, 1 + first + 21);
+  };
+  const out: Array<{ title: string; date: Date; icon: string }> = [];
+  for (const yr of [y, y + 1]) {
+    out.push({ title: "Thanksgiving", date: thanks(yr), icon: "🦃" });
+    out.push({ title: "Christmas", date: new Date(yr, 11, 25), icon: "🎄" });
+    out.push({ title: "New Year's Day", date: new Date(yr, 0, 1), icon: "🎆" });
+  }
+  return out;
+}
+const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+function Countdowns({ now, onOpen }: { now: Date; onOpen: () => void }) {
+  const marks = useEventMarks();
+  const today = dayStart(now).getTime();
+  const mine = countdowns(marks).map((c) => ({ key: c.id, title: c.title, date: new Date(`${c.date}T00:00:00`), icon: "⏳", from: new Date(c.at).getTime() }));
+  const hol = holidays(now)
+    .filter((h) => !mine.some((m) => m.title.toLowerCase().includes(h.title.toLowerCase().split(" ")[0])))
+    .map((h) => ({ key: h.title + h.date.getFullYear(), title: h.title, date: h.date, icon: h.icon, from: 0 }));
+  const items = [...mine, ...hol]
+    .map((x) => ({ ...x, days: Math.round((dayStart(x.date).getTime() - today) / (24 * H)) }))
+    .filter((x) => x.days >= 0 && (x.from || x.days <= 75))
+    .sort((a, b) => a.days - b.days)
+    .slice(0, 6);
+  return (
+    <Panel title="Countdown" icon="⏳" accent="#ff8fb1" meta="⏳ any calendar event to add it" onOpen={onOpen} className="hb-count">
+      <ul className="hb-cdlist">
+        {items.map((x) => {
+          const span = x.from ? Math.max(1, dayStart(x.date).getTime() - x.from) : 60 * 24 * H;
+          const pct = clamp(100 - ((dayStart(x.date).getTime() - today) / span) * 100);
+          return (
+            <li key={x.key} className={x.days <= 7 ? "is-near" : x.days <= 21 ? "is-mid" : ""}>
+              <Ring pct={pct} color={x.days <= 7 ? "#ff8fb1" : x.days <= 21 ? "#f5b942" : "#7aa7ff"} size={56} stroke={6}>
+                <b className="hb-cd-n">{x.days === 0 ? "🎉" : x.days}</b>
+              </Ring>
+              <div>
+                <b>
+                  {x.icon} {x.title}
+                </b>
+                <small>
+                  {x.days === 0 ? "Today!" : x.days === 1 ? "Tomorrow" : `${x.days} days`} · {x.date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}
+                </small>
+              </div>
+            </li>
+          );
+        })}
+        {!items.length ? <li className="hb-allclear">Tap ⏳ on any calendar event to count down to it.</li> : null}
+      </ul>
+    </Panel>
+  );
+}
+
+
+type Prog = { pct: number | null; done: number; total: number; added: Date | null; target: { date: Date } | null };
+function ProgressList({ items, now, empty }: { items: Array<{ e: Entry; p: Prog }>; now: Date; empty: string }) {
+  return (
+    <ul className="hb-flist">
+      {items.slice(0, 6).map(({ e, p }) => {
+        const days = p.target ? Math.ceil((p.target.date.getTime() - now.getTime()) / (24 * H)) : null;
+        const inFocus = p.added ? Math.max(0, Math.floor((now.getTime() - p.added.getTime()) / (24 * H))) : null;
+        return (
+          <li key={e.id}>
+            <div className="hb-f-row">
+              <b>{e.title}</b>
+              <span className={`hb-f-pct${p.pct == null ? " is-none" : ""}`}>{p.pct == null ? "—" : `${p.pct}%`}</span>
+            </div>
+            <div className="hb-f-bar">
+              <i style={{ width: `${p.pct ?? 0}%` }} />
+            </div>
+            <div className="hb-f-meta">
+              <span>{p.total ? `${p.done} of ${p.total} steps` : "No steps yet"}</span>
+              {days != null ? (
+                <span className={days < 0 ? "is-late" : days <= 3 ? "is-soon" : ""}>{days < 0 ? `${-days}d past` : days === 0 ? "Today" : `${days}d left`}</span>
+              ) : inFocus != null ? (
+                <span>{inFocus}d in</span>
+              ) : null}
+            </div>
+          </li>
+        );
+      })}
+      {items.length > 6 ? <li className="hb-allclear">+{items.length - 6} more</li> : null}
+      {!items.length ? <li className="hb-allclear">{empty}</li> : null}
+    </ul>
   );
 }
 
@@ -375,6 +444,9 @@ export function HubBoard({
   ledger,
   events: linkEvents,
   openTab,
+  sites,
+  openSite,
+  completeTask,
 }: {
   snapshots: Record<SourceId, SourceSnapshot>;
   bills: BillDue[];
@@ -383,6 +455,9 @@ export function HubBoard({
   ledger: CompletionLedger;
   events: LinkItem[];
   openTab: (t: Tab) => void;
+  sites: Array<{ id: string; name: string; count: number }>;
+  openSite: (id: string) => void;
+  completeTask: (t: TaskItem) => void;
 }) {
   const now = useNow(1000);
   const brief = useBrief(snapshots, bills);
@@ -423,6 +498,8 @@ export function HubBoard({
   const focusItems = [...focus.now[0], ...focus.weeks[0], ...focus.ongoing[0].filter((i) => i.inFocus)]
     .filter((i) => !i.done)
     .map((e) => ({ e, p: progress(e) }));
+  const goalItems = focus.ongoing[0].filter((i) => !i.done).map((e) => ({ e, p: progress(e) }));
+  const goalAvg = goalItems.length ? Math.round(goalItems.reduce((s, x) => s + (x.p.pct ?? 0), 0) / goalItems.length) : 0;
   const focusAvg = focusItems.length ? Math.round(focusItems.reduce((s, x) => s + (x.p.pct ?? 0), 0) / focusItems.length) : 0;
 
   const needs = brief.filter((s) => s.rows.length && s.id !== "money");
@@ -437,8 +514,9 @@ export function HubBoard({
   return (
     <div id="sk-board" className="hb">
       <SkyClock now={now} events={today} />
-      <Timeline now={now} events={today} onOpen={() => openTab("calendar")} />
-      <Pulse snapshots={snapshots} ledger={ledger} onOpen={() => openTab("rhythm")} />
+      <Sites sites={sites} open={openSite} />
+      <Countdowns now={now} onOpen={() => openTab("calendar")} />
+      <Pulse snapshots={snapshots} ledger={ledger} onOpen={() => openTab("rhythm")} complete={completeTask} />
 
       <Panel title="Needs you" icon="🔔" accent="#ff8fb1" meta={needTotal || "All clear"} onOpen={() => openTab("brief")} className="hb-needs">
         {needs.length ? (
@@ -514,39 +592,11 @@ export function HubBoard({
       </Panel>
 
       <Panel title="Short-term focus" icon="🎯" accent="#b48cff" meta={focusItems.length ? `${focusItems.length} open · ${focusAvg}% avg` : undefined} onOpen={() => openTab("focus")} className="hb-focus">
-        <ul className="hb-flist">
-          {focusItems.slice(0, 6).map(({ e, p }) => {
-            const days = p.target ? Math.ceil((p.target.date.getTime() - now.getTime()) / (24 * H)) : null;
-            const inFocus = p.added ? Math.max(0, Math.floor((now.getTime() - p.added.getTime()) / (24 * H))) : null;
-            const pct = p.pct ?? 0;
-            return (
-              <li key={e.id}>
-                <div className="hb-f-row">
-                  <b>{e.title}</b>
-                  <span className={`hb-f-pct${p.pct == null ? " is-none" : ""}`}>{p.pct == null ? "—" : `${p.pct}%`}</span>
-                </div>
-                <div className="hb-f-bar">
-                  <i style={{ width: `${pct}%` }} />
-                </div>
-                <div className="hb-f-meta">
-                  {p.total ? (
-                    <span>
-                      {p.done} of {p.total} steps
-                    </span>
-                  ) : (
-                    <span>No steps yet</span>
-                  )}
-                  {days != null ? (
-                    <span className={days < 0 ? "is-late" : days <= 3 ? "is-soon" : ""}>{days < 0 ? `${-days}d past` : days === 0 ? "Today" : `${days}d left`}</span>
-                  ) : inFocus != null ? (
-                    <span>{inFocus}d in focus</span>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-          {!focusItems.length ? <li className="hb-allclear">Nothing in focus.</li> : null}
-        </ul>
+        <ProgressList items={focusItems} now={now} empty="Nothing in focus." />
+      </Panel>
+
+      <Panel title="Goals" icon="🏔️" accent="#7be0a6" meta={goalItems.length ? `${goalItems.length} ongoing · ${goalAvg}% avg` : undefined} onOpen={() => openTab("goals")} className="hb-goals">
+        <ProgressList items={goalItems} now={now} empty="No ongoing goals yet." />
       </Panel>
 
       <Panel title="Next 7 days" icon="🗓️" accent="#5fd4e6" meta={`${week.reduce((s, d) => s + d.items.length, 0)} events`} onOpen={() => openTab("calendar")} className="hb-week">

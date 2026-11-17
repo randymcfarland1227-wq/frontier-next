@@ -27,7 +27,7 @@ import {
 } from '../../lib/schedule';
 import { MONEY_KINDS } from '../../lib/money';
 import { planSlot, usePlans, type Plan } from '../../lib/plans';
-import { EVENTS_AHEAD_DAYS, eventDaysAway, eventTone, eventIcon, isAppointmentTitle, listKindOf, setEventMark, useEventMarks, type ListKind } from '../../lib/events';
+import { EVENTS_AHEAD_DAYS, eventDaysAway, eventTone, eventIcon, isAppointmentTitle, listKindOf, setEventMark, useEventMarks, setCountdown, isCountdown, type ListKind } from '../../lib/events';
 import { readSaved, writeSaved } from '../../lib/storage';
 import { BillsList } from './BillsList';
 import { BillPinButton, useBillPin } from './BillControls';
@@ -468,8 +468,11 @@ function EventsList({
 function EventRow({ r, appt, now, onShow, onDropPlan }: { r: EvRow; appt: boolean; now: Date; onShow: (date: string, id?: string) => void; onDropPlan: (p: Plan) => void }) {
   const start = eventStart(r.slot);
   const where = appt ? 'Appointments' : 'Events';
+  const marks = useEventMarks();
+  const cd = isCountdown(marks, r.id);
   const { bind, menu } = useRowMenu(
     () => [
+      { label: cd ? '⏳ Take off the Dashboard countdown' : '⏳ Show on the Dashboard countdown', onSelect: () => setCountdown(r.id, !cd, r.title, start.toLocaleDateString('en-CA')) },
       { label: 'Add to Google Calendar ↗', href: googleCalendarLink({ title: r.title, ...r.slot, details: r.note }), hidden: !r.plan },
       { label: `Remove from ${where}`, danger: true, onSelect: () => (r.plan ? onDropPlan(r.plan) : setEventMark(r.id, 'hide')) },
     ],
@@ -783,6 +786,23 @@ function EventStar({ event }: { event: CalEvent }) {
   );
 }
 
+/** ⏳ in a day's pop-out: put this event on the Dashboard countdown ("Christmas · 38 days"). */
+function CountdownToggle({ event }: { event: CalEvent }) {
+  const marks = useEventMarks();
+  const on = isCountdown(marks, event.id);
+  return (
+    <button
+      type="button"
+      className={`sk-btn is-small${on ? ' is-on' : ''}`}
+      aria-pressed={on}
+      onClick={() => setCountdown(event.id, !on, event.title, eventStart(event).toLocaleDateString('en-CA'))}
+      title={on ? 'On the Dashboard countdown — click to take it off' : 'Show a countdown to this on the Dashboard'}
+    >
+      ⏳ {on ? 'Counting down' : 'Countdown'}
+    </button>
+  );
+}
+
 function DayPopover({
   day,
   pos,
@@ -898,6 +918,7 @@ function DayPopover({
                     </button>
                   ) : null}
                   {calEvent ? <EventStar event={calEvent} /> : null}
+                  {calEvent ? <CountdownToggle event={calEvent} /> : null}
                   {(it.kind === 'event' || it.kind === 'invite') && it.url ? (
                     <a className="sk-btn is-small" href={it.url} target="_blank" rel="noopener noreferrer" aria-label={`${it.kind === 'invite' ? 'Reply to' : 'Open'} ${it.title} in Google Calendar`}>
                       {it.kind === 'invite' ? 'Reply ↗' : 'Open ↗'}

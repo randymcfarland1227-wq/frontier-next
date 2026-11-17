@@ -4643,8 +4643,11 @@ button.bal-led-row:hover { background: color-mix(in srgb, var(--ev, #0f8a7e) 8%,
 .dbt-cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 .dbt-row { width: 100%; text-align: left; border: 0; border-top: 1px solid var(--line, var(--row-line)); background: none; color: inherit; padding: 8px 10px; cursor: pointer; font: inherit; }
 .dbt-row:hover { background: color-mix(in srgb, var(--t, #be123c) 8%, transparent); }
-.dbt-row.is-settled { opacity: .55; }
-.dbt-row.is-settled .num { text-decoration: line-through; }
+/* Settled (paid / gone): stays in place, readable, thin line through the text, green check by the name */
+.dbt-row.is-settled { opacity: .78; }
+.dbt-row.is-settled > span { text-decoration: line-through; text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, currentColor 70%, transparent); }
+.dbt-row.is-settled .dbt-mark { display: inline-block; text-decoration: none; }
+.dbt-done { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-right: 5px; border-radius: 50%; background: #16a34a; color: #fff; font-size: 10px; font-style: normal; font-weight: 800; line-height: 1; vertical-align: -2px; text-decoration: none; }
 .dbt-plain-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 110px; gap: 10px; align-items: center; }
 .dbt-name { display: grid; min-width: 0; }
 .dbt-name b { font-weight: 600; font-size: 14px; }

@@ -323,7 +323,12 @@ function CreditView({
                 onClick={() => onOpen(i.id)}
               >
                 <span className="dbt-name" data-l="Account">
-                  <b><FinanceLabel id={`debt:${i.id}`} name={i.name} /></b>
+                  <b>
+                    {isSettled(marks[i.id]) ? (
+                      <i className="dbt-done" role="img" aria-label={MARK_LABEL[marks[i.id]!.status]} title={marks[i.id]?.note || MARK_LABEL[marks[i.id]!.status]}>✓</i>
+                    ) : null}
+                    <FinanceLabel id={`debt:${i.id}`} name={i.name} />
+                  </b>
                   <small>{i.status}</small>
                 </span>
                 <span className="dbt-who" data-l="Owner now">

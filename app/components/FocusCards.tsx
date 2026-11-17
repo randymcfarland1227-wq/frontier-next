@@ -350,6 +350,7 @@ function settleLink(key: string, on: boolean, ctx: FinCtx) {
   if (key.startsWith("owed:")) {
     const l = ctx.owed?.[key.slice(5)];
     setOwedDone(key.slice(5), on, Boolean(l?.recurring));
+    if (!on && l?.legacyKey) setOwedDone(l.legacyKey, false);
   } else if (key.startsWith("own:")) setFinding(key, { paid: on });
 }
 

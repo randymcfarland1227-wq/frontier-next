@@ -327,6 +327,10 @@ export type OwedLine = {
   itemId?: string;
   done?: boolean;
   unverified?: boolean;
+  /** The old row-only key (marks saved before 2026-11-16); honored only when one line has it. */
+  legacyKey?: string;
+  /** Always the old row-only key, for links saved before the column was added */
+  rowKey?: string;
 };
 const rowsOf = (t?: Table | null) =>
   (t?.rows || []).filter((r) => r.some((c) => c.text.trim()));
@@ -362,7 +366,10 @@ export function outstandingParts(
     note?: number,
     date?: number,
   ): OwedLine => ({
-    key: `${r[0].tab}:${r[0].r}`,
+    // Tab + row + first column: the sheet keeps tables side by side, so row alone isn't unique.
+    key: `${r[0].tab}:${r[0].r}:${r[0].c}`,
+    legacyKey: `${r[0].tab}:${r[0].r}`,
+    rowKey: `${r[0].tab}:${r[0].r}`,
     name: r[name]?.text.trim() || "",
     cell: r[amt],
     amount: amountOf(r[amt]?.text || ""),
@@ -424,12 +431,19 @@ export function outstandingParts(
       .map((r) => sheetLine(r, 0, 1, 2)),
   ];
   // Marked complete on Life Hub (recurring pay-later plans only for this month).
+  const legacyCount = new Map<string, number>();
+  for (const x of [...payLater, ...cashAdv, ...advances, ...taxes, ...projects])
+    if (x.legacyKey) legacyCount.set(x.legacyKey, (legacyCount.get(x.legacyKey) || 0) + 1);
   const mark = (xs: OwedLine[], recurring = false) =>
-    xs.map((x) => ({
-      ...x,
-      recurring,
-      done: x.done || isOwedDone(owedDone, x.key),
-    }));
+    xs.map((x) => {
+      const legacy = x.legacyKey && legacyCount.get(x.legacyKey) === 1 && owedDone[x.key] === undefined ? x.legacyKey : undefined;
+      return {
+        ...x,
+        recurring,
+        legacyKey: legacy,
+        done: x.done || isOwedDone(owedDone, x.key) || (legacy ? isOwedDone(owedDone, legacy) : false),
+      };
+    });
   return {
     payLater: mark(payLater, true),
     cashAdv: mark(cashAdv),
@@ -488,7 +502,10 @@ function OwedCol({
         <button
           type="button"
           className="sk-btn is-small ob-check"
-          onClick={() => setOwedDone(x.key, !x.done, x.recurring)}
+          onClick={() => {
+            setOwedDone(x.key, !x.done, x.recurring);
+            if (x.done && x.legacyKey) setOwedDone(x.legacyKey, false);
+          }}
           title={
             x.done
               ? "Put back on the list"

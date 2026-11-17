@@ -194,7 +194,7 @@ export function AssetsBoard({ model, dues, monthDues, paidAt, parts, onOpen }: {
       <div className="sk-gbody skm-body">
         <div className="skm-as-grid">
           {views.map(a => {
-            const open = a.links.map(k => lines.find(l => l.key === k)).filter((l): l is OwedLine & { group: string } => !!l && !l.done);
+            const open = a.links.map(k => lines.find(l => l.key === k || l.rowKey === k)).filter((l): l is OwedLine & { group: string } => !!l && !l.done);
             return (
               <button key={a.def.id} type="button" className={`skm-as-card is-${a.def.id}`} onClick={() => onOpen(a)} aria-label={`${a.def.name} details`}>
                 <span className="skm-as-top">
@@ -233,11 +233,14 @@ function AssetTasks({ a, model, monthDues, paidAt }: { a: AssetView; model: Mone
   const [amt, setAmt] = useState('');
   const key = assetKey(a.def.id);
   const save = (links: string[]) => setMeta(key, { links });
-  const linked = a.links.map(k => lines.find(l => l.key === k) || { key: k, name: 'Item no longer in Current liabilities', group: '', gone: true });
+  const linked = a.links.map(k => lines.find(l => l.key === k || l.rowKey === k) || { key: k, name: 'Item no longer in Current liabilities', group: '', gone: true });
   const free = lines.filter(l => !a.links.includes(l.key) && !l.done);
   const toggle = (l: OwedLine) => {
     if (l.key.startsWith('own:')) setFinding(l.key, { paid: !l.done || undefined });
-    else if (!l.itemId) setOwedDone(l.key, !l.done, l.recurring);
+    else if (!l.itemId) {
+      setOwedDone(l.key, !l.done, l.recurring);
+      if (l.done && l.legacyKey) setOwedDone(l.legacyKey, false);
+    }
   };
   const add = () => {
     const n = name.trim();

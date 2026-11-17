@@ -1914,3 +1914,18 @@ export function useFinSummary(bills: BillDue[] = []) {
     return { text, cleared, plan: pl && pl.state !== "unknown" ? planShort(pl.state) : "", planState: pl?.state };
   };
 }
+
+/** Dashboard: the same % done and day count each focus card shows, for any list of entries. */
+export function useFocusProgress(lists: CardList[], bills: BillDue[] = [], events: LinkItem[] = [], ledger?: CompletionLedger, ticktick?: SourceSnapshot) {
+  const { raw: file, rawMarks: marks } = useDebtFile();
+  const sl = useSiteLists();
+  const goals = lists.flatMap(([items]) => items.flatMap((x) => (x.habitGoal ? [{ habitId: x.habitGoal.habitId, from: x.habitGoal.from }] : [])));
+  const habitCount = useHabitCounts(goals);
+  const findings = useFindings();
+  const ctx: FinCtx = { file, marks, bills, sl, habitCount, findings, ...linkCtx(lists, ledger, ticktick) };
+  return (e: Entry) => {
+    const added = addedOf(e);
+    const target = targetOf(e, events);
+    return { ...progressOf(e, ctx), added, target };
+  };
+}

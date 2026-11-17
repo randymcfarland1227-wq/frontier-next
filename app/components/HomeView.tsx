@@ -620,7 +620,8 @@ export function HomeView({
             bills={bills}
             schedule={schedule}
             focus={shortTerm}
-            rings={ticktickRings}
+            ledger={ledger}
+            events={linkItems}
             openTab={(t) => {
               setBoard(false);
               pickTodayTab(t);

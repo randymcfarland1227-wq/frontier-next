@@ -58,6 +58,7 @@ const SYNCED_KEYS: string[] = [
   SITE_LISTS_KEY,
   GROUP_LOG_KEY,
   FINDINGS_KEY,
+  'lifehub-packages',
 ];
 
 export type SyncStatus = {
@@ -180,6 +181,7 @@ export function readLocalState(): SyncedState {
     siteLists: readSaved(SITE_LISTS_KEY, {}),
     groupLog: readSaved(GROUP_LOG_KEY, {}),
     findings: readSaved(FINDINGS_KEY, {}),
+    packages: readSaved('lifehub-packages', {}),
   });
 }
 
@@ -216,6 +218,7 @@ function writeLocalState(next: SyncedState): boolean {
     [SITE_LISTS_KEY, current.siteLists, next.siteLists],
     [GROUP_LOG_KEY, current.groupLog, next.groupLog],
     [FINDINGS_KEY, current.findings, next.findings],
+    ['lifehub-packages', current.packages, next.packages],
   ];
   let changed = false;
   applying = true;

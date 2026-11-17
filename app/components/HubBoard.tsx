@@ -15,6 +15,7 @@ import { useBrief } from "./DailyBrief";
 import { useTickTickDay } from "./TickTickRings";
 import { useFocusProgress, type LinkItem } from "./FocusCards";
 import type { Entry } from "./FocusSection";
+import { PackagesPanel } from "./PackagesPanel";
 
 /**
  * Today › Dashboard: the always-on second screen. A living wall, not a list: a sky that follows the
@@ -541,6 +542,8 @@ export function HubBoard({
           <p className="hb-allclear">🎉 Nothing waiting on you.</p>
         )}
       </Panel>
+
+      <PackagesPanel Panel={Panel} />
 
       <Panel title="Money" icon="💰" accent="#f5b942" meta={cash.text ? `${cash.text} on hand` : undefined} onOpen={() => openTab("money")} className="hb-money">
         <div className="hb-money-top">

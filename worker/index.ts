@@ -3,6 +3,8 @@ import { mergeState, normalizeState, stateCounts } from "../lib/syncState";
 
 interface Env {
   ASSETS: Fetcher;
+  /** 17TRACK API key (free plan) for package tracking — `wrangler secret put TRACK17_KEY` */
+  TRACK17_KEY?: string;
   /** TickTick Open API bearer token — set via `wrangler secret put TICKTICK_ACCESS_TOKEN` */
   TICKTICK_ACCESS_TOKEN?: string;
   /** Cloud backup for Life Hub state (completions, ideas, Self, goal links) */
@@ -1023,6 +1025,51 @@ async function handleMoney(request: Request, env: Env): Promise<Response> {
 const DEBT_FILE_KEY = "debt-file";
 const DEBT_MARKS_KEY = "debt-marks";
 
+
+/** GET /api/track?nums=a,b → live package status from 17TRACK (registers new numbers, then reads them). */
+const TRACK_STATUS: Record<string, string> = {
+  NotFound: "shipped", InfoReceived: "shipped", InTransit: "transit", Expired: "problem", AvailableForPickup: "pickup",
+  OutForDelivery: "out", DeliveryFailure: "problem", Delivered: "delivered", Exception: "problem",
+};
+async function handleTrack(request: Request, env: Env): Promise<Response> {
+  const origin = request.headers.get("Origin");
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  if (origin && !CORS_ALLOW_ORIGINS.has(origin)) return jsonResponse({ ok: false, error: "cors_denied" }, 403, origin);
+  if (!(await syncKeyAllowed(request, env))) return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
+  if (!env.TRACK17_KEY) return jsonResponse({ ok: false, error: "no_tracking_key" }, 200, origin);
+  const nums = [...new Set((new URL(request.url).searchParams.get("nums") || "").split(",").map((n) => n.trim()).filter(Boolean))].slice(0, 40);
+  if (!nums.length) return jsonResponse({ ok: true, items: [] }, 200, origin);
+  const call = async (path: string) => {
+    const r = await fetch(`https://api.17track.net/track/v2.2/${path}`, {
+      method: "POST",
+      headers: { "17token": env.TRACK17_KEY!, "Content-Type": "application/json" },
+      body: JSON.stringify(nums.map((number) => ({ number }))),
+    });
+    return (await r.json().catch(() => ({}))) as { code?: number; data?: { accepted?: Array<Record<string, unknown>>; rejected?: unknown[] } };
+  };
+  await call("register"); // already-registered numbers are simply rejected; fine
+  const info = await call("gettrackinfo");
+  const items = (info.data?.accepted || []).map((a) => {
+    const ti = (a.track_info || {}) as {
+      latest_status?: { status?: string };
+      latest_event?: { time_iso?: string; description?: string; location?: string };
+      time_metrics?: { estimated_delivery_date?: { from?: string | null; to?: string | null } };
+      tracking?: { providers?: Array<{ provider?: { name?: string } }> };
+    };
+    const ev = ti.latest_event;
+    const eta = ti.time_metrics?.estimated_delivery_date?.to || ti.time_metrics?.estimated_delivery_date?.from || undefined;
+    const delivered = ti.latest_status?.status === "Delivered";
+    return {
+      number: String(a.number || ""),
+      status: TRACK_STATUS[ti.latest_status?.status || ""] || undefined,
+      eta: delivered && ev?.time_iso ? ev.time_iso.slice(0, 10) : eta ? String(eta).slice(0, 10) : undefined,
+      last: ev ? [ev.description, ev.location].filter(Boolean).join(" · ") + (ev.time_iso ? ` · ${ev.time_iso.slice(0, 10)}` : "") : undefined,
+      carrier: ti.tracking?.providers?.[0]?.provider?.name || undefined,
+    };
+  });
+  return jsonResponse({ ok: true, items }, 200, origin);
+}
+
 async function handleDebts(request: Request, env: Env): Promise<Response> {
   const origin = request.headers.get("Origin");
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
@@ -1160,6 +1207,8 @@ export default {
     if (pathname === "/api/debts") {
       return handleDebts(request, env);
     }
+
+    if (pathname === "/api/track") return handleTrack(request, env);
 
     if (pathname === "/api/sync/now") {
       return handleSyncNow(request, env);

@@ -714,7 +714,7 @@ export function FocusSection({
   const rl = useRhythmLists();
   const { reopen } = useSiteLists();
   const BASE: Record<FocusSectionId, (title: string) => boolean> = {
-    nutrition: (t) => NUTRITION_RE.test(t) && !/marvel/i.test(t),
+    nutrition: (t) => NUTRITION_RE.test(t) && !/marvel|plant/i.test(t),
     fitness: (t) => FITNESS_RE.test(t) && !/marvel/i.test(t),
     marvel: (t) => /marvel/i.test(t),
   };

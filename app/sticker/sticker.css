@@ -4083,15 +4083,21 @@
 .sk-app .sk-fdetail .sk-fd-newlist .sk-cap { flex: none; white-space: nowrap; }
 .sk-app .sk-fdetail .sk-fd-newlist input { flex: 1; min-width: 0; height: 32px; padding: 4px 10px; border-style: solid; }
 .sk-app .sk-fdetail .sk-fd-newlist .sk-btn { flex: none; }
-.sk-app .sk-fdetail .sk-fd-three:has(.sk-fd-refs.is-gallery) { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
-.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumbs { display: block; columns: 190px; column-gap: 10px; }
-.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb { aspect-ratio: auto; margin: 0 0 10px; break-inside: avoid; }
-.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb > button:first-child { height: auto; border-radius: 14px; box-shadow: 0 6px 18px #0000004d; transition: transform .2s ease, box-shadow .2s ease; }
-.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb > button:first-child:hover { transform: translateY(-2px); box-shadow: 0 12px 26px #00000066; }
-.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb img { aspect-ratio: auto; width: 100%; height: auto; object-fit: contain; }
+/* Gallery: its own full-width row, every image the same height at its own width (no crop, no stretch),
+   on a calm dark mat so it reads as one strip. References get their own row below it. */
+.sk-app .sk-fdetail .sk-fd-three > .sk-fd-refs { grid-column: 1 / -1; }
+.sk-app .sk-fdetail .sk-fd-refs.is-gallery { background: color-mix(in srgb, #000 22%, transparent); }
+.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumbs { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; columns: auto; }
+.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb { flex: none; aspect-ratio: auto; width: auto; height: 240px; margin: 0; }
+.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb > button:first-child { display: block; width: auto; height: 100%; border-radius: 12px; overflow: hidden; background: #0000004d; box-shadow: 0 4px 14px #00000059, 0 0 0 1px #ffffff14; transition: transform .2s ease, box-shadow .2s ease; }
+.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb > button:first-child:hover { transform: translateY(-2px); box-shadow: 0 10px 22px #00000073, 0 0 0 1px #ffffff2e; }
+.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb img { aspect-ratio: auto; width: auto; height: 100%; max-width: none; object-fit: contain; display: block; }
+@media (max-width: 760px) { .sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb { height: 180px; } }
+/* References as one compact row: link box and buttons on a line */
+.sk-app .sk-fdetail .sk-fd-refs:not(.is-gallery) .sk-ref-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sk-app .sk-fdetail .sk-fd-refs:not(.is-gallery) .sk-ref-add > input { flex: 1 1 260px; min-width: 0; }
 .sk-app .sk-fdetail .sk-ref-add input { height: 34px; }
 .sk-app .sk-fdetail .sk-ref-btns { display: flex; flex-wrap: wrap; gap: 6px; }
 @media (max-width: 760px) {
-  .sk-app .sk-fdetail .sk-fd-three:has(.sk-fd-refs.is-gallery) { grid-template-columns: 1fr; }
   .sk-app .sk-fdetail .sk-fd-newlist .sk-cap { display: none; }
 }

@@ -13,6 +13,9 @@ import { SearchPick } from '../sticker/SearchPick';
 import { habitOptions, todayIso, type Lock, type LockState } from '../../lib/locks';
 import { Icon } from '../sticker/Icon';
 import { MenuRow, useRowMenu } from './RowMenu';
+import { useFinLinker } from './FocusCards';
+import { addOwnItem } from '../../lib/finFindings';
+import type { BillDue } from '../../lib/schedule';
 import './priority-panel.css';
 
 type PickOpt = { key: string; label: string; sub?: string };
@@ -37,6 +40,7 @@ function moveRadio(e: ReactKeyboardEvent<HTMLElement>) {
  */
 export function PriorityPanel({
   item,
+  bills = [],
   entry,
   lane,
   level,
@@ -76,6 +80,8 @@ export function PriorityPanel({
   onRemove: () => void;
   enter: (id: SourceId) => void;
   close: () => void;
+  /** Bills still owed, so a subtask can link one */
+  bills?: BillDue[];
 }) {
   const def = sourceById[item.source];
   const [name, setName] = useState(item.title);
@@ -102,7 +108,9 @@ export function PriorityPanel({
   // The origin's own steps (Peculiar Candle's stepped tasks) come first; they're filled in on that site.
   const originSteps = item.steps || [];
   const allSubs = originSteps.length + subs.length;
-  const subsDone = originSteps.filter(x => x.done).length + subs.filter(x => x.done).length;
+  const fin = useFinLinker(bills);
+  const stepDone = (b: BeforeStep) => (b.fin ? fin.status(b.fin).settled : b.done);
+  const subsDone = originSteps.filter(x => x.done).length + subs.filter(stepDone).length;
   const tools = useRowMenu([
     { label: 'Critical', on: critical, onSelect: onToggleCritical },
     { label: 'Take off the plan', hidden: !lane, onSelect: onRemove },
@@ -195,6 +203,10 @@ export function PriorityPanel({
   };
 
   const setSubs = (next: BeforeStep[]) => updatePinDetails(item.key, { subs: next.length ? next : undefined });
+  const makePurchase = (step: BeforeStep) => {
+    const key = addOwnItem(step.text, { buy: true, task: item.title, ...(step.done ? { paid: true } : {}) });
+    setSubs(subs.map(b => (b.id === step.id ? { ...b, fin: { key, label: step.text } } : b)));
+  };
   const addSub = (e: FormEvent) => {
     e.preventDefault();
     const text = newSub.trim();
@@ -371,19 +383,41 @@ export function PriorityPanel({
           ) : null}
           {subs.length ? (
             <ul className="plan-before-list plan-subs-list">
-              {subs.map(step => (
-                <MenuRow key={step.id} className={step.done ? 'is-done' : ''} title={step.text}
-                  items={[{ label: 'Remove', danger: true, onSelect: () => setSubs(subs.filter(b => b.id !== step.id)) }]}>
-                  <label>
+              {subs.map(step => {
+                const st = step.fin ? fin.status(step.fin) : null;
+                const done = stepDone(step);
+                const settable = step.fin ? fin.canSettle(step.fin.key) : true;
+                return (
+                <MenuRow key={step.id} className={`${done ? 'is-done' : ''}${step.fin ? ' is-fin' : ''}`} title={step.text}
+                  items={[
+                    ...(step.fin ? [] : [{ label: '🛒 Make it a task purchase', onSelect: () => makePurchase(step) }]),
+                    { label: 'Remove', danger: true, onSelect: () => setSubs(subs.filter(b => b.id !== step.id)) },
+                  ]}>
+                  <label title={step.fin && !settable ? 'Clears when the bill is paid in Money' : undefined}>
                     <input
                       type="checkbox"
-                      checked={step.done}
-                      onChange={() => setSubs(subs.map(b => (b.id === step.id ? { ...b, done: !b.done } : b)))}
+                      checked={done}
+                      disabled={!settable}
+                      onChange={() =>
+                        step.fin
+                          ? fin.settle(step.fin.key, !done)
+                          : setSubs(subs.map(b => (b.id === step.id ? { ...b, done: !b.done } : b)))
+                      }
                     />
                     <span>{step.text}</span>
                   </label>
+                  {st ? (
+                    <small className="plan-fin-tag">
+                      {st.buy ? '🛒 purchase' : step.fin!.key.startsWith('owed:') ? 'liability' : step.fin!.key.startsWith('bill:') ? 'bill' : 'money'} · {st.text}
+                    </small>
+                  ) : (
+                    <button type="button" className="plan-buy" onClick={() => makePurchase(step)} title="Make this a task purchase (Money › Purchases › Task-based)" aria-label={`Make ${step.text} a task purchase`}>
+                      🛒
+                    </button>
+                  )}
                 </MenuRow>
-              ))}
+                );
+              })}
             </ul>
           ) : null}
           <form className="plan-before-add" onSubmit={addSub}>
@@ -392,6 +426,19 @@ export function PriorityPanel({
               + Add
             </button>
           </form>
+          <div className="plan-fin-add">
+            <SearchPick
+              options={fin.options}
+              label="Link a bill, liability or purchase"
+              placeholder="+ Link a bill, liability or money item"
+              disabled={!fin.options.length}
+              onPick={o => {
+                if (subs.some(b => b.fin?.key === o.key)) return;
+                setSubs([...subs, { id: `s-${Date.now()}`, text: o.label, done: false, fin: { key: o.key, label: o.label } }]);
+              }}
+            />
+            <small>Tip: 🛒 on a subtask makes it a task purchase (Money › Purchases › Task-based).</small>
+          </div>
         </section>
 
         <section className="plan-panel-sec plan-panel-property plan-panel-note">

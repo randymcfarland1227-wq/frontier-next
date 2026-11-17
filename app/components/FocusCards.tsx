@@ -2021,3 +2021,34 @@ export function useFocusProgress(lists: CardList[], bills: BillDue[] = [], event
     return { ...progressOf(e, ctx), added, target };
   };
 }
+
+/**
+ * Finance links for any task pop-out (Self tasks, site tasks): the same picker, paid state and two-way
+ * settling the focus pop-out uses — bills, Current liabilities, your money items and task purchases.
+ */
+export function useFinLinker(bills: BillDue[] = []) {
+  const { raw: file, rawMarks: marks } = useDebtFile();
+  const findings = useFindings();
+  const owed = useOwedLines(file, marks, bills);
+  const ctx: FinCtx = { owed, file, marks, bills, findings };
+  const status = (link: { key: string; label: string }) => {
+    const rows = finRows(link, ctx);
+    const settled = rows.length > 0 && rows.every((r) => r.settled && !r.unverified);
+    const text = !rows.length
+      ? "Not loaded"
+      : rows.some((r) => r.unverified)
+        ? "Unverified"
+        : settled
+          ? "Cleared"
+          : rows.some((r) => !r.settled && r.amount == null)
+            ? "Amount unknown"
+            : usd(finStats(rows).owed);
+    return { settled, text, buy: Boolean(findings[link.key]?.buy) };
+  };
+  return {
+    options: financeOptions(ctx),
+    status,
+    canSettle: settable,
+    settle: (key: string, on: boolean) => settleLink(key, on, ctx),
+  };
+}

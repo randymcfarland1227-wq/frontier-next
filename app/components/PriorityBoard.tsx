@@ -979,6 +979,7 @@ export function PriorityBoard({
       {openItem ? (
         <PriorityPanel
           item={openItem}
+          bills={bills}
           entry={lanes[openItem.key]}
           lock={lockOf(openItem.key)}
           lockOptions={{

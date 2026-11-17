@@ -30,10 +30,13 @@ export function SourceView({
   onSelfStar,
   focusGoals,
   voiceMemos,
+  capturesPanel,
 }: {
   focusGoals?: ReactNode;
   /** Self page: the foldable Voice memos list */
   voiceMemos?: ReactNode;
+  /** Self: the same add box as Home's Self tab (Inbox · Tasks · Promoted). */
+  capturesPanel?: ReactNode;
   sourceId: SourceId;
   snapshot: SourceSnapshot;
   openSource: () => void;
@@ -103,16 +106,18 @@ export function SourceView({
       <section className="work-ledger sksite-ledger">
         {sourceId === "self" ? (
           <section className="sk-group sksite-box">
-            {voiceMemos}
-            {/* Split like TickTick's old Tasks | Habits: Self inbox on one side, the tasks inside Short-term focus cards on the other. */}
+            {capturesPanel ? null : voiceMemos}
+            {/* Self add box (same as Home's Self tab) on one side, the tasks inside Short-term focus cards on the other. */}
             <div className="task-split self-split">
               <div>
-                <SelfInbox
-                  items={selfItems}
-                  onAdd={onSelfAdd}
-                  onComplete={onSelfComplete}
-                  onStar={onSelfStar}
-                />
+                {capturesPanel ?? (
+                  <SelfInbox
+                    items={selfItems}
+                    onAdd={onSelfAdd}
+                    onComplete={onSelfComplete}
+                    onStar={onSelfStar}
+                  />
+                )}
               </div>
               <div>
                 <FocusTaskBoard />

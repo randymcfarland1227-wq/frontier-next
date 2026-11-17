@@ -1185,6 +1185,34 @@ goalsData ? (
         />
   );
 
+  // The Self add box (Inbox · Tasks · Promoted, voice memos, catch lists): Home's Self tab and the Self page share it.
+  const capturesPanelEl = (
+    <CapturesPanel
+              captures={captures}
+              areas={focusConfig?.areas || []}
+              selfItems={selfItems}
+              onAdd={input => setCaptures(addCapture(input))}
+              onAddTask={(title, detail, focusAreaId, due) =>
+                syncSelf(addSelfItem(title, detail, { ...(focusAreaId ? { focusAreaId } : {}), ...(due ? { due } : {}) }))
+              }
+              onTaskDue={(id, due) => syncSelf(setSelfDue(id, due))}
+              onLogTask={(title, detail, focusAreaId, at) => {
+                const items = logSelfItem(title, detail, focusAreaId || undefined, at);
+                setLedger(
+                  recordCompletion('self', items[0].id, { via: 'self', title: items[0].title, at, focusAreaId: focusAreaId || undefined }),
+                );
+                syncSelf(items);
+              }}
+              onTaskDone={id => completeOnHub('self', id)}
+              onTaskUndo={id => syncSelf(toggleSelfComplete(id))}
+              // Star = the Self card's Starred list; Pin (there) is what sends it to Priority.
+              onTaskStar={id => syncSelf(toggleSelfStar(id))}
+              onTaskMove={(id, home) => syncSelf(setSelfHome(id, home))}
+              onStatus={(id, status) => setCaptures(setCaptureStatus(id, status))}
+              onPatch={(id, patch) => setCaptures(updateCapture(id, patch))}
+              onPromote={promoteCapture}
+            />
+  );
   return (
     <SiteListsContext.Provider value={{ store: siteListStore, snapshots: baseSnapshots, complete: (site, taskId) => completeOnHub(site, taskId), reopen: (site, taskId) => reopenOnHub(site, taskId), doneOf: (site, taskId) => { const e = ledger.entries[`${site}::${taskId}`]; return e?.title ? { title: e.title, at: e.completedAt } : undefined; } }}>
     <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' ? 'home' : active}`} data-color-mode={theme}>
@@ -1260,33 +1288,7 @@ goalsData ? (
               />
             ) : null
           }
-          capturesPanel={
-            <CapturesPanel
-              captures={captures}
-              areas={focusConfig?.areas || []}
-              selfItems={selfItems}
-              onAdd={input => setCaptures(addCapture(input))}
-              onAddTask={(title, detail, focusAreaId, due) =>
-                syncSelf(addSelfItem(title, detail, { ...(focusAreaId ? { focusAreaId } : {}), ...(due ? { due } : {}) }))
-              }
-              onTaskDue={(id, due) => syncSelf(setSelfDue(id, due))}
-              onLogTask={(title, detail, focusAreaId, at) => {
-                const items = logSelfItem(title, detail, focusAreaId || undefined, at);
-                setLedger(
-                  recordCompletion('self', items[0].id, { via: 'self', title: items[0].title, at, focusAreaId: focusAreaId || undefined }),
-                );
-                syncSelf(items);
-              }}
-              onTaskDone={id => completeOnHub('self', id)}
-              onTaskUndo={id => syncSelf(toggleSelfComplete(id))}
-              // Star = the Self card's Starred list; Pin (there) is what sends it to Priority.
-              onTaskStar={id => syncSelf(toggleSelfStar(id))}
-              onTaskMove={(id, home) => syncSelf(setSelfHome(id, home))}
-              onStatus={(id, status) => setCaptures(setCaptureStatus(id, status))}
-              onPatch={(id, patch) => setCaptures(updateCapture(id, patch))}
-              onPromote={promoteCapture}
-            />
-          }
+          capturesPanel={capturesPanelEl}
         />
       ) : active === 'money' ? (
         moneyPage
@@ -1310,6 +1312,7 @@ goalsData ? (
       ) : (
         <SourceView
           sourceId={active}
+          capturesPanel={capturesPanelEl}
           focusGoals={<SiteFocus target={active} events={(schedule?.events || []).map(e => ({ id: e.id, title: e.title, start: e.start, allDay: e.allDay }))} bills={moneyDues} openFinance={(id, tab) => { requestOpenDebt(id, tab); enter('money'); }} />}
           snapshot={visibleSnapshots[active]}
           openSource={() => openSource(active)}

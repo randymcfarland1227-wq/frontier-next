@@ -57,7 +57,8 @@ export const DECK: Lane = 'now';
 export const PLAN: Lane = 'next';
 
 /** Something that's in the way, or has to happen first. */
-export type BeforeStep = { id: string; text: string; done: boolean };
+/** A step; `fin` links it to a Finance item (bill, liability, money item or task purchase) whose paid state is its done state. */
+export type BeforeStep = { id: string; text: string; done: boolean; fin?: { key: string; label: string } };
 
 export type LaneEntry = {
   lane: Lane | null;

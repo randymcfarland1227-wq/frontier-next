@@ -4050,3 +4050,25 @@
 @media (max-width: 700px) {
   .sk-app #sk-board { grid-template-areas: "sky" "sites" "pulse" "count" "needs" "money" "focus" "goals" "week"; }
 }
+
+/* Doing Now & Sites tabs and the Self Inbox · Tasks · Promoted tabs: same small plain tabs as Today
+   (bold text, underline on the open one, no pill track). Ids / [data-page] beat display-controls !important. */
+.sk-app #sk-priority .sk-seg.sk-today-tabs, .sk-app .sk-chips.sk-captabs { gap: 2px 12px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.sk-app .sk-chips.sk-captabs { padding: 6px 0 8px; }
+.sk-app[data-page] #sk-priority .sk-seg.sk-today-tabs button, .sk-app[data-page] .sk-chips.sk-captabs > button[role="tab"] {
+  flex: 0 0 auto; min-width: 0; min-height: 0; padding: 2px 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+  font: 800 11px/1.25 "DM Sans", system-ui, sans-serif !important; color: color-mix(in srgb, var(--sk-ink) 55%, transparent); white-space: nowrap;
+}
+.sk-app[data-page] #sk-priority .sk-seg.sk-today-tabs button:hover:not([aria-pressed="true"]), .sk-app[data-page] .sk-chips.sk-captabs > button[role="tab"]:hover:not([aria-selected="true"]) { background: none; color: var(--sk-ink); }
+.sk-app[data-page] #sk-priority .sk-seg.sk-today-tabs button[aria-pressed="true"], .sk-app[data-page] .sk-chips.sk-captabs > button[role="tab"][aria-selected="true"] { background: none; color: var(--sk-ink); box-shadow: inset 0 -2px 0 currentColor; }
+/* counts: a small translucent bubble, not a solid pill */
+.sk-app #sk-priority .sk-seg.sk-today-tabs .sk-tabn, .sk-app .sk-chips.sk-captabs .sk-chipcount { margin-left: 4px; padding: 0 5px; border-radius: 99px; font: 800 9.5px/1.5 "DM Sans", system-ui, sans-serif; background: color-mix(in srgb, var(--sk-ink) 14%, transparent); color: inherit; }
+.sk-app #sk-priority .sk-seg.sk-today-tabs button[aria-pressed="true"] .sk-tabn, .sk-app .sk-chips.sk-captabs > button[aria-selected="true"] .sk-chipcount { background: color-mix(in srgb, var(--sk-ink) 24%, transparent); color: inherit; }
+
+/* Task pop-out: finance-linked subtasks */
+.plan-subs-list li.is-fin label span { font-weight: 700; }
+.plan-fin-tag { margin-left: auto; padding-left: 8px; font-size: 11px; opacity: .7; white-space: nowrap; }
+.plan-buy { margin-left: auto; padding: 0 4px; border: 0; background: none; cursor: pointer; font-size: 13px; opacity: .3; filter: grayscale(1); }
+.plan-subs-list li:hover .plan-buy, .plan-buy:focus-visible { opacity: .9; filter: none; }
+.plan-fin-add { display: grid; gap: 4px; margin-top: 6px; }
+.plan-fin-add small { font-size: 11px; opacity: .55; }

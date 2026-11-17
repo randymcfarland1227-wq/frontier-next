@@ -324,10 +324,10 @@ function CreditView({
               >
                 <span className="dbt-name" data-l="Account">
                   <b>
+                    <FinanceLabel id={`debt:${i.id}`} name={i.name} />
                     {isSettled(marks[i.id]) ? (
                       <i className="dbt-done" role="img" aria-label={MARK_LABEL[marks[i.id]!.status]} title={marks[i.id]?.note || MARK_LABEL[marks[i.id]!.status]}>✓</i>
                     ) : null}
-                    <FinanceLabel id={`debt:${i.id}`} name={i.name} />
                   </b>
                   <small>{i.status}</small>
                 </span>
@@ -335,7 +335,7 @@ function CreditView({
                   {now ? now.name : "—"}
                 </span>
                 <span className="num" data-l="Owed">
-                  <MarkChip mark={marks[i.id]} />
+                  {isSettled(marks[i.id]) ? null : <MarkChip mark={marks[i.id]} />}
                   {amt(i.amount)}
                 </span>
                 <span className="dbt-bureaus" data-l="Reports">

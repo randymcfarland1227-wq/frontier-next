@@ -333,6 +333,20 @@ function useRhythmLists() {
   };
 }
 const SECTION_NAME: Record<FocusSectionId, string> = { nutrition: "Nutrition", fitness: "Fitness", marvel: "Marvel" };
+/** Habits that always belong in Nutrition today (every device), whatever their titles: TickTick section "Nutrition" (Body cut, 2026-11-17). */
+const NUTRITION_HABIT_IDS = new Set([
+  "6afc0f948f088035a8cda5f6", // Hit Macros — 2,450 kcal · 205g Protein
+  "6afc0f8e8f087a59c826d494", // Weigh-in — Morning, Before Food
+  "6afc0f928f08cf67d963cb7a", // Measure Belly (Waist at Navel)
+  "6afc0f938f08eed2a016c3d9", // Progress Photos — Every 2 Weeks
+  "6a939b9a8f08defd959116e4", // Drink 5 Bottles of Water
+  "6a93a4728f08defd9591a2d1", // Eat a Fruit or Vegetable
+  "6a939b9e8f08defd95911710", // Creatine and Fiber Supplements
+]);
+const baseHabitId = (id: string) => id.replace(/^habit-/, "").split("::")[0];
+/** The cut's daily target (Body site, 2026-11-17): cutting toward 95–97 kg. */
+const CUT_MACROS = { kcal: "2,450", p: 205, c: 250, f: 70 };
+const BODY_FOOD_URL = "https://randymcfarland1227-wq.github.io/";
 const NUTRITION_RE =
   /nutri|protein|meal|eat\b|food|calorie|vitamin|supplement|creatine|breakfast|lunch|dinner|water|bottle|drink|fiber|veg/i;
 const FITNESS_RE =
@@ -705,7 +719,8 @@ export function FocusSection({
     marvel: (t) => /marvel/i.test(t),
   };
   const inList = (sec: FocusSectionId) => (id: string, title: string) =>
-    Boolean(rl.lists.add[id]?.includes(sec)) || (!rl.lists.hide[id]?.includes(sec) && BASE[sec](title));
+    Boolean(rl.lists.add[id]?.includes(sec)) ||
+    (!rl.lists.hide[id]?.includes(sec) && (BASE[sec](title) || (sec === "nutrition" && NUTRITION_HABIT_IDS.has(baseHabitId(id)))));
   const fitToday = tickTickToday(inList("fitness"), snapshots?.ticktick, ledger, day, off, habitName);
   const nutToday = tickTickToday(inList("nutrition"), snapshots?.ticktick, ledger, day, off, habitName);
   const marvelToday = tickTickToday(inList("marvel"), snapshots?.ticktick, ledger, day, off, habitName);
@@ -781,6 +796,20 @@ export function FocusSection({
       meta={`${water} of ${BOTTLES} bottles`}
     >
       {goalsBlock("nutrition")}
+      <div className="sk-macros" aria-label="Daily macro target">
+        <div className="sk-macros-top">
+          <b>{CUT_MACROS.kcal} kcal</b>
+          <small>daily target · cut toward 95–97 kg</small>
+        </div>
+        <div className="sk-macros-row">
+          <span className="is-p"><b>P{CUT_MACROS.p}</b>g</span>
+          <span className="is-c"><b>C{CUT_MACROS.c}</b>g</span>
+          <span className="is-f"><b>F{CUT_MACROS.f}</b>g</span>
+          <a href={BODY_FOOD_URL} target="_blank" rel="noopener noreferrer" title="An example day of eating on the Body site: an example, not a prescription">
+            Example day ↗
+          </a>
+        </div>
+      </div>
       <ListHead title="Nutrition focus" />
       <FocusCards list={nutritionLists[3]} extra={nutritionLists.filter((_, i) => i !== 3)} events={events} bills={bills} openFinance={openFinance} defaults={{ section: 'nutrition', ongoing: true }} label="Add a nutrition focus" empty="Add what you’re working on with nutrition." />
       <div className="sk-mv-today sk-day-panel">

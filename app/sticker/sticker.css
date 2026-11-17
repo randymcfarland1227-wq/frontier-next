@@ -4101,3 +4101,17 @@
 @media (max-width: 760px) {
   .sk-app .sk-fdetail .sk-fd-newlist .sk-cap { display: none; }
 }
+
+/* Daily Rhythm › Nutrition: the cut's macro target */
+.sk-app .sk-macros { display: grid; gap: 6px; margin: 4px 0 10px; padding: 9px 11px; border-radius: 12px; background: color-mix(in srgb, var(--sk-ink) 7%, transparent); border: 1px solid color-mix(in srgb, var(--sk-ink) 12%, transparent); }
+.sk-app .sk-macros-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sk-app .sk-macros-top b { font: 800 15px/1.1 Unbounded, "DM Sans", system-ui, sans-serif; letter-spacing: -.01em; }
+.sk-app .sk-macros-top small { font: 600 11px/1.2 "DM Sans", system-ui, sans-serif; opacity: .65; }
+.sk-app .sk-macros-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font: 600 11.5px/1.2 "DM Sans", system-ui, sans-serif; }
+.sk-app .sk-macros-row span { padding: 2px 8px; border-radius: 99px; }
+.sk-app .sk-macros-row span b { font-weight: 800; }
+.sk-app .sk-macros-row .is-p { background: color-mix(in srgb, #ff6b8a 22%, transparent); }
+.sk-app .sk-macros-row .is-c { background: color-mix(in srgb, #f5b942 24%, transparent); }
+.sk-app .sk-macros-row .is-f { background: color-mix(in srgb, #5fd4e6 22%, transparent); }
+.sk-app .sk-macros-row a { margin-left: auto; font-weight: 700; color: inherit; opacity: .7; text-decoration: underline; text-underline-offset: 2px; }
+.sk-app .sk-macros-row a:hover { opacity: 1; }

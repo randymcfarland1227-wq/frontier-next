@@ -101,7 +101,14 @@ export function habitDueOn(h: HabitSchedule, day: Date): boolean {
   }
   if (rule.FREQ === 'WEEKLY') {
     const days = rule.BYDAY ? rule.BYDAY.split(',').map((d: string) => WEEKDAY[d]) : [start?.getDay() ?? day.getDay()];
-    return days.includes(day.getDay());
+    if (!days.includes(day.getDay())) return false;
+    // Every N weeks (e.g. progress photos every other Sunday): count whole weeks from the start week.
+    if (interval > 1 && start) {
+      const weekOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay()).getTime();
+      const weeks = Math.round((weekOf(day) - weekOf(start)) / (7 * 86400000));
+      return weeks % interval === 0;
+    }
+    return true;
   }
   return true;
 }

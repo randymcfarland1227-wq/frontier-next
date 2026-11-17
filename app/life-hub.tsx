@@ -1187,7 +1187,9 @@ goalsData ? (
 
   // Check off a task / habit from anywhere (focus pop-out habit rows…): same path as the site cards.
   const completeRef = useRef(completeOnHub);
-  completeRef.current = completeOnHub;
+  useEffect(() => {
+    completeRef.current = completeOnHub;
+  });
   useEffect(() => {
     const on = (e: Event) => {
       const d = (e as CustomEvent<{ source: SourceId; id: string }>).detail;

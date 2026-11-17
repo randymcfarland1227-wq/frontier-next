@@ -418,7 +418,7 @@ function KindList({ l, ctx, patch, remove }: { l: SubList; ctx: FinCtx; patch: (
       window.clearTimeout(t);
     };
   }, []);
-  const ledger = loadLedger();
+  const ledger = loadLedger() || ctx.ledger;
   const off = tickTickOffMap() as Record<string, string>;
   const setRow = (id: string, next: string) => patch({ tasks: l.tasks.map((t) => (t.id === id ? { ...t, text: next } : t)) });
   const drop = (id: string) => patch({ tasks: l.tasks.filter((t) => t.id !== id) });

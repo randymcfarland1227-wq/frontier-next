@@ -354,6 +354,29 @@ function settleLink(key: string, on: boolean, ctx: FinCtx) {
   } else if (key.startsWith("own:")) setFinding(key, { paid: on });
 }
 
+
+/** Gallery tiles start with the small synced thumbnail, then swap in the full image from the backup (kept for the session). */
+const fullImg = new Map<string, string>();
+function RefImg({ r, full }: { r: FocusRef; full: boolean }) {
+  const [src, setSrc] = useState(() => (r.fileId && fullImg.get(r.fileId)) || r.thumb || "");
+  useEffect(() => {
+    if (!full || !r.fileId || fullImg.has(r.fileId)) return;
+    let live = true;
+    fetchRefBlob(r)
+      .then((b) => {
+        const u = URL.createObjectURL(b);
+        fullImg.set(r.fileId!, u);
+        if (live) setSrc(u);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [full, r]);
+  // eslint-disable-next-line @next/next/no-img-element -- local thumbnail / object URL
+  return <img src={src} alt={r.title} loading="lazy" decoding="async" />;
+}
+
 /* ── Dates ── */
 
 /** When it was added: the saved day, else the timestamp every id starts with. */
@@ -708,7 +731,6 @@ function Detail({
               value={item.note || ""}
               onChange={(e) => update({ note: e.target.value || undefined })}
               placeholder="What it is — e.g. people at our home for Savannah’s baby shower"
-              maxLength={600}
             />
           </label>
           <label className="sk-fd-box">
@@ -717,7 +739,6 @@ function Detail({
               value={item.why || ""}
               onChange={(e) => update({ why: e.target.value || undefined })}
               placeholder="Why it matters — e.g. so we can do his dog DNA test"
-              maxLength={600}
             />
           </label>
         </div>
@@ -1893,8 +1914,7 @@ function RefsBox({ item, update, mode = "all" }: { item: Entry; update: (patch: 
           {images.map((r) => (
             <div key={r.id} className="sk-ref-thumb">
               <button type="button" onClick={() => open(r)} title={`${r.title} — open full size`}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- data URL thumbnail */}
-                {r.thumb ? <img src={r.thumb} alt={r.title} /> : <Icon name="file" size={18} />}
+                {r.thumb ? <RefImg r={r} full={mode === "gallery"} /> : <Icon name="file" size={18} />}
               </button>
               <button type="button" className="sk-ref-x" aria-label={`Remove ${r.title}`} title="Remove" onClick={() => remove(r)}>
                 <Icon name="close" size={11} />

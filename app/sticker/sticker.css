@@ -4072,3 +4072,26 @@
 .plan-subs-list li:hover .plan-buy, .plan-buy:focus-visible { opacity: .9; filter: none; }
 .plan-fin-add { display: grid; gap: 4px; margin-top: 6px; }
 .plan-fin-add small { font-size: 11px; opacity: .55; }
+
+/* Focus / goal pop-out, 2026-11-17: Scope / Why grow with their text; a slim one-line "New list";
+   the Gallery gets the room (full images, natural shapes, masonry) and References stays a narrow column. */
+.sk-app .sk-fdetail .sk-fd-two textarea { field-sizing: content; min-height: 3.2em; max-height: 60vh; resize: none; overflow: auto; }
+.sk-app .sk-fdetail .sk-fd-two .sk-fd-box { align-content: start; }
+.sk-app .sk-fdetail .sk-fd-newlist.sk-fd-box {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; min-height: 0; padding: 6px 8px; border: 1.5px dashed color-mix(in srgb, var(--sk-ink) 22%, transparent); border-radius: 12px;
+}
+.sk-app .sk-fdetail .sk-fd-newlist .sk-cap { flex: none; white-space: nowrap; }
+.sk-app .sk-fdetail .sk-fd-newlist input { flex: 1; min-width: 0; height: 32px; padding: 4px 10px; border-style: solid; }
+.sk-app .sk-fdetail .sk-fd-newlist .sk-btn { flex: none; }
+.sk-app .sk-fdetail .sk-fd-three:has(.sk-fd-refs.is-gallery) { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumbs { display: block; columns: 190px; column-gap: 10px; }
+.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb { aspect-ratio: auto; margin: 0 0 10px; break-inside: avoid; }
+.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb > button:first-child { height: auto; border-radius: 14px; box-shadow: 0 6px 18px #0000004d; transition: transform .2s ease, box-shadow .2s ease; }
+.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb > button:first-child:hover { transform: translateY(-2px); box-shadow: 0 12px 26px #00000066; }
+.sk-app .sk-fdetail .sk-fd-refs.is-gallery .sk-ref-thumb img { height: auto; object-fit: contain; image-rendering: auto; }
+.sk-app .sk-fdetail .sk-ref-add input { height: 34px; }
+.sk-app .sk-fdetail .sk-ref-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+@media (max-width: 760px) {
+  .sk-app .sk-fdetail .sk-fd-three:has(.sk-fd-refs.is-gallery) { grid-template-columns: 1fr; }
+  .sk-app .sk-fdetail .sk-fd-newlist .sk-cap { display: none; }
+}

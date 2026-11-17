@@ -351,7 +351,7 @@ const NUTRITION_HABIT_IDS = new Set([
   "6a939b9e8f08defd95911710", // Creatine and Fiber Supplements
 ]);
 const baseHabitId = (id: string) => id.replace(/^habit-/, "").split("::")[0];
-/** The cut's daily target (Body site, 2026-11-17): cutting toward 95–97 kg. */
+/** The cut's daily target (Body site, 2026-11-17): cutting toward 209–214 lb. */
 const CUT_MACROS = { kcal: "2,450", p: 205, c: 250, f: 70 };
 const BODY_FOOD_URL = "https://randymcfarland1227-wq.github.io/#/food/plan";
 const NUTRITION_RE =
@@ -806,7 +806,7 @@ export function FocusSection({
       <div className="sk-macros" aria-label="Daily macro target">
         <div className="sk-macros-top">
           <b>{CUT_MACROS.kcal} kcal</b>
-          <small>daily target · cut toward 95–97 kg</small>
+          <small>daily target · cut toward 209–214 lb</small>
         </div>
         <div className="sk-macros-row">
           <span className="is-p"><b>P{CUT_MACROS.p}</b>g</span>

@@ -1185,6 +1185,17 @@ goalsData ? (
         />
   );
 
+  // Check off a task / habit from anywhere (focus pop-out habit rows…): same path as the site cards.
+  const completeRef = useRef(completeOnHub);
+  completeRef.current = completeOnHub;
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ source: SourceId; id: string }>).detail;
+      if (d?.source && d.id) completeRef.current(d.source, d.id);
+    };
+    window.addEventListener('lifehub:complete-task', on);
+    return () => window.removeEventListener('lifehub:complete-task', on);
+  }, []);
   // The Self add box (Inbox · Tasks · Promoted, voice memos, catch lists): Home's Self tab and the Self page share it.
   const capturesPanelEl = (
     <CapturesPanel

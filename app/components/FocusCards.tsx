@@ -404,7 +404,21 @@ function habitDay(id: string, ledger: CompletionLedger, off: Record<string, stri
 /** A focus list that isn't check-off steps: Notes (bullets) or Habits (TickTick habits with today's state). */
 function KindList({ l, ctx, patch, remove }: { l: SubList; ctx: FinCtx; patch: (p: Partial<SubList>) => void; remove: () => void }) {
   const [text, setText] = useState("");
-  const ledger = ctx.ledger || loadLedger();
+  const { reopen } = useSiteLists();
+  // Re-read the completion log after a check-off here or anywhere else.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const on = () => setTick((n) => n + 1);
+    window.addEventListener("lifehub:completions", on);
+    window.addEventListener("lifehub:synced", on);
+    const t = window.setTimeout(on, 0);
+    return () => {
+      window.removeEventListener("lifehub:completions", on);
+      window.removeEventListener("lifehub:synced", on);
+      window.clearTimeout(t);
+    };
+  }, []);
+  const ledger = loadLedger();
   const off = tickTickOffMap() as Record<string, string>;
   const setRow = (id: string, next: string) => patch({ tasks: l.tasks.map((t) => (t.id === id ? { ...t, text: next } : t)) });
   const drop = (id: string) => patch({ tasks: l.tasks.filter((t) => t.id !== id) });
@@ -456,7 +470,21 @@ function KindList({ l, ctx, patch, remove }: { l: SubList; ctx: FinCtx; patch: (
             const h = habitDay(t.habitId || "", ledger, off);
             return (
               <li key={t.id} className={`is-${h.state}`}>
-                <span className="sk-fd-hstate" aria-hidden="true">{h.state === "done" ? "✓" : h.state === "off" ? "–" : h.state === "notdue" ? "·" : ""}</span>
+                <button
+                  type="button"
+                  className="sk-fd-hstate"
+                  disabled={h.state === "notdue" || h.state === "off"}
+                  aria-label={h.state === "done" ? `Undo ${t.text} for today` : `Check off ${t.text} for today`}
+                  title={h.state === "done" ? "Done today — tap to undo (also in TickTick and Daily Rhythm)" : h.state === "notdue" ? "Not due today" : h.state === "off" ? "Skipped today" : "Check off today (also in TickTick and Daily Rhythm)"}
+                  onClick={() => {
+                    const id = `habit-${t.habitId}`;
+                    if (h.state === "done") reopen?.("ticktick", id);
+                    else window.dispatchEvent(new CustomEvent("lifehub:complete-task", { detail: { source: "ticktick", id } }));
+                    setTick((n) => n + 1);
+                  }}
+                >
+                  {h.state === "done" ? "✓" : h.state === "off" ? "–" : h.state === "notdue" ? "·" : ""}
+                </button>
                 <span className="sk-fd-hname">{t.text}</span>
                 <small className="sk-fd-hlabel">{h.state === "done" ? "Done today" : h.state === "off" ? "Skipped" : h.state === "notdue" ? "Not due today" : "Open"}</small>
                 <span className="sk-fd-week" title="Last 7 days · today on the right">
@@ -1741,7 +1769,7 @@ function seedTicket(x: Entry): Entry {
 const PHYSIQUE_SEED = "physique-v1";
 const needsPhysiqueSeed = (x: Entry) => !x.done && /^physique goals?$/i.test(x.title.trim()) && !(x.seeded || []).includes(PHYSIQUE_SEED);
 const PHYSIQUE_SCOPE =
-  "Cut from 106.8 kg to about 95–97 kg and 10–12% body fat while keeping strength. The look is lean and athletic: full upper chest, capped delts, quad sweep, visible abs. Eat 2,450 kcal · P205 / C250 / F70 and train Fine Shyte 3 six days a week at Planet Fitness.";
+  "Cut from 235 lb to about 209–214 lb and 10–12% body fat while keeping strength. The look is lean and athletic: full upper chest, capped delts, quad sweep, visible abs. Eat 2,450 kcal · P205 / C250 / F70 and train Fine Shyte 3 six days a week at Planet Fitness.";
 const PHYSIQUE_WHY =
   "To look and feel like the version of me I picture, lean, athletic and strong, in a body that holds up long-term with my back (L4) and left shoulder. (Draft: rewrite this in your own words.)";
 const PHYSIQUE_HABITS: [string, string][] = [
@@ -1757,12 +1785,12 @@ const PHYSIQUE_HABITS: [string, string][] = [
   ["6a939b9a8f08defd959116e4", "Drink 5 Bottles of Water"],
 ];
 const PHYSIQUE_MILESTONES = [
-  "Weekly average down 0.5–0.9 kg (repeat check each Monday)",
-  "First 4 weeks done: about 103–104 kg, waist down about 3 cm",
-  "Milestone 1: about 100 kg, 13–14% body fat (around mid-Feb 2027)",
+  "Weekly average down 1–2 lb (repeat check each Monday)",
+  "First 4 weeks done: about 227–229 lb, waist down about 1.2 in",
+  "Milestone 1: about 220 lb, 13–14% body fat (around mid-Feb 2027)",
   "Ab outline visible in daylight progress photos",
   "Keep strength on main lifts through the cut (no drop over 10%)",
-  "Milestone 2: 95–97 kg, 10–12% body fat, the goal look",
+  "Milestone 2: 209–214 lb, 10–12% body fat, the goal look",
   "Then plan the switch to maintenance (about +300 kcal)",
 ];
 const PHYSIQUE_TIPS = [
@@ -1775,7 +1803,7 @@ const PHYSIQUE_TIPS = [
   "Weekend drinks count toward the calories, so plan them in.",
 ];
 const PHYSIQUE_DETAILS = [
-  "Start: 6'4\", 106.8 kg (235 lb), 25 yo, 2026-11-17.",
+  "Start: 6'4\", 235 lb (106.8 kg), 25 yo, 2026-11-17.",
   "Targets: 2,450 kcal · P205 / C250 / F70.",
   "Training: Fine Shyte 3, Mon–Sat, Thu off, legs Wed/Sat.",
   "Check-ins: weigh M/W/F, waist Mon, photos every 2nd Sun.",
@@ -1795,7 +1823,31 @@ function seedPhysique(x: Entry): Entry {
     note: x.note?.trim() ? x.note : PHYSIQUE_SCOPE,
     why: x.why?.trim() ? x.why : PHYSIQUE_WHY,
     lists: [...(x.lists || []), ...add],
-    seeded: [...(x.seeded || []), PHYSIQUE_SEED],
+    seeded: [...(x.seeded || []), PHYSIQUE_SEED, PHYSIQUE_LB],
+  };
+}
+
+
+/** Physique Goals in pounds (Randy, 2026-11-17): rewrite the kg figures already on the card, once. */
+const PHYSIQUE_LB = "physique-lb";
+const LB_SWAPS: [RegExp, string][] = [
+  [/106\.8 kg \(235 lb\)/g, "235 lb (106.8 kg)"],
+  [/106\.8 kg/g, "235 lb"],
+  [/95–97 kg/g, "209–214 lb"],
+  [/0\.5–0\.9 kg/g, "1–2 lb"],
+  [/103–104 kg/g, "227–229 lb"],
+  [/about 100 kg/g, "about 220 lb"],
+  [/waist down about 3 cm/g, "waist down about 1.2 in"],
+];
+const toLb = (t?: string) => (t ? LB_SWAPS.reduce((x, [re, to]) => x.replace(re, to), t) : t);
+const needsPhysiqueLb = (x: Entry) => /^physique goals?$/i.test(x.title.trim()) && !(x.seeded || []).includes(PHYSIQUE_LB);
+function physiqueToLb(x: Entry): Entry {
+  return {
+    ...x,
+    note: toLb(x.note),
+    why: toLb(x.why),
+    lists: (x.lists || []).map((l) => ({ ...l, tasks: l.tasks.map((t) => ({ ...t, text: toLb(t.text) || t.text })) })),
+    seeded: [...(x.seeded || []), PHYSIQUE_LB],
   };
 }
 
@@ -1884,6 +1936,7 @@ export function FocusCards({
   useEffect(() => {
     for (const [items, save] of lists0) {
       if (items.some(needsPhysiqueSeed)) save(items.map((x) => (needsPhysiqueSeed(x) ? seedPhysique(x) : x)));
+      else if (items.some(needsPhysiqueLb)) save(items.map((x) => (needsPhysiqueLb(x) ? physiqueToLb(x) : x)));
     }
   });
   // A habit goal reached: the card finishes itself and a task to delete the TickTick habit is added (once).

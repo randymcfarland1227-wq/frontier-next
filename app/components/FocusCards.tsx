@@ -846,6 +846,9 @@ function Detail({
   const added = addedOf(item);
   const finOpts = financeOptions(ctx);
   const planRef = useRef<HTMLDetailsElement>(null);
+  // An odd last list card takes the full width (no empty half beside it).
+  const cardLists = lists.filter((x) => x.kind !== "notes" && x.kind !== "habits");
+  const wideId = cardLists.length % 2 ? cardLists[cardLists.length - 1].id : "";
   const lede = (item.note || item.why || "").split(/(?<=[.!?])\s/)[0].slice(0, 160);
   // Money across this card's lists: paid · still to pay · to buy (task purchases)
   const money = { paid: 0, pay: 0, buy: 0, total: 0 };
@@ -939,7 +942,11 @@ function Detail({
             <small>{p.total ? `${p.done} of ${p.total} done` : "no steps yet"}</small>
           </div>
           <div className="sk-fd-hmain">
-            <input className="sk-fd-title" value={item.title} onChange={(e) => update({ title: e.target.value })} maxLength={120} aria-label="Focus" />
+            <div className="sk-fd-titlerow">
+              <input className="sk-fd-title" value={item.title} onChange={(e) => update({ title: e.target.value })} maxLength={120} aria-label="Focus" />
+              {item.section ? <span className={`sk-fd-cat is-${item.section}`}>{FOCUS_SECTION_LABELS[item.section]}</span> : item.site ? <span className="sk-fd-cat is-site">{sourceById[item.site]?.shortName}</span> : null}
+              {item.ongoing ? <span className="sk-fd-cat is-goal">{goalGroupOf(item)}</span> : null}
+            </div>
             {lede ? <p className="sk-fd-lede">{lede}</p> : null}
             <div className="sk-fd-stats">
               {money.total ? (
@@ -973,7 +980,7 @@ function Detail({
           {[...lists].filter((l) => l.kind !== "notes").sort((x, y) => (y.kind === "habits" ? 1 : 0) - (x.kind === "habits" ? 1 : 0)).map((l) => l.kind === "habits" ? (
             <KindList key={l.id} l={l} ctx={ctx} patch={(p) => patchList(l.id, p)} remove={() => setLists(lists.filter((x) => x.id !== l.id))} />
           ) : (
-            <section key={l.id} className={`sk-fd-box sk-fd-list is-${l.kind || "tasks"}`}>
+            <section key={l.id} className={`sk-fd-box sk-fd-list is-${l.kind || "tasks"}${l.id === wideId ? " is-wide" : ""}`}>
               <ListHead l={l} ctx={ctx} patch={(q) => patchList(l.id, q)} remove={() => setLists(lists.filter((x) => x.id !== l.id))}>
                 <input
                   value={l.name}

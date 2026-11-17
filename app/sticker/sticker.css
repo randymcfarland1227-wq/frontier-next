@@ -4249,3 +4249,19 @@
   .sk-app .sk-fd-habits li:not(.sk-empty) { grid-template-columns: 18px minmax(0, 1fr) 0 auto 18px; }
   .sk-app .sk-fd-habits .sk-fd-hlabel { visibility: hidden; }
 }
+
+/* Pop-out fixes: category chip after the title; step rows stay on one line; odd last list goes full width */
+.sk-app .sk-fd-titlerow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; min-width: 0; }
+.sk-app .sk-fdetail .sk-fd-titlerow .sk-fd-title { width: auto; max-width: 100%; field-sizing: content; min-width: 4ch; }
+.sk-app .sk-fd-cat { flex: none; padding: 4px 10px; border-radius: 8px; font: 800 10.5px/1.2 "DM Sans", system-ui, sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #fff; background: var(--site, #6b6590); }
+.sk-app .sk-fd-cat.is-fitness { background: #23a26b; }
+.sk-app .sk-fd-cat.is-nutrition { background: #c98a1c; }
+.sk-app .sk-fd-cat.is-marvel { background: #c95384; }
+.sk-app .sk-fd-cat.is-goal { background: transparent; color: var(--sk-ink); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sk-ink) 30%, transparent); }
+.sk-app .sk-fdetail .sk-fd-main .sk-fd-three > .sk-fd-list.is-wide { grid-column: 1 / -1; }
+.sk-app .sk-fdetail .sk-fd-main .sk-fd-list:not(.sk-fd-kind) li { position: relative; display: flex; align-items: flex-start; gap: 8px; padding-right: 22px; }
+.sk-app .sk-fdetail .sk-fd-main .sk-fd-list:not(.sk-fd-kind) li > :nth-child(2) { flex: 1 1 auto; min-width: 0; text-align: left; }
+.sk-app .sk-fdetail .sk-fd-main .sk-fd-list:not(.sk-fd-kind) li > .sk-btn.is-icon.is-quiet:last-child { position: absolute; right: 0; top: 0; opacity: 0; transition: opacity .15s; }
+.sk-app .sk-fdetail .sk-fd-main .sk-fd-list:not(.sk-fd-kind) li:hover > .sk-btn.is-icon.is-quiet:last-child, .sk-app .sk-fdetail .sk-fd-main .sk-fd-list:not(.sk-fd-kind) li > .sk-btn.is-icon.is-quiet:last-child:focus-visible { opacity: .7; }
+@media (hover: none) { .sk-app .sk-fdetail .sk-fd-main .sk-fd-list:not(.sk-fd-kind) li > .sk-btn.is-icon.is-quiet:last-child { opacity: .45; } }
+.sk-app .sk-fdetail .sk-fd-main .sk-fd-list:not(.sk-fd-kind) li > :is(small, .sk-fd-plan, .sk-fd-fills) { flex: none; }

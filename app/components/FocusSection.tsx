@@ -74,8 +74,13 @@ export type SubTask = {
   fin?: { key: string; label: string };
   /** A research task that fills in a Finance item (its amount / payment plan): checking it off asks for what you found. */
   fills?: { key: string; label: string };
+  /** Habits lists: the TickTick habit this row shows today's state of (bare id, no "habit-") */
+  habitId?: string;
 };
-export type SubList = { id: string; name: string; tasks: SubTask[] };
+/** tasks (default): checkable steps + finance rows · notes: plain bullet details · habits: today's TickTick habits. Only tasks count toward %. */
+export type SubListKind = "tasks" | "notes" | "habits";
+export type SubList = { id: string; name: string; tasks: SubTask[]; kind?: SubListKind };
+export const isTaskList = (l: SubList) => !l.kind || l.kind === "tasks";
 
 export type Entry = {
   id: string;
@@ -950,6 +955,7 @@ function FocusTaskGroup({ card, code, tag, lanes, fin, onToggle }: { card: Entry
   const [collapsed, toggle] = useFold(`self-focus-${card.id}`);
   // Finance links ride along as context rows (amount / plan), never counted as tasks.
   const lists = (card.lists || [])
+    .filter(isTaskList)
     .map((l) => ({ l, tasks: l.tasks.filter((t) => !t.fin), fins: l.tasks.filter((t) => t.fin) }))
     .filter((x) => x.tasks.length || x.fins.length);
   const open = lists.reduce((n, x) => n + x.tasks.filter((t) => !t.done).length, 0);
@@ -1021,8 +1027,8 @@ export function FocusTaskBoard({ compact, bills }: { compact?: boolean; bills?: 
     ...now.map((card) => ({ card, code: "n", tag: "Right now", items: now, save: saveNow })),
     ...weeks.map((card) => ({ card, code: "w", tag: "Next few weeks", items: weeks, save: saveWeeks })),
     ...ongoing.filter((c) => c.inFocus).map((card) => ({ card, code: "o", tag: "Ongoing", items: ongoing, save: saveOngoing })),
-  ].filter((g) => !g.card.done && (g.card.lists || []).some((l) => l.tasks.length));
-  const openCount = groups.reduce((n, g) => n + (g.card.lists || []).reduce((m, l) => m + l.tasks.filter((t) => !t.fin && !t.done).length, 0), 0);
+  ].filter((g) => !g.card.done && (g.card.lists || []).filter(isTaskList).some((l) => l.tasks.length));
+  const openCount = groups.reduce((n, g) => n + (g.card.lists || []).filter(isTaskList).reduce((m, l) => m + l.tasks.filter((t) => !t.fin && !t.done).length, 0), 0);
   return (
     <section className={`self-focus-tasks${compact ? " is-compact" : ""}`}>
       {compact ? (

@@ -41,11 +41,14 @@ import {
   type DebtMarks,
 } from "../../lib/debtFile";
 import { mdSources, oosSources, outstandingParts, type OwedLine } from "./OutstandingView";
-import type { Entry, SubList, SubTask } from "./FocusSection";
+import { isTaskList, type Entry, type SubList, type SubListKind, type SubTask } from "./FocusSection";
 import { habitOptions, todayIso, useHabitCounts } from "../../lib/locks";
 import { linkOptions, linkStatus } from "../../lib/goalLinks";
 import { LOG_LABEL, tickTickOffMap } from "../../lib/ticktickLog";
 import { loadLedger, type CompletionLedger } from "../../lib/completions";
+import { getHabitSchedule } from "../../lib/ticktickDone";
+import { habitDueOn } from "../../lib/energy";
+import { localDayKey } from "../../lib/dayKey";
 import { readSaved, STORAGE_KEYS } from "../../lib/storage";
 import type { SourceSnapshot } from "../../lib/types";
 import { addSelfItem, SELF_ITEMS_EVENT } from "../../lib/adapters/self";
@@ -285,7 +288,7 @@ function linkedTask(key: string, ctx: FinCtx) {
 }
 
 function progressOf(i: Entry, ctx: FinCtx) {
-  const all = (i.lists || []).flatMap((l) => l.tasks);
+  const all = (i.lists || []).filter(isTaskList).flatMap((l) => l.tasks);
   let total = all.length;
   let done = all.filter((t) => taskDone(t, ctx)).length;
   for (const l of i.fin || []) {
@@ -377,6 +380,114 @@ function RefImg({ r, full }: { r: FocusRef; full: boolean }) {
   return <img src={src} alt={r.title} loading="lazy" decoding="async" />;
 }
 
+
+/** Today's state of one TickTick habit: done, skipped / uncompleted, open, or not due today; plus the last 7 days. */
+function habitDay(id: string, ledger: CompletionLedger, off: Record<string, string>) {
+  const key = `habit-${id}`;
+  const days = new Set(
+    Object.values(ledger.entries)
+      .filter((e) => e.source === "ticktick" && e.taskId === key)
+      .map((e) => localDayKey(new Date(e.completedAt))),
+  );
+  const today = localDayKey();
+  const sched = (getHabitSchedule() || []).find((h) => h.id === key || h.id === id);
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const k = localDayKey(d);
+    return { k, done: days.has(k), due: sched ? habitDueOn(sched, d) : true, label: d.toLocaleDateString([], { weekday: "narrow" }) };
+  });
+  const state = days.has(today) ? "done" : off[key] ? "off" : sched && !habitDueOn(sched, new Date()) ? "notdue" : "open";
+  return { state, week, title: sched?.title };
+}
+
+/** A focus list that isn't check-off steps: Notes (bullets) or Habits (TickTick habits with today's state). */
+function KindList({ l, ctx, patch, remove }: { l: SubList; ctx: FinCtx; patch: (p: Partial<SubList>) => void; remove: () => void }) {
+  const [text, setText] = useState("");
+  const ledger = ctx.ledger || loadLedger();
+  const off = tickTickOffMap() as Record<string, string>;
+  const setRow = (id: string, next: string) => patch({ tasks: l.tasks.map((t) => (t.id === id ? { ...t, text: next } : t)) });
+  const drop = (id: string) => patch({ tasks: l.tasks.filter((t) => t.id !== id) });
+  const habitOpts: Opt[] = l.kind === "habits"
+    ? habitOptions()
+        .map((h) => ({ key: h.id.replace(/^habit-/, ""), label: h.title, sub: "TickTick habit", group: "Habits" }))
+        .filter((o) => !l.tasks.some((t) => t.habitId === o.key))
+    : [];
+  return (
+    <section className={`sk-fd-box sk-fd-list sk-fd-kind is-${l.kind}`}>
+      <header>
+        <input value={l.name} aria-label="List name" onChange={(e) => patch({ name: e.target.value })} />
+        <small className="sk-fd-kindtag">{l.kind === "notes" ? "Notes" : "Habits · today"}</small>
+        <button type="button" className="sk-btn is-small is-icon is-quiet" aria-label={`Remove list ${l.name}`} title="Remove list" onClick={remove}>
+          <Icon name="close" size={14} />
+        </button>
+      </header>
+      {l.kind === "notes" ? (
+        <ul className="sk-fd-notes">
+          {l.tasks.map((t) => {
+            const url = t.text.match(/https?:\/\/\S+/)?.[0];
+            return (
+              <li key={t.id}>
+                <textarea value={t.text} rows={1} aria-label="Note" onChange={(e) => setRow(t.id, e.target.value)} onBlur={(e) => (!e.target.value.trim() ? drop(t.id) : null)} />
+                {url ? <a href={url} target="_blank" rel="noopener noreferrer" title={url} aria-label="Open link">↗</a> : null}
+                <button type="button" className="sk-fd-notex" aria-label="Remove note" title="Remove" onClick={() => drop(t.id)}>
+                  <Icon name="close" size={11} />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <ul className="sk-fd-habits">
+          {l.tasks.map((t) => {
+            const h = habitDay(t.habitId || "", ledger, off);
+            return (
+              <li key={t.id} className={`is-${h.state}`}>
+                <span className="sk-fd-hstate" aria-hidden="true">{h.state === "done" ? "✓" : h.state === "off" ? "–" : h.state === "notdue" ? "·" : ""}</span>
+                <span className="sk-fd-hname">{t.text}</span>
+                <small className="sk-fd-hlabel">{h.state === "done" ? "Done today" : h.state === "off" ? "Skipped" : h.state === "notdue" ? "Not due today" : "Open"}</small>
+                <span className="sk-fd-week" title="Last 7 days">
+                  {h.week.map((d) => (
+                    <i key={d.k} className={d.done ? "is-done" : d.due ? "" : "is-off"} title={`${d.k}${d.done ? " · done" : d.due ? "" : " · not due"}`} />
+                  ))}
+                </span>
+                <button type="button" className="sk-fd-notex" aria-label={`Remove ${t.text}`} title="Remove" onClick={() => drop(t.id)}>
+                  <Icon name="close" size={11} />
+                </button>
+              </li>
+            );
+          })}
+          {!l.tasks.length ? <li className="sk-empty">Add TickTick habits below.</li> : null}
+        </ul>
+      )}
+      {l.kind === "notes" ? (
+        <form
+          className="sk-fc-add"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!text.trim()) return;
+            patch({ tasks: [...l.tasks, { id: uid(), text: text.trim(), done: false }] });
+            setText("");
+          }}
+        >
+          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="+ Add a note" aria-label={`Add a note to ${l.name}`} />
+          <button type="submit" className="sk-btn is-small" disabled={!text.trim()}>
+            <Icon name="plus" size={14} />
+          </button>
+        </form>
+      ) : (
+        <SearchPick
+          options={habitOpts}
+          label={`Add a habit to ${l.name}`}
+          placeholder="+ Add a TickTick habit"
+          disabled={!habitOpts.length}
+          onPick={(o) => patch({ tasks: [...l.tasks, { id: uid(), text: o.label, done: false, habitId: o.key }] })}
+        />
+      )}
+    </section>
+  );
+}
+
 /* ── Dates ── */
 
 /** When it was added: the saved day, else the timestamp every id starts with. */
@@ -463,7 +574,7 @@ function Card({
   const p = progressOf(item, ctx);
   const w = whenOf(item, events);
   const glog = useGroupLog();
-  const lists = (item.lists || []).slice(0, 3);
+  const lists = (item.lists || []).filter(isTaskList).slice(0, 3);
   const fins = (item.fin || []).map((l) => ({
     ...l,
     ...finStats(finRows(l, ctx)),
@@ -633,6 +744,7 @@ function Detail({
 }) {
   const glog = useGroupLog();
   const [listName, setListName] = useState("");
+  const [listKind, setListKind] = useState<SubListKind>("tasks");
   const [financeListId, setFinanceListId] = useState("");
   const [taskText, setTaskText] = useState<Record<string, string>>({});
   // Checklist task whose pop-out (notes + due day) is open
@@ -647,7 +759,7 @@ function Detail({
   const addList = (e: FormEvent) => {
     e.preventDefault();
     if (!listName.trim()) return;
-    setLists([...lists, { id: uid(), name: listName.trim(), tasks: [] }]);
+    setLists([...lists, { id: uid(), name: listName.trim(), tasks: [], ...(listKind !== "tasks" ? { kind: listKind } : {}) }]);
     setListName("");
   };
   const addTask = (e: FormEvent, l: SubList) => {
@@ -744,7 +856,9 @@ function Detail({
         </div>
 
         <div className="sk-fd-three">
-          {lists.map((l) => (
+          {lists.map((l) => l.kind === "notes" || l.kind === "habits" ? (
+            <KindList key={l.id} l={l} ctx={ctx} patch={(p) => patchList(l.id, p)} remove={() => setLists(lists.filter((x) => x.id !== l.id))} />
+          ) : (
             <section key={l.id} className="sk-fd-box sk-fd-list">
               <header>
                 <input
@@ -1106,7 +1220,15 @@ function Detail({
           })}
 
           <form className="sk-fd-box sk-fd-newlist" onSubmit={addList}>
-            <span className="sk-cap">New checklist for this focus</span>
+            <span className="sk-cap">New list</span>
+            <span className="sk-fd-kinds" role="radiogroup" aria-label="List type">
+              {([["tasks", "Tasks"], ["notes", "Notes"], ["habits", "Habits"]] as const).map(([k, label]) => (
+                <button key={k} type="button" role="radio" aria-checked={listKind === k} className={listKind === k ? "is-on" : ""} onClick={() => setListKind(k)}
+                  title={k === "tasks" ? "Check-off steps and finance items (count toward %)" : k === "notes" ? "Plain bullet points: tips, details (not counted)" : "TickTick habits with today's state (not counted)"}>
+                  {label}
+                </button>
+              ))}
+            </span>
             <input
               value={listName}
               onChange={(e) => setListName(e.target.value)}
@@ -1452,6 +1574,69 @@ function seedTicket(x: Entry): Entry {
   return { ...x, lists: [...(x.lists || []), ...add], seeded: [...(x.seeded || []), TICKET_SEED] };
 }
 
+
+/* ── Physique Goals (Body chat, 2026-11-17): Scope, Why and four lists, filled once ── */
+const PHYSIQUE_SEED = "physique-v1";
+const needsPhysiqueSeed = (x: Entry) => !x.done && /^physique goals?$/i.test(x.title.trim()) && !(x.seeded || []).includes(PHYSIQUE_SEED);
+const PHYSIQUE_SCOPE =
+  "Cut from 106.8 kg to about 95–97 kg and 10–12% body fat while keeping strength. The look is lean and athletic: full upper chest, capped delts, quad sweep, visible abs. Eat 2,450 kcal · P205 / C250 / F70 and train Fine Shyte 3 six days a week at Planet Fitness.";
+const PHYSIQUE_WHY =
+  "To look and feel like the version of me I picture, lean, athletic and strong, in a body that holds up long-term with my back (L4) and left shoulder. (Draft: rewrite this in your own words.)";
+const PHYSIQUE_HABITS: [string, string][] = [
+  ["6afc0f948f088035a8cda5f6", "Hit Macros — 2,450 kcal · 205g Protein"],
+  ["6afc0f8e8f087a59c826d494", "Weigh-in — Morning, Before Food"],
+  ["6afc0f928f08cf67d963cb7a", "Measure Belly (Waist at Navel)"],
+  ["6afc0f938f08eed2a016c3d9", "Progress Photos — Every 2 Weeks"],
+  ["6a939b8e8f087e0df42d2bb6", "Full Gym Session — Complete Flow"],
+  ["6a9fb6ba8f08ecb120d19e23", "Cardio — Gym"],
+  ["6a9fb6da8f08ea0eca04480d", "Abdominal Training — Gym"],
+  ["6a939b928f080f71bbb37508", "Active PT — Follow PDF"],
+  ["6a939b9e8f08defd95911710", "Creatine and Fiber Supplements"],
+  ["6a939b9a8f08defd959116e4", "Drink 5 Bottles of Water"],
+];
+const PHYSIQUE_MILESTONES = [
+  "Weekly average down 0.5–0.9 kg (repeat check each Monday)",
+  "First 4 weeks done: about 103–104 kg, waist down about 3 cm",
+  "Milestone 1: about 100 kg, 13–14% body fat (around mid-Feb 2027)",
+  "Ab outline visible in daylight progress photos",
+  "Keep strength on main lifts through the cut (no drop over 10%)",
+  "Milestone 2: 95–97 kg, 10–12% body fat, the goal look",
+  "Then plan the switch to maintenance (about +300 kcal)",
+];
+const PHYSIQUE_TIPS = [
+  "Protein from chicken, eggs and whites, Greek yogurt and cheese. No powder.",
+  "Portion raw ingredients ahead and cook fresh. Keep one cookie a day.",
+  "Compare weekly averages, never one weigh-in. Water and salt swing the scale.",
+  "No change for 2 weeks: cut 150 kcal or add 2,000 steps a day.",
+  "Protect the L4 back and left shoulder: no grinding reps, use the listed backups if anything pinches.",
+  "Sleep 7–8 hours. Hunger and cravings get worse on short sleep.",
+  "Weekend drinks count toward the calories, so plan them in.",
+];
+const PHYSIQUE_DETAILS = [
+  "Start: 6'4\", 106.8 kg (235 lb), 25 yo, 2026-11-17.",
+  "Targets: 2,450 kcal · P205 / C250 / F70.",
+  "Training: Fine Shyte 3, Mon–Sat, Thu off, legs Wed/Sat.",
+  "Check-ins: weigh M/W/F, waist Mon, photos every 2nd Sun.",
+  "Example days: Body site › Food › Cut plan https://randymcfarland1227-wq.github.io/#/food/plan",
+];
+function seedPhysique(x: Entry): Entry {
+  const have = new Set((x.lists || []).map((l) => l.name.trim().toLowerCase()));
+  const row = (text: string): SubTask => ({ id: uid(), text, done: false });
+  const add: SubList[] = [
+    { id: uid(), name: "Daily TickTick habits", kind: "habits" as const, tasks: PHYSIQUE_HABITS.map(([habitId, text]) => ({ ...row(text), habitId })) },
+    { id: uid(), name: "Milestones", tasks: PHYSIQUE_MILESTONES.map(row) },
+    { id: uid(), name: "Tips", kind: "notes" as const, tasks: PHYSIQUE_TIPS.map(row) },
+    { id: uid(), name: "Scope details", kind: "notes" as const, tasks: PHYSIQUE_DETAILS.map(row) },
+  ].filter((l) => !have.has(l.name.toLowerCase()));
+  return {
+    ...x,
+    note: x.note?.trim() ? x.note : PHYSIQUE_SCOPE,
+    why: x.why?.trim() ? x.why : PHYSIQUE_WHY,
+    lists: [...(x.lists || []), ...add],
+    seeded: [...(x.seeded || []), PHYSIQUE_SEED],
+  };
+}
+
 /** Last saved TickTick pull + completion log, for cards opened where the live ones aren't passed in. */
 const savedTickTick = () => readSaved<Partial<Record<SourceId, SourceSnapshot>>>(STORAGE_KEYS.snapshots, {}).ticktick;
 
@@ -1531,6 +1716,12 @@ export function FocusCards({
   useEffect(() => {
     for (const [items, save] of lists0) {
       if (items.some(needsTicketSeed)) save(items.map((x) => (needsTicketSeed(x) ? seedTicket(x) : x)));
+    }
+  });
+  // One-time: the Physique Goals card gets its Scope, Why and lists (habits · milestones · tips · details).
+  useEffect(() => {
+    for (const [items, save] of lists0) {
+      if (items.some(needsPhysiqueSeed)) save(items.map((x) => (needsPhysiqueSeed(x) ? seedPhysique(x) : x)));
     }
   });
   // A habit goal reached: the card finishes itself and a task to delete the TickTick habit is added (once).

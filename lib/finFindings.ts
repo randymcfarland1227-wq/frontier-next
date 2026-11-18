@@ -49,6 +49,10 @@ export type Finding = {
   /** Task purchases: the focus / task it belongs to, and where to buy it */
   task?: string;
   where?: string;
+  /** own: items: a plain purchase that sits in Money › Purchases › Needed or Wants (not task-based) */
+  wish?: 'need' | 'want';
+  /** Research pop-out record to open for this item when it isn't its own key (e.g. the Self task it came from) */
+  rkey?: string;
   /** Day (YYYY-MM-DD) it was last checked */
   checked?: string;
   at: string;

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ownItems, setFinding, useFindings, type Finding } from "../../lib/finFindings";
+import { addOwnItem, ownItems, removeFinding, setFinding, useFindings, type Finding } from "../../lib/finFindings";
+import { ResearchButton } from "./ResearchPanel";
 
 const usd = (n?: number | null) =>
   typeof n === "number" ? `$${n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}` : "";
@@ -13,11 +14,57 @@ const usd = (n?: number | null) =>
  */
 export function useTaskPurchases() {
   const store = useFindings();
-  const all = ownItems(store).filter((f) => f.buy);
+  const all = ownItems(store).filter((f) => f.buy && !f.wish);
   return { open: all.filter((f) => !f.paid), bought: all.filter((f) => f.paid) };
 }
 
-function Row({ f }: { f: Finding }) {
+/** Needs / wants typed on Life Hub (own: items with `wish`), shown under the sheet's Needed / Wants rows. */
+export function useWishItems() {
+  const store = useFindings();
+  const all = ownItems(store).filter((f) => f.wish);
+  return { need: all.filter((f) => f.wish === "need"), want: all.filter((f) => f.wish === "want") };
+}
+
+/** Life Hub needs or wants (not in the sheet): bought tick, cost, where, research, move to the other list. */
+export function WishList({ kind, items }: { kind: "need" | "want"; items: Finding[] }) {
+  const [name, setName] = useState("");
+  const open = items.filter((f) => !f.paid);
+  const bought = items.filter((f) => f.paid);
+  const other = kind === "need" ? "want" : "need";
+  const add = () => {
+    if (!name.trim()) return;
+    addOwnItem(name, { buy: true, wish: kind });
+    setName("");
+  };
+  return (
+    <div className="tp tp-wish">
+      {open.length ? (
+        <ul>
+          {open.map((f) => (
+            <Row key={f.key} f={f} extra={
+              <>
+                <button type="button" className="sk-btn is-small" title={`Move it to ${other === "need" ? "Needed" : "Wants"}`} onClick={() => setFinding(f.key, { wish: other })}>→ {other === "need" ? "Needed" : "Wants"}</button>
+                <button type="button" className="row-action ghost" aria-label={`Delete ${f.name}`} title="Delete" onClick={() => window.confirm(`Delete ${f.name}?`) && removeFinding(f.key)}>✕</button>
+              </>
+            } />
+          ))}
+        </ul>
+      ) : null}
+      <form className="tp-add" onSubmit={(e) => { e.preventDefault(); add(); }}>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={kind === "need" ? "＋ Add a need (on Life Hub)" : "＋ Add a want (on Life Hub)"} aria-label={kind === "need" ? "Add a need" : "Add a want"} />
+        {name.trim() ? <button type="submit" className="sk-btn is-small">Add</button> : null}
+      </form>
+      {bought.length ? (
+        <details className="tp-done">
+          <summary>{bought.length} bought</summary>
+          <ul>{bought.map((f) => <Row key={f.key} f={f} />)}</ul>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+function Row({ f, extra }: { f: Finding; extra?: React.ReactNode }) {
   const [amt, setAmt] = useState(f.amount != null ? String(f.amount) : "");
   const [where, setWhere] = useState(f.where || "");
   return (
@@ -46,6 +93,8 @@ function Row({ f }: { f: Finding }) {
         onBlur={() => setFinding(f.key, { where: where.trim() || undefined })}
         aria-label={`Where to buy ${f.name}`}
       />
+      <ResearchButton rkey={f.rkey || f.key} title={f.name || "Purchase"} sub={f.wish ? `Money › Purchases › ${f.wish === "need" ? "Needed" : "Wants"}` : `Task purchase${f.task ? ` · ${f.task}` : ""}`} />
+      {extra}
     </li>
   );
 }

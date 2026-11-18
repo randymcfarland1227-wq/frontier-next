@@ -4,7 +4,9 @@ import { hasSyncKey } from '../../lib/cloudSync';
 import { LinkDevicePrompt } from './LinkDevicePrompt';
 import { FinanceDrawer as Modal, FinanceLabel, FinanceName, FinanceType, useFinanceLabel } from './FinanceDrawer';
 import { MoneyZoom } from './MoneyZoom';
-import { TaskPurchaseList, useTaskPurchases } from './TaskPurchases';
+import { TaskPurchaseList, WishList, useTaskPurchases, useWishItems } from './TaskPurchases';
+import { ResearchButton } from './ResearchPanel';
+import { sheetBuyKey } from '../../lib/research';
 import { createPortal } from 'react-dom';
 import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PayPlanner } from './PayPlanner';
@@ -270,9 +272,15 @@ function ToPurchase({ table, onSave }: { table: Table; onSave: Save }) {
     if (!window.confirm(`Delete ${name} from To purchase? It’s removed from the sheet and the items under it move up.`)) return;
     void run(purchaseDeleteEdits(table, table.rows.indexOf(row)));
   };
-  const actions = (row: Cell[]) => (
-    <button type="button" className="row-action ghost" disabled={busy} onClick={() => del(row)} aria-label="Delete item" title="Delete from the sheet">✕</button>
-  );
+  const actions = (row: Cell[]) => {
+    const name = row.find(c => c.text && amountOf(c.text) === undefined)?.text || '';
+    return (
+      <>
+        {name ? <ResearchButton rkey={sheetBuyKey(name)} title={name} sub="To purchase" /> : null}
+        <button type="button" className="row-action ghost" disabled={busy} onClick={() => del(row)} aria-label="Delete item" title="Delete from the sheet">✕</button>
+      </>
+    );
+  };
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
   return (
     <Fold title="To purchase" meta={`${open.length} open`} open>
@@ -3612,6 +3620,7 @@ export function MoneyPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardSigs, model?.refreshedAt]);
   const taskBuys = useTaskPurchases();
+  const wishes = useWishItems();
   if (!model) {
     return (
       <div className="settings-view money-view">
@@ -3654,6 +3663,11 @@ export function MoneyPage({
   const boughtRows = [...(struckOf(model.restockNeeded, true)?.rows || []), ...(struckOf(model.wants, true)?.rows || [])];
   const bought = model.wants && boughtRows.length ? { ...model.wants, key: 'bought', groups: undefined, rows: boughtRows } : null;
   const lastRow = (t: Table | null) => (t && t.rows.length ? t.rows[t.rows.length - 1][0].r : undefined);
+  // Research pop-out on a sheet Needed / Wants row (keyed by its name — sheet rows have no id).
+  const sheetResearch = (row: Cell[], list: string) => {
+    const name = row[1]?.text || row.find((c, i) => i > 0 && c.text && amountOf(c.text) === undefined)?.text || '';
+    return name ? <ResearchButton rkey={sheetBuyKey(name)} title={name} sub={`Money › Purchases › ${list}`} /> : null;
+  };
   const moveTo = (row: Cell[], target: Table | null, label: string) => {
     const after = lastRow(target);
     if (after === undefined) return null;
@@ -4154,20 +4168,18 @@ export function MoneyPage({
             </Section>
             <Section tone="shop" title="Purchases" hint="Tick when bought (crosses it out in the sheet). Move items between lists." href={link('Restock/Purchases')}>
               {model.toPurchase ? <ToPurchase table={model.toPurchase} onSave={save} /> : null}
-              {openNeeded ? (
-                <Fold title="Needed" meta={`${openNeeded.rows.length} open`} open={openNeeded.rows.length > 0}>
-                  {openNeeded.rows.length ? (
-                    <SheetTable table={openNeeded} onSave={save} opts={{ check: 'Bought', hide: [0, 3, 6], actions: row => moveTo(row, model.wants, 'Wants') }} />
-                  ) : (
-                    <p className="mny-empty">Nothing open — everything here is bought.</p>
-                  )}
-                </Fold>
-              ) : null}
-              {openWants ? (
-                <Fold title="Wants" meta={`${openWants.rows.length} open`} open>
-                  <SheetTable table={openWants} onSave={save} opts={{ check: 'Bought', hide: [0, 3, 6], actions: row => moveTo(row, model.restockNeeded, 'Needed') }} />
-                </Fold>
-              ) : null}
+              <Fold title="Needed" meta={`${(openNeeded?.rows.length || 0) + wishes.need.length} open`} open={(openNeeded?.rows.length || 0) + wishes.need.length > 0}>
+                {openNeeded?.rows.length ? (
+                  <SheetTable table={openNeeded} onSave={save} opts={{ check: 'Bought', hide: [0, 3, 6], actions: row => <>{sheetResearch(row, 'Needed')}{moveTo(row, model.wants, 'Wants')}</> }} />
+                ) : null}
+                <WishList kind="need" items={wishes.need} />
+              </Fold>
+              <Fold title="Wants" meta={`${(openWants?.rows.length || 0) + wishes.want.length} open`} open>
+                {openWants?.rows.length ? (
+                  <SheetTable table={openWants} onSave={save} opts={{ check: 'Bought', hide: [0, 3, 6], actions: row => <>{sheetResearch(row, 'Wants')}{moveTo(row, model.restockNeeded, 'Needed')}</> }} />
+                ) : null}
+                <WishList kind="want" items={wishes.want} />
+              </Fold>
               <Fold title="Task-based" meta={`${taskBuys.open.length} open${taskBuys.open.some((f) => f.amount) ? ` · $${taskBuys.open.reduce((s, f) => s + (f.amount || 0), 0).toLocaleString()}` : ''}`} open={taskBuys.open.length > 0}>
                 <TaskPurchaseList items={taskBuys.open} />
                 {taskBuys.bought.length ? (

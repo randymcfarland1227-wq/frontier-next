@@ -3990,14 +3990,19 @@
 .tp { display: grid; gap: 10px; }
 .tp-task { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 4px; font: 800 12px/1.3 "DM Sans", system-ui, sans-serif; }
 .tp-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.tp-row { display: grid; grid-template-columns: minmax(0, 1fr) 80px minmax(0, 1fr); gap: 6px; align-items: center; font: 600 13px/1.3 "DM Sans", system-ui, sans-serif; }
+.tp-row { display: grid; grid-template-columns: minmax(0, 1fr) 80px minmax(0, 1fr) auto auto; gap: 6px; align-items: center; font: 600 13px/1.3 "DM Sans", system-ui, sans-serif; }
 .tp-check { display: flex; align-items: center; gap: 7px; min-width: 0; cursor: pointer; }
 .tp-check span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tp-row.is-bought .tp-check span { text-decoration: line-through; opacity: .6; }
 .tp-row input:not([type="checkbox"]) { min-width: 0; padding: 3px 7px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: 7px; background: transparent; color: inherit; font: 600 12px/1.3 "DM Sans", system-ui, sans-serif; }
 .tp-done { margin-top: 8px; }
 .tp-done summary { cursor: pointer; font: 700 12px/1.3 "DM Sans", system-ui, sans-serif; opacity: .7; }
-@media (max-width: 520px) { .tp-row { grid-template-columns: minmax(0, 1fr) 70px; } .tp-where { grid-column: 1 / -1; } }
+@media (max-width: 520px) { .tp-row { grid-template-columns: minmax(0, 1fr) 70px auto; } .tp-where { grid-column: 1 / -2; } }
+.tp-wish { margin-top: 6px; }
+.tp-wish > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.tp-row > :last-child:not(input) { display: inline-flex; gap: 4px; align-items: center; }
+.tp-add { display: flex; gap: 6px; margin-top: 6px; }
+.tp-add input { flex: 1; min-width: 0; padding: 4px 8px; border: 1px dashed color-mix(in srgb, currentColor 30%, transparent); border-radius: 7px; background: transparent; color: inherit; font: 600 12px/1.3 "DM Sans", system-ui, sans-serif; }
 
 /* ═══ Dashboard v3: Sites · Countdown · Pulse you can tap · Focus | Goals ═══ */
 .sk-app #sk-board { grid-template-areas: "sky sites pulse" "sky count needs" "money focus goals" "week week week"; }
@@ -4297,3 +4302,40 @@
 .sk-app #sk-board .pk-link:hover { opacity: 1; }
 @media (max-width: 1200px) { .sk-app #sk-board { grid-template-areas: "sky sites" "pulse count" "needs pkgs" "money money" "focus goals" "week week"; } }
 @media (max-width: 700px) { .sk-app #sk-board { grid-template-areas: "sky" "sites" "pulse" "count" "needs" "pkgs" "money" "focus" "goals" "week"; } .sk-app #sk-board .pk-form { grid-template-columns: 1fr 1fr; } }
+
+/* Research pop-out (lib/research.ts): one record per purchase / to-do, same from every list */
+.sk-app .sk-rs-btn { display: inline-flex; align-items: center; gap: 2px; min-width: 24px; height: 22px; padding: 0 5px; border: 1.5px solid var(--sk-line); border-radius: 7px; background: transparent; color: var(--sk-ink-2); cursor: pointer; flex: none; }
+.sk-app .sk-rs-btn small { font: 700 10px/1 var(--sk-font, inherit); }
+.sk-app .sk-rs-btn.is-lit { border-color: var(--sk-edge); background: color-mix(in srgb, var(--sk-shop, #f6c453) 35%, transparent); color: var(--sk-ink); }
+.sk-app .sk-rs-btn:hover { color: var(--sk-ink); border-color: var(--sk-edge); }
+.sk-app .sk-rs { width: min(680px, 100%); display: grid; gap: var(--sk-s3); align-content: start; }
+.sk-app .sk-rs-title { display: grid; min-width: 0; flex: 1; }
+.sk-app .sk-rs-title b { font: var(--sk-headline, 700 16px/1.2 inherit); overflow-wrap: anywhere; }
+.sk-app .sk-rs-title small { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .sk-rs textarea, .sk-app .sk-rs input { width: 100%; min-width: 0; box-sizing: border-box; padding: 6px 9px; font: var(--sk-secondary); color: var(--sk-ink); background: var(--sk-paper); border: 1.5px solid var(--sk-edge); border-radius: 8px; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-rs textarea, .frontier-shell[data-color-mode="dark"] .sk-app .sk-rs input { color-scheme: dark; }
+.sk-app .sk-rs textarea { resize: vertical; min-height: 80px; }
+.sk-app .sk-rs-optshead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.sk-app .sk-rs-optshead small { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .sk-rs-opts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sk-app .sk-rs-opts li { border: 1.5px solid var(--sk-line); border-radius: 10px; padding: 6px; }
+.sk-app .sk-rs-opts li.is-pick { border-color: var(--sk-edge); background: color-mix(in srgb, var(--sk-done, #8fd19e) 18%, transparent); }
+.sk-app .sk-rs-opts li.is-got { opacity: .6; }
+.sk-app .sk-rs-opt { display: grid; grid-template-columns: minmax(0, 1fr) 84px; gap: 5px; }
+.sk-app .sk-rs-does, .sk-app .sk-rs-url { grid-column: 1 / -1; }
+.sk-app .sk-rs-acts { grid-column: 1 / -1; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
+.sk-app .sk-rs-tog { height: 24px; padding: 0 8px; border: 1.5px solid var(--sk-line); border-radius: 7px; background: transparent; color: var(--sk-ink-2); font: 600 11px/1 inherit; cursor: pointer; }
+.sk-app .sk-rs-tog.is-on { border-color: var(--sk-edge); color: var(--sk-ink); background: color-mix(in srgb, var(--sk-done, #8fd19e) 35%, transparent); }
+@media (min-width: 620px) { .sk-app .sk-rs-opt { grid-template-columns: minmax(0, 1.2fr) 84px minmax(0, 1.6fr); } .sk-app .sk-rs-does { grid-column: auto; } }
+/* Bulk add in Self */
+.sk-app .sk-bulk { display: grid; gap: 6px; margin-top: 6px; }
+.sk-app .sk-bulk textarea { width: 100%; box-sizing: border-box; min-height: 90px; padding: 6px 9px; font: var(--sk-secondary); color: var(--sk-ink); background: var(--sk-paper); border: 1.5px solid var(--sk-edge); border-radius: 8px; resize: vertical; }
+.frontier-shell[data-color-mode="dark"] .sk-app .sk-bulk textarea, .frontier-shell[data-color-mode="dark"] .sk-app .sk-bulk select { color-scheme: dark; }
+.sk-app .sk-bulk ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.sk-app .sk-bulk li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; font: var(--sk-secondary); }
+.sk-app .sk-bulk li span { overflow-wrap: anywhere; }
+.sk-app .sk-bulk select { height: 26px; font: var(--sk-caption); color: var(--sk-ink); background: var(--sk-paper); border: 1.5px solid var(--sk-line); border-radius: 7px; }
+.sk-app .sk-bulk-foot { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sk-app .sk-bulk-foot small { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .sk-dialog-back.sk-rs-back { z-index: 90; }
+.sk-app .sk-bulkwrap { display: grid; gap: 4px; justify-items: start; margin: 4px 0 6px; } .sk-app .sk-bulkwrap > .sk-bulk { justify-self: stretch; }

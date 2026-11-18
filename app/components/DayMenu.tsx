@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useId, useState } from 'react';
 import { DECK, placePin, updatePinDetails, usePriorityPins } from '../../lib/priorityPins';
 import { MOVE_TARGETS } from '../../lib/siteMoves';
+import { openResearch } from '../../lib/research';
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -102,6 +103,9 @@ export function DayMenu({
           {critical.on ? 'Critical ✓' : 'Critical'}
         </button>
       ) : null}
+      <button type="button" className="day-menu-btn" title="Research notes, links and prices (same notes wherever this shows)" onClick={() => { openResearch(itemKey, title); onClose(); }}>
+        🔎 Research
+      </button>
       <span className="day-menu-label">Day</span>
       <button type="button" className={`day-menu-btn${due === today ? ' is-on' : ''}`} onClick={() => setDay(today)}>
         Today

@@ -1,5 +1,6 @@
 'use client';
 
+import { openResearch } from '../../lib/research';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { FeaturedItem, SourceId } from '../../lib/types';
@@ -234,6 +235,7 @@ export function PriorityPanel({
             {def.name}
           </button>
           <div className="plan-panel-head-tools">
+            <button type="button" className="plan-panel-tools" onClick={() => openResearch(item.key, item.title, def.name)} title="Research notes, links and prices (same notes wherever this shows)" aria-label="Research"><Icon name="search" /></button>
             <button type="button" className="plan-panel-tools" onClick={e => tools.open(e.currentTarget)} aria-label="Task tools" aria-haspopup="menu"><Icon name="more" /></button>
             <button ref={closeRef} type="button" className="plan-panel-close" onClick={close} aria-label="Close details"><Icon name="close" /></button>
           </div>

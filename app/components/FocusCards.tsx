@@ -52,6 +52,7 @@ import { localDayKey } from "../../lib/dayKey";
 import { readSaved, STORAGE_KEYS } from "../../lib/storage";
 import type { SourceSnapshot } from "../../lib/types";
 import { addSelfItem, SELF_ITEMS_EVENT } from "../../lib/adapters/self";
+import { ResearchButton } from "./ResearchPanel";
 import { FOCUS_PRIORITY_LABEL, orderFocus, type FocusPriority } from "../../lib/focusPriority";
 import { FOCUS_SECTION_LABELS, type FocusSectionId } from "../../lib/focusRouting";
 
@@ -1106,6 +1107,11 @@ function Detail({
                     ) : t.fin.key.startsWith("own:") && ctx.findings?.[t.fin.key]?.buy ? (
                       <span className="sk-fd-buytag" title="Task-based purchase">🛒</span>
                     ) : null}
+                    <ResearchButton
+                      rkey={t.fin ? ctx.findings?.[t.fin.key]?.rkey || t.fin.key : `focus:${item.id}:${t.id}`}
+                      title={t.fin?.label || t.text}
+                      sub={`${item.title} · ${l.name || "list"}`}
+                    />
                     {lockOf(t) ? <small className="sk-fd-lock" title={`Waits for “${lockOf(t)}”`}>🔒 after {lockOf(t)}</small> : null}
                     {!t.fin && t.due ? <small className="sk-fd-due">{shortDate(new Date(`${t.due}T12:00`))}</small> : null}
                     {t.fills ? (() => {

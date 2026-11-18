@@ -1029,7 +1029,7 @@ const DEBT_MARKS_KEY = "debt-marks";
 /** GET /api/track?nums=a,b → live package status from Track123 (carrier auto-detected).
  *  A number is registered once (that's what uses quota); the registered set lives in KV so later refreshes only query. */
 const TRACK_STATUS: Record<string, string> = {
-  INIT: "shipped", NO_RECORD: "shipped", INFO_RECEIVED: "shipped", IN_TRANSIT: "transit", WAITING_DELIVERY: "out",
+  /* INIT / NO_RECORD = Track123 has no carrier data yet: leave the status alone */ INFO_RECEIVED: "shipped", IN_TRANSIT: "transit", WAITING_DELIVERY: "out",
   DELIVERY_FAILED: "problem", ABNORMAL: "problem", DELIVERED: "delivered", EXPIRED: "problem",
 };
 const TRACK123_REGISTERED_KEY = "track123-registered-v2";

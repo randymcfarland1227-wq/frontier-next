@@ -1,12 +1,14 @@
 "use client";
 
+import { OPEN_PROJECT_EVENT, openProject } from "../../lib/selfProjects";
+
 import { Fragment, useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Circle, Group, ListHead, PaneHeadContext, Section } from "../sticker/kit";
 import { useFold } from "./Collapsible";
 import { useRowMenu, type RowMenuItem } from "./RowMenu";
 import { goalGroupOf } from "../../lib/goalTypes";
 import { habitOptions } from "../../lib/locks";
-import { FocusCards, useFinSummary, type LinkItem, type OpenFinance } from "./FocusCards";
+import { FocusCards, FocusEntryDialog, useFinSummary, type LinkItem, type OpenFinance } from "./FocusCards";
 import type { BillDue } from "../../lib/schedule";
 import { Icon } from "../sticker/Icon";
 import type { SourceId, SourceSnapshot, SpaceId, TaskItem } from "../../lib/types";
@@ -965,11 +967,12 @@ function FocusTaskGroup({ card, code, tag, lanes, fin, onToggle }: { card: Entry
   return (
     <div className={`sk-ftg${collapsed ? " is-folded" : ""}`}>
       <div className="sk-ftg-headrow">
-      <button type="button" className="sk-ftg-head" aria-expanded={!collapsed} onClick={toggle}>
+      <button type="button" className="sk-ftg-head" onClick={() => openProject(card.id)}>
         <span className="sk-ftg-caret" aria-hidden="true">{collapsed ? "▸" : "▾"}</span>
         <span className="sk-ftg-title">{card.title}</span>
-        <span className="sk-ftg-meta">{tag} · {open ? `${open} open` : "all done"}{done ? ` · ${done} done` : ""}</span>
+        <span className="sk-ftg-meta">{tag} · {open ? `${open} open` : done ? "all done" : "no steps yet"}{done ? ` · ${done} done` : ""}</span>
       </button>
+      <button type="button" className="sk-link" onClick={toggle} aria-expanded={!collapsed}>Steps</button>
       {open ? <SendToDoing id={focusCardId(code, card.id)} label={card.title} lanes={lanes} /> : null}
       </div>
       {collapsed ? null : lists.map(({ l, tasks, fins }) => {
@@ -1029,7 +1032,9 @@ export function FocusTaskBoard({ compact, bills }: { compact?: boolean; bills?: 
     ...now.map((card) => ({ card, code: "n", tag: "Right now", items: now, save: saveNow })),
     ...weeks.map((card) => ({ card, code: "w", tag: "Next few weeks", items: weeks, save: saveWeeks })),
     ...ongoing.filter((c) => c.inFocus).map((card) => ({ card, code: "o", tag: "Ongoing", items: ongoing, save: saveOngoing })),
-  ].filter((g) => !g.card.done && (g.card.lists || []).filter(isTaskList).some((l) => l.tasks.length));
+  ].filter((g) => !g.card.done).sort((a, b) =>
+    Number(Boolean(lanes[pinKey("self", focusCardId(a.code, a.card.id))]?.lane)) -
+    Number(Boolean(lanes[pinKey("self", focusCardId(b.code, b.card.id))]?.lane)));
   const openCount = groups.reduce((n, g) => n + (g.card.lists || []).filter(isTaskList).reduce((m, l) => m + l.tasks.filter((t) => !t.fin && !t.done).length, 0), 0);
   return (
     <section className={`self-focus-tasks${compact ? " is-compact" : ""}`}>
@@ -1065,4 +1070,22 @@ export function FocusTaskBoard({ compact, bills }: { compact?: boolean; bills?: 
       )}
     </section>
   );
+}
+
+/** One editor for a project opened from Self or Doing now. */
+export function SelfProjectHost({ bills, events, openFinance }: { bills: BillDue[]; events: LinkItem[]; openFinance?: OpenFinance }) {
+  const focus = useShortTermFocus();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => {
+    const open = (event: Event) => setSelectedId(String((event as CustomEvent).detail));
+    window.addEventListener(OPEN_PROJECT_EVENT, open);
+    return () => window.removeEventListener(OPEN_PROJECT_EVENT, open);
+  }, []);
+  const collection = [focus.now, focus.weeks, focus.ongoing, focus.nutrition, focus.fitness, focus.marvel].find(([items]) => items.some(item => item.id === selectedId));
+  const item = collection?.[0].find(item => item.id === selectedId);
+  if (!collection || !item) return null;
+  return <FocusEntryDialog item={item} bills={bills} events={events} openFinance={openFinance}
+    update={patch => collection[1](collection[0].map(current => current.id === item.id ? { ...current, ...patch } : current))}
+    remove={() => { collection[1](collection[0].filter(current => current.id !== item.id)); setSelectedId(null); }}
+    close={() => setSelectedId(null)} />;
 }

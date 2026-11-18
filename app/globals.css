@@ -5246,3 +5246,22 @@ button.bal-led-row:hover { background: color-mix(in srgb, var(--ev, #0f8a7e) 8%,
 .mb-dc-stamp { font-size: 10px; color: var(--muted); }
 .mb-dc.is-folded { gap: 2px; }
 @media (min-width: 1100px) { .mb-dash-cols { grid-template-columns: var(--dash-cols, repeat(6, minmax(0, 1fr))); } }
+
+/* Self entry stays beside the work it creates. */
+.self-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.self-entry-column, .self-items-column { min-width: 0; }
+.self-entry-column { display: grid; gap: 12px; }
+.self-items-column .self-focus-tasks { margin-top: 20px; }
+.self-in-motion .sk-row-title, .self-in-motion .sk-rtitle { color: var(--sk-ink-2); }
+.self-in-motion { opacity: .72; }
+.self-workspace .sk-captabs { margin-top: 0; }
+@media (max-width: 760px) { .self-workspace { grid-template-columns: minmax(0, 1fr); gap: 18px; } }
+@media (max-width: 760px) {
+  .sk-app .sk-fdetail .sk-fd-newlist.sk-fd-box { display: flex; flex-wrap: wrap; min-width: 0; }
+  .sk-app .sk-fdetail .sk-fd-kinds { flex-wrap: wrap; max-width: 100%; }
+  .sk-app .sk-fdetail .sk-fd-newlist input { flex: 1 1 150px; width: 0; }
+  .sk-app .sk-fdetail .sk-fd-titlerow { flex-wrap: wrap; min-width: 0; }
+  .sk-app .sk-fdetail .sk-fd-title { min-width: 0; width: 100%; font-size: 20px; }
+}
+.sk-app .self-items-column [role="tabpanel"][aria-label="Tasks"] { display: flex; flex-direction: column; }
+.sk-app .self-items-column [role="tabpanel"][aria-label="Tasks"] > .self-in-motion { order: 1; }

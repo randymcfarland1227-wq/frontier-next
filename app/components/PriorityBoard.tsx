@@ -1,4 +1,5 @@
 "use client";
+import { openProject } from "../../lib/selfProjects";
 
 import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from "react";
 import { Dialog } from "../sticker/Dialog";
@@ -185,7 +186,13 @@ export function PriorityBoard({
       window.removeEventListener("drop", clear);
     };
   }, []);
-  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [openKey, setOpenKeyRaw] = useState<string | null>(null);
+  const setOpenKey = (key: string | null) => {
+    if (key?.startsWith('self:fcard:')) {
+      setOpenKeyRaw(null);
+      openProject(key.split(':').slice(3).join(':'));
+    } else setOpenKeyRaw(key);
+  };
   useEffect(() => {
     const open = (e: Event) =>
       setOpenKey(String((e as CustomEvent).detail || "") || null);

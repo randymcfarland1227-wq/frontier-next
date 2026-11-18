@@ -1,4 +1,5 @@
 'use client';
+import { SelfProjectHost } from "./components/FocusSection";
 
 import { removePeculiarUmbrellaLanes } from '../lib/peculiarUmbrellas';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1201,7 +1202,7 @@ goalsData ? (
   }, []);
   // The Self add box (Inbox · Tasks · Promoted, voice memos, catch lists): Home's Self tab and the Self page share it.
   const capturesPanelEl = (
-    <CapturesPanel
+    <CapturesPanel full={active === 'self'}
               captures={captures}
               areas={focusConfig?.areas || []}
               selfItems={selfItems}
@@ -1352,6 +1353,7 @@ goalsData ? (
       )}
       </StickerShell>
       {import.meta.env.VITE_LOCAL_PREVIEW === 'true' && <aside className="preview-banner" style={{position:'fixed',bottom:0,left:0,right:0,padding:'10px 20px',background:'#202824',color:'#fff',zIndex:9999}}>Local review · live writes disabled · <a href="/flow/#sync">Open Flow connections</a></aside>}
+      <SelfProjectHost bills={moneyDues} events={(schedule?.events || []).map(e => ({ id: e.id, title: e.title, start: e.start, allDay: e.allDay }))} openFinance={(id, tab) => { requestOpenDebt(id, tab); enter('money'); }} />
       <UpdateNotice />
       {import.meta.env.VITE_LOCAL_PREVIEW !== 'true' && <BackupGuard />}
       <SiteListHost />

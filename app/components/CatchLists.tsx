@@ -1,8 +1,8 @@
 'use client';
 
 import { CATCH_LISTS, catchListOf, type Capture, type CaptureStatus, type CatchList } from '../../lib/captures';
-import { useFold } from './Collapsible';
-import { ListHead, Row } from '../sticker/kit';
+import { useState } from 'react';
+import { Row } from '../sticker/kit';
 import { VoicePlayer } from './VoicePlayer';
 
 const whenOf = (c: Capture) => {
@@ -20,11 +20,9 @@ function OneList({ id, label, items, onStatus, onPatch }: {
   onStatus: (id: string, status: Exclude<CaptureStatus, 'promoted'>) => void;
   onPatch: (id: string, patch: Partial<Capture>) => void;
 }) {
-  const [shut, toggle] = useFold(`self-catch-${id}`);
   return (
     <div className="sk-catch" aria-label={label}>
-      <ListHead title={label} meta={items.length} shut={shut} onToggle={toggle} />
-      {shut ? null : items.length === 0 ? (
+      {items.length === 0 ? (
         <p className="sk-empty">Nothing here yet.</p>
       ) : (
         <div className="sk-list">
@@ -66,10 +64,14 @@ export function CatchLists({ captures, onStatus, onPatch }: {
   onStatus: (id: string, status: Exclude<CaptureStatus, 'promoted'>) => void;
   onPatch: (id: string, patch: Partial<Capture>) => void;
 }) {
+  const [selected, setSelected] = useState<CatchList>(CATCH_LISTS[0].id);
   const live = captures.filter(c => c.status === 'inbox' || c.status === 'promoted');
   return (
     <div className="sk-catches">
-      {CATCH_LISTS.map(l => (
+      <div className="sk-chips" role="tablist" aria-label="Memo and capture categories">
+        {CATCH_LISTS.map(list => <button type="button" role="tab" key={list.id} aria-selected={selected === list.id} onClick={() => setSelected(list.id)}>{list.label} <span>{live.filter(c => catchListOf(c) === list.id).length}</span></button>)}
+      </div>
+      {CATCH_LISTS.filter(l => l.id === selected).map(l => (
         <OneList key={l.id} id={l.id} label={l.label} onStatus={onStatus} onPatch={onPatch}
           items={live.filter(c => catchListOf(c) === l.id).sort((a, b) => (b.loggedAt || b.createdAt).localeCompare(a.loggedAt || a.createdAt))} />
       ))}

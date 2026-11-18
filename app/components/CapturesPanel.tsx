@@ -1,5 +1,7 @@
 'use client';
 
+import { addSelfProject } from '../../lib/selfProjects';
+import { FocusTaskBoard } from './FocusSection';
 import { BulkAdd } from './BulkAdd';
 import { FormEvent, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
@@ -32,10 +34,11 @@ export const MOVE_TO: Array<[string, string]> = [
 ];
 
 type Tab = CaptureStatus | 'tasks';
-type Kind = 'task' | 'log' | 'ongoing' | CaptureKind;
+type Kind = 'project' | 'task' | 'log' | 'ongoing' | CaptureKind;
 
 const KINDS: Array<{ id: Kind; label: string }> = [
   { id: 'task', label: 'Task' },
+  { id: 'project', label: 'Project' },
   { id: 'log', label: 'Log done' },
   { id: 'ongoing', label: 'Ongoing goal' },
   ...CAPTURE_KINDS,
@@ -106,6 +109,7 @@ function ago(iso: string) {
 }
 
 export function CapturesPanel({
+  full = false,
   captures,
   areas,
   selfItems,
@@ -121,6 +125,7 @@ export function CapturesPanel({
   onTaskDue,
   onTaskMove,
 }: {
+  full?: boolean;
   captures: Capture[];
   areas: FocusArea[];
   selfItems: SelfItem[];
@@ -169,7 +174,7 @@ export function CapturesPanel({
   };
   // The form starts as one line; the kind buttons, link, area and notes open when you click in.
   const [expanded, setExpanded] = useState(false);
-  const formOpen = expanded || Boolean(title || url || notes);
+  const formOpen = full || expanded || Boolean(title || url || notes);
   const formRef = useRef<HTMLFormElement>(null);
   // Close only when you click or tab somewhere outside the form (Safari doesn't focus buttons on
   // click, so a blur check would fold the form away mid-tap on "Log done").
@@ -219,13 +224,13 @@ export function CapturesPanel({
   // Tasks moved to another site live in that site's card now.
   const mine = selfItems.filter(i => !i.home);
   const allOpen = mine
-    .filter(i => !i.done && !listOfTask(listStore, 'self', i.id) && !isPinned('self', i.id))
+    .filter(i => !i.done && !listOfTask(listStore, 'self', i.id))
     .map((t, i) => ({ t, i }))
-    .sort((a, b) => (a.t.due && b.t.due ? a.t.due.localeCompare(b.t.due) : a.t.due ? -1 : b.t.due ? 1 : a.i - b.i))
+    .sort((a, b) => Number(isPinned('self', a.t.id)) - Number(isPinned('self', b.t.id)) || (a.t.due && b.t.due ? a.t.due.localeCompare(b.t.due) : a.t.due ? -1 : b.t.due ? 1 : a.i - b.i))
     .map(x => x.t);
   // Starred ones sit in their own list above the tabs; Pin there is what sends one to Priority.
-  const starredTasks = allOpen.filter(t => t.starred);
-  const openTasks = allOpen.filter(t => !t.starred);
+  const starredTasks = allOpen.filter(t => t.starred && !isPinned('self', t.id));
+  const openTasks = allOpen.filter(t => !t.starred || isPinned('self', t.id));
   // Voice memos get their own foldable list; the tabs keep the typed captures.
   // Voice memos already sorted (Thought / Idea / Reminder / Inspiration) and typed catches live in their own lists.
   const memos = captures.filter(c => c.kind === 'voice' && c.status !== 'dropped' && !catchListOf(c));
@@ -246,6 +251,9 @@ export function CapturesPanel({
       setLogged(`Logged “${title.trim()}” · ${areaName(area)}${doneDay < localDay() ? ` · ${shortDay(loggedAt(doneDay))}` : ''}`);
       setDoneDay(localDay());
       setTab('tasks');
+    } else if (kind === 'project') {
+      addSelfProject(title, notes, why, url);
+      showToast(`Project added · ${title.trim()}`);
     } else if (kind === 'ongoing') {
       addOngoingGoal({ title, note: notes, why, site: goalSite });
       showToast(`Ongoing goal · ${title.trim()} → Today · Short-term focus`);
@@ -268,7 +276,8 @@ export function CapturesPanel({
   }
 
   return (
-    <div className="sk-captures" aria-label="Thoughts, ideas, research and tasks">
+    <div className={`sk-captures${full ? ' self-workspace' : ''}`} aria-label="Thoughts, ideas, research and tasks">
+      <div className="self-entry-column">
       <form className={`sk-capform${formOpen ? ' is-open' : ''}`} onSubmit={submit} ref={formRef} onFocus={() => setExpanded(true)}>
         <div className="sk-fc-add">
           <input
@@ -289,7 +298,7 @@ export function CapturesPanel({
           />
           <button type="submit" className="sk-btn is-small" disabled={!title.trim() || (kind === 'log' && !area)}>
             <Icon name="plus" size={14} />
-            {!formOpen ? 'Add' : kind === 'task' ? 'Add Task' : kind === 'log' ? 'Log as Done' : kind === 'ongoing' ? 'Add Goal' : 'Capture'}
+            {!formOpen ? 'Add' : kind === 'task' ? 'Add Task' : kind === 'log' ? 'Log as Done' : kind === 'project' ? 'Add Project' : kind === 'ongoing' ? 'Add Goal' : 'Capture'}
           </button>
         </div>
         <div className={`sk-unfold${formOpen ? ' is-open' : ''}`} inert={!formOpen}>
@@ -312,6 +321,8 @@ export function CapturesPanel({
             <p className="sk-sec">
               {kind === 'task'
                 ? 'Tasks count toward Review when done.'
+                : kind === 'project'
+                  ? 'A project holds separate lists, linked tasks, finance items, context and references. Add it to open its editor.'
                 : kind === 'log'
                   ? 'Log done records something you already finished off-site.'
                   : kind === 'ongoing'
@@ -351,7 +362,7 @@ export function CapturesPanel({
                   title="Day for it (optional) — shows on the calendar"
                 />
               ) : null}
-              {kind === 'ongoing' ? (
+              {kind === 'ongoing' || kind === 'project' ? (
                 <input value={why} onChange={e => setWhy(e.target.value)} placeholder="Why it matters (optional)" aria-label="Why" />
               ) : null}
               <select hidden={kind === 'ongoing'} value={area} onChange={e => setArea(e.target.value)} aria-label="Focus area" required={kind === 'log'}>
@@ -395,6 +406,10 @@ export function CapturesPanel({
         </div>
       ) : null}
 
+      <VoiceMemoList memos={memos} onStatus={onStatus} onPromote={onPromote} onSort={(m, to) => patch(m.id, catchPatch(m, to))} />
+      <CatchLists captures={captures.filter(c => c.status !== 'dropped')} onStatus={onStatus} onPatch={patch} />
+      </div>
+      <div className="self-items-column">
       {starredTasks.length ? (
         <div className="sk-src-starred" aria-label="Starred Self tasks">
           <ListHead
@@ -433,12 +448,11 @@ export function CapturesPanel({
         </div>
       ) : null}
 
-      <VoiceMemoList memos={memos} onStatus={onStatus} onPromote={onPromote} onSort={(m, to) => patch(m.id, catchPatch(m, to))} />
-      <CatchLists captures={captures.filter(c => c.status !== 'dropped')} onStatus={onStatus} onPatch={patch} />
+
 
       <div className="sk-chips sk-captabs" role="tablist" aria-label="Capture status">
         {/* Empty tabs step aside (the open one always shows). */}
-        {TABS.filter(t => t.id === tab || t.id === 'inbox' || t.id === 'tasks' || counts[t.id] > 0).map(t => (
+        {TABS.filter(t => t.id === tab || t.id === 'inbox' || t.id === 'tasks' || t.id === 'promoted' || counts[t.id] > 0).map(t => (
           <button key={t.id} type="button" role="tab" aria-selected={t.id === tab} onClick={() => setTab(t.id)}>
             {t.label}
             <span className="sk-chipcount">{counts[t.id]}</span>
@@ -449,12 +463,14 @@ export function CapturesPanel({
       {tab === 'tasks' ? (
         <div className="sk-list" role="tabpanel" aria-label="Tasks">
           {openTasks.length === 0 && myLists.length === 0 ? <p className="sk-empty">No Self tasks yet.</p> : null}
-          {myLists.filter(l => !isPinned('self', `list:${l.id}`)).map(l => {
+          {[...myLists].sort((a, b) => Number(isPinned('self', `list:${a.id}`)) - Number(isPinned('self', `list:${b.id}`))).map(l => {
             const open = l.tasks.filter(id => selfItems.some(i => i.id === id && !i.done)).length;
             return (
               <Row
                 key={l.id}
                 title={l.name}
+                className={isPinned('self', `list:${l.id}`) ? 'self-in-motion' : undefined}
+                value={isPinned('self', `list:${l.id}`) ? 'In Doing now' : undefined}
                 sub={<span className="sk-facts"><span className="sk-fact"><Icon name="steps" size={14} />List · {open} open</span></span>}
                 onOpen={() => openSiteList(l.id)}
                 hint="Open this list"
@@ -549,6 +565,8 @@ export function CapturesPanel({
           )}
         </div>
       )}
+      {full ? <FocusTaskBoard compact /> : null}
+      </div>
     </div>
   );
 }
@@ -570,15 +588,17 @@ function SelfTaskRow({
   children?: ReactNode;
 }) {
   const { bind, menu } = useRowMenu(items, t.title);
+  const { isPinned } = usePriorityPins();
+  const inMotion = isPinned('self', t.id);
   const late = Boolean(t.due && !t.done && t.due < localDay());
   return (
     <>
       <Row
         bind={t.done ? bind : { ...bind, ...pinDragProps(pinKey('self', t.id)) }}
-        className={t.done ? 'is-done' : undefined}
+        className={t.done ? 'is-done' : inMotion ? 'self-in-motion' : undefined}
         lead={t.done ? null : <Circle onDone={onDone} label={`Done: ${t.title}`} />}
         title={t.title}
-        sub={sub}
+        sub={<>{sub}{inMotion ? <span className="sk-facts">↗ In Doing now</span> : null}</>}
         value={t.due ? dueLabel(t.due) : undefined}
         valueTone={late ? 'late' : undefined}
         onOpen={() => openTaskPanel(pinKey('self', t.id))}

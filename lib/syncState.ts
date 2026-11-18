@@ -78,6 +78,8 @@ export type SyncedState = {
   findings: Record<string, { at: string } & Record<string, unknown>>;
   /** Packages coming in / going out, with tracking (lib/packages.ts); newest wins per id */
   packages: Record<string, { at: string } & Record<string, unknown>>;
+  /** Research pop-outs on purchases / to-dos (notes, options, links, prices); newest wins per item (lib/research.ts) */
+  research: Record<string, { at: string } & Record<string, unknown>>;
 };
 
 /**
@@ -157,6 +159,7 @@ export function emptyState(): SyncedState {
     groupLog: {},
     findings: {},
     packages: {},
+    research: {},
   };
 }
 
@@ -208,6 +211,7 @@ export function normalizeState(raw: unknown): SyncedState {
     groupLog: s.groupLog && typeof s.groupLog === 'object' ? s.groupLog : {},
     findings: s.findings && typeof s.findings === 'object' ? s.findings : {},
     packages: s.packages && typeof s.packages === 'object' ? s.packages : {},
+    research: s.research && typeof s.research === 'object' ? s.research : {},
   };
 }
 
@@ -315,6 +319,7 @@ export function mergeState(aRaw: unknown, bRaw: unknown): SyncedState {
     groupLog: mergeLevels(a.groupLog, b.groupLog),
     findings: mergeLevels(a.findings, b.findings),
     packages: mergeLevels(a.packages, b.packages),
+    research: mergeLevels(a.research, b.research),
   };
 }
 

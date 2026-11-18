@@ -15,6 +15,7 @@ import { mergeState, normalizeState, stateCounts, type LocalGoalLinks, type Sync
 import { SITE_LISTS_KEY } from './siteLists';
 import { GROUP_LOG_KEY } from './groupLog';
 import { FINDINGS_KEY } from './finFindings';
+import { RESEARCH_KEY } from './research';
 import { FOCUS_LIST_KEYS, FOCUS_TOMBS_KEY, readFocusState, writeFocusState } from './focusSync';
 
 export const WORKER_BASE =
@@ -182,6 +183,7 @@ export function readLocalState(): SyncedState {
     groupLog: readSaved(GROUP_LOG_KEY, {}),
     findings: readSaved(FINDINGS_KEY, {}),
     packages: readSaved('lifehub-packages', {}),
+    research: readSaved(RESEARCH_KEY, {}),
   });
 }
 
@@ -219,6 +221,7 @@ function writeLocalState(next: SyncedState): boolean {
     [GROUP_LOG_KEY, current.groupLog, next.groupLog],
     [FINDINGS_KEY, current.findings, next.findings],
     ['lifehub-packages', current.packages, next.packages],
+    [RESEARCH_KEY, current.research, next.research],
   ];
   let changed = false;
   applying = true;

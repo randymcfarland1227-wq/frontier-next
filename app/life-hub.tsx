@@ -107,6 +107,7 @@ import { WhyView } from './components/WhyView';
 import { DailyGrounding } from './components/DailyGrounding';
 import { isHidden, loadHidden, restoreItem, useHiddenItems } from '../lib/siteMoves';
 import { SiteListHost } from './components/SiteListDialog';
+import { ResearchHost } from './components/ResearchPanel';
 import { DebtPopHost } from './components/DebtPop';
 import { applySiteLists, openSiteList, SiteListsContext, useSiteListStore } from '../lib/siteLists';
 import { FOCUS_LIST_EVENT, moveFitnessToOngoing, ONGOING_KEY, readOngoingIds, seedOngoingGoals } from '../lib/ongoingGoals';
@@ -1354,6 +1355,7 @@ goalsData ? (
       <UpdateNotice />
       {import.meta.env.VITE_LOCAL_PREVIEW !== 'true' && <BackupGuard />}
       <SiteListHost />
+      <ResearchHost />
       <MoneyPanelHost model={moneyModel} dues={moneyDues} monthDues={monthDues} paidAt={paidAt} onPaid={payBill} />
       <DebtPopHost />
       <FocusDrawer

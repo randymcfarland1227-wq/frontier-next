@@ -91,6 +91,31 @@ export function addSelfItem(
   return updated;
 }
 
+/**
+ * Several tasks at once (Self › Bulk add). Each may go straight to another site's card (`home`, the same
+ * move as the row menu's Move to…). Ids get a counter so a batch made in one millisecond can't collide.
+ */
+export function addSelfItems(list: Array<{ title: string; home?: string }>): SelfItem[] {
+  const items = loadSelfItems();
+  const base = Date.now();
+  const at = new Date().toISOString();
+  const made: SelfItem[] = list
+    .filter(x => x.title.trim())
+    .map((x, i) => ({
+      id: `self-${base}-${i}`,
+      title: x.title.trim(),
+      done: false,
+      starred: false,
+      createdAt: at,
+      updatedAt: at,
+      ...(x.home && x.home !== 'self' ? { home: x.home } : {}),
+    }));
+  const updated = [...made, ...items];
+  saveSelfItems(updated);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(SELF_ITEMS_EVENT));
+  return updated;
+}
+
 /** A task already done elsewhere, recorded after the fact (counts in Review + Balance). */
 export function logSelfItem(title: string, detail: string, focusAreaId: string | undefined, at: string): SelfItem[] {
   const items = loadSelfItems();

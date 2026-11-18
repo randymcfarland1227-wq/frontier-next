@@ -1,5 +1,6 @@
 'use client';
 
+import { BulkAdd } from './BulkAdd';
 import { FormEvent, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   CAPTURE_KINDS,
@@ -141,6 +142,7 @@ export function CapturesPanel({
 }) {
   const { isPinned, addPin, removePin } = usePriorityPins();
   const [kind, setKind] = useState<Kind>('task');
+  const [bulk, setBulk] = useState(false);
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [notes, setNotes] = useState('');
@@ -377,6 +379,21 @@ export function CapturesPanel({
           </p>
         ) : null}
       </form>
+      {kind === 'task' ? (
+        <div className="sk-bulkwrap">
+          <button type="button" className="sk-btn is-small is-quiet" aria-expanded={bulk} onClick={() => setBulk(!bulk)}>
+            {bulk ? 'Close bulk add' : '＋ Add several at once'}
+          </button>
+          {bulk ? (
+            <BulkAdd
+              onDone={(_items, summary) => {
+                showToast(`Added · ${summary}`);
+                setTab('tasks');
+              }}
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       {starredTasks.length ? (
         <div className="sk-src-starred" aria-label="Starred Self tasks">

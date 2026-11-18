@@ -173,6 +173,6 @@ export function shownMetric(id: SourceId, snapshot: SourceSnapshot, lanes: LaneM
       .filter(x => lanes[pinKey(id, x.id)]?.lane || planned?.(pinKey(id, x.id), x.title))
       .map(x => x.id),
   ).size;
-  const deduct = id !== 'ticktick' && Number.isFinite(base.value) ? Math.min(inDoingNow, base.value) : 0;
+  const deduct = id !== 'ticktick' && id !== 'self' && Number.isFinite(base.value) ? Math.min(inDoingNow, base.value) : 0;
   return { base, deduct, value: base.value - deduct };
 }

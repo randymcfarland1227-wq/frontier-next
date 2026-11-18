@@ -102,13 +102,13 @@ export function SourceView({
       <section className="sk-group sksite-box sksite-metrics">
         <MetricGrid sourceId={sourceId} snapshot={snapshot} />
       </section>
-      {focusGoals}
+      {sourceId === "self" && capturesPanel ? null : focusGoals}
       <section className="work-ledger sksite-ledger">
         {sourceId === "self" ? (
           <section className="sk-group sksite-box">
             {capturesPanel ? null : voiceMemos}
             {/* Self add box (same as Home's Self tab) on one side, the tasks inside Short-term focus cards on the other. */}
-            <div className="task-split self-split">
+            <div className={capturesPanel ? "" : "task-split self-split"}>
               <div>
                 {capturesPanel ?? (
                   <SelfInbox
@@ -119,9 +119,7 @@ export function SourceView({
                   />
                 )}
               </div>
-              <div>
-                <FocusTaskBoard />
-              </div>
+              {capturesPanel ? null : <div><FocusTaskBoard /></div>}
             </div>
           </section>
         ) : (

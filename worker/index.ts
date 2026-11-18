@@ -1032,7 +1032,7 @@ const TRACK_STATUS: Record<string, string> = {
   INIT: "shipped", NO_RECORD: "shipped", INFO_RECEIVED: "shipped", IN_TRANSIT: "transit", WAITING_DELIVERY: "out",
   DELIVERY_FAILED: "problem", ABNORMAL: "problem", DELIVERED: "delivered", EXPIRED: "problem",
 };
-const TRACK123_REGISTERED_KEY = "track123-registered";
+const TRACK123_REGISTERED_KEY = "track123-registered-v2";
 type T123Event = { address?: string; eventTime?: string; eventDetail?: string };
 type T123Item = {
   trackNo?: string; transitStatus?: string; transitSubStatus?: string; expectedDelivery?: string; deliveredTime?: string;
@@ -1047,13 +1047,17 @@ async function handleTrack(request: Request, env: Env): Promise<Response> {
   if (!env.TRACK123_KEY) return jsonResponse({ ok: false, error: "no_tracking_key" }, 200, origin);
   const nums = [...new Set((new URL(request.url).searchParams.get("nums") || "").split(",").map((n) => n.replace(/\s+/g, "")).filter(Boolean))].slice(0, 40);
   if (!nums.length) return jsonResponse({ ok: true, items: [] }, 200, origin);
+  const lastRaw: Record<string, string> = {};
   const call = async (path: string, body: unknown) => {
-    const r = await fetch(`https://api.track123.com/gateway/open-api/tk/v2/track/${path}`, {
+    const r = await fetch(`https://api.track123.com/gateway/open-api/tk/v2.1/track/${path}`, {
       method: "POST",
-      headers: { "Track123-Api-Secret": env.TRACK123_KEY!, accept: "application/json", "Content-Type": "application/json" },
+      headers: { "Track123-Api-Secret": env.TRACK123_KEY!, accept: "application/json", "Content-Type": "application/json", "User-Agent": "frontier-life-hub/1.0" },
       body: JSON.stringify(body),
     });
-    return (await r.json().catch(() => ({}))) as { code?: string; msg?: string; data?: { accepted?: unknown; rejected?: Array<{ trackNo?: string; error?: { code?: string; msg?: string } }> } };
+    const text = await r.text();
+    lastRaw[path] = `${r.status} ${text.slice(0, 600)}`;
+    if (!r.ok) return {};
+    return (JSON.parse(text || "{}") as unknown) as { code?: string; msg?: string; data?: { accepted?: unknown; rejected?: Array<{ trackNo?: string; error?: { code?: string; msg?: string } }> } };
   };
   // Register only numbers we haven't registered before (each new number = 1 quota).
   const registered = new Set(((await env.LIFEHUB_STATE.get(TRACK123_REGISTERED_KEY, "json")) || []) as string[]);
@@ -1061,9 +1065,11 @@ async function handleTrack(request: Request, env: Env): Promise<Response> {
   let quotaOut = false;
   if (fresh.length) {
     const reg = await call("import", fresh.map((trackNo) => ({ trackNo })));
+    const regOk = !!reg.data; // whole call failed (bad key, wrong URL): register nothing, retry next time
     const rejected = new Map((reg.data?.rejected || []).map((x) => [String(x.trackNo || ""), `${x.error?.code || ""} ${x.error?.msg || ""}`]));
     for (const n of fresh) {
       const why = rejected.get(n);
+      if (!regOk) continue;
       if (!why || /exist|duplicate|repeat/i.test(why)) registered.add(n);
       else if (/quota|balance|insufficient/i.test(why)) quotaOut = true;
     }
@@ -1084,7 +1090,8 @@ async function handleTrack(request: Request, env: Env): Promise<Response> {
       carrier: t.localLogisticsInfo?.courierNameEN || undefined,
     };
   });
-  return jsonResponse({ ok: true, items, ...(quotaOut ? { note: "quota_used_up" } : {}) }, 200, origin);
+  const debug = new URL(request.url).searchParams.get("debug") === "1" ? { debug: { raw: lastRaw, registered: nums.map((n) => registered.has(n)) } } : {};
+  return jsonResponse({ ok: true, items, ...(quotaOut ? { note: "quota_used_up" } : {}), ...debug }, 200, origin);
 }
 
 async function handleDebts(request: Request, env: Env): Promise<Response> {

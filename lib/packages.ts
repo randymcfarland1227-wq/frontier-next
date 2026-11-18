@@ -1,7 +1,7 @@
 /**
  * Packages: things coming to Randy (Vinted, Calvin Klein…) and things he sends out (Dyson warranty), not
  * sales shipments. Cloud-synced as `packages` (newest `at` wins per id). Live status comes from the Worker's
- * /api/track (17TRACK) on Refresh; the daily Life Hub routine adds tracking numbers from shipping emails.
+ * /api/track (Track123) on Refresh; the daily Life Hub routine adds tracking numbers from shipping emails.
  */
 import { useEffect, useState } from 'react';
 import { readSaved, writeSaved } from './storage';
@@ -79,7 +79,7 @@ export function usePackages(): Pkg[] {
 /** A public tracking page for any number (works without the API key). */
 export const trackUrl = (n: string) => `https://t.17track.net/en#nums=${encodeURIComponent(n)}`;
 
-/** Refresh: ask the Worker (17TRACK) for every package with a tracking number that isn't delivered yet. */
+/** Refresh: ask the Worker (Track123) for every package with a tracking number that isn't delivered yet. */
 export async function refreshPackages(): Promise<{ ok: boolean; updated: number; error?: string }> {
   const live = Object.values(loadPackages()).filter((p) => !p.gone && p.tracking && p.status !== 'delivered');
   if (!live.length) return { ok: true, updated: 0 };

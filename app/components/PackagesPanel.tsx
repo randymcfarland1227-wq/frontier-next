@@ -62,7 +62,7 @@ function Row({ p }: { p: Pkg }) {
   );
 }
 
-/** Dashboard › Packages: coming in and going out, newest status from 17TRACK on Refresh. */
+/** Dashboard › Packages: coming in and going out, newest status from Track123 on Refresh. */
 export function PackagesPanel({ Panel }: { Panel: (p: { title: string; icon: string; accent: string; meta?: React.ReactNode; className?: string; children: React.ReactNode; onOpen?: () => void }) => React.ReactElement }) {
   useEffect(() => seedPackages(), []);
   const all = usePackages();

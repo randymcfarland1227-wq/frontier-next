@@ -3,8 +3,8 @@ import { mergeState, normalizeState, stateCounts } from "../lib/syncState";
 
 interface Env {
   ASSETS: Fetcher;
-  /** 17TRACK API key (free plan) for package tracking — `wrangler secret put TRACK17_KEY` */
-  TRACK17_KEY?: string;
+  /** Track123 API key (free Starter plan: 50 new numbers/month, queries free) — `wrangler secret put TRACK123_KEY` */
+  TRACK123_KEY?: string;
   /** TickTick Open API bearer token — set via `wrangler secret put TICKTICK_ACCESS_TOKEN` */
   TICKTICK_ACCESS_TOKEN?: string;
   /** Cloud backup for Life Hub state (completions, ideas, Self, goal links) */
@@ -1026,48 +1026,65 @@ const DEBT_FILE_KEY = "debt-file";
 const DEBT_MARKS_KEY = "debt-marks";
 
 
-/** GET /api/track?nums=a,b → live package status from 17TRACK (registers new numbers, then reads them). */
+/** GET /api/track?nums=a,b → live package status from Track123 (carrier auto-detected).
+ *  A number is registered once (that's what uses quota); the registered set lives in KV so later refreshes only query. */
 const TRACK_STATUS: Record<string, string> = {
-  NotFound: "shipped", InfoReceived: "shipped", InTransit: "transit", Expired: "problem", AvailableForPickup: "pickup",
-  OutForDelivery: "out", DeliveryFailure: "problem", Delivered: "delivered", Exception: "problem",
+  INIT: "shipped", NO_RECORD: "shipped", INFO_RECEIVED: "shipped", IN_TRANSIT: "transit", WAITING_DELIVERY: "out",
+  DELIVERY_FAILED: "problem", ABNORMAL: "problem", DELIVERED: "delivered", EXPIRED: "problem",
 };
+const TRACK123_REGISTERED_KEY = "track123-registered";
+type T123Event = { address?: string; eventTime?: string; eventDetail?: string };
+type T123Item = {
+  trackNo?: string; transitStatus?: string; transitSubStatus?: string; expectedDelivery?: string; deliveredTime?: string;
+  localLogisticsInfo?: { courierNameEN?: string; courierCode?: string; trackingDetails?: T123Event[] };
+};
+const isoDay = (v?: string | null) => (v && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : undefined);
 async function handleTrack(request: Request, env: Env): Promise<Response> {
   const origin = request.headers.get("Origin");
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
   if (origin && !CORS_ALLOW_ORIGINS.has(origin)) return jsonResponse({ ok: false, error: "cors_denied" }, 403, origin);
   if (!(await syncKeyAllowed(request, env))) return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
-  if (!env.TRACK17_KEY) return jsonResponse({ ok: false, error: "no_tracking_key" }, 200, origin);
-  const nums = [...new Set((new URL(request.url).searchParams.get("nums") || "").split(",").map((n) => n.trim()).filter(Boolean))].slice(0, 40);
+  if (!env.TRACK123_KEY) return jsonResponse({ ok: false, error: "no_tracking_key" }, 200, origin);
+  const nums = [...new Set((new URL(request.url).searchParams.get("nums") || "").split(",").map((n) => n.replace(/\s+/g, "")).filter(Boolean))].slice(0, 40);
   if (!nums.length) return jsonResponse({ ok: true, items: [] }, 200, origin);
-  const call = async (path: string) => {
-    const r = await fetch(`https://api.17track.net/track/v2.2/${path}`, {
+  const call = async (path: string, body: unknown) => {
+    const r = await fetch(`https://api.track123.com/gateway/open-api/tk/v2/track/${path}`, {
       method: "POST",
-      headers: { "17token": env.TRACK17_KEY!, "Content-Type": "application/json" },
-      body: JSON.stringify(nums.map((number) => ({ number }))),
+      headers: { "Track123-Api-Secret": env.TRACK123_KEY!, accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
-    return (await r.json().catch(() => ({}))) as { code?: number; data?: { accepted?: Array<Record<string, unknown>>; rejected?: unknown[] } };
+    return (await r.json().catch(() => ({}))) as { code?: string; msg?: string; data?: { accepted?: unknown; rejected?: Array<{ trackNo?: string; error?: { code?: string; msg?: string } }> } };
   };
-  await call("register"); // already-registered numbers are simply rejected; fine
-  const info = await call("gettrackinfo");
-  const items = (info.data?.accepted || []).map((a) => {
-    const ti = (a.track_info || {}) as {
-      latest_status?: { status?: string };
-      latest_event?: { time_iso?: string; description?: string; location?: string };
-      time_metrics?: { estimated_delivery_date?: { from?: string | null; to?: string | null } };
-      tracking?: { providers?: Array<{ provider?: { name?: string } }> };
-    };
-    const ev = ti.latest_event;
-    const eta = ti.time_metrics?.estimated_delivery_date?.to || ti.time_metrics?.estimated_delivery_date?.from || undefined;
-    const delivered = ti.latest_status?.status === "Delivered";
+  // Register only numbers we haven't registered before (each new number = 1 quota).
+  const registered = new Set(((await env.LIFEHUB_STATE.get(TRACK123_REGISTERED_KEY, "json")) || []) as string[]);
+  const fresh = nums.filter((n) => !registered.has(n));
+  let quotaOut = false;
+  if (fresh.length) {
+    const reg = await call("import", fresh.map((trackNo) => ({ trackNo })));
+    const rejected = new Map((reg.data?.rejected || []).map((x) => [String(x.trackNo || ""), `${x.error?.code || ""} ${x.error?.msg || ""}`]));
+    for (const n of fresh) {
+      const why = rejected.get(n);
+      if (!why || /exist|duplicate|repeat/i.test(why)) registered.add(n);
+      else if (/quota|balance|insufficient/i.test(why)) quotaOut = true;
+    }
+    await env.LIFEHUB_STATE.put(TRACK123_REGISTERED_KEY, JSON.stringify([...registered].slice(-500)));
+  }
+  const q = await call("query", { trackNos: nums.filter((n) => registered.has(n)) });
+  const content = ((q.data?.accepted as { content?: T123Item[] } | undefined)?.content || []) as T123Item[];
+  const items = content.map((t) => {
+    const ev = t.localLogisticsInfo?.trackingDetails?.[0]; // newest first
+    const day = isoDay(ev?.eventTime);
+    let status = TRACK_STATUS[t.transitStatus || ""] || undefined;
+    if (t.transitStatus === "WAITING_DELIVERY" && /pick/i.test(`${t.transitSubStatus || ""} ${ev?.eventDetail || ""}`)) status = "pickup";
     return {
-      number: String(a.number || ""),
-      status: TRACK_STATUS[ti.latest_status?.status || ""] || undefined,
-      eta: delivered && ev?.time_iso ? ev.time_iso.slice(0, 10) : eta ? String(eta).slice(0, 10) : undefined,
-      last: ev ? [ev.description, ev.location].filter(Boolean).join(" · ") + (ev.time_iso ? ` · ${ev.time_iso.slice(0, 10)}` : "") : undefined,
-      carrier: ti.tracking?.providers?.[0]?.provider?.name || undefined,
+      number: String(t.trackNo || ""),
+      status,
+      eta: status === "delivered" ? isoDay(t.deliveredTime) || day : isoDay(t.expectedDelivery),
+      last: ev ? [ev.eventDetail, ev.address, day].filter(Boolean).join(" · ") : undefined,
+      carrier: t.localLogisticsInfo?.courierNameEN || undefined,
     };
   });
-  return jsonResponse({ ok: true, items }, 200, origin);
+  return jsonResponse({ ok: true, items, ...(quotaOut ? { note: "quota_used_up" } : {}) }, 200, origin);
 }
 
 async function handleDebts(request: Request, env: Env): Promise<Response> {

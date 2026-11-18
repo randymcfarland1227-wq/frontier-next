@@ -183,9 +183,14 @@ async function handleState(request: Request, env: Env): Promise<Response> {
   }
 
   const stored = normalizeState(await env.LIFEHUB_STATE.get(STATE_KEY, "json"));
+  // Shipping-email findings ride into the packages section on every read and write.
+  const mailPkgs = await loadMailPackages(env);
 
   if (request.method === "GET") {
     if (!claimed) return jsonResponse({ ok: false, error: "not_set_up" }, 404, origin);
+    if (applyMailPackages(stored.packages as Record<string, PkgRow>, mailPkgs)) {
+      await env.LIFEHUB_STATE.put(STATE_KEY, JSON.stringify(stored));
+    }
     return jsonResponse({ ok: true, state: stored, counts: stateCounts(stored) }, 200, origin);
   }
 
@@ -200,6 +205,7 @@ async function handleState(request: Request, env: Env): Promise<Response> {
     return jsonResponse({ ok: false, error: "invalid_json" }, 400, origin);
   }
   const merged = mergeState(stored, (incoming as { state?: unknown })?.state);
+  applyMailPackages(merged.packages as Record<string, PkgRow>, mailPkgs);
   // Safety net: a merge only ever adds, so a result smaller than what is stored means a bug — refuse it.
   // Counted after the same cleanup the merge applies (retired Self items are dropped by it), so cleanup alone never reads as shrinking.
   const before = stateCounts(mergeState(stored, null));
@@ -1170,14 +1176,60 @@ async function callMailSync(env: Env, body: Record<string, unknown>): Promise<Re
 
 // ---------------------------------------------------------------------------
 // Packages from shipping email: the Mail Sync Apps Script (LifeHubPackages.gs) reads carrier/store
-// mail every 10 minutes and POSTs what it found (X-Mail-Key). Matching packages in the synced state
-// are updated in place (status only moves forward); unmatched numbers wait in a list the daily
-// routine reads (GET with the backup key) and files by hand.
+// mail every 10 minutes and POSTs what it found (X-Mail-Key). The findings are kept in their own KV
+// entry (only this route writes it) and folded into the synced packages whenever /api/state is read
+// or written — so a device saving a slightly stale copy can never wipe an email update.
+// A package matches by tracking number, or by order number for one logged before it had tracking.
+// Status only moves forward. GET (backup key) lists findings that match no package, for the routine.
 // ---------------------------------------------------------------------------
 
-const PKG_UNMATCHED_KEY = "packages-mail-unmatched";
-type MailPkgUpdate = { tracking?: unknown; order?: unknown; carrier?: unknown; status?: unknown; eta?: unknown; last?: unknown; eventAt?: unknown; subject?: unknown };
+const PKG_MAIL_KEY = "packages-mail";
+type MailPkg = { tracking?: string; order?: string; carrier?: string; status?: string; eta?: string; last?: string; eventAt?: string; subject?: string; seenAt: string };
+type PkgRow = Record<string, unknown> & { at: string };
 const str = (v: unknown, max = 160) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : undefined);
+const mailKeyOf = (u: MailPkg) => u.tracking || `order:${u.order}`;
+
+function mailHits(pkgs: Record<string, PkgRow>, u: MailPkg): PkgRow[] {
+  const live = Object.values(pkgs).filter((p) => p && !p.gone);
+  if (u.tracking) {
+    const byNum = live.filter((p) => normTracking(p.tracking) === u.tracking);
+    if (byNum.length) return byNum;
+  }
+  const order = u.order;
+  if (!order) return [];
+  return live.filter((p) => !p.tracking && [p.name, p.note, p.from].some((f) => typeof f === "string" && f.includes(order)));
+}
+
+/** Fold email findings into the packages section in place; true when anything changed. */
+function applyMailPackages(packages: Record<string, PkgRow>, mail: Record<string, MailPkg> | null): boolean {
+  if (!mail) return false;
+  const now = new Date().toISOString();
+  let changed = false;
+  for (const u of Object.values(mail)) {
+    const sig = `${mailKeyOf(u)}|${u.status || ""}|${u.eventAt || u.seenAt}`;
+    for (const p of mailHits(packages, u)) {
+      if (p.mailSig === sig) continue;
+      const next: Record<string, unknown> = { ...p };
+      const forward = u.status ? statusMovesForward(p.status as string | undefined, u.status) : false;
+      if (forward) {
+        next.status = u.status;
+        if (u.last) next.last = u.last;
+        if (u.eta) next.eta = u.eta;
+      } else if (!u.status && u.eta && !p.eta) next.eta = u.eta;
+      if (u.tracking && !p.tracking) next.tracking = u.tracking;
+      if (u.carrier && !p.carrier) next.carrier = u.carrier;
+      if (!["status", "last", "eta", "tracking", "carrier"].some((k) => next[k] !== p[k])) continue;
+      next.mailSig = sig;
+      next.checkedAt = now;
+      next.at = now;
+      packages[p.id as string] = next as PkgRow;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+const loadMailPackages = async (env: Env) => (await env.LIFEHUB_STATE.get(PKG_MAIL_KEY, "json")) as Record<string, MailPkg> | null;
 
 async function handlePackagesMail(request: Request, env: Env): Promise<Response> {
   const origin = request.headers.get("Origin");
@@ -1187,74 +1239,41 @@ async function handlePackagesMail(request: Request, env: Env): Promise<Response>
     if (!env.MAIL_PUSH_KEY || request.headers.get("X-Mail-Key") !== env.MAIL_PUSH_KEY) {
       return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
     }
-    let updates: MailPkgUpdate[];
+    let raw: Array<Record<string, unknown>>;
     try {
       const body = (await request.json()) as { updates?: unknown };
-      updates = Array.isArray(body.updates) ? (body.updates as MailPkgUpdate[]).slice(0, 100) : [];
+      raw = Array.isArray(body.updates) ? (body.updates as Array<Record<string, unknown>>).slice(0, 100) : [];
     } catch {
       return jsonResponse({ ok: false, error: "invalid_json" }, 400, origin);
     }
-    const state = normalizeState(await env.LIFEHUB_STATE.get(STATE_KEY, "json"));
-    const pkgs = state.packages as Record<string, Record<string, unknown> & { at: string }>;
     const now = new Date().toISOString();
-    const changed: string[] = [];
-    const unmatched: Array<Record<string, string>> = [];
-    for (const u of updates) {
-      const tracking = normTracking(u.tracking);
-      const order = str(u.order, 40);
-      const status = isPkgStatus(u.status) ? u.status : undefined;
-      const eta = typeof u.eta === "string" && /^\d{4}-\d{2}-\d{2}$/.test(u.eta) ? u.eta : undefined;
-      const last = str(u.last);
-      const carrier = str(u.carrier, 30);
-      if (!tracking && !order) continue;
-      const live = Object.values(pkgs).filter((p) => p && !p.gone);
-      let hits = tracking ? live.filter((p) => normTracking(p.tracking) === tracking) : [];
-      // A store's "shipped" mail can carry the order number of a package logged before it had tracking.
-      if (!hits.length && order) {
-        hits = live.filter((p) => !p.tracking && [p.name, p.note, p.from].some((f) => typeof f === "string" && f.includes(order)));
-      }
-      if (!hits.length) {
-        unmatched.push(Object.fromEntries(Object.entries({ tracking, order, carrier, status, eta, last, subject: str(u.subject), eventAt: str(u.eventAt, 40), seenAt: now }).filter(([, v]) => v)) as Record<string, string>);
-        continue;
-      }
-      for (const p of hits) {
-        const next: Record<string, unknown> = { ...p };
-        const forward = status ? statusMovesForward(p.status as string | undefined, status) : false;
-        if (forward) {
-          next.status = status;
-          if (last) next.last = last;
-          if (eta) next.eta = eta;
-        } else if (!status) {
-          if (eta && !p.eta) next.eta = eta;
-        }
-        if (tracking && !p.tracking) next.tracking = tracking;
-        if (carrier && !p.carrier) next.carrier = carrier;
-        const diff = ["status", "last", "eta", "tracking", "carrier"].some((k) => next[k] !== p[k]);
-        if (!diff) continue;
-        next.checkedAt = now;
-        next.at = now;
-        pkgs[p.id as string] = next as Record<string, unknown> & { at: string };
-        changed.push(`${p.id}:${next.status}`);
-      }
+    const mail = (await loadMailPackages(env)) || {};
+    let stored = 0;
+    for (const r of raw) {
+      const eta = typeof r.eta === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.eta) ? r.eta : undefined;
+      const u: MailPkg = { tracking: normTracking(r.tracking) || undefined, order: str(r.order, 40), carrier: str(r.carrier, 30), status: isPkgStatus(r.status) ? r.status : undefined, eta, last: str(r.last), eventAt: str(r.eventAt, 40), subject: str(r.subject), seenAt: now };
+      if (!u.tracking && !u.order) continue;
+      const k = mailKeyOf(u);
+      const prev = mail[k];
+      if (prev && prev.status && u.status && !statusMovesForward(prev.status, u.status)) continue;
+      mail[k] = Object.fromEntries(Object.entries({ ...prev, ...u, eta: u.eta || prev?.eta }).filter(([, v]) => v)) as MailPkg;
+      stored++;
     }
-    if (changed.length) await env.LIFEHUB_STATE.put(STATE_KEY, JSON.stringify(state));
-    if (unmatched.length) {
-      const prev = ((await env.LIFEHUB_STATE.get(PKG_UNMATCHED_KEY, "json")) as Array<Record<string, string>> | null) || [];
-      const byKey = new Map(prev.map((x) => [x.tracking || `order:${x.order}`, x]));
-      for (const x of unmatched) byKey.set(x.tracking || `order:${x.order}`, { ...byKey.get(x.tracking || `order:${x.order}`), ...x });
-      await env.LIFEHUB_STATE.put(PKG_UNMATCHED_KEY, JSON.stringify([...byKey.values()].slice(-60)));
-    }
-    return jsonResponse({ ok: true, changed, unmatched: unmatched.length }, 200, origin);
+    // Keep three weeks of findings (max 120).
+    const cutoff = new Date(Date.now() - 21 * 864e5).toISOString();
+    const kept = Object.entries(mail).filter(([, u]) => (u.eventAt || u.seenAt) >= cutoff).slice(-120);
+    await env.LIFEHUB_STATE.put(PKG_MAIL_KEY, JSON.stringify(Object.fromEntries(kept)));
+    return jsonResponse({ ok: true, stored, kept: kept.length }, 200, origin);
   }
 
   if (origin && !CORS_ALLOW_ORIGINS.has(origin)) return jsonResponse({ ok: false, error: "cors_denied" }, 403, origin);
   if (!(await syncKeyAllowed(request, env))) return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
   if (request.method === "GET") {
-    return jsonResponse({ ok: true, unmatched: (await env.LIFEHUB_STATE.get(PKG_UNMATCHED_KEY, "json")) || [] }, 200, origin);
-  }
-  if (request.method === "DELETE") {
-    await env.LIFEHUB_STATE.delete(PKG_UNMATCHED_KEY);
-    return jsonResponse({ ok: true }, 200, origin);
+    const mail = (await loadMailPackages(env)) || {};
+    const state = normalizeState(await env.LIFEHUB_STATE.get(STATE_KEY, "json"));
+    const pkgs = state.packages as Record<string, PkgRow>;
+    const unmatched = Object.values(mail).filter((u) => !mailHits(pkgs, u).length);
+    return jsonResponse({ ok: true, unmatched, all: Object.values(mail) }, 200, origin);
   }
   return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, origin);
 }

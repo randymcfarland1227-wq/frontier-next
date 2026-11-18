@@ -2,8 +2,8 @@
  * Life Hub Packages — reads carrier / store shipping email and sends tracking status to Life Hub
  * (Dashboard › Packages). Runs inside syncStarredMail (10-minute trigger + Life Hub's ↻ Refresh).
  *
- * The Worker (/api/packages/mail) updates the package whose tracking number (or order number)
- * matches; status only moves forward. Numbers it can't match wait in a list for the daily routine.
+ * The Worker (/api/packages/mail) keeps these findings and folds them into the package whose tracking
+ * number (or order number) matches; status only moves forward. Unmatched ones wait for the daily routine.
  * Uses the Gmail access this project already has — no new setup.
  */
 
@@ -51,14 +51,15 @@ function lhPushPackages_(key) {
     });
   });
   const updates = Object.keys(best).map(function (k) { return best[k]; });
-  if (!updates.length) return 'packages: none in mail';
+  if (!updates.length) return 'packages: none in mail (' + msgs.length + ' emails read)';
+  const found = ' [' + updates.map(function (u) { return (u.tracking || 'order ' + u.order) + ' ' + u.status; }).join(', ') + '; ' + msgs.length + ' emails]';
 
   // Skip the POST when nothing changed since the last send (but resend at least hourly).
   const props = PropertiesService.getScriptProperties();
   const sig = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, JSON.stringify(updates)));
-  const lastSig = props.getProperty('LHP_LAST_SIG') || '';
+  const lastSig = props.getProperty('LHP_SIG2') || '';
   const lastAt = Number(props.getProperty('LHP_LAST_AT') || 0);
-  if (sig === lastSig && Date.now() - lastAt < 60 * 60 * 1000) return 'packages: ' + updates.length + ' unchanged';
+  if (sig === lastSig && Date.now() - lastAt < 60 * 60 * 1000) return 'packages: ' + updates.length + ' unchanged' + found;
 
   const res = UrlFetchApp.fetch(LIFE_HUB_PACKAGES_URL, {
     method: 'post',
@@ -70,11 +71,10 @@ function lhPushPackages_(key) {
   let reply = {};
   try { reply = JSON.parse(res.getContentText()); } catch (e) { reply = {}; }
   if (res.getResponseCode() === 200 && reply.ok) {
-    props.setProperty('LHP_LAST_SIG', sig);
+    props.setProperty('LHP_SIG2', sig);
     props.setProperty('LHP_LAST_AT', String(Date.now()));
   }
-  return 'packages HTTP ' + res.getResponseCode() + ' · ' + updates.length + ' found · ' +
-    ((reply.changed || []).length) + ' changed · ' + (reply.unmatched || 0) + ' unmatched';
+  return 'packages HTTP ' + res.getResponseCode() + ' · ' + updates.length + ' found · ' + (reply.stored || 0) + ' sent' + found;
 }
 
 function lhpRank_(s) {

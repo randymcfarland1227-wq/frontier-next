@@ -1055,7 +1055,7 @@ async function handleTrack(request: Request, env: Env): Promise<Response> {
       body: JSON.stringify(body),
     });
     const text = await r.text();
-    lastRaw[path] = `${r.status} ${text.slice(0, 600)}`;
+    lastRaw[path] = `${r.status} ${text.slice(0, 900)}`;
     if (!r.ok) return {};
     return (JSON.parse(text || "{}") as unknown) as { code?: string; msg?: string; data?: { accepted?: unknown; rejected?: Array<{ trackNo?: string; error?: { code?: string; msg?: string } }> } };
   };
@@ -1075,8 +1075,16 @@ async function handleTrack(request: Request, env: Env): Promise<Response> {
     }
     await env.LIFEHUB_STATE.put(TRACK123_REGISTERED_KEY, JSON.stringify([...registered].slice(-500)));
   }
-  const q = await call("query", { trackNos: nums.filter((n) => registered.has(n)) });
-  const content = ((q.data?.accepted as { content?: T123Item[] } | undefined)?.content || []) as T123Item[];
+  const regNums = nums.filter((n) => registered.has(n));
+  let q = await call("query", { trackNos: regNums });
+  let content = ((q.data?.accepted as { content?: T123Item[] } | undefined)?.content || []) as T123Item[];
+  // Retrack: ask Track123 to re-pull from the carrier now (free; once per number per 6 h — extra calls are just rejected).
+  const stale = content.filter((t) => t.trackNo && t.transitStatus !== "DELIVERED");
+  if (stale.length) {
+    await Promise.all(stale.map((t) => call("refresh", { trackNo: t.trackNo, courierCode: t.localLogisticsInfo?.courierCode || "usps" }).catch(() => ({}))));
+    q = await call("query", { trackNos: regNums });
+    content = ((q.data?.accepted as { content?: T123Item[] } | undefined)?.content || content) as T123Item[];
+  }
   const items = content.map((t) => {
     const ev = t.localLogisticsInfo?.trackingDetails?.[0]; // newest first
     const day = isoDay(ev?.eventTime);

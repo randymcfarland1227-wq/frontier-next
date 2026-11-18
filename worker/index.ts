@@ -1,5 +1,6 @@
 import handler from "vinext/server/app-router-entry";
 import { mergeState, normalizeState, stateCounts } from "../lib/syncState";
+import { isPkgStatus, normTracking, statusMovesForward } from "../lib/packageStatus";
 
 interface Env {
   ASSETS: Fetcher;
@@ -1168,6 +1169,97 @@ async function callMailSync(env: Env, body: Record<string, unknown>): Promise<Re
 }
 
 // ---------------------------------------------------------------------------
+// Packages from shipping email: the Mail Sync Apps Script (LifeHubPackages.gs) reads carrier/store
+// mail every 10 minutes and POSTs what it found (X-Mail-Key). Matching packages in the synced state
+// are updated in place (status only moves forward); unmatched numbers wait in a list the daily
+// routine reads (GET with the backup key) and files by hand.
+// ---------------------------------------------------------------------------
+
+const PKG_UNMATCHED_KEY = "packages-mail-unmatched";
+type MailPkgUpdate = { tracking?: unknown; order?: unknown; carrier?: unknown; status?: unknown; eta?: unknown; last?: unknown; eventAt?: unknown; subject?: unknown };
+const str = (v: unknown, max = 160) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : undefined);
+
+async function handlePackagesMail(request: Request, env: Env): Promise<Response> {
+  const origin = request.headers.get("Origin");
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+
+  if (request.method === "POST") {
+    if (!env.MAIL_PUSH_KEY || request.headers.get("X-Mail-Key") !== env.MAIL_PUSH_KEY) {
+      return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
+    }
+    let updates: MailPkgUpdate[];
+    try {
+      const body = (await request.json()) as { updates?: unknown };
+      updates = Array.isArray(body.updates) ? (body.updates as MailPkgUpdate[]).slice(0, 100) : [];
+    } catch {
+      return jsonResponse({ ok: false, error: "invalid_json" }, 400, origin);
+    }
+    const state = normalizeState(await env.LIFEHUB_STATE.get(STATE_KEY, "json"));
+    const pkgs = state.packages as Record<string, Record<string, unknown> & { at: string }>;
+    const now = new Date().toISOString();
+    const changed: string[] = [];
+    const unmatched: Array<Record<string, string>> = [];
+    for (const u of updates) {
+      const tracking = normTracking(u.tracking);
+      const order = str(u.order, 40);
+      const status = isPkgStatus(u.status) ? u.status : undefined;
+      const eta = typeof u.eta === "string" && /^\d{4}-\d{2}-\d{2}$/.test(u.eta) ? u.eta : undefined;
+      const last = str(u.last);
+      const carrier = str(u.carrier, 30);
+      if (!tracking && !order) continue;
+      const live = Object.values(pkgs).filter((p) => p && !p.gone);
+      let hits = tracking ? live.filter((p) => normTracking(p.tracking) === tracking) : [];
+      // A store's "shipped" mail can carry the order number of a package logged before it had tracking.
+      if (!hits.length && order) {
+        hits = live.filter((p) => !p.tracking && [p.name, p.note, p.from].some((f) => typeof f === "string" && f.includes(order)));
+      }
+      if (!hits.length) {
+        unmatched.push(Object.fromEntries(Object.entries({ tracking, order, carrier, status, eta, last, subject: str(u.subject), eventAt: str(u.eventAt, 40), seenAt: now }).filter(([, v]) => v)) as Record<string, string>);
+        continue;
+      }
+      for (const p of hits) {
+        const next: Record<string, unknown> = { ...p };
+        const forward = status ? statusMovesForward(p.status as string | undefined, status) : false;
+        if (forward) {
+          next.status = status;
+          if (last) next.last = last;
+          if (eta) next.eta = eta;
+        } else if (!status) {
+          if (eta && !p.eta) next.eta = eta;
+        }
+        if (tracking && !p.tracking) next.tracking = tracking;
+        if (carrier && !p.carrier) next.carrier = carrier;
+        const diff = ["status", "last", "eta", "tracking", "carrier"].some((k) => next[k] !== p[k]);
+        if (!diff) continue;
+        next.checkedAt = now;
+        next.at = now;
+        pkgs[p.id as string] = next as Record<string, unknown> & { at: string };
+        changed.push(`${p.id}:${next.status}`);
+      }
+    }
+    if (changed.length) await env.LIFEHUB_STATE.put(STATE_KEY, JSON.stringify(state));
+    if (unmatched.length) {
+      const prev = ((await env.LIFEHUB_STATE.get(PKG_UNMATCHED_KEY, "json")) as Array<Record<string, string>> | null) || [];
+      const byKey = new Map(prev.map((x) => [x.tracking || `order:${x.order}`, x]));
+      for (const x of unmatched) byKey.set(x.tracking || `order:${x.order}`, { ...byKey.get(x.tracking || `order:${x.order}`), ...x });
+      await env.LIFEHUB_STATE.put(PKG_UNMATCHED_KEY, JSON.stringify([...byKey.values()].slice(-60)));
+    }
+    return jsonResponse({ ok: true, changed, unmatched: unmatched.length }, 200, origin);
+  }
+
+  if (origin && !CORS_ALLOW_ORIGINS.has(origin)) return jsonResponse({ ok: false, error: "cors_denied" }, 403, origin);
+  if (!(await syncKeyAllowed(request, env))) return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
+  if (request.method === "GET") {
+    return jsonResponse({ ok: true, unmatched: (await env.LIFEHUB_STATE.get(PKG_UNMATCHED_KEY, "json")) || [] }, 200, origin);
+  }
+  if (request.method === "DELETE") {
+    await env.LIFEHUB_STATE.delete(PKG_UNMATCHED_KEY);
+    return jsonResponse({ ok: true }, 200, origin);
+  }
+  return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, origin);
+}
+
+// ---------------------------------------------------------------------------
 // Sync now: Life Hub's Refresh button asks the Mail Sync Apps Script (web app, runs as Randy)
 // to push Gmail, Radall and Schedule right away instead of waiting for its 10-minute trigger.
 // The script answers POST with a 302 to its output, which is read with a GET.
@@ -1241,6 +1333,7 @@ export default {
     }
 
     if (pathname === "/api/track") return handleTrack(request, env);
+    if (pathname === "/api/packages/mail") return handlePackagesMail(request, env);
 
     if (pathname === "/api/sync/now") {
       return handleSyncNow(request, env);

@@ -1,11 +1,14 @@
 /**
  * Packages: things coming to Randy (Vinted, Calvin Klein…) and things he sends out (Dyson warranty), not
- * sales shipments. Cloud-synced as `packages` (newest `at` wins per id). Live status comes from the Worker's
- * /api/track (Track123) on Refresh; the daily Life Hub routine adds tracking numbers from shipping emails.
+ * sales shipments. Cloud-synced as `packages` (newest `at` wins per id). Status comes from shipping email: the
+ * Mail Sync Apps Script (LifeHubPackages.gs) reads carrier/store mail every 10 min and the Worker's
+ * /api/packages/mail updates matching entries in the cloud copy. Refresh also asks Track123 (/api/track).
  */
 import { useEffect, useState } from 'react';
 import { readSaved, writeSaved } from './storage';
-import { syncKeyHeader } from './cloudSync';
+import { syncKeyHeader, syncNow } from './cloudSync';
+import { syncGoogleNow } from './syncNow';
+import { statusMovesForward } from './packageStatus';
 
 export const PACKAGES_KEY = 'lifehub-packages';
 const EVENT = 'lifehub:packages';
@@ -95,11 +98,13 @@ export async function refreshPackages(): Promise<{ ok: boolean; updated: number;
     const now = new Date().toISOString();
     for (const it of body.items || []) {
       for (const p of live.filter((x) => x.tracking === it.number)) {
+        // Never let the tracker undo a newer status that came from email.
+        const fwd = !it.status || statusMovesForward(s[p.id]?.status, it.status);
         s[p.id] = {
           ...s[p.id],
-          ...(it.status ? { status: it.status } : {}),
-          ...(it.eta ? { eta: it.eta } : {}),
-          ...(it.last ? { last: it.last } : {}),
+          ...(it.status && fwd ? { status: it.status } : {}),
+          ...(it.eta && fwd ? { eta: it.eta } : {}),
+          ...(it.last && fwd ? { last: it.last } : {}),
           ...(it.carrier ? { carrier: it.carrier } : {}),
           checkedAt: now,
           at: now,
@@ -112,6 +117,14 @@ export async function refreshPackages(): Promise<{ ok: boolean; updated: number;
   } catch (e) {
     return { ok: false, updated: 0, error: e instanceof Error ? e.message : 'Network error' };
   }
+}
+
+/** Refresh button: have Mail Sync read shipping email now, pull the cloud copy it updated, then ask Track123. */
+export async function refreshPackagesAll(): Promise<{ ok: boolean; updated: number; mail: boolean; error?: string }> {
+  const mail = await syncGoogleNow();
+  if (mail) await syncNow();
+  const r = await refreshPackages();
+  return { ...r, mail };
 }
 
 /** One-time starter list (Randy, 2026-11-17): what he's waiting on and the Dyson he has to send. */

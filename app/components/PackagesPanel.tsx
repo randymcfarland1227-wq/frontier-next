@@ -5,7 +5,7 @@ import { useRowMenu } from "./RowMenu";
 import {
   STATUS_LABEL,
   newPackageId,
-  refreshPackages,
+  refreshPackagesAll,
   removePackage,
   savePackage,
   seedPackages,
@@ -62,7 +62,7 @@ function Row({ p }: { p: Pkg }) {
   );
 }
 
-/** Dashboard › Packages: coming in and going out, newest status from Track123 on Refresh. */
+/** Dashboard › Packages: coming in and going out, status from shipping email (Mail Sync) plus Track123 on Refresh. */
 export function PackagesPanel({ Panel }: { Panel: (p: { title: string; icon: string; accent: string; meta?: React.ReactNode; className?: string; children: React.ReactNode; onOpen?: () => void }) => React.ReactElement }) {
   useEffect(() => seedPackages(), []);
   const all = usePackages();
@@ -77,9 +77,10 @@ export function PackagesPanel({ Panel }: { Panel: (p: { title: string; icon: str
   const open = all.filter((p) => p.status !== "delivered").length;
   const refresh = async () => {
     setBusy(true);
-    const r = await refreshPackages();
+    const r = await refreshPackagesAll();
     setBusy(false);
-    setMsg(r.ok ? (r.updated ? `Updated ${r.updated}` : "Nothing to check") : r.error === "no_tracking_key" ? "Live tracking isn't set up yet — use ↗" : `Couldn't refresh (${r.error})`);
+    const mail = r.mail ? "Email checked" : "Email check failed";
+    setMsg(r.ok ? `${mail} · ${r.updated ? `tracker updated ${r.updated}` : "tracker: nothing new"}` : `${mail} · tracker: ${r.error === "no_tracking_key" ? "not set up" : r.error}`);
     window.setTimeout(() => setMsg(""), 6000);
   };
   const add = () => {
@@ -91,7 +92,7 @@ export function PackagesPanel({ Panel }: { Panel: (p: { title: string; icon: str
   return (
     <Panel title="Packages" icon="📦" accent="#7aa7ff" meta={`${open} on the way`} className="hb-pkgs">
       <div className="pk-tools">
-        <button type="button" className="pk-btn" onClick={refresh} disabled={busy} title="Get the latest status for every package with a tracking number">
+        <button type="button" className="pk-btn" onClick={refresh} disabled={busy} title="Read shipping email now, then ask the tracker about every package not yet delivered">
           {busy ? "Checking…" : "↻ Refresh"}
         </button>
         <button type="button" className="pk-btn" onClick={() => setAdding(!adding)}>{adding ? "Cancel" : "+ Add"}</button>

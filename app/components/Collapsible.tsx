@@ -12,14 +12,14 @@ const isPhone = () => typeof window !== 'undefined' && window.matchMedia('(max-w
  * Folded or open for a home section, remembered per browser in the same list as collapsed source
  * cards (keyed `section:<id>`). Shared by the classic Collapsible and the sticker Section.
  */
-export function useFold(id: string): [boolean, () => void] {
+export function useFold(id: string, startFolded = false): [boolean, () => void] {
   const key = `section:${id}`;
   // On a phone every section starts folded except the ones you act from (Doing now and the brief),
   // until you open it yourself — that choice is remembered (EXPANDED_KEY) and wins from then on.
   const [collapsed, setCollapsed] = useState(() => {
     if (readSaved<string[]>(STORAGE_KEYS.collapsedCards, []).includes(key)) return true;
     if (readSaved<string[]>(EXPANDED_KEY, []).includes(key)) return false;
-    return isPhone() && !PHONE_OPEN.some(p => id === p || id.startsWith(`${p}-`));
+    return startFolded || isPhone() && !PHONE_OPEN.some(p => id === p || id.startsWith(`${p}-`));
   });
   const toggle = () => {
     const next = !collapsed;

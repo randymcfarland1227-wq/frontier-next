@@ -5270,3 +5270,4 @@ button.bal-led-row:hover { background: color-mix(in srgb, var(--ev, #0f8a7e) 8%,
 @container self-workspace (max-width: 760px) {
   .self-workspace { grid-template-columns: minmax(0, 1fr); gap: 18px; }
 }
+.self-projects { margin-top: 18px; display: grid; gap: 6px; }

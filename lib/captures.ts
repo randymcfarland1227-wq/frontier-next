@@ -99,12 +99,15 @@ export function markPromoted(id: string, promotedTo: { source: SourceId; taskId:
 }
 
 /** Self's own catch lists: typed captures of these kinds and voice memos sorted into them. */
-export type CatchList = 'inspiration' | 'thought' | 'idea' | 'reminder';
+export type CatchList = 'inspiration' | 'thought' | 'idea' | 'reminder' | 'research' | 'lookinto' | 'learn';
 export const CATCH_LISTS: Array<{ id: CatchList; label: string; memo: string }> = [
   { id: 'inspiration', label: 'Inspiration catch', memo: 'Inspiration' },
   { id: 'thought', label: 'Thoughts', memo: 'Thought' },
   { id: 'idea', label: 'Ideas', memo: 'Idea' },
   { id: 'reminder', label: 'Reminders', memo: 'Reminder' },
+  { id: 'research', label: 'Research', memo: 'Research' },
+  { id: 'lookinto', label: 'Look into', memo: 'Look into' },
+  { id: 'learn', label: 'Learn', memo: 'Learn' },
 ];
 
 /** Which catch list a capture lives in; undefined = a voice memo still to sort (or another kind). */
@@ -115,5 +118,8 @@ export function catchListOf(c: Capture): CatchList | undefined {
   if (t.includes('thought')) return 'thought';
   if (t.includes('idea')) return 'idea';
   if (t.includes('remind')) return 'reminder';
+  if (t.includes('research')) return 'research';
+  if (t.includes('look')) return 'lookinto';
+  if (t.includes('learn')) return 'learn';
   return undefined;
 }

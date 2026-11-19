@@ -3,7 +3,7 @@
 import type { BillDue } from '../../lib/schedule';
 import { addSelfProject } from '../../lib/selfProjects';
 import type { SourceId } from '../../lib/types';
-import { FocusTaskBoard, useLinkedPins } from './FocusSection';
+import { FocusTaskBoard, useLinkedPins, type SubTask } from './FocusSection';
 import { BulkAdd } from './BulkAdd';
 import { FormEvent, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
@@ -20,7 +20,8 @@ import { Circle, ListHead, Row, Tag } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
 import { VoiceMemoList } from './VoiceMemoList';
 import { CatchLists, catchPatch } from './CatchLists';
-import { PLAN, openParentPicker, openTaskPanel, pinDragProps, pinKey, usePriorityPins } from '../../lib/priorityPins';
+import { loadLanes, openParentPicker, openTaskPanel, pinDragProps, pinKey, saveLanes, usePriorityPins } from '../../lib/priorityPins';
+import { convertSelfItems } from '../../lib/adapters/self';
 import { addOngoingGoal } from '../../lib/ongoingGoals';
 import { addToSiteList, createSiteList, listOfTask, openSiteList, useSiteListStore } from '../../lib/siteLists';
 
@@ -73,32 +74,10 @@ function dueLabel(day: string) {
   return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-/** Date picker for a Self task's day; opened from the row menu. */
-function DueInput({ due, onChange, onClose }: { due?: string; onChange: (due?: string) => void; onClose: () => void }) {
-  return (
-    <input
-      type="date"
-      className="sk-capdue"
-      autoFocus
-      defaultValue={due || localDay()}
-      aria-label="Day for this task"
-      onBlur={e => {
-        onClose();
-        if (e.target.value && e.target.value !== due) onChange(e.target.value);
-      }}
-      onKeyDown={e => {
-        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-        if (e.key === 'Escape') onClose();
-      }}
-    />
-  );
-}
-
+/** New captures land in the catch lists on the left (one per kind); here: your tasks, plus archived / dropped captures when there are any. */
 const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'inbox', label: 'Inbox' },
   { id: 'tasks', label: 'Tasks' },
-  { id: 'parked', label: 'Parked' },
-  { id: 'promoted', label: 'Promoted' },
+  { id: 'parked', label: 'Archived' },
   { id: 'dropped', label: 'Dropped' },
 ];
 
@@ -127,7 +106,6 @@ export function CapturesPanel({
   onTaskDone,
   onTaskUndo,
   onTaskStar,
-  onTaskDue,
   onTaskMove,
 }: {
   full?: boolean;
@@ -151,7 +129,7 @@ export function CapturesPanel({
   /** Move a task to another site's card */
   onTaskMove?: (id: string, home: string) => void;
 }) {
-  const { isPinned, addPin, removePin } = usePriorityPins();
+  const { isPinned } = usePriorityPins();
   const [kind, setKind] = useState<Kind>('task');
   const [bulk, setBulk] = useState(false);
   const [title, setTitle] = useState('');
@@ -162,8 +140,7 @@ export function CapturesPanel({
   const [area, setArea] = useState('');
   const [goalSite, setGoalSite] = useState('');
   const [why, setWhy] = useState('');
-  // Open on the inbox only when it has something in it; otherwise on your tasks.
-  const [tab, setTab] = useState<Tab>(() => (captures.some(c => c.status === 'inbox') ? 'inbox' : 'tasks'));
+  const [tab, setTab] = useState<Tab>('tasks');
   const [doneDay, setDoneDay] = useState(() => localDay());
   const [taskDay, setTaskDay] = useState('');
   const [logged, setLogged] = useState('');
@@ -203,12 +180,6 @@ export function CapturesPanel({
   }, [expanded, title, url, notes]);
 
   const areaName = (id?: string) => areas.find(a => a.id === id)?.name;
-  const [dayFor, setDayFor] = useState<string | null>(null);
-  const dayShift = (n: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + n);
-    return localDay(d);
-  };
   /** Everything a Self task row used to show as buttons — star, pin, day, move — lives in its right-click / long-press menu. */
   const listStore = useSiteListStore();
   const linkedPins = useLinkedPins();
@@ -217,18 +188,47 @@ export function CapturesPanel({
     const name = window.prompt('Name the new list (e.g. Storefront)');
     if (name && name.trim()) createSiteList('self', name, [t.id]);
   };
+  /**
+   * Convert to project: the task becomes a Self project; its subtasks (typed ones and tasks linked in with
+   * "Make subtask of…") become a list inside it. The task and its Self subtasks leave the Self list without
+   * counting as done; subtasks from other sites stay linked (now from the project list).
+   */
+  const convertToProject = (t: SelfItem) => {
+    const key = pinKey('self', t.id);
+    const lanes = loadLanes();
+    const subs = lanes[key]?.subs || [];
+    const moved: string[] = [t.id];
+    const tasks: SubTask[] = subs.map(s => {
+      const id = crypto.randomUUID();
+      if (s.pin?.startsWith('self:')) {
+        const child = selfItems.find(i => `self:${i.id}` === s.pin);
+        if (child) moved.push(child.id);
+        return { id, text: child?.title || s.text, done: Boolean(child?.done ?? s.done) };
+      }
+      return { id, text: s.text, done: s.done, ...(s.pin ? { pin: s.pin } : {}), ...(s.fin ? { fin: s.fin } : {}) };
+    });
+    const pid = addSelfProject(t.title, t.detail || '', '', '', 'self', {
+      lists: tasks.length ? [{ id: crypto.randomUUID(), name: 'Subtasks', tasks }] : [],
+    });
+    // The old task's links go with it, so nothing still counts as its subtask.
+    if (lanes[key]) {
+      lanes[key] = { ...lanes[key], lane: null, subs: [], at: new Date().toISOString() };
+      saveLanes(lanes);
+    }
+    convertSelfItems(moved, pid);
+    showToast(`Now a project · ${t.title}`);
+  };
   const taskMenu = (t: SelfItem): RowMenuItem[] => [
     ...(t.done ? [] : [{ label: 'Add to new list…', onSelect: () => newList(t) }]),
     ...(t.done ? [] : myLists.map(l => ({ label: `Add to list: ${l.name}`, onSelect: () => addToSiteList(l.id, [t.id]) }))),
     { label: t.starred ? 'Unstar' : 'Star', onSelect: () => onTaskStar(t.id), hidden: t.done },
-    { label: 'Add to Doing Now', onSelect: () => addPin('self', t.id, PLAN), hidden: t.done || isPinned('self', t.id) },
-    { label: 'Take off Doing Now', onSelect: () => removePin('self', t.id), hidden: t.done || !isPinned('self', t.id) },
-    { label: 'Day: today', onSelect: () => onTaskDue(t.id, dayShift(0)), hidden: t.done },
-    { label: 'Day: tomorrow', onSelect: () => onTaskDue(t.id, dayShift(1)), hidden: t.done },
-    { label: t.due ? 'Change day…' : 'Pick a day…', onSelect: () => setDayFor(t.id), hidden: t.done },
-    { label: 'Clear the day', onSelect: () => onTaskDue(t.id, undefined), hidden: t.done || !t.due },
     { label: 'Make subtask of…', onSelect: () => openParentPicker(pinKey('self', t.id)), hidden: t.done },
-    ...(onTaskMove && !t.done ? MOVE_TO.map(([id, name]) => ({ label: `Move → ${name}`, onSelect: () => onTaskMove(t.id, id) })) : []),
+    { label: 'Convert to project', onSelect: () => convertToProject(t), hidden: t.done },
+    {
+      label: 'Move to…',
+      hidden: t.done || !onTaskMove,
+      items: MOVE_TO.map(([id, name]) => ({ label: name, onSelect: () => onTaskMove?.(t.id, id) })),
+    },
   ];
   // Dated tasks first (soonest first), then the rest in the order they were added.
   // Tasks moved to another site live in that site's card now.
@@ -244,7 +244,8 @@ export function CapturesPanel({
   // Voice memos get their own foldable list; the tabs keep the typed captures.
   // Voice memos already sorted (Thought / Idea / Reminder / Inspiration) and typed catches live in their own lists.
   const memos = captures.filter(c => c.kind === 'voice' && c.status !== 'dropped' && !catchListOf(c));
-  const typed = captures.filter(c => c.kind !== 'voice' && !catchListOf(c));
+  // Archived / dropped captures of every kind (live ones sit in the catch lists).
+  const typed = captures.filter(c => c.kind !== 'voice' || catchListOf(c) || c.status === 'dropped');
   const patch = onPatch || (() => {});
   // Finished ones are kept on the Self page, not on the Daily Ops card.
   const counts: Record<Tab, number> = Object.fromEntries(
@@ -274,8 +275,7 @@ export function CapturesPanel({
       setTab('tasks');
     } else {
       onAdd({ kind, title, notes, url, focusAreaId: area });
-      showToast(`Captured · ${title.trim()}`);
-      setTab('inbox');
+      showToast(`Captured · ${KIND_LABEL[kind]} list · ${title.trim()}`);
     }
     setTitle('');
     setUrl('');
@@ -462,7 +462,6 @@ export function CapturesPanel({
                   ) : undefined
                 }
               >
-                {dayFor === t.id ? <DueInput due={t.due} onChange={due => onTaskDue(t.id, due)} onClose={() => setDayFor(null)} /> : null}
               </SelfTaskRow>
             );
           })}
@@ -473,7 +472,7 @@ export function CapturesPanel({
 
       <div className="sk-chips sk-captabs" role="tablist" aria-label="Capture status">
         {/* Empty tabs step aside (the open one always shows). */}
-        {TABS.filter(t => t.id === tab || t.id === 'inbox' || t.id === 'tasks' || t.id === 'promoted' || counts[t.id] > 0).map(t => (
+        {TABS.filter(t => t.id === tab || t.id === 'tasks' || counts[t.id] > 0).map(t => (
           <button key={t.id} type="button" role="tab" aria-selected={t.id === tab} onClick={() => setTab(t.id)}>
             {t.label}
             <span className="sk-chipcount">{counts[t.id]}</span>
@@ -489,7 +488,7 @@ export function CapturesPanel({
             return (
               <Row
                 key={l.id}
-                title={l.name}
+                title={open ? <><CountDot />{l.name}</> : l.name}
                 className={isPinned('self', `list:${l.id}`) ? 'self-in-motion' : undefined}
                 value={isPinned('self', `list:${l.id}`) ? 'In Doing now' : undefined}
                 sub={<span className="sk-facts"><span className="sk-fact"><Icon name="steps" size={14} />List · {open} open</span></span>}
@@ -521,14 +520,13 @@ export function CapturesPanel({
                 </>
               }
             >
-              {dayFor === t.id ? <DueInput due={t.due} onChange={due => onTaskDue(t.id, due)} onClose={() => setDayFor(null)} /> : null}
             </SelfTaskRow>
           ))}
         </div>
       ) : (
         <div className="sk-list" role="tabpanel" aria-label={TABS.find(t => t.id === tab)?.label}>
           {visible.length === 0 ? (
-            <p className="sk-empty">{tab === 'inbox' ? 'Inbox clear.' : `Nothing ${tab}.`}</p>
+            <p className="sk-empty">{tab === 'parked' ? 'Nothing archived.' : `Nothing ${tab}.`}</p>
           ) : (
             visible.map(c => {
               const task = c.promotedTo?.source === 'self' ? selfItems.find(i => i.id === c.promotedTo?.taskId) : undefined;
@@ -619,12 +617,12 @@ function SelfTaskRow({
         bind={t.done ? bind : { ...bind, ...pinDragProps(pinKey('self', t.id)) }}
         className={t.done ? 'is-done' : inMotion ? 'self-in-motion' : undefined}
         lead={t.done ? null : <Circle onDone={onDone} label={`Done: ${t.title}`} />}
-        title={t.title}
+        title={t.done ? t.title : <><CountDot />{t.title}</>}
         sub={<>{sub}{inMotion ? <span className="sk-facts">↗ In Doing now</span> : null}</>}
         value={t.due ? dueLabel(t.due) : undefined}
         valueTone={late ? 'late' : undefined}
         onOpen={() => openTaskPanel(pinKey('self', t.id))}
-        hint={[t.title, t.detail, 'Click for details, subtasks and plan · right-click or long-press to star, pin, set a day or move'].filter(Boolean).join(' — ')}
+        hint={[t.title, t.detail, 'Click for details, subtasks and plan · right-click or long-press to star, list, make it a subtask or project, or move it'].filter(Boolean).join(' — ')}
       >
         {t.done ? (
           <div className="sk-ract">
@@ -638,4 +636,9 @@ function SelfTaskRow({
       {menu}
     </>
   );
+}
+
+/** Tiny green dot: this row is one of the open items in the Self count on the site tabs. */
+function CountDot() {
+  return <span className="sk-countdot" title="Counts in the Self total" aria-hidden="true" />;
 }

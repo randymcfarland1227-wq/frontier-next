@@ -4389,3 +4389,26 @@
 .sk-app .sk-todaybar-zoomrow { display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; }
 .sk-app .sk-todaybar-toolslot { display: inline-flex; align-items: center; min-width: 0; }
 .sk-app .sk-todaybar-toolslot:empty { display: none; }
+
+/* 2026-11-19 Daily Brief: give the Action List the room (fewer wrapped titles); tighter Do today / This week / Focus next steps */
+.sk-app .sk-brief .sk-brief-sections { grid-template-columns: minmax(0, 11fr) minmax(0, 9fr); gap: 10px 12px; }
+.sk-app .sk-brief .sk-brief-rest { gap: 8px; }
+.sk-app .sk-brief .sk-bucket { padding: 5px 5px 4px; }
+.sk-app .sk-brief .sk-bucket-head { padding: 0 3px 4px; }
+.sk-app .sk-brief .sk-bucket-empty { padding: 4px 6px 2px; margin: 0 2px; }
+.sk-app .sk-brief .sk-brow-line { padding: 2px 3px 2px 5px; gap: 4px; }
+.sk-app .sk-brief .sk-brow-pin { width: 16px; height: 16px; }
+.sk-app .sk-brief .sk-brow-clear { width: 12px; height: 12px; }
+.sk-app .sk-brief .sk-btag { padding: 1px 4px; }
+.sk-app .sk-brief .sk-brief-open { padding: 5px 4px 5px 9px; }
+.sk-app .sk-brief .sk-brief-done { padding: 0 6px 0 2px; }
+.sk-app .sk-brief .sk-bucket-fold { flex: none; white-space: nowrap; }
+.sk-app .sk-brief .sk-bucket-hint { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+
+/* Split: Refresh sources is a small ↻ beside − % + (its 0-width label overhung the pane's left edge when the size changed). */
+@media (min-width: 521px) {
+  .sk-app #sk-brief .sk-split .sk-todaybar-tools { display: flex; align-items: center; gap: 6px; }
+  .sk-app #sk-brief .sk-split .sk-todaybar-refresh { width: auto; font-size: 0; gap: 0; overflow: hidden; justify-self: auto; }
+}
+/* Split: Daily Rhythm's 4 columns were crushed in a half-width pane; two per row instead. */
+.sk-app .sk-splitcol #sk-rhythm.sk-trio, .sk-app .sk-splitcol #sk-rhythm.sk-trio:has(> .sk-rhythm-stack) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }

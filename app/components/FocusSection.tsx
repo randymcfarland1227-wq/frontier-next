@@ -74,6 +74,8 @@ export type SubTask = {
   due?: string;
   /** A read-only Finance reference, rendered as one row in this list. */
   fin?: { key: string; label: string };
+  /** A task from any site linked into this list (pin key `site:id`); it stays on its site, and checking it here checks it there */
+  pin?: string;
   /** A research task that fills in a Finance item (its amount / payment plan): checking it off asks for what you found. */
   fills?: { key: string; label: string };
   /** Habits lists: the TickTick habit this row shows today's state of (bare id, no "habit-") */
@@ -619,6 +621,13 @@ export function useShortTermFocus() {
   return { now, weeks, ongoing, nutrition, marvel, fitness, open };
 }
 
+/** Site tasks linked into a focus card's or project's lists (pin keys). Linking moves a task: its site's pool hides it. */
+export function useLinkedPins(): Set<string> {
+  const f = useShortTermFocus();
+  const all = [f.now[0], f.weeks[0], f.ongoing[0], f.nutrition[0], f.marvel[0]].flat();
+  return new Set(all.filter((e) => !e.done).flatMap((e) => (e.lists || []).flatMap((l) => l.tasks.map((t) => t.pin).filter(Boolean) as string[])));
+}
+
 export const shortTermSummary = (open: number) =>
   open ? `${count(open, "thing")} to focus on` : "Nothing typed in yet";
 
@@ -955,8 +964,8 @@ function SendToDoing({ id, label, lanes }: { id: string; label: string; lanes: L
 }
 
 /** One short-term focus card's sub-list tasks, folded or open (fold state remembered per card). */
-function FocusTaskGroup({ card, code, tag, lanes, fin, onToggle }: { card: Entry; code: string; tag: string; lanes: LaneMap; fin: ReturnType<typeof useFinSummary>; onToggle: (listId: string, taskId: string) => void }) {
-  const [collapsed, toggle] = useFold(`self-focus-${card.id}`);
+function FocusTaskGroup({ card, code, tag, lanes, fin, onToggle, folded }: { card: Entry; code: string; tag: string; lanes: LaneMap; fin: ReturnType<typeof useFinSummary>; folded?: boolean; onToggle: (listId: string, taskId: string) => void }) {
+  const [collapsed, toggle] = useFold(`self-focus-${card.id}`, folded);
   // Finance links ride along as context rows (amount / plan), never counted as tasks.
   const lists = (card.lists || [])
     .filter(isTaskList)
@@ -992,8 +1001,8 @@ function FocusTaskGroup({ card, code, tag, lanes, fin, onToggle }: { card: Entry
                     type="button"
                     className={`sk-circle${t.done ? " is-on" : ""}`}
                     aria-pressed={t.done}
-                    aria-label={`Mark ${t.text} ${t.done ? "not done" : "done"}`}
-                    onClick={() => onToggle(l.id, t.id)}
+                    aria-label={t.pin ? `Open ${card.title} to check off ${t.text}` : `Mark ${t.text} ${t.done ? "not done" : "done"}`}
+                    onClick={() => (t.pin ? openProject(card.id) : onToggle(l.id, t.id))}
                   >
                     <Icon name="check" size={12} />
                   </button>
@@ -1032,9 +1041,12 @@ export function FocusTaskBoard({ compact, bills }: { compact?: boolean; bills?: 
     ...now.map((card) => ({ card, code: "n", tag: "Right now", items: now, save: saveNow })),
     ...weeks.map((card) => ({ card, code: "w", tag: "Next few weeks", items: weeks, save: saveWeeks })),
     ...ongoing.filter((c) => c.inFocus || c.site === "self").map((card) => ({ card, code: "o", tag: "Ongoing", items: ongoing, save: saveOngoing })),
-  ].filter((g) => !g.card.done).sort((a, b) =>
+  ].filter((g) => !g.card.done && g.card.site !== "self").sort((a, b) =>
     Number(Boolean(lanes[pinKey("self", focusCardId(a.code, a.card.id))]?.lane)) -
     Number(Boolean(lanes[pinKey("self", focusCardId(b.code, b.card.id))]?.lane)));
+  // Projects (made in Self) are their own thing: listed apart, folded, not mixed into the focus tasks.
+  const projects = [...now, ...weeks, ...ongoing].filter((c) => c.site === "self" && !c.done);
+  const saveOf = (c: Entry) => (now.some((x) => x.id === c.id) ? [now, saveNow] as const : weeks.some((x) => x.id === c.id) ? [weeks, saveWeeks] as const : [ongoing, saveOngoing] as const);
   const openCount = groups.reduce((n, g) => n + (g.card.lists || []).filter(isTaskList).reduce((m, l) => m + l.tasks.filter((t) => !t.fin && !t.done).length, 0), 0);
   return (
     <section className={`self-focus-tasks${compact ? " is-compact" : ""}`}>
@@ -1068,6 +1080,32 @@ export function FocusTaskBoard({ compact, bills }: { compact?: boolean; bills?: 
       ) : (
         <p className="local-note">No tasks inside your Short-term focus cards yet. Add them on a card in Today → Short-term focus.</p>
       )}
+      {projects.length ? (
+        <div className="self-projects">
+          <p className="task-split-label">Projects · {projects.length}</p>
+          {projects.map((p) => {
+            const tasks = (p.lists || []).filter(isTaskList).flatMap((l) => l.tasks);
+            const [items, save] = saveOf(p);
+            return (
+              <FocusTaskGroup
+                key={p.id}
+                card={p}
+                code="n"
+                tag={`Project · ${tasks.length} items`}
+                lanes={lanes}
+                fin={fin}
+                folded
+                onToggle={(listId, taskId) =>
+                  save(items.map((c) => (c.id !== p.id ? c : {
+                    ...c,
+                    lists: (c.lists || []).map((l) => (l.id !== listId ? l : { ...l, tasks: l.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t)) })),
+                  })))
+                }
+              />
+            );
+          })}
+        </div>
+      ) : null}
     </section>
   );
 }

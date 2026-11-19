@@ -269,6 +269,10 @@ function financeOptions(ctx: FinCtx): Opt[] {
 }
 
 function taskDone(task: SubTask, ctx: FinCtx) {
+  if (task.pin) {
+    const hit = linkedTask(task.pin, ctx);
+    return hit ? hit.task.status === "done" : task.done;
+  }
   if (!task.fin) return task.done;
   const rows = finRows(task.fin, ctx);
   return rows.length > 0 && rows.every((r) => r.settled && !r.unverified);
@@ -874,10 +878,17 @@ function Detail({
   const p = progressOf(item, ctx);
   const added = addedOf(item);
   const finOpts = financeOptions(ctx);
+  const pinned = new Set([...(item.siteTasks || []), ...lists.flatMap((l) => l.tasks.map((t) => t.pin).filter(Boolean) as string[])]);
+  const taskOpts = Object.entries(ctx.sl?.snapshots || {}).flatMap(([site, snap]) =>
+    (snap?.tasks || [])
+      .filter((t) => t.status !== "done" && t.kind !== "list" && t.kind !== "habit" && !t.id.startsWith("habit-") && !pinned.has(pinKey(site as SourceId, t.id)))
+      .map((t) => ({ key: `pin:${pinKey(site as SourceId, t.id)}`, label: t.title, sub: sourceById[site as SourceId]?.shortName, group: `Tasks · ${sourceById[site as SourceId]?.name || site}` })),
+  );
   const planRef = useRef<HTMLDetailsElement>(null);
   // An odd last list card takes the full width (no empty half beside it).
   const cardLists = lists.filter((x) => x.kind !== "notes" && x.kind !== "habits");
-  const wideId = cardLists.length % 2 ? cardLists[cardLists.length - 1].id : "";
+  const linkedLists = (item.siteLists || []).filter((id) => ctx.sl?.store[id] && !ctx.sl.store[id].gone).length;
+  const wideId = !linkedLists && item.site !== "self" && cardLists.length % 2 ? cardLists[cardLists.length - 1].id : "";
   const lede = (item.note || item.why || "").split(/(?<=[.!?])\s/)[0].slice(0, 160);
   // Money across this card's lists: paid · still to pay · to buy (task purchases)
   const money = { paid: 0, pay: 0, buy: 0, total: 0 };
@@ -961,7 +972,7 @@ function Detail({
     <Dialog
       label={item.title}
       onClose={close}
-      className="sk-fdetail"
+      className={`sk-fdetail${item.site === "self" ? " is-project" : ""}`}
       backClassName="sk-fdetail-back"
       dataSite={item.site || undefined}
     >
@@ -1044,6 +1055,23 @@ function Detail({
                       </button>
                     ) : t.fin ? (
                       <span className={`sk-fin-dot${taskDone(t, ctx) ? " is-on" : ""}`} aria-label={taskDone(t, ctx) ? "Cleared in Finance" : "Linked to Finance"} />
+                    ) : t.pin ? (
+                      <button
+                        type="button"
+                        className={`sk-circle${taskDone(t, ctx) ? " is-on" : ""}`}
+                        aria-pressed={taskDone(t, ctx)}
+                        aria-label={`Mark ${t.text} ${taskDone(t, ctx) ? "not done" : "done"}`}
+                        title="Checks it off on its site too"
+                        onClick={() => {
+                          const at = t.pin!.indexOf(":");
+                          const site = t.pin!.slice(0, at) as SourceId;
+                          const id = t.pin!.slice(at + 1);
+                          if (taskDone(t, ctx)) ctx.sl?.reopen?.(site, id);
+                          else ctx.sl?.complete(site, id);
+                        }}
+                      >
+                        <Icon name="check" size={12} />
+                      </button>
                     ) : <button
                       type="button"
                       className={`sk-circle${t.done ? " is-on" : ""}`}
@@ -1079,6 +1107,11 @@ function Detail({
                       >
                         {t.text}
                       </button>
+                    ) : t.pin ? (
+                      <button type="button" className="sk-fd-taskopen" title="Open its notes, questions and findings" onClick={() => openTaskPanel(t.pin!)}>
+                        {linkedTask(t.pin, ctx)?.task.title || t.text}
+                        <small className="sk-fd-pinsite">{sourceById[t.pin.slice(0, t.pin.indexOf(":")) as SourceId]?.shortName}</small>
+                      </button>
                     ) : (
                       <button
                         type="button"
@@ -1090,7 +1123,7 @@ function Detail({
                         {t.note ? <Icon name="pencil" size={12} className="sk-fd-hasnote" /> : null}
                       </button>
                     )}
-                    {!t.fin ? (
+                    {!t.fin && !t.pin ? (
                       <button
                         type="button"
                         className="sk-fd-buy"
@@ -1104,11 +1137,11 @@ function Detail({
                       >
                         🛒
                       </button>
-                    ) : t.fin.key.startsWith("own:") && ctx.findings?.[t.fin.key]?.buy ? (
+                    ) : t.fin?.key.startsWith("own:") && ctx.findings?.[t.fin.key]?.buy ? (
                       <span className="sk-fd-buytag" title="Task-based purchase">🛒</span>
                     ) : null}
                     <ResearchButton
-                      rkey={t.fin ? ctx.findings?.[t.fin.key]?.rkey || t.fin.key : `focus:${item.id}:${t.id}`}
+                      rkey={t.fin ? ctx.findings?.[t.fin.key]?.rkey || t.fin.key : t.pin || `focus:${item.id}:${t.id}`}
                       title={t.fin?.label || t.text}
                       sub={`${item.title} · ${l.name || "list"}`}
                     />
@@ -1179,13 +1212,17 @@ function Detail({
                 </button>
               </form>
               <SearchPick
-                options={finOpts}
-                label={`Add Finance to ${l.name}`}
-                placeholder="+ Add Finance item to this list"
-                disabled={!finOpts.length}
-                onPick={(o) => addFinance(l, { key: o.key, label: o.label })}
+                options={l.kind === "pay" ? [...finOpts, ...taskOpts] : [...taskOpts, ...finOpts]}
+                label={`Link a task or money item to ${l.name}`}
+                placeholder="+ Link a task or bill from any site"
+                disabled={!finOpts.length && !taskOpts.length}
+                onPick={(o) =>
+                  o.key.startsWith("pin:")
+                    ? patchList(l.id, { tasks: [...l.tasks, { id: uid(), text: o.label, done: false, pin: o.key.slice(4) }] })
+                    : addFinance(l, { key: o.key, label: o.label })
+                }
               />
-              <form
+              {l.kind === "pay" || l.kind === "buy" ? <form
                 className="sk-fc-add sk-fd-own"
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -1207,7 +1244,7 @@ function Detail({
                 <button type="submit" className="sk-btn is-small" disabled={!(ownName[l.id] || "").trim()}>
                   <Icon name="plus" size={14} />
                 </button>
-              </form>
+              </form> : null}
             </section>
           ))}
 
@@ -1407,7 +1444,7 @@ function Detail({
         </div>
 
         <aside className="sk-fd-side">
-          {money.total ? (
+          {money.total && item.site !== "self" ? (
             <section className="sk-fd-box sk-fd-money">
               <h3 className="sk-fd-sideh"><i className="sk-fd-dot is-pay" />Money for this</h3>
               <div className="sk-fd-moneybig"><b>{usd(money.pay + money.buy)}</b> <span>left of {usd(money.total)}</span></div>

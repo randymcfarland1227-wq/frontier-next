@@ -68,8 +68,8 @@ export function CatchLists({ captures, onStatus, onPatch }: {
   const live = captures.filter(c => c.status === 'inbox' || c.status === 'promoted');
   return (
     <div className="sk-catches">
-      <div className="sk-chips" role="tablist" aria-label="Memo and capture categories">
-        {CATCH_LISTS.map(list => <button type="button" role="tab" key={list.id} aria-selected={selected === list.id} onClick={() => setSelected(list.id)}>{list.label} <span>{live.filter(c => catchListOf(c) === list.id).length}</span></button>)}
+      <div className="sk-chips sk-captabs" role="tablist" aria-label="Memo and capture categories">
+        {CATCH_LISTS.map(list => <button type="button" role="tab" key={list.id} aria-selected={selected === list.id} onClick={() => setSelected(list.id)}>{list.label} <span className="sk-chipcount">{live.filter(c => catchListOf(c) === list.id).length}</span></button>)}
       </div>
       {CATCH_LISTS.filter(l => l.id === selected).map(l => (
         <OneList key={l.id} id={l.id} label={l.label} onStatus={onStatus} onPatch={onPatch}

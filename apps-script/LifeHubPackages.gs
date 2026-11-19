@@ -11,7 +11,10 @@ const LIFE_HUB_PACKAGES_URL = 'https://frontier-work-room.randymcfarland1227.wor
 
 const LHP_QUERY = [
   'newer_than:21d -category:promotions -in:sent',
-  '{from:(ups.com OR fedex.com OR usps.com OR informeddelivery.usps.com OR speedx.io OR heymistr.com OR calvinklein.com OR shop.app OR amazon.com)',
+  // Mail forwarded from the second Gmail (Vinted etc.) lands under this label; the parser keeps only
+  // messages with a tracking number or an order number + status, so the whole label is safe to read.
+  '{label:forwarded-from-00-gmail',
+  'from:(ups.com OR fedex.com OR usps.com OR informeddelivery.usps.com OR speedx.io OR heymistr.com OR calvinklein.com OR shop.app OR amazon.com OR vinted.com)',
   'subject:(shipped OR delivered OR "out for delivery" OR "on its way" OR "on the way" OR tracking OR shipment OR "ship notification" OR "delivery" OR "ready for pickup")}',
   '-subject:("made the sale" OR "shipping label" OR "new home" OR "label is ready")',
 ].join(' ');
@@ -85,6 +88,7 @@ function lhpRank_(s) {
 function lhpParseMessage_(m) {
   const subject = m.getSubject() || '';
   const from = (m.getFrom() || '').toLowerCase();
+  if (/informeddelivery/.test(from) || /^your daily digest/i.test(subject)) return lhpParseDigest_(m);
   let body = '';
   try { body = m.getPlainBody() || ''; } catch (e) { body = ''; }
   body = body.replace(/<[^>]+>/g, ' ').replace(/[ \t ͏‌]+/g, ' ');
@@ -157,6 +161,60 @@ function lhpFindTracking_(text, from) {
     });
   }
   return hits;
+}
+
+/**
+ * USPS Informed Delivery daily digest. Its tracking numbers and "Estimated Delivery on" dates are only in
+ * the HTML body, grouped under section headings: Expected Today / Expected 1-2 Days / Awaiting From Sender
+ * / Outbound. Each package's ETA is read from the text after its own number (never a neighbour's).
+ */
+function lhpParseDigest_(m) {
+  let html = '';
+  try { html = m.getBody() || ''; } catch (e) { return []; }
+  const text = html.replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;|&#160;/g, ' ').replace(/\s+/g, ' ');
+  const start = text.search(/PACKAGES\s+View Dashboard/i);
+  if (start < 0) return [];
+  const pk = text.slice(start);
+  const eventAt = m.getDate().toISOString();
+  const today = Utilities.formatDate(m.getDate(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const heads = [];
+  const hre = /(Expected Today|Expected 1-2 Days|Awaiting From Sender|Outbound)/gi;
+  let h;
+  while ((h = hre.exec(pk))) heads.push({ at: h.index, name: h[1].toLowerCase() });
+  const nums = [];
+  const nre = /\b(9[2-5]\d{20}(?:\d{4})?|1Z[0-9A-Z]{16})\b/g;
+  let n;
+  while ((n = nre.exec(pk))) {
+    if (nums.length && nums[nums.length - 1].tracking === n[1]) continue; // number is printed twice
+    nums.push({ tracking: n[1], at: n.index });
+  }
+  const out = [];
+  const seen = {};
+  nums.forEach(function (x, i) {
+    if (seen[x.tracking]) return;
+    seen[x.tracking] = true;
+    let sec = '';
+    heads.forEach(function (hd) { if (hd.at < x.at) sec = hd.name; });
+    if (!sec || sec === 'outbound') return;
+    const nextAt = i + 1 < nums.length ? nums[i + 1].at : pk.length;
+    const own = pk.slice(x.at, Math.min(nextAt, x.at + 300));
+    const em = /Estimated Delivery on:?\s*([A-Za-z]+,?\s+[A-Za-z]{3,9}\.?\s+\d{1,2})/i.exec(own);
+    let eta = em ? lhpDate_(em[1]) : undefined;
+    if (!eta && sec === 'expected today') eta = today;
+    const status = sec === 'awaiting from sender' ? 'shipped' : 'transit';
+    out.push(lhpClean_({
+      tracking: x.tracking,
+      carrier: /^1Z/.test(x.tracking) ? 'UPS' : 'USPS',
+      status: status,
+      eta: eta,
+      last: sec === 'awaiting from sender' ? 'Label created · waiting for USPS pickup (Informed Delivery)'
+        : 'In transit' + (eta ? ' · est. ' + eta : '') + ' (Informed Delivery)',
+      eventAt: eventAt,
+      subject: (m.getSubject() || '').slice(0, 140),
+    }));
+  });
+  return out;
 }
 
 function lhpOrder_(text) {

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useContext,
   useMemo,
   useState,
   type CSSProperties,
@@ -36,7 +37,8 @@ import { setRoleActive, shelfOf } from "../../lib/roleShelves";
 import { DayMenu, shortDue } from "../components/DayMenu";
 import { useRowGesture } from "../components/RowMenu";
 import { SiteIcon } from "../components/SiteIcon";
-import { Circle, FoldGroup, Group, ListHead, Section, type Tone } from "./kit";
+import { Circle, FoldGroup, Group, ListHead, PaneToolSlotContext, Section, type Tone } from "./kit";
+import { createPortal } from "react-dom";
 import { SegTabs } from "./SegTabs";
 import {
   addToSiteList,
@@ -181,7 +183,7 @@ function TaskRow({
   const narrow = !showHabit;
   // Focus cards / ongoing goals this task or list is linked into.
   const goals = useFocusLinks().get(key) || [];
-  const facts = starred || habit || task.tag || due || (narrow && when.text) || goals.length;
+  const facts = habit || task.tag || due || (narrow && when.text) || goals.length;
   return (
     <div
       className={`sk-row${task.status === "done" ? " is-done" : ""}${select?.picked ? " is-picked" : ""}${isList ? " is-list" : ""}`}
@@ -235,18 +237,17 @@ function TaskRow({
           .filter(Boolean)
           .join(" — ")}
       >
-        <span className="sk-rt">{task.title}</span>
+        {/* The star rides on the title line (right of the name), not on a line of its own. */}
+        <span className="sk-rt">
+          {task.title}
+          {starred ? (
+            <span className="sk-fact sk-starred sk-rt-star" title="Starred" aria-label="Starred">
+              <Icon name="star" size={12} />
+            </span>
+          ) : null}
+        </span>
         {facts ? (
           <span className="sk-rs sk-facts">
-            {starred ? (
-              <span
-                className="sk-fact sk-starred"
-                title="Starred"
-                aria-label="Starred"
-              >
-                <Icon name="star" size={12} />
-              </span>
-            ) : null}
             {narrow && when.text ? (
               <span className={when.late ? "sk-fact is-wait" : "sk-fact"}>
                 {when.text}
@@ -1030,9 +1031,12 @@ function SiteBlock({
       {collapsed ? null : (
         <div className="sk-srcbody">
           {/* Self's body is the Self tool itself; other sites' extras (Radall's money due) go below the tasks */}
-          {source.id === "self" || source.id === "ticktick" ? extra : null}
+          {source.id === "self" ? extra : null}
           {extra && source.id === "self" ? null : (
-            <>
+            <div className={source.id === "ticktick" ? "sk-tt-split" : "sk-srcbody-tasks"}>
+              {/* TickTick: habits (rings + its focus) on the left, tasks on the right. */}
+              {source.id === "ticktick" && extra ? <div className="sk-tt-split-l">{extra}</div> : null}
+              <div className="sk-tt-split-r">
               {featuredAbove.length ? (
                 <SiteStarred
                   sourceId={source.id}
@@ -1065,7 +1069,8 @@ function SiteBlock({
                 onStar={onStarTask}
                 split={inline}
               />
-            </>
+              </div>
+            </div>
           )}
           {source.id === "self" || source.id === "ticktick" ? null : extra}
           <SiteShelves snapshot={snapshot} />
@@ -1429,9 +1434,10 @@ export function SitePicker({
   };
   // Same count as Home's site tabs: what's in Doing Now or organized into a focus isn't counted again.
   const countOf = (sid: SourceId) => shownMetric(sid, snapshots[sid], lanes, (k, t) => inFocusPlan(focusLinks, k, t)).value || 0;
-  return (
-    <div className="sk-sitepick">
-      <div className="sk-sitepick-bar">
+  // In a Today pane the selector sits on the tab line beside the − % + size control (same size), not on its own row.
+  const paneHead = useContext(PaneToolSlotContext);
+  const bar = (
+      <div className={`sk-sitepick-bar${paneHead ? " is-inbar" : ""}`}>
         {id ? (
           <button type="button" className="sk-sitepick-back" onClick={() => pick("")} aria-label="Back to all sites" title="Back to all sites">
             <Icon name="chevron" size={12} />
@@ -1450,6 +1456,10 @@ export function SitePicker({
           ))}
         </select>
       </div>
+  );
+  return (
+    <div className="sk-sitepick">
+      {paneHead ? createPortal(bar, paneHead) : paneHead === undefined ? bar : null}
       {id ? (
         <div className="sk-pane" key={id}>
           <SiteBlock

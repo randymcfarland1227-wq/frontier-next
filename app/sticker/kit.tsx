@@ -111,6 +111,8 @@ export type PaneZoom = { zoom: number; set: (v: number) => void; min: number; ma
 export const PaneZoomContext = createContext<PaneZoom | null>(null);
 /** Today panes: the slot on the tab line where a pane's top box puts its buttons (undefined = not in a Today pane). */
 export const PaneHeadContext = createContext<HTMLElement | null | undefined>(undefined);
+/** Today tab line: the spot right beside the − % + size control (Sites puts its site selector there). */
+export const PaneToolSlotContext = createContext<HTMLElement | null | undefined>(undefined);
 
 export function PaneZoomButtons({ zoom, set, min, max, step }: PaneZoom) {
   return (

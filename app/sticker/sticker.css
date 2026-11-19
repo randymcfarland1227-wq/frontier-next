@@ -4412,3 +4412,9 @@
 }
 /* Split: Daily Rhythm's 4 columns were crushed in a half-width pane; two per row instead. */
 .sk-app .sk-splitcol #sk-rhythm.sk-trio, .sk-app .sk-splitcol #sk-rhythm.sk-trio:has(> .sk-rhythm-stack) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+/* Daily Brief rows: the origin site rides at the end of the task name (one line), not on a line of its own. */
+.sk-app .sk-brief-open { display: block; }
+.sk-app .sk-brief-open > .sk-brief-title, .sk-app .sk-brief-open > small { display: inline; }
+.sk-app .sk-brief-open > small { white-space: nowrap; }
+.sk-app .sk-brief-open > small::before { content: ' · '; }

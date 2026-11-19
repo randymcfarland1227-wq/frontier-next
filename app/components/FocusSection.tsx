@@ -1031,7 +1031,7 @@ export function FocusTaskBoard({ compact, bills }: { compact?: boolean; bills?: 
   const groups: Array<{ card: Entry; code: string; tag: string; items: Entry[]; save: (e: Entry[]) => void }> = [
     ...now.map((card) => ({ card, code: "n", tag: "Right now", items: now, save: saveNow })),
     ...weeks.map((card) => ({ card, code: "w", tag: "Next few weeks", items: weeks, save: saveWeeks })),
-    ...ongoing.filter((c) => c.inFocus).map((card) => ({ card, code: "o", tag: "Ongoing", items: ongoing, save: saveOngoing })),
+    ...ongoing.filter((c) => c.inFocus || c.site === "self").map((card) => ({ card, code: "o", tag: "Ongoing", items: ongoing, save: saveOngoing })),
   ].filter((g) => !g.card.done).sort((a, b) =>
     Number(Boolean(lanes[pinKey("self", focusCardId(a.code, a.card.id))]?.lane)) -
     Number(Boolean(lanes[pinKey("self", focusCardId(b.code, b.card.id))]?.lane)));

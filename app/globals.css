@@ -5265,3 +5265,8 @@ button.bal-led-row:hover { background: color-mix(in srgb, var(--ev, #0f8a7e) 8%,
 }
 .sk-app .self-items-column [role="tabpanel"][aria-label="Tasks"] { display: flex; flex-direction: column; }
 .sk-app .self-items-column [role="tabpanel"][aria-label="Tasks"] > .self-in-motion { order: 1; }
+/* Home site cards and split panes have their own available width. */
+.self-workspace-container { container: self-workspace / inline-size; min-width: 0; }
+@container self-workspace (max-width: 760px) {
+  .self-workspace { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+}

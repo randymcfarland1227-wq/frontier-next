@@ -44,7 +44,6 @@ import { ScheduleSection } from "./ScheduleSection";
 import { KitBillRow } from "./BillsList";
 import {
   FocusSection,
-  FocusTaskBoard,
   ShortTermFocus,
   shortTermSummary,
   useShortTermFocus,
@@ -477,15 +476,9 @@ export function HomeView({
   // Per-site body extras: Self = captures | focus tasks, Radall = money due, TickTick = rings (Home's site tabs and Today › Sites).
   const siteExtra = Object.fromEntries(SITE_ROWS.flatMap(r => r.ids).map(id => [id, <div key={id}>
             {id === 'self' ? (
-              // Self tasks | the tasks inside Short-term focus cards, side by side (stacks only when the box is narrow).
-              <div className="sk-self-split">
-                <div className="sk-self-split-grid">
-                  <div>{capturesPanel}</div>
-                  <div><FocusTaskBoard compact bills={bills} /></div>
-                </div>
-              </div>
+              capturesPanel
             ) : id === 'radall' ? (bills.length ? financeBills : null) : id === 'ticktick' ? ticktickRings : null}
-            <AssignedFocus target={id} focus={shortTerm} events={linkItems} bills={bills} openFinance={(debtId, tab) => { requestOpenDebt(debtId, tab); enter("money"); }} />
+            {id === 'self' ? null : <AssignedFocus target={id} focus={shortTerm} events={linkItems} bills={bills} openFinance={(debtId, tab) => { requestOpenDebt(debtId, tab); enter("money"); }} />}
           </div>]));
   const renderTab = (t: TodayTab, pane = 0) =>
         t === "rhythm" ? (

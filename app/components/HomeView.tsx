@@ -51,7 +51,7 @@ import {
 import { HomeTop } from "../sticker/HomeTop";
 import { MoneyZoom } from "./MoneyZoom";
 import { HubBoard } from "./HubBoard";
-import { ListHead, PaneHeadContext, PaneZoomButtons, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
+import { ListHead, PaneHeadContext, PaneToolSlotContext, PaneZoomButtons, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
 import { CapPane } from "../sticker/CapPane";
 import { SegTabs } from "../sticker/SegTabs";
 import { readSaved, writeSaved } from "../../lib/storage";
@@ -303,6 +303,12 @@ export function HomeView({
     () => [0, 1, 2].map((i) => (el: HTMLElement | null) => setPaneSlots((s) => (s[i] === el ? s : s.map((x, j) => (j === i ? el : x))))),
     [],
   );
+  // Beside each tab line's − % + control (Sites' selector goes there).
+  const [toolSlots, setToolSlots] = useState<(HTMLElement | null)[]>([null, null, null]);
+  const toolRefs = useMemo(
+    () => [0, 1, 2].map((i) => (el: HTMLElement | null) => setToolSlots((s) => (s[i] === el ? s : s.map((x, j) => (j === i ? el : x))))),
+    [],
+  );
   const [todayTab2, setTodayTab2] = useState<TodayTab>(() => {
     const saved = readSaved<string>("sk-today-tab2", "calendar");
     return TODAY_TABS.some(([id]) => id === saved)
@@ -454,7 +460,10 @@ export function HomeView({
         {tools ? <span className="sk-todaybar-div" aria-hidden="true" /> : null}
         {tools ? (
           <div className="sk-todaybar-tools">
-            {zoomEl}
+            <span className="sk-todaybar-zoomrow">
+              {zoomEl}
+              <span className="sk-todaybar-toolslot" ref={toolRefs[slot]} />
+            </span>
             {refresh && onRefresh ? (
               <button
                 type="button"
@@ -644,13 +653,13 @@ export function HomeView({
               <div key={i} className="sk-splitcol">
                 {/* Money has its own − / + (it starts at 60%), so the pane zoom leaves it alone. */}
                 {todayBar(t, pick, t === "money" ? <MoneyZoom pane /> : <PaneZoomButtons zoom={splitZoom[i]} set={(v) => setSplitZoom(i, v)} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, i === 0, i + 1)}
-                <PaneHeadContext.Provider value={paneSlots[i + 1]}>
+                <PaneHeadContext.Provider value={paneSlots[i + 1]}><PaneToolSlotContext.Provider value={toolSlots[i + 1]}>
                   <div className="sk-splitzoom" style={t === "money" || splitZoom[i] === 100 ? undefined : { zoom: splitZoom[i] / 100 }}>
                     <CapPane key={t} cap="split" label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>
                       {renderTab(t, i + 1)}
                     </CapPane>
                   </div>
-                </PaneHeadContext.Provider>
+                </PaneToolSlotContext.Provider></PaneHeadContext.Provider>
               </div>
             ))}
           </div>
@@ -660,13 +669,13 @@ export function HomeView({
             {todayBar(tab, pickTodayTab, tab === "money"
               ? <PaneZoomButtons zoom={moneyZoom} set={setMoneyZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />
               : <PaneZoomButtons zoom={singleZoom} set={setSingleZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, true, 0)}
-            <PaneHeadContext.Provider value={paneSlots[0]}>
+            <PaneHeadContext.Provider value={paneSlots[0]}><PaneToolSlotContext.Provider value={toolSlots[0]}>
               <div className="sk-splitzoom" style={(tab === "money" ? moneyZoom : singleZoom) === 100 ? undefined : { zoom: (tab === "money" ? moneyZoom : singleZoom) / 100 }}>
                 <CapPane key={tab} cap="page" label={TODAY_TABS.find(([id]) => id === tab)?.[1] || "Today"}>
                   {renderTab(tab)}
                 </CapPane>
               </div>
-            </PaneHeadContext.Provider>
+            </PaneToolSlotContext.Provider></PaneHeadContext.Provider>
           </>
         )}
       </Section>

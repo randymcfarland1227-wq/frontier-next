@@ -14,7 +14,7 @@ import { MenuRow, useRowMenu, type RowMenuItem } from "./RowMenu";
 import { useFold } from "./Collapsible";
 import { Icon } from "../sticker/Icon";
 import { deleteRemote, docTag, downloadRef, fetchRefBlob, formatSize, linkLabel, normalizeUrl, openRef, sortRefs, uploadRef, type FocusRef } from "../../lib/focusRefs";
-import { openTaskPanel, pinKey } from "../../lib/priorityPins";
+import { openTaskPanel, pinKey, unpin, usePriorityPins } from "../../lib/priorityPins";
 import { openDebtPop } from "./DebtPop";
 import { FindingPop, type FindingTarget } from "./FindingPop";
 import { addOwnItem, findingOf, ownItems, planLine, planShort, setFinding, useFindings, type FindingStore, type PlanState } from "../../lib/finFindings";
@@ -949,12 +949,21 @@ function Detail({
     }
     update({ done: !item.done });
   };
+  // Doing Now pins a whole card as `self:fcard:<code>:<id>`; taking it off there must never delete the card.
+  const { lanes: doingLanes } = usePriorityPins();
+  const doingKey = ["n", "w", "o"].map((c) => `self:fcard:${c}:${item.id}`).find((k) => doingLanes[k]?.lane);
+  const deleteCard = () => {
+    if (!window.confirm(`Delete the card “${item.title}” and every list and task on it?\n\nThis can't be undone.${doingKey ? " To only take it off Doing Now, use “Take off Doing Now” instead." : ""}`)) return;
+    remove();
+    close();
+  };
   const cardMenu = useRowMenu(
     () => [
       { label: "Plan and settings…", onSelect: () => { if (planRef.current) { planRef.current.open = true; planRef.current.scrollIntoView({ behavior: "smooth", block: "start" }); } } },
       { label: item.inFocus ? "Take out of Short-term focus" : "Show in Short-term focus", hidden: !item.ongoing, on: Boolean(item.inFocus), onSelect: () => update({ inFocus: !item.inFocus }) },
       { label: item.done ? "Marked done — undo" : "Mark the whole focus done", on: Boolean(item.done), onSelect: markDone },
-      { label: "Remove this focus", danger: true, onSelect: () => { remove(); close(); } },
+      { label: "Take off Doing Now (stays here)", hidden: !doingKey, onSelect: () => { if (doingKey) unpin(doingKey); } },
+      { label: "Delete this card…", danger: true, onSelect: deleteCard },
     ],
     item.title,
   );
@@ -1700,12 +1709,9 @@ function Detail({
           <button
             type="button"
             className="sk-btn is-small is-quiet"
-            onClick={() => {
-              remove();
-              close();
-            }}
+            onClick={deleteCard}
           >
-            Remove this focus
+            Delete this card…
           </button>
         </footer>
       {(() => {

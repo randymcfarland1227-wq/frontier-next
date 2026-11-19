@@ -1061,7 +1061,8 @@ export function PriorityBoard({
                 }
           }
           onDelete={
-            openItem.id.startsWith("list:")
+            // Focus card / list / task pins live on their card: Doing Now can only take them off, never delete.
+            openItem.id.startsWith("list:") || isFocusPinId(openItem.id) || isFocusPinId(openItem.id.replace(/^self:/, ""))
               ? undefined
               : () => {
                   if (openItem.id.startsWith("self:")) removeItem("self", openItem.id.slice(5));

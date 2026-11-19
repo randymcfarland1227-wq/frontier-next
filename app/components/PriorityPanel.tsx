@@ -5,7 +5,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties
 import { createPortal } from 'react-dom';
 import type { FeaturedItem, SourceId } from '../../lib/types';
 import { sourceById } from '../../lib/sources';
-import { DECK, PLAN, updatePinDetails, type BeforeStep, type Lane, type LaneEntry } from '../../lib/priorityPins';
+import { DECK, PLAN, linkSubtask, openTaskPanel, unlinkSubtask, updatePinDetails, type BeforeStep, type Lane, type LaneEntry } from '../../lib/priorityPins';
 import { LEVEL_LABEL, type Level } from '../../lib/featuredLevels';
 import { LevelDot } from './LevelDot';
 import { CriticalFlag } from './CriticalFlag';
@@ -58,7 +58,16 @@ export function PriorityPanel({
   close,
   lock,
   lockOptions,
+  links,
 }: {
+  /** Linked subtasks: tasks from any site that can be linked in, how each one stands, how to check one off,
+   *  and the task this one is itself linked into (if any) */
+  links?: {
+    options: PickOpt[];
+    status: (key: string) => { title?: string; site?: string; done: boolean };
+    finish: (key: string) => void;
+    parent?: { key: string; title: string };
+  };
   /** Its lock, worked out (open or not, and what it waits on) */
   lock?: LockState;
   /** What a lock can wait on: other tasks and site lists */
@@ -110,7 +119,7 @@ export function PriorityPanel({
   const originSteps = item.steps || [];
   const allSubs = originSteps.length + subs.length;
   const fin = useFinLinker(bills);
-  const stepDone = (b: BeforeStep) => (b.fin ? fin.status(b.fin).settled : b.done);
+  const stepDone = (b: BeforeStep) => (b.pin ? Boolean(links?.status(b.pin).done) : b.fin ? fin.status(b.fin).settled : b.done);
   const subsDone = originSteps.filter(x => x.done).length + subs.filter(stepDone).length;
   const tools = useRowMenu([
     { label: 'Critical', on: critical, onSelect: onToggleCritical },
@@ -371,6 +380,16 @@ export function PriorityPanel({
               </span>
             ) : null}
           </h3>
+          {links?.parent ? (
+            <p className="plan-linked-parent">
+              <button type="button" className="sk-link" onClick={() => openTaskPanel(links.parent!.key)} title="Open the task this one is counted under">
+                ↳ Linked to: {links.parent.title}
+              </button>
+              <button type="button" className="sk-link" onClick={() => unlinkSubtask(item.key)} title="Back to its own site's count">
+                Unlink
+              </button>
+            </p>
+          ) : null}
           {originSteps.length ? (
             <ul className="plan-before-list plan-subs-list plan-origin-steps">
               {originSteps.map(step => (
@@ -386,6 +405,24 @@ export function PriorityPanel({
           {subs.length ? (
             <ul className="plan-before-list plan-subs-list">
               {subs.map(step => {
+                if (step.pin) {
+                  const ls = links?.status(step.pin);
+                  const pin = step.pin;
+                  const done = stepDone(step);
+                  return (
+                    <MenuRow key={step.id} className={`${done ? 'is-done' : ''} is-linked`} title={ls?.title || step.text}
+                      items={[
+                        { label: 'Open its details', onSelect: () => openTaskPanel(pin) },
+                        { label: 'Unlink (back to its own site)', danger: true, onSelect: () => unlinkSubtask(pin) },
+                      ]}>
+                      <label title={done ? 'Done on its site' : `Check off on ${ls?.site || 'its site'}`}>
+                        <input type="checkbox" checked={done} disabled={done || !links} onChange={() => links?.finish(pin)} />
+                        <span>{ls?.title || step.text}</span>
+                      </label>
+                      <small className="plan-fin-tag">↳ linked · {ls?.site || 'site'}</small>
+                    </MenuRow>
+                  );
+                }
                 const st = step.fin ? fin.status(step.fin) : null;
                 const done = stepDone(step);
                 const settable = step.fin ? fin.canSettle(step.fin.key) : true;
@@ -441,6 +478,18 @@ export function PriorityPanel({
             />
             <small>Tip: 🛒 on a subtask makes it a task purchase (Money › Purchases › Task-based).</small>
           </div>
+          {links ? (
+            <div className="plan-fin-add">
+              <SearchPick
+                options={links.options.filter(o => o.key !== item.key && !subs.some(b => b.pin === o.key))}
+                label="Link a task from any site as a subtask"
+                placeholder="+ Link a task (an email, a Self task…)"
+                disabled={!links.options.length}
+                onPick={o => linkSubtask(item.key, o.key, o.label)}
+              />
+              <small>A linked task stays on its site, marked “Linked to”, and only this task counts.</small>
+            </div>
+          ) : null}
         </section>
 
         <section className="plan-panel-sec plan-panel-property plan-panel-note">

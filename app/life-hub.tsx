@@ -126,7 +126,8 @@ import { hubCardDues, useExtraCards } from '../lib/extraCards';
 import { FinanceTaskAdd } from './components/FinanceTaskAdd';
 import { useMoneyMeta } from '../lib/moneyMeta';
 import { payPlanDues, usePayPlans } from '../lib/payPlans';
-import { usePriorityPins } from '../lib/priorityPins';
+import { linkedChildren, usePriorityPins } from '../lib/priorityPins';
+import { titlesByKey, withLinkedShelves } from '../lib/linkedSubtasks';
 import { applyBillEdits, useBillEdits } from '../lib/billEdits';
 import { crossOffEdit, loadCachedMoney, moneyBillDues, parseMoney, pullMoneySnapshot, renameEdits, rowChangeEdits, saveMoneyEdits, type CellEdit, type MoneySnapshot } from '../lib/money';
 import { lockNow } from '../lib/locks';
@@ -609,6 +610,8 @@ export function LifeHub() {
     window.addEventListener(FOCUS_LIST_EVENT, reload);
     return () => window.removeEventListener(FOCUS_LIST_EVENT, reload);
   }, []);
+  const { lanes: priorityLanes } = usePriorityPins();
+  const subtaskLinks = useMemo(() => linkedChildren(priorityLanes), [priorityLanes]);
   const visibleSnapshots = useMemo(() => {
     const out = { ...baseSnapshots };
     // Removed rows (not done) leave every list and count.
@@ -684,9 +687,12 @@ export function LifeHub() {
     if (out.move && ongoingIds.length) {
       out.move = { ...out.move, featured: out.move.featured.filter(f => !(f.completable === false && ongoingIds.includes(`move-goal-${f.id}`))) };
     }
+    // Linked subtasks: they stay on their site, marked, and only their parent counts.
+    const titles = titlesByKey(out);
+    const parentTitle = (key: string) => priorityLanes[key]?.title || titles.get(key) || 'another task';
     // Lists: their tasks leave the pool and each list stands in as one task.
-    return applySiteLists(out, siteListStore);
-  }, [baseSnapshots, selfItems, taskTags, hiddenItems, roleActive, ongoingIds, siteListStore]);
+    return applySiteLists(withLinkedShelves(out, subtaskLinks, parentTitle), siteListStore);
+  }, [baseSnapshots, selfItems, taskTags, hiddenItems, roleActive, ongoingIds, siteListStore, subtaskLinks, priorityLanes]);
 
   // One-time: Move OS's three goals become ongoing goals (shown in Today and on the Move page as
   // "Moving goals"), and the physical goals become the first fitness focus. Deleting a card keeps it deleted.
@@ -905,7 +911,6 @@ export function LifeHub() {
 
   // Dated tasks for the calendar: Self tasks with a day, and Priority items given a day there
   // (that day stays in Priority — it never goes back to the task's own site).
-  const { lanes: priorityLanes } = usePriorityPins();
   const calTasks = useMemo(() => {
     const out: CalTask[] = selfItems
       .filter(i => i.due)

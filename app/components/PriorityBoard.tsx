@@ -10,6 +10,9 @@ import {
   DECK,
   PLAN,
   OPEN_TASK_EVENT,
+  LINK_PARENT_EVENT,
+  linkSubtask,
+  linkedChildren,
   openTaskPanel,
   arrangeDeck,
   deckSlotKey,
@@ -41,6 +44,9 @@ import { SiteIcon } from "./SiteIcon";
 import { PriorityPanel, type PriorityItem } from "./PriorityPanel";
 import { lockState, useHabitCounts, type LockState } from "../../lib/locks";
 import { loadLedger } from "../../lib/completions";
+import { taskDone } from "../../lib/locks";
+import { SearchPick } from "../sticker/SearchPick";
+import { LINKED_SHELF } from "../../lib/linkedSubtasks";
 import { DayMenu } from "./DayMenu";
 import { MenuRow } from "./RowMenu";
 import { countdown, fromDayKey, money, type BillDue } from "../../lib/schedule";
@@ -199,6 +205,13 @@ export function PriorityBoard({
     window.addEventListener(OPEN_TASK_EVENT, open);
     return () => window.removeEventListener(OPEN_TASK_EVENT, open);
   }, []);
+  // "Make subtask of…" on a row: pick the task it gets linked into.
+  const [linkFor, setLinkFor] = useState<string | null>(null);
+  useEffect(() => {
+    const open = (e: Event) => setLinkFor(String((e as CustomEvent).detail || "") || null);
+    window.addEventListener(LINK_PARENT_EVENT, open);
+    return () => window.removeEventListener(LINK_PARENT_EVENT, open);
+  }, []);
   // Row whose 📅 day line is open
   const [dayFor, setDayFor] = useState<string | null>(null);
 
@@ -235,6 +248,12 @@ export function PriorityBoard({
       const have = new Set(cur.tasks.map((t) => t.id));
       const extra = base.tasks.filter((t) => l.tasks.includes(t.id) && !have.has(t.id));
       if (extra.length) withMembers[l.site] = { ...cur, tasks: [...cur.tasks, ...extra] };
+    }
+    // Tasks linked into another task as subtasks sit on a shelf, but keep their panel and can be checked off.
+    for (const id of Object.keys(withMembers) as SourceId[]) {
+      const cur = withMembers[id];
+      const linked = cur?.shelves?.find((x) => x.id === LINKED_SHELF)?.items || [];
+      if (cur && linked.length) withMembers[id] = { ...cur, tasks: [...cur.tasks, ...linked] };
     }
     return buildCatalog(withMembers, bills);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -531,6 +550,12 @@ export function PriorityBoard({
     );
 
   const openItem = openKey ? catalog.get(openKey) : undefined;
+  const subLinks = linkedChildren(lanes);
+  const titleOfKey = (key: string) => lanes[key]?.title || catalog.get(key)?.title;
+  const taskPickOpts = (skip: string) =>
+    [...catalog.values()]
+      .filter((c) => c.key !== skip && !c.key.startsWith("radall:bill:") && !c.id.startsWith("list:"))
+      .map((c) => ({ key: c.key, label: c.title, sub: sourceById[c.source]?.shortName }));
   const openLane: Lane | null = openKey
     ? ((lanes[openKey]?.lane as Lane | null) ??
       (criticals.includes(openKey) ? DECK : null))
@@ -993,6 +1018,20 @@ export function PriorityBoard({
             tasks: [...catalog.values()].filter((c) => c.key !== openItem.key).map((c) => ({ key: c.key, label: c.title, sub: sourceById[c.source]?.shortName })),
             lists: Object.values(sl.store).filter((l) => l && !l.gone).map((l) => ({ key: l.id, label: l.name, sub: sourceById[l.site]?.shortName })),
           }}
+          links={{
+            options: taskPickOpts(openItem.key).filter((o) => !subLinks.has(o.key) && o.key !== subLinks.get(openItem.key)),
+            status: (key) => {
+              const c = catalog.get(key);
+              return { title: c?.title, site: c ? sourceById[c.source]?.shortName : undefined, done: !c || taskDone(ledgerNow, key) };
+            },
+            finish: (key) => {
+              const c = catalog.get(key);
+              if (c) finish(c);
+            },
+            ...(subLinks.get(openItem.key)
+              ? { parent: { key: subLinks.get(openItem.key)!, title: titleOfKey(subLinks.get(openItem.key)!) || "another task" } }
+              : {}),
+          }}
           lane={openLane}
           level={levelOf(openItem.source, openItem.id)}
           critical={isCritical(openItem.source, openItem.id)}
@@ -1038,6 +1077,27 @@ export function PriorityBoard({
           }}
           close={() => setOpenKey(null)}
         />
+      ) : null}
+      {linkFor ? (
+        <Dialog label="Make it a subtask" onClose={() => setLinkFor(null)} className="sk-listdlg sk-linkdlg">
+          <header className="sk-dialog-head">
+            <Icon name="steps" size={18} />
+            <h3 className="sk-fd-title">Make “{titleOfKey(linkFor) || "this task"}” a subtask of…</h3>
+            <button type="button" className="sk-btn is-small is-icon" onClick={() => setLinkFor(null)} aria-label="Close">
+              <Icon name="close" size={14} />
+            </button>
+          </header>
+          <SearchPick
+            options={taskPickOpts(linkFor).filter((o) => subLinks.get(o.key) !== linkFor)}
+            label="Pick the main task"
+            placeholder="Search tasks on every site…"
+            onPick={(o) => {
+              linkSubtask(o.key, linkFor, titleOfKey(linkFor) || linkFor);
+              setLinkFor(null);
+            }}
+          />
+          <p className="sk-fd-hint">It stays on its site, marked “Linked to”, and only the main task counts.</p>
+        </Dialog>
       ) : null}
     </div>
   );

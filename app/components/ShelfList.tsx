@@ -32,6 +32,7 @@ export function ShelfList({ snapshot, compact = false }: { snapshot: SourceSnaps
                     {t.title}
                   </span>
                 )}
+                {t.linkedTo ? <small className="shelf-linked">↳ Linked to: {t.linkedTo}</small> : null}
                 {shelfOf(t.id) ? (
                   <button
                     type="button"

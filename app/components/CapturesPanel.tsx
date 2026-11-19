@@ -19,7 +19,7 @@ import { Circle, ListHead, Row, Tag } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
 import { VoiceMemoList } from './VoiceMemoList';
 import { CatchLists, catchPatch } from './CatchLists';
-import { PLAN, openTaskPanel, pinDragProps, pinKey, usePriorityPins } from '../../lib/priorityPins';
+import { PLAN, openParentPicker, openTaskPanel, pinDragProps, pinKey, usePriorityPins } from '../../lib/priorityPins';
 import { addOngoingGoal } from '../../lib/ongoingGoals';
 import { addToSiteList, createSiteList, listOfTask, openSiteList, useSiteListStore } from '../../lib/siteLists';
 
@@ -222,6 +222,7 @@ export function CapturesPanel({
     { label: 'Day: tomorrow', onSelect: () => onTaskDue(t.id, dayShift(1)), hidden: t.done },
     { label: t.due ? 'Change day…' : 'Pick a day…', onSelect: () => setDayFor(t.id), hidden: t.done },
     { label: 'Clear the day', onSelect: () => onTaskDue(t.id, undefined), hidden: t.done || !t.due },
+    { label: 'Make subtask of…', onSelect: () => openParentPicker(pinKey('self', t.id)), hidden: t.done },
     ...(onTaskMove && !t.done ? MOVE_TO.map(([id, name]) => ({ label: `Move → ${name}`, onSelect: () => onTaskMove(t.id, id) })) : []),
   ];
   // Dated tasks first (soonest first), then the rest in the order they were added.

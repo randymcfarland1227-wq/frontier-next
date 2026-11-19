@@ -27,7 +27,7 @@ import type { FocusRef } from "../../lib/focusRefs";
 import { activePursuits, type GoalLink } from "../../lib/goalLinks";
 import { assignedFocusLists, focusListView, type FocusSectionId } from "../../lib/focusRouting";
 import flowMap from "../../public/data/flow-map.json";
-import { DECK, pinKey, placePin, unpin, usePriorityPins, type LaneMap } from "../../lib/priorityPins";
+import { DECK, linkedChildren, pinKey, placePin, unpin, usePriorityPins, type LaneMap } from "../../lib/priorityPins";
 import { focusCardId, focusListId, focusTaskId } from "../../lib/focusPins";
 
 type Snaps = Record<SourceId, SourceSnapshot>;
@@ -624,8 +624,11 @@ export function useShortTermFocus() {
 /** Site tasks linked into a focus card's or project's lists (pin keys). Linking moves a task: its site's pool hides it. */
 export function useLinkedPins(): Set<string> {
   const f = useShortTermFocus();
+  const { lanes } = usePriorityPins();
   const all = [f.now[0], f.weeks[0], f.ongoing[0], f.nutrition[0], f.marvel[0]].flat();
-  return new Set(all.filter((e) => !e.done).flatMap((e) => (e.lists || []).flatMap((l) => l.tasks.map((t) => t.pin).filter(Boolean) as string[])));
+  const pins = all.filter((e) => !e.done).flatMap((e) => (e.lists || []).flatMap((l) => l.tasks.map((t) => t.pin).filter(Boolean) as string[]));
+  // …and tasks linked into another task as subtasks: only the parent counts.
+  return new Set([...pins, ...linkedChildren(lanes).keys()]);
 }
 
 export const shortTermSummary = (open: number) =>

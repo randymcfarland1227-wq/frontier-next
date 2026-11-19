@@ -765,6 +765,16 @@ function SiteShelves({ snapshot }: { snapshot: SourceSnapshot }) {
                         {t.title}
                       </span>
                     )}
+                    {t.linkedTo ? (
+                      <button
+                        type="button"
+                        className="sk-facts sk-linkedto"
+                        onClick={() => openTaskPanel(pinKey(snapshot.source as SourceId, t.id))}
+                        title="Counted under that task, not here. Click to see the link or unlink it."
+                      >
+                        ↳ Linked to: {t.linkedTo}
+                      </button>
+                    ) : null}
                   </span>
                   <span className="sk-rv">
                     {shelfOf(t.id) ? (

@@ -35,6 +35,8 @@ export type FeaturedItem = {
   tag?: string;
   /** The origin's own steps, shown as the task's subtasks */
   steps?: OriginStep[];
+  /** Linked into another task as a subtask (that task's title): kept off this site's counts */
+  linkedTo?: string;
 };
 
 export type TaskItem = {
@@ -61,6 +63,8 @@ export type TaskItem = {
   tag?: string;
   /** The site asks to keep it off the open count (Resale: 'prep' decision, 'waiting' on an offer) */
   shelf?: string;
+  /** Linked into another task as a subtask (that task's title): kept off this site's counts */
+  linkedTo?: string;
   /** The origin's own steps, shown as the task's subtasks */
   steps?: OriginStep[];
 };

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useId, useState } from 'react';
-import { DECK, placePin, updatePinDetails, usePriorityPins } from '../../lib/priorityPins';
+import { DECK, linkedChildren, openParentPicker, placePin, unlinkSubtask, updatePinDetails, usePriorityPins } from '../../lib/priorityPins';
 import { MOVE_TARGETS } from '../../lib/siteMoves';
 import { openResearch } from '../../lib/research';
 
@@ -146,6 +146,15 @@ export function DayMenu({
           ↩ Back to {shelf.label}
         </button>
       ) : null}
+      {linkedChildren(lanes).has(itemKey) ? (
+        <button type="button" className="day-menu-btn" onClick={() => { unlinkSubtask(itemKey); onClose(); }} title="Back to this site's own count">
+          ↳ Unlink from its main task
+        </button>
+      ) : (
+        <button type="button" className="day-menu-btn" onClick={() => { openParentPicker(itemKey); onClose(); }} title="Link it inside another task: it stays here, marked, and only that task counts">
+          ↳ Make subtask of…
+        </button>
+      )}
       {backToSelf ? (
         <button type="button" className="day-menu-btn" onClick={backToSelf} title="Move it back to the Self card">
           ↩ Back to Self

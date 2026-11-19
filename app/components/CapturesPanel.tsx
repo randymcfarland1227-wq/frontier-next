@@ -2,6 +2,7 @@
 
 import type { BillDue } from '../../lib/schedule';
 import { addSelfProject } from '../../lib/selfProjects';
+import type { SourceId } from '../../lib/types';
 import { FocusTaskBoard, useLinkedPins } from './FocusSection';
 import { BulkAdd } from './BulkAdd';
 import { FormEvent, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -33,6 +34,8 @@ export const MOVE_TO: Array<[string, string]> = [
   ['resale', 'Resale Hub'],
   ['candle', 'Peculiar Candle'],
 ];
+
+const siteName = (id: string) => MOVE_TO.find(([x]) => x === id)?.[1] || 'Self';
 
 type Tab = CaptureStatus | 'tasks';
 type Kind = 'project' | 'task' | 'log' | 'ongoing' | CaptureKind;
@@ -137,7 +140,7 @@ export function CapturesPanel({
   /** Re-sort a capture (voice memo type or typed kind) into another catch list */
   onPatch?: (id: string, patch: Partial<Capture>) => void;
   onPromote: (capture: Capture) => void;
-  onAddTask: (title: string, detail: string, focusAreaId: string, due?: string) => void;
+  onAddTask: (title: string, detail: string, focusAreaId: string, due?: string, home?: string) => void;
   /** Record something already done (off-site) so it counts */
   onLogTask: (title: string, detail: string, focusAreaId: string, at: string) => void;
   onTaskDone: (id: string) => void;
@@ -153,6 +156,8 @@ export function CapturesPanel({
   const [bulk, setBulk] = useState(false);
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
+  /** Site a new task/project is made on ('' = Self) */
+  const [home, setHome] = useState('');
   const [notes, setNotes] = useState('');
   const [area, setArea] = useState('');
   const [goalSite, setGoalSite] = useState('');
@@ -257,14 +262,14 @@ export function CapturesPanel({
       setDoneDay(localDay());
       setTab('tasks');
     } else if (kind === 'project') {
-      addSelfProject(title, notes, why, url);
-      showToast(`Project added · ${title.trim()}`);
+      addSelfProject(title, notes, why, '', (home || 'self') as SourceId);
+      showToast(`Project added${home ? ` on ${siteName(home)}` : ''} · ${title.trim()}`);
     } else if (kind === 'ongoing') {
       addOngoingGoal({ title, note: notes, why, site: goalSite });
       showToast(`Ongoing goal · ${title.trim()} → Today · Short-term focus`);
     } else if (kind === 'task') {
-      onAddTask(title, [notes, url].filter(Boolean).join('\n'), area, taskDay || undefined);
-      showToast(`Added to Self · ${title.trim()}`);
+      onAddTask(title, notes, area, taskDay || undefined, home || undefined);
+      showToast(`Added to ${home ? siteName(home) : 'Self'} · ${title.trim()}`);
       setTaskDay('');
       setTab('tasks');
     } else {
@@ -278,6 +283,7 @@ export function CapturesPanel({
     setArea('');
     setWhy('');
     setGoalSite('');
+    setHome('');
   }
 
   return (
@@ -346,6 +352,15 @@ export function CapturesPanel({
                   ))}
                   <option value="ticktick">TickTick</option>
                 </select>
+              ) : kind === 'task' || kind === 'project' ? (
+                <select value={home} onChange={e => setHome(e.target.value)} aria-label="Site to add it on" title="Site to add it on">
+                  <option value="">Self</option>
+                  {MOVE_TO.map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
               ) : (
                 <input value={url} onChange={e => setUrl(e.target.value)} placeholder="Link (optional)" aria-label="Link" inputMode="url" />
               )}
@@ -398,8 +413,8 @@ export function CapturesPanel({
       </form>
       {kind === 'task' ? (
         <div className="sk-bulkwrap">
-          <button type="button" className="sk-btn is-small is-quiet" aria-expanded={bulk} onClick={() => setBulk(!bulk)}>
-            {bulk ? 'Close bulk add' : '＋ Add several at once'}
+          <button type="button" className="sk-bulklink" aria-expanded={bulk} onClick={() => setBulk(!bulk)}>
+            {bulk ? 'Close' : '+ several at once'}
           </button>
           {bulk ? (
             <BulkAdd

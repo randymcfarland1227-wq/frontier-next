@@ -1053,6 +1053,32 @@ export function FocusTaskBoard({ compact, bills }: { compact?: boolean; bills?: 
   const openCount = groups.reduce((n, g) => n + (g.card.lists || []).filter(isTaskList).reduce((m, l) => m + l.tasks.filter((t) => !t.fin && !t.done).length, 0), 0);
   return (
     <section className={`self-focus-tasks${compact ? " is-compact" : ""}`}>
+      {projects.length ? (
+        <div className="self-projects">
+          <p className="task-split-label">Projects · {projects.length}</p>
+          {projects.map((p) => {
+            const tasks = (p.lists || []).filter(isTaskList).flatMap((l) => l.tasks);
+            const [items, save] = saveOf(p);
+            return (
+              <FocusTaskGroup
+                key={p.id}
+                card={p}
+                code="n"
+                tag={`Project · ${tasks.length} items`}
+                lanes={lanes}
+                fin={fin}
+                folded
+                onToggle={(listId, taskId) =>
+                  save(items.map((c) => (c.id !== p.id ? c : {
+                    ...c,
+                    lists: (c.lists || []).map((l) => (l.id !== listId ? l : { ...l, tasks: l.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t)) })),
+                  })))
+                }
+              />
+            );
+          })}
+        </div>
+      ) : null}
       {compact ? (
         <p className="task-split-label">Focus tasks · {openCount}</p>
       ) : (
@@ -1083,32 +1109,6 @@ export function FocusTaskBoard({ compact, bills }: { compact?: boolean; bills?: 
       ) : (
         <p className="local-note">No tasks inside your Short-term focus cards yet. Add them on a card in Today → Short-term focus.</p>
       )}
-      {projects.length ? (
-        <div className="self-projects">
-          <p className="task-split-label">Projects · {projects.length}</p>
-          {projects.map((p) => {
-            const tasks = (p.lists || []).filter(isTaskList).flatMap((l) => l.tasks);
-            const [items, save] = saveOf(p);
-            return (
-              <FocusTaskGroup
-                key={p.id}
-                card={p}
-                code="n"
-                tag={`Project · ${tasks.length} items`}
-                lanes={lanes}
-                fin={fin}
-                folded
-                onToggle={(listId, taskId) =>
-                  save(items.map((c) => (c.id !== p.id ? c : {
-                    ...c,
-                    lists: (c.lists || []).map((l) => (l.id !== listId ? l : { ...l, tasks: l.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t)) })),
-                  })))
-                }
-              />
-            );
-          })}
-        </div>
-      ) : null}
     </section>
   );
 }

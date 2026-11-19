@@ -9,6 +9,7 @@ import { BalanceStrip } from './BalanceStrip';
 import { CloudBackup } from './CloudBackup';
 import { Dot, Group, ListHead, Row } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
+import { useSiteLists } from '../../lib/siteLists';
 
 const SHOW_DONE = 40;
 
@@ -76,6 +77,7 @@ export function ReviewPanel({
   const periodLabel = PERIODS.find(p => p.id === period)!.label.toLowerCase();
   const max = Math.max(1, ...periodShares.map(s => s.count));
   const [openSource, setOpenSource] = useState<string | null>(null);
+  const { reopen } = useSiteLists();
   return (
     <div className="sk-review" aria-label="Completion review">
       <Group tone="done" title="Completions Across Sites" meta={`${stats.allTime} total · ${stats.openAcrossSources} open now · ${stats.inventoryTasks} in hub inventory`}>
@@ -116,7 +118,21 @@ export function ReviewPanel({
                             className="is-done"
                             lead={<Dot tone="done" />}
                             title={e.title || e.taskId}
-                            value={<time dateTime={e.completedAt}>{doneWhen(e.completedAt)}</time>}
+                            value={
+                              <>
+                                <time dateTime={e.completedAt}>{doneWhen(e.completedAt)}</time>
+                                {reopen ? (
+                                  <button
+                                    type="button"
+                                    className="sk-undo"
+                                    title={e.source === 'ticktick' ? 'Uncount it here (reopen the task in TickTick itself)' : 'Not done after all: reopen it'}
+                                    onClick={() => reopen(e.source, e.taskId)}
+                                  >
+                                    Undo
+                                  </button>
+                                ) : null}
+                              </>
+                            }
                           />
                         ))}
                         {done.length > SHOW_DONE ? <p className="sk-sec sk-more">+ {done.length - SHOW_DONE} earlier</p> : null}

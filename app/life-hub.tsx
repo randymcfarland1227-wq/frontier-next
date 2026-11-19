@@ -1212,8 +1212,8 @@ goalsData ? (
               areas={focusConfig?.areas || []}
               selfItems={selfItems}
               onAdd={input => setCaptures(addCapture(input))}
-              onAddTask={(title, detail, focusAreaId, due) =>
-                syncSelf(addSelfItem(title, detail, { ...(focusAreaId ? { focusAreaId } : {}), ...(due ? { due } : {}) }))
+              onAddTask={(title, detail, focusAreaId, due, home) =>
+                syncSelf(addSelfItem(title, detail, { ...(focusAreaId ? { focusAreaId } : {}), ...(due ? { due } : {}), ...(home ? { home } : {}) }))
               }
               onTaskDue={(id, due) => syncSelf(setSelfDue(id, due))}
               onLogTask={(title, detail, focusAreaId, at) => {

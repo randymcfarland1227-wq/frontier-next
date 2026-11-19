@@ -74,7 +74,7 @@ export function selfSnapshotFrom(allItems: SelfItem[]): SourceSnapshot {
 export function addSelfItem(
   title: string,
   detail = '',
-  extra?: Pick<SelfItem, 'focusAreaId' | 'fromCaptureId' | 'due' | 'forEvent' | 'from'>,
+  extra?: Pick<SelfItem, 'focusAreaId' | 'fromCaptureId' | 'due' | 'forEvent' | 'from' | 'home'>,
 ): SelfItem[] {
   const items = loadSelfItems();
   const next: SelfItem = {

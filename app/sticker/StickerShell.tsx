@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { SourceId, SourceSnapshot, SpaceId } from "../../lib/types";
 import { sourceById } from "../../lib/sources";
 import { DisplayControls } from "./DisplayControls";
+import { useSavedPageZoom } from "../components/ZoomControl";
 import { DISPLAY_KEY, displaySettings, type DisplaySettings } from "../../lib/displaySettings";
 import { Icon, type IconName } from "./Icon";
 import { DaySky } from "./DaySky";
@@ -103,6 +104,7 @@ export function StickerShell({
   children: ReactNode;
 }) {
   const [more, setMore] = useState(false);
+  useSavedPageZoom();
   const [display, setDisplay] = useState(() => displaySettings(readSaved(DISPLAY_KEY, null)));
   const changeDisplay = (next: DisplaySettings) => {
     setDisplay(next);

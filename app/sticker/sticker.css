@@ -4354,3 +4354,11 @@
 .sk-app .sk-fdetail.is-project .sk-fd-lhead .sk-fd-ltype { display: none; }
 .sk-app .sk-fdetail.is-project .sk-fd-lhead input { font-size: 12.5px !important; }
 .sk-app .sk-fdetail.is-project .sk-fd-list li { font-size: 12.5px; }
+
+/* Linked subtasks: the child stays on its site, marked; the parent's panel lists it. */
+.sk-app .sk-linkedto { display: block; margin-top: 2px; padding: 0; border: 0; background: none; font: inherit; font-size: 12px; color: var(--sk-tint); cursor: pointer; text-align: left; }
+.sk-app .sk-linkedto:hover { text-decoration: underline; }
+.shelf-linked { display: block; font-size: 12px; opacity: .75; }
+.plan-linked-parent { display: flex; gap: 12px; align-items: center; margin: 0 0 8px; font-size: 13px; }
+.plan-subs-list .is-linked .plan-fin-tag { color: var(--sk-tint); }
+.sk-linkdlg .sk-fd-title { font-size: 15px; margin: 0; flex: 1; }

@@ -31,6 +31,9 @@ function fireOnBoard(name: string, detail: string) {
   window.setTimeout(send, 150);
 }
 export const openTaskPanel = (key: string) => fireOnBoard(OPEN_TASK_EVENT, key);
+/** "Make subtask of…" on any row: Doing Now opens a picker for the parent task. */
+export const LINK_PARENT_EVENT = 'lifehub:link-parent';
+export const openParentPicker = (key: string) => fireOnBoard(LINK_PARENT_EVENT, key);
 
 /** Drag payload: a row on any site carries its pin key; Doing Now takes it. */
 export const PIN_DRAG_TYPE = 'text/lifehub-pin';
@@ -58,7 +61,15 @@ export const PLAN: Lane = 'next';
 
 /** Something that's in the way, or has to happen first. */
 /** A step; `fin` links it to a Finance item (bill, liability, money item or task purchase) whose paid state is its done state. */
-export type BeforeStep = { id: string; text: string; done: boolean; fin?: { key: string; label: string } };
+export type BeforeStep = {
+  id: string;
+  text: string;
+  done: boolean;
+  fin?: { key: string; label: string };
+  /** A task from any site linked in as this subtask (its pin key). It stays on its own site, marked
+   *  "Linked to …", and leaves every count there: only the parent counts. Its done state is its site's. */
+  pin?: string;
+};
 
 export type LaneEntry = {
   lane: Lane | null;
@@ -169,6 +180,43 @@ export function unpin(key: string) {
   const map = loadLanes();
   if (!map[key]?.lane) return;
   map[key] = { ...map[key], lane: null, at: new Date().toISOString() };
+  saveLanes(map);
+}
+
+/** Linked subtasks: child pin key → parent pin key (one parent per child; the first link wins). */
+export function linkedChildren(map: LaneMap): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [parent, e] of Object.entries(map)) {
+    if (!e || e.gone) continue;
+    for (const s of e.subs || []) if (s.pin && s.pin !== parent && !out.has(s.pin)) out.set(s.pin, parent);
+  }
+  return out;
+}
+
+/** Link a task (any site) into another task as a subtask. A task has one parent: an older link is dropped. */
+export function linkSubtask(parent: string, child: string, text: string) {
+  if (parent === child) return;
+  const map = loadLanes();
+  const at = new Date().toISOString();
+  for (const [k, e] of Object.entries(map)) {
+    if (k === parent || !e?.subs?.some(s => s.pin === child)) continue;
+    const subs = e.subs.filter(s => s.pin !== child);
+    map[k] = { ...e, subs: subs.length ? subs : undefined, at };
+  }
+  const prev = map[parent] || { lane: null, order: 0, at };
+  if (!(prev.subs || []).some(s => s.pin === child))
+    map[parent] = { ...prev, subs: [...(prev.subs || []), { id: `s-${Date.now()}`, text, done: false, pin: child }], at };
+  saveLanes(map);
+}
+
+export function unlinkSubtask(child: string) {
+  const map = loadLanes();
+  const at = new Date().toISOString();
+  for (const [k, e] of Object.entries(map)) {
+    if (!e?.subs?.some(s => s.pin === child)) continue;
+    const subs = e.subs.filter(s => s.pin !== child);
+    map[k] = { ...e, subs: subs.length ? subs : undefined, at };
+  }
   saveLanes(map);
 }
 

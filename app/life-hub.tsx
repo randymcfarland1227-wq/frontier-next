@@ -1202,7 +1202,7 @@ goalsData ? (
   }, []);
   // The Self add box (Inbox · Tasks · Promoted, voice memos, catch lists): Home's Self tab and the Self page share it.
   const capturesPanelEl = (
-    <CapturesPanel full={active === 'self'}
+    <CapturesPanel full bills={moneyDues}
               captures={captures}
               areas={focusConfig?.areas || []}
               selfItems={selfItems}

@@ -1,5 +1,6 @@
 'use client';
 
+import type { BillDue } from '../../lib/schedule';
 import { addSelfProject } from '../../lib/selfProjects';
 import { FocusTaskBoard } from './FocusSection';
 import { BulkAdd } from './BulkAdd';
@@ -110,6 +111,7 @@ function ago(iso: string) {
 
 export function CapturesPanel({
   full = false,
+  bills,
   captures,
   areas,
   selfItems,
@@ -126,6 +128,7 @@ export function CapturesPanel({
   onTaskMove,
 }: {
   full?: boolean;
+  bills?: BillDue[];
   captures: Capture[];
   areas: FocusArea[];
   selfItems: SelfItem[];
@@ -276,6 +279,7 @@ export function CapturesPanel({
   }
 
   return (
+    <div className={full ? 'self-workspace-container' : undefined}>
     <div className={`sk-captures${full ? ' self-workspace' : ''}`} aria-label="Thoughts, ideas, research and tasks">
       <div className="self-entry-column">
       <form className={`sk-capform${formOpen ? ' is-open' : ''}`} onSubmit={submit} ref={formRef} onFocus={() => setExpanded(true)}>
@@ -565,8 +569,9 @@ export function CapturesPanel({
           )}
         </div>
       )}
-      {full ? <FocusTaskBoard compact /> : null}
+      {full ? <FocusTaskBoard compact bills={bills} /> : null}
       </div>
+    </div>
     </div>
   );
 }

@@ -446,3 +446,72 @@ export function consumeLocationHash() {
     status = { state: 'off', notice: 'Could not read history from the old Life Hub link.' };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Username + password sign-in. Clearing history/cookies wipes the saved key, but the browser's
+// password manager keeps the password, so signing in brings the key (and every list) back.
+// ---------------------------------------------------------------------------
+
+const LOGIN_URL = `${WORKER_BASE.replace(/\/$/, '')}/api/login`;
+
+const LOGIN_ERRORS: Record<string, string> = {
+  wrong_login: 'That username or password isn’t right.',
+  locked: 'Too many tries — sign-in is paused for 15 minutes. You can still paste your relink link.',
+  no_password: 'No sign-in password is set yet. Paste your relink link, then set one in Cloud backup.',
+  stale_password: 'Your password is out of date. Paste your relink link, then set it again in Cloud backup.',
+  offline: 'Couldn’t reach the backup. Check the internet and try again.',
+};
+
+export function loginErrorText(code?: string): string {
+  return LOGIN_ERRORS[code || ''] || 'Couldn’t sign in — try again.';
+}
+
+/** Trade username + password for the backup key, link this browser, and pull everything back. */
+export async function signIn(user: string, password: string): Promise<{ ok: boolean; error?: string; left?: number }> {
+  let body: { ok?: boolean; key?: string; error?: string; left?: number };
+  try {
+    const res = await fetch(LOGIN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user, password }),
+    });
+    body = await res.json();
+  } catch {
+    return { ok: false, error: 'offline' };
+  }
+  if (!body.ok || !body.key) return { ok: false, error: body.error || 'wrong_login', left: body.left };
+  const result = await joinWithKey(body.key);
+  return result.state === 'ok' ? { ok: true } : { ok: false, error: result.error || 'offline' };
+}
+
+export type LoginInfo = { set: boolean; user: string | null; at: string | null };
+
+/** Whether a sign-in password is set (needs this browser to be linked). */
+export async function loginInfo(): Promise<LoginInfo | null> {
+  const key = getKey();
+  if (!key) return null;
+  try {
+    const res = await fetch(`${LOGIN_URL}/set`, { headers: { 'X-Sync-Key': key } });
+    const body = (await res.json()) as { ok?: boolean } & LoginInfo;
+    return body.ok ? { set: body.set, user: body.user, at: body.at } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Set or change the sign-in username + password (from a linked browser). */
+export async function setLoginPassword(user: string, password: string): Promise<{ ok: boolean; error?: string }> {
+  const key = getKey();
+  if (!key) return { ok: false, error: 'not_linked' };
+  try {
+    const res = await fetch(`${LOGIN_URL}/set`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Sync-Key': key },
+      body: JSON.stringify({ user, password }),
+    });
+    const body = (await res.json()) as { ok?: boolean; error?: string };
+    return body.ok ? { ok: true } : { ok: false, error: body.error || 'failed' };
+  } catch {
+    return { ok: false, error: 'offline' };
+  }
+}

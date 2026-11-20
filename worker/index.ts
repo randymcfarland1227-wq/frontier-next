@@ -353,6 +353,93 @@ async function syncKeyAllowed(request: Request, env: Env): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------------------
+// Sign in with a username + password (wipe-proof relink). A linked device sets the password; the
+// Worker keeps only a PBKDF2 verifier and the sync key encrypted with a password-derived AES key,
+// so the key is never stored readable. POST /api/login {user, password} → {ok, key}.
+// Wrong guesses lock the sign-in for 15 minutes after 8 tries.
+// ---------------------------------------------------------------------------
+
+const LOGIN_KEY = "login-account";
+const LOGIN_FAILS_KEY = "login-fails";
+const LOGIN_ITER = 100_000;
+const LOGIN_MAX_FAILS = 8;
+const LOGIN_LOCK_MS = 15 * 60_000;
+
+type LoginRecord = { user: string; salt: string; iter: number; verifier: string; iv: string; ct: string; at: string };
+
+const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+const unb64 = (text: string): Uint8Array<ArrayBuffer> => Uint8Array.from(atob(text), c => c.charCodeAt(0));
+const normUser = (user: unknown) => String(user || "").trim().toLowerCase();
+
+async function loginDerive(password: string, salt: Uint8Array<ArrayBuffer>, iter: number) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: iter }, base, 512));
+  const verifier = b64(new Uint8Array(await crypto.subtle.digest("SHA-256", bits.slice(0, 32))));
+  const aes = await crypto.subtle.importKey("raw", bits.slice(32), "AES-GCM", false, ["encrypt", "decrypt"]);
+  return { verifier, aes };
+}
+
+async function handleLogin(request: Request, env: Env, pathname: string): Promise<Response> {
+  const origin = request.headers.get("Origin");
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  if (origin && !CORS_ALLOW_ORIGINS.has(origin)) return jsonResponse({ ok: false, error: "cors_denied" }, 403, origin);
+  const claimed = await env.LIFEHUB_STATE.get(AUTH_KEY);
+  if (!claimed) return jsonResponse({ ok: false, error: "not_set_up" }, 404, origin);
+
+  // Set / check the password from a linked device (needs the sync key).
+  if (pathname === "/api/login/set") {
+    const key = (request.headers.get("X-Sync-Key") || "").trim();
+    if (key.length < 24 || (await sha256(key)) !== claimed) return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
+    if (request.method === "GET") {
+      const rec = (await env.LIFEHUB_STATE.get(LOGIN_KEY, "json")) as LoginRecord | null;
+      return jsonResponse({ ok: true, set: Boolean(rec), user: rec?.user || null, at: rec?.at || null }, 200, origin);
+    }
+    if (request.method !== "POST") return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, origin);
+    const body = (await request.json().catch(() => ({}))) as { user?: string; password?: string };
+    const user = normUser(body.user);
+    const password = String(body.password || "");
+    if (!user || user.length > 80) return jsonResponse({ ok: false, error: "bad_user" }, 400, origin);
+    if (password.length < 8 || password.length > 200) return jsonResponse({ ok: false, error: "short_password" }, 400, origin);
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const { verifier, aes } = await loginDerive(password, salt, LOGIN_ITER);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, aes, new TextEncoder().encode(key)));
+    const rec: LoginRecord = { user, salt: b64(salt), iter: LOGIN_ITER, verifier, iv: b64(iv), ct: b64(ct), at: new Date().toISOString() };
+    await env.LIFEHUB_STATE.put(LOGIN_KEY, JSON.stringify(rec));
+    await env.LIFEHUB_STATE.delete(LOGIN_FAILS_KEY);
+    return jsonResponse({ ok: true, set: true, user, at: rec.at }, 200, origin);
+  }
+
+  if (request.method !== "POST") return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, origin);
+  const fails = ((await env.LIFEHUB_STATE.get(LOGIN_FAILS_KEY, "json")) as { n: number; until?: number } | null) || { n: 0 };
+  if (fails.until && fails.until > Date.now()) {
+    return jsonResponse({ ok: false, error: "locked", retryAt: new Date(fails.until).toISOString() }, 429, origin);
+  }
+  const rec = (await env.LIFEHUB_STATE.get(LOGIN_KEY, "json")) as LoginRecord | null;
+  if (!rec) return jsonResponse({ ok: false, error: "no_password" }, 404, origin);
+  const body = (await request.json().catch(() => ({}))) as { user?: string; password?: string };
+  const user = normUser(body.user);
+  const password = String(body.password || "");
+  const { verifier, aes } = await loginDerive(password, unb64(rec.salt), rec.iter);
+  if (user !== rec.user || verifier !== rec.verifier) {
+    const n = (fails.until ? 0 : fails.n) + 1;
+    const next = n >= LOGIN_MAX_FAILS ? { n, until: Date.now() + LOGIN_LOCK_MS } : { n };
+    await env.LIFEHUB_STATE.put(LOGIN_FAILS_KEY, JSON.stringify(next), { expirationTtl: 86400 });
+    return jsonResponse({ ok: false, error: "wrong_login", left: Math.max(0, LOGIN_MAX_FAILS - n) }, 401, origin);
+  }
+  try {
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(rec.iv) }, aes, unb64(rec.ct));
+    const key = new TextDecoder().decode(plain);
+    // A key that no longer matches the store (key was changed) can't sign anyone in.
+    if ((await sha256(key)) !== claimed) return jsonResponse({ ok: false, error: "stale_password" }, 409, origin);
+    if (fails.n) await env.LIFEHUB_STATE.delete(LOGIN_FAILS_KEY);
+    return jsonResponse({ ok: true, key }, 200, origin);
+  } catch {
+    return jsonResponse({ ok: false, error: "wrong_login" }, 401, origin);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Daily brief: Life Hub (browser, backup key) PUTs today's list; a reader with BRIEF_READ_KEY
 // (X-Brief-Key) GETs it. Only as fresh as the last time Life Hub was open — generatedAt says when.
 // ---------------------------------------------------------------------------
@@ -1373,6 +1460,8 @@ export default {
     if (pathname === "/api/files" || pathname.startsWith("/api/files/")) {
       return handleFiles(request, env, pathname);
     }
+
+    if (pathname === "/api/login" || pathname === "/api/login/set") return handleLogin(request, env, pathname);
 
     if (pathname === "/api/state") {
       return handleState(request, env);

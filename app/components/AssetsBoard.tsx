@@ -89,7 +89,9 @@ export function assetViews(model: MoneyModel, dues: BillDue[], monthDues: BillDu
     const balFrom: AssetView['balFrom'] = typedBal !== undefined ? 'typed' : bal !== undefined ? 'sheet' : undefined;
     const asOf = meta?.asOf ?? (loan && !loan.hub ? get(loanSeenKey(loan.name))?.seenAt : undefined);
     const start = meta?.start ?? terms.start;
-    const dueDay = series[0] ? Number(series[0].due.slice(8, 10)) : undefined;
+    const history0 = prefix ? paidMonths(prefix, paidAt, all) : [];
+    // No upcoming bill in the sheet yet (e.g. only last month's Verizon): take the due day from the paid history.
+    const dueDay = series[0] ? Number(series[0].due.slice(8, 10)) : history0.length ? Number(history0[history0.length - 1].due.slice(8, 10)) : undefined;
     const progress = assetProgress({
       total,
       payment,

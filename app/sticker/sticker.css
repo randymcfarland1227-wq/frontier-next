@@ -4391,7 +4391,7 @@
 .sk-app .sk-todaybar-toolslot:empty { display: none; }
 
 /* 2026-11-19 Daily Brief: give the Action List the room (fewer wrapped titles); tighter Do today / This week / Focus next steps */
-.sk-app .sk-brief .sk-brief-sections { grid-template-columns: minmax(0, 11fr) minmax(0, 9fr); gap: 10px 12px; }
+.sk-app .sk-brief .sk-brief-sections { grid-template-columns: minmax(min(270px, 100%), 2fr) minmax(0, 3fr); gap: 10px 14px; }
 .sk-app .sk-brief .sk-brief-rest { gap: 8px; }
 .sk-app .sk-brief .sk-bucket { padding: 5px 5px 4px; }
 .sk-app .sk-brief .sk-bucket-head { padding: 0 3px 4px; }

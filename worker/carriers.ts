@@ -55,11 +55,22 @@ async function token(env: CarrierEnv, c: Carrier, raw: Record<string, string>): 
   if (cached) return cached;
   let res: Response;
   if (c === "usps") {
+    // Trim: a pasted key often carries a trailing space/newline, which USPS rejects as invalid_client.
+    const creds = { grant_type: "client_credentials", client_id: (env.USPS_CLIENT_ID || "").trim(), client_secret: (env.USPS_CLIENT_SECRET || "").trim() };
     res = await fetch("https://apis.usps.com/oauth2/v3/token", {
       method: "POST",
       headers: { "Content-Type": "application/json", "User-Agent": UA },
-      body: JSON.stringify({ grant_type: "client_credentials", client_id: env.USPS_CLIENT_ID, client_secret: env.USPS_CLIENT_SECRET }),
+      body: JSON.stringify(creds),
     });
+    if (res.status === 401 || res.status === 400) {
+      // Fallback: the same request form-encoded (the standard OAuth shape), in case the JSON body is refused.
+      raw["usps-token-json"] = `${res.status} ${(await res.text()).slice(0, 200)}`;
+      res = await fetch("https://apis.usps.com/oauth2/v3/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": UA },
+        body: new URLSearchParams(creds),
+      });
+    }
   } else if (c === "fedex") {
     res = await fetch("https://apis.fedex.com/oauth/token", {
       method: "POST",

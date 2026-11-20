@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { readSaved, writeSaved } from './storage';
 import { syncKeyHeader, syncNow } from './cloudSync';
 import { syncGoogleNow } from './syncNow';
-import { statusMovesForward } from './packageStatus';
+import { normTracking, statusMovesForward } from './packageStatus';
 
 export const PACKAGES_KEY = 'lifehub-packages';
 const EVENT = 'lifehub:packages';
@@ -82,12 +82,12 @@ export function usePackages(): Pkg[] {
 /** A public tracking page for any number (works without the API key). */
 export const trackUrl = (n: string) => `https://t.17track.net/en#nums=${encodeURIComponent(n)}`;
 
-/** Refresh: ask the Worker (Track123) for every package with a tracking number that isn't delivered yet. */
+/** Refresh: ask the Worker (USPS / FedEx / UPS APIs, Track123 for the rest) for every package with a tracking number that isn't delivered yet. */
 export async function refreshPackages(): Promise<{ ok: boolean; updated: number; error?: string }> {
   const live = Object.values(loadPackages()).filter((p) => !p.gone && p.tracking && p.status !== 'delivered');
   if (!live.length) return { ok: true, updated: 0 };
   try {
-    const res = await fetch(`${WORKER_BASE}/api/track?nums=${encodeURIComponent(live.map((p) => p.tracking).join(','))}`, {
+    const res = await fetch(`${WORKER_BASE}/api/track?nums=${encodeURIComponent([...new Set(live.map((p) => normTracking(p.tracking)))].join(','))}`, {
       headers: syncKeyHeader(),
       cache: 'no-store',
     });
@@ -97,7 +97,7 @@ export async function refreshPackages(): Promise<{ ok: boolean; updated: number;
     const s = loadPackages();
     const now = new Date().toISOString();
     for (const it of body.items || []) {
-      for (const p of live.filter((x) => x.tracking === it.number)) {
+      for (const p of live.filter((x) => normTracking(x.tracking) === normTracking(it.number))) {
         // Never let the tracker undo a newer status that came from email.
         const fwd = !it.status || statusMovesForward(s[p.id]?.status, it.status);
         s[p.id] = {

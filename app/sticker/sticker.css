@@ -1003,6 +1003,12 @@
 .sk-app .ob-where { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sk-ink-2); }
 .sk-app .ob-how { margin: 4px 8px 4px 0; font: var(--sk-secondary); color: var(--sk-ink-2); }
 .sk-app .ob-foot { font-weight: 700; border-top: 2px solid var(--sk-edge); }
+.sk-app .ob-reg { margin: 10px 0 8px; padding-top: 8px; border-top: 2px solid var(--sk-edge); }
+.sk-app .ob-reg-h { margin: 6px 0 2px; font-weight: 700; }
+.sk-app .ob-reg-l { display: flex; justify-content: space-between; gap: 12px; width: 100%; padding: 2px 0; font: inherit; color: inherit; background: none; border: 0; text-align: left; }
+.sk-app .ob-reg-l .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sk-app .ob-reg-t { font-weight: 700; border-top: 1px solid var(--sk-edge); margin-top: 2px; padding-top: 4px; }
+.sk-app .ob-reg-soon { cursor: pointer; color: var(--sk-ink-2); }
 .sk-app .ob-letters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .sk-app .ob-letters > small { color: var(--sk-ink-2); }
 .sk-app .ob-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sk-s3); align-items: start; }

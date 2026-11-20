@@ -5,11 +5,11 @@
  * Current liabilities (Outstanding): links to their line keys, checked off with the same marks.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FinanceDrawer as Modal, FinanceName, FinanceType } from './FinanceDrawer';
 import { loanRows, type LoanRow } from './MoneyBoards';
 import { outstandingParts, type OwedLine } from './OutstandingView';
-import { ASSETS, assetKey, loanSeenKey, assetProgress, duePrefix, paidMonths, pct, planTerms, type AssetDef, type AssetId, type AssetProgress } from '../../lib/assets';
+import { ASSETS, PHONE_BILL_FIX, assetKey, loanSeenKey, assetProgress, duePrefix, paidMonths, pct, planTerms, type AssetDef, type AssetId, type AssetProgress } from '../../lib/assets';
 import { metaName, setMeta, useMoneyMeta, type MetaEntry } from '../../lib/moneyMeta';
 import { fromDayKey, money, type BillDue } from '../../lib/schedule';
 import type { MoneyModel } from '../../lib/money';
@@ -182,6 +182,17 @@ function Missing({ a }: { a: AssetView }) {
 /** Balances → Assets */
 export function AssetsBoard({ model, dues, monthDues, paidAt, parts, onOpen }: { model: MoneyModel; dues: BillDue[]; monthDues: BillDue[]; paidAt: Record<string, string>; parts: Parts; onOpen: (a: AssetView) => void }) {
   const views = useAssetViews(model, dues, monthDues, paidAt);
+  const { get } = useMoneyMeta();
+  const phone = get(assetKey('phone'));
+  useEffect(() => {
+    // One-time move of the phone's payment link from Verizon to V mobile (synced like any other edit).
+    if (phone?.billKey !== PHONE_BILL_FIX.from) return;
+    setMeta(assetKey('phone'), {
+      billKey: PHONE_BILL_FIX.to,
+      paymentsLeft: phone.paymentsLeft ?? 30,
+      note: phone.note?.replace(/on the Verizon \(not Fios\) bill/, 'on the V mobile bill (usually due the 6th)').replace("month's Verizon bill", "month's V mobile bill"),
+    });
+  }, [phone?.billKey]);
   const lines = owedLines(parts);
   const owed = views.reduce((t, a) => t + (a.progress.owed || 0), 0);
   return (

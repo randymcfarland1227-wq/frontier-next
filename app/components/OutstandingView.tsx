@@ -126,8 +126,46 @@ export function oosSources(file: DebtFile): Source[] {
   })).filter((s) => s.items.length);
 }
 
+/** On top of the ticket: for a flagged MD ticket the city/county flag fee + the $30 MVA flag fee. */
 const extraOf = (i: DebtItem, kind: "md" | "oos") =>
-  kind === "md" ? (isFlagged(i) ? FLAG_FEE : 0) : i.maybe || 0;
+  kind === "md"
+    ? isFlagged(i)
+      ? FLAG_FEE + (i.ticket?.flagFee || 0)
+      : 0
+    : i.maybe || 0;
+/** "$40 ticket + $25 city flag fee + $30 MVA flag fee" for a flagged ticket's hover. */
+const flagBreakdown = (i: DebtItem) =>
+  [
+    `${usd(i.amount)} ticket`,
+    i.ticket?.flagFee
+      ? `${usd(i.ticket.flagFee)} ${/county/i.test(i.ticket.who) ? "county" : "city"} flag fee`
+      : "",
+    `${usd(FLAG_FEE)} MVA flag fee`,
+  ]
+    .filter(Boolean)
+    .join(" + ");
+
+/** What clearing the MD registration costs: every flagged ticket + its fees, and what still has to be paid before it flags. */
+export function registrationCost(file: DebtFile, marks: DebtMarks) {
+  const md = file.items.filter((i) => i.group === "md" && counts(i, marks));
+  const flags = md.filter(isFlagged);
+  const tickets = flags.reduce((s, i) => s + (i.amount || 0), 0);
+  const local = flags.reduce((s, i) => s + (i.ticket?.flagFee || 0), 0);
+  const mva = flags.length * FLAG_FEE;
+  const soon = md
+    .filter((i) => !isFlagged(i) && i.blocksRegistration)
+    .sort((a, b) => (a.due || "").localeCompare(b.due || ""));
+  return {
+    n: flags.length,
+    tickets,
+    local,
+    mva,
+    total: tickets + local + mva,
+    unknown: flags.some((i) => i.amount === null),
+    soon,
+    soonSum: soon.reduce((s, i) => s + (i.amount || 0), 0),
+  };
+}
 function sums(items: DebtItem[], marks: DebtMarks, kind: "md" | "oos") {
   const live = items.filter((i) => counts(i, marks));
   // Hand-typed fees (registration renewal) count in the money, not as tickets.
@@ -290,7 +328,14 @@ function TicketBox({
                             </span>
                             <span />
                             <span className="num">{usd(i.amount)}</span>
-                            <span className="num">
+                            <span
+                              className="num"
+                              title={
+                                kind === "md" && isFlagged(i)
+                                  ? flagBreakdown(i)
+                                  : undefined
+                              }
+                            >
                               {extra
                                 ? `${i.amount === null ? "? + " : ""}${usd((i.amount || 0) + extra)}`
                                 : usd(i.amount)}
@@ -315,6 +360,69 @@ function TicketBox({
         {foot}
       </div>
     </section>
+  );
+}
+
+/** Plain ledger under the MD box: what it costs to clear every flag, then what to pay before it flags. */
+function RegClear({
+  file,
+  marks,
+  onOpen,
+}: {
+  file: DebtFile;
+  marks: DebtMarks;
+  onOpen: (id: string) => void;
+}) {
+  const c = registrationCost(file, marks);
+  if (!c.n && !c.soon.length) return null;
+  const list = file.items.find((i) => i.ticket?.mvaList)?.ticket?.mvaList;
+  return (
+    <div className="ob-reg">
+      <p className="ob-reg-h">
+        To clear the registration · {c.n} flag{c.n === 1 ? "" : "s"}
+        {list ? ` on the ${md(list)} MVA list` : ""}
+      </p>
+      <div className="ob-reg-l">
+        <span>Tickets</span>
+        <span className="num">{unk(c.tickets, c.unknown)}</span>
+      </div>
+      {c.local ? (
+        <div className="ob-reg-l">
+          <span>City / county flag fees</span>
+          <span className="num">{usd(c.local)}</span>
+        </div>
+      ) : null}
+      <div className="ob-reg-l">
+        <span>
+          MVA flag fees · {c.n} × {usd(FLAG_FEE)}
+        </span>
+        <span className="num">{usd(c.mva)}</span>
+      </div>
+      <div className="ob-reg-l ob-reg-t">
+        <span>Total to clear</span>
+        <span className="num">{unk(c.total, c.unknown)}</span>
+      </div>
+      {c.soon.length ? (
+        <>
+          <p className="ob-reg-h">
+            Pay before they flag · {usd(c.soonSum)} (no flag fees if paid in time)
+          </p>
+          {c.soon.map((i) => (
+            <button
+              key={i.id}
+              type="button"
+              className="ob-reg-l ob-reg-soon"
+              onClick={() => onOpen(i.id)}
+            >
+              <span>
+                {i.due ? <b>by {md(i.due)}</b> : null} {i.sub || i.name}
+              </span>
+              <span className="num">{usd(i.amount)}</span>
+            </button>
+          ))}
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -669,11 +777,13 @@ export function OutstandingView({
         onOpen={onOpen}
         head={
           reg
-            ? `${reg.vehicle} · registration renews by ${md(reg.due)} (${days} days) — every flag must be cleared first. Flag fee $${FLAG_FEE} per flagged ticket.`
+            ? `${reg.vehicle} · registration renews by ${md(reg.due)} (${days} days) — every flag must be cleared first. With flag = ticket + city/county flag fee + $${FLAG_FEE} MVA fee.`
             : undefined
         }
         foot={
-          file.letters.length ? (
+          <>
+          <RegClear file={file} marks={marks} onOpen={onOpen} />
+          {file.letters.length ? (
             <div className="dbt-letters ob-letters">
               <small>Letters:</small>
               {[...file.letters]
@@ -693,7 +803,8 @@ export function OutstandingView({
                   </button>
                 ))}
             </div>
-          ) : null
+          ) : null}
+          </>
         }
       />
       <TicketBox

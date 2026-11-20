@@ -40,7 +40,13 @@ export type DebtItem = {
   reports?: Partial<Record<Bureau, string | null>>;
   owners?: Array<{ role: string; name: string; from?: string; note?: string }>;
   offers?: Array<{ date: string; who: string; text: string; expires?: string; active: boolean }>;
-  ticket?: { who: string; date: string; where: string; speed: string; pin?: string; flagged?: string };
+  ticket?: {
+    who: string; date: string; where: string; speed: string; pin?: string; flagged?: string;
+    /** The city/county's own fee for a flagged ticket (city $25, county $15), paid with the ticket. The $30 MVA fee is separate. */
+    flagFee?: number;
+    /** Last MVA flag list this ticket was on, e.g. "2026-11-20". */
+    mvaList?: string;
+  };
   /** Credit accounts: when it started and when it drops off the reports ('est' = inferred, 'latest' = outer bound from the placement date) */
   dates?: { opened?: string; openedLabel?: string; dofd?: string; fallsOff?: string; basis: 'dofd' | 'est' | 'latest'; note?: string };
   /** Lowest offer actually seen */

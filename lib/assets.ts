@@ -30,10 +30,13 @@ export type AssetDef = {
 export const ASSETS: AssetDef[] = [
   { id: 'toyota', name: 'Toyota', what: '2017 Corolla', bill: /^toyota\b/i, loan: 'Toyota', vehicle: true },
   { id: 'ableton', name: 'Ableton', what: 'Live, financed', bill: /^ab[el]{2}ton\b/i, plan: /^ableton/i },
-  { id: 'phone', name: 'Phone', what: 'financed' },
+  // The phone payment rides on the V mobile bill (Randy, 11/20), usually due around the 6th.
+  { id: 'phone', name: 'Phone', what: 'financed', bill: /^v\s*mobile\b/i },
 ];
 
 export const assetKey = (id: AssetId) => `asset:${id}`;
+/** 11/20: the phone was first linked to the Verizon bill; Randy says it's on V mobile. Old link → new one. */
+export const PHONE_BILL_FIX = { from: 'money:bill:verizon:', to: 'money:bill:vmobile:' };
 /** moneyMeta key remembering when a loan's sheet balance last changed ({ sig, seenAt }) */
 export const loanSeenKey = (loan: string) => `figs:loan:${loan.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 

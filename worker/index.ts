@@ -1,9 +1,11 @@
 import handler from "vinext/server/app-router-entry";
 import { mergeState, normalizeState, stateCounts } from "../lib/syncState";
 import { isPkgStatus, normTracking, statusMovesForward } from "../lib/packageStatus";
+import { trackDirect, type CarrierEnv, type TrackItem } from "./carriers";
 
-interface Env {
+interface Env extends CarrierEnv {
   ASSETS: Fetcher;
+  // USPS_CLIENT_ID/SECRET, FEDEX_CLIENT_ID/SECRET, UPS_CLIENT_ID/SECRET (wrangler secrets) come from CarrierEnv.
   /** Track123 API key (free Starter plan: 50 new numbers/month, queries free) — `wrangler secret put TRACK123_KEY` */
   TRACK123_KEY?: string;
   /** TickTick Open API bearer token — set via `wrangler secret put TICKTICK_ACCESS_TOKEN` */
@@ -1138,9 +1140,17 @@ async function handleTrack(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
   if (origin && !CORS_ALLOW_ORIGINS.has(origin)) return jsonResponse({ ok: false, error: "cors_denied" }, 403, origin);
   if (!(await syncKeyAllowed(request, env))) return jsonResponse({ ok: false, error: "wrong_key" }, 401, origin);
-  if (!env.TRACK123_KEY) return jsonResponse({ ok: false, error: "no_tracking_key" }, 200, origin);
-  const nums = [...new Set((new URL(request.url).searchParams.get("nums") || "").split(",").map((n) => n.replace(/\s+/g, "")).filter(Boolean))].slice(0, 40);
-  if (!nums.length) return jsonResponse({ ok: true, items: [] }, 200, origin);
+  const params = new URL(request.url).searchParams;
+  const allNums = [...new Set((params.get("nums") || "").split(",").map((n) => n.replace(/\s+/g, "")).filter(Boolean))].slice(0, 40);
+  if (!allNums.length) return jsonResponse({ ok: true, items: [] }, 200, origin);
+  // USPS / FedEx / UPS APIs first (only carriers whose secrets are set); Track123 gets what's left.
+  const direct = await trackDirect(env, allNums, params.get("force") === "1");
+  const debugOn = params.get("debug") === "1";
+  if (!direct.rest.length || !env.TRACK123_KEY) {
+    if (!direct.used.length && !env.TRACK123_KEY) return jsonResponse({ ok: false, error: "no_tracking_key" }, 200, origin);
+    return jsonResponse({ ok: true, items: direct.items, ...(debugOn ? { debug: { carriers: direct.raw, untracked: direct.rest } } : {}) }, 200, origin);
+  }
+  const nums = direct.rest;
   const lastRaw: Record<string, string> = {};
   const call = async (path: string, body: unknown) => {
     const r = await fetch(`https://api.track123.com/gateway/open-api/tk/v2.1/track/${path}`, {
@@ -1192,8 +1202,9 @@ async function handleTrack(request: Request, env: Env): Promise<Response> {
       carrier: t.localLogisticsInfo?.courierNameEN || undefined,
     };
   });
-  const debug = new URL(request.url).searchParams.get("debug") === "1" ? { debug: { raw: lastRaw, registered: nums.map((n) => registered.has(n)) } } : {};
-  return jsonResponse({ ok: true, items, ...(quotaOut ? { note: "quota_used_up" } : {}), ...debug }, 200, origin);
+  const debug = debugOn ? { debug: { raw: lastRaw, carriers: direct.raw, registered: nums.map((n) => registered.has(n)) } } : {};
+  const all: TrackItem[] = [...direct.items, ...items.map((i) => ({ ...i, via: "Track123" }))];
+  return jsonResponse({ ok: true, items: all, ...(quotaOut ? { note: "quota_used_up" } : {}), ...debug }, 200, origin);
 }
 
 async function handleDebts(request: Request, env: Env): Promise<Response> {

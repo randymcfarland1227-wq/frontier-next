@@ -32,3 +32,10 @@ export function clearPendingDebt() {
     /* nothing to clear */
   }
 }
+
+/** A bill's own Money pop-out, from anywhere (same event MoneyPage's openMoneyDue fires; kept here so lists needn't import MoneyPage). */
+export const openBillPop = (dueKey: string) => window.dispatchEvent(new CustomEvent('lifehub:open-money-due', { detail: dueKey }));
+
+/** Mark a bill paid on Life Hub from anywhere (life-hub.tsx runs its payBill: ledger + sheet cross-off). */
+export const PAY_BILL_EVENT = 'lifehub:pay-bill';
+export const requestPayBill = (dueKey: string) => window.dispatchEvent(new CustomEvent(PAY_BILL_EVENT, { detail: dueKey }));

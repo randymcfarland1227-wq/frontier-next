@@ -60,8 +60,11 @@ import { Icon } from "../sticker/Icon";
 import { AssignedFocus } from "./AssignedFocus";
 import { GoalsView } from "./GoalsView";
 import { SITE_ROWS, SitesTabs, SitePicker } from "../sticker/Sites";
+import { WorksheetTab, type MentionOpt } from "./Worksheet";
+import { useFinLinker } from "./FocusCards";
+import { openTaskPanel } from "../../lib/priorityPins";
 
-type TodayTab = "brief" | "rhythm" | "grounding" | "calendar" | "focus" | "goals" | "money" | "sites";
+type TodayTab = "brief" | "rhythm" | "grounding" | "calendar" | "focus" | "goals" | "money" | "sites" | "worksheet";
 const TODAY_TABS: [TodayTab, string][] = [
   ["brief", "Daily Brief"],
   ["rhythm", "Daily Rhythm"],
@@ -71,6 +74,7 @@ const TODAY_TABS: [TodayTab, string][] = [
   ["grounding", "Grounding"],
   ["money", "Money"],
   ["sites", "Sites"],
+  ["worksheet", "Worksheet"],
 ];
 
 /** "3 on your list · 13 on deck · 1 critical" for the Doing Now head. */
@@ -242,6 +246,19 @@ export function HomeView({
     setTodayTab(t);
     writeSaved("sk-today-tab", t);
   };
+  const openMention = (key: string) => {
+    const at = key.indexOf(":");
+    const kind = key.slice(0, at);
+    const rest = key.slice(at + 1);
+    if (kind === "task") return openTaskPanel(rest);
+    if (kind === "focus") return pickTodayTab("focus");
+    if (kind === "goal") return pickTodayTab("goals");
+    if (kind === "money") {
+      if (rest.startsWith("item:")) requestOpenDebt(rest.slice(5), "owed");
+      else requestOpenDebt(undefined, rest.startsWith("bill:") ? "flow" : "owed");
+      enter("money");
+    }
+  };
   // Split view: two tabs side by side, each scaled to its half. Remembered on this device.
   const [split, setSplitState] = useState<boolean>(() =>
     readSaved<boolean>("sk-today-split", false),
@@ -320,6 +337,19 @@ export function HomeView({
     writeSaved("sk-today-tab2", t);
   };
   const shortTerm = useShortTermFocus();
+  // Worksheet @ links: open site tasks, focus cards, goals and money items (keys: task:/focus:/goal:/money:).
+  const finLinker = useFinLinker(bills);
+  const mentionOpts = useMemo<MentionOpt[]>(() => {
+    const out: MentionOpt[] = [];
+    for (const [site, snap] of Object.entries(snapshots) as [SourceId, SourceSnapshot][])
+      for (const t of snap?.tasks || [])
+        if (t.status !== "done" && t.kind !== "list" && t.kind !== "habit" && !t.id.startsWith("habit-"))
+          out.push({ key: `task:${site}:${t.id}`, label: t.title, sub: sourceById[site]?.shortName, group: "Task" });
+    for (const i of [...shortTerm.now[0], ...shortTerm.weeks[0]]) if (!i.done) out.push({ key: `focus:${i.id}`, label: i.title, group: "Focus card" });
+    for (const i of shortTerm.ongoing[0]) if (!i.done) out.push({ key: `goal:${i.id}`, label: i.title, group: "Goal" });
+    for (const o of finLinker.options) out.push({ key: `money:${o.key}`, label: o.label, sub: o.sub, group: "Money" });
+    return out;
+  }, [snapshots, shortTerm.now, shortTerm.weeks, shortTerm.ongoing, finLinker.options]);
   // Everything on the calendar a short-term focus can count down to: events, plans, bills, dated tasks.
   const { plans: hubPlans } = usePlans();
   const linkItems = [
@@ -369,6 +399,8 @@ export function HomeView({
       "Habits, routines and the shape of the day"
     ) : tab === "sites" ? (
       "Pick a site to open it here"
+    ) : tab === "worksheet" ? (
+      "Scratch work · type @ to link a task, goal or money item"
     ) : (
       <BriefSummary snapshots={snapshots} bills={bills} />
     );
@@ -490,7 +522,9 @@ export function HomeView({
             {id === 'self' ? null : <AssignedFocus target={id} focus={shortTerm} events={linkItems} bills={bills} openFinance={(debtId, tab) => { requestOpenDebt(debtId, tab); enter("money"); }} />}
           </div>]));
   const renderTab = (t: TodayTab, pane = 0) =>
-        t === "rhythm" ? (
+        t === "worksheet" ? (
+          <WorksheetTab mentions={mentionOpts} openMention={openMention} />
+        ) : t === "rhythm" ? (
           <FocusSection bare snapshots={snapshots} ledger={ledger} completeHabit={(x) => onCompleteTask("ticktick", x)} enter={enter} focus={shortTerm} events={linkItems} bills={bills} openFinance={(id, tab) => { requestOpenDebt(id, tab); enter("money"); }} />
         ) : t === "sites" ? (
           <SitePicker

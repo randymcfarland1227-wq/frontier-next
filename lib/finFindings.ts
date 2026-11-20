@@ -10,6 +10,8 @@
  */
 import { useEffect, useState } from 'react';
 import { readSaved, writeSaved } from './storage';
+import type { FocusRef } from './focusRefs';
+import { daysBetween, fromDayKey, startOfDay, type BillDue } from './schedule';
 
 export const FINDINGS_KEY = 'lifehub-finance-findings';
 export const FINDINGS_EVENT = 'lifehub:finance-findings';
@@ -28,6 +30,8 @@ export type Finding = {
   key: string;
   /** own: items only */
   name?: string;
+  /** Display name for a non-own item (a sheet line / debt item), used for its nested payments in the to-pay list */
+  label?: string;
   /** Amount found (null = still unknown). Undefined = use what Finance has. */
   amount?: number | null;
   plan?: PlanState;
@@ -55,10 +59,40 @@ export type Finding = {
   rkey?: string;
   /** Day (YYYY-MM-DD) it was last checked */
   checked?: string;
+  /** Letters, notices and links filed on this item (same files as focus-card refs: lib/focusRefs) */
+  refs?: FocusRef[];
+  /** Payments due on this item (e.g. a $75 minimum by 11/30). Each one shows in the pop-out and in the to-pay list. */
+  payments?: FindingPayment[];
   at: string;
   gone?: boolean;
 };
 export type FindingStore = Record<string, Finding>;
+
+export type FindingPayment = { id: string; amount: number; due: string; note?: string; paid?: boolean };
+
+/** Due key of a nested payment in the to-pay list: `money:find:<payment id>:<due>` (paid marks use it). */
+export const findingDueKey = (p: FindingPayment) => `money:find:${p.id}:${p.due}`;
+
+/**
+ * Nested payments as bill dues, so they sit in the full to-pay list (Week board, month view, Daily Brief) like any bill.
+ * Paid ones (ticked in the pop-out, or marked paid in the list) are left out unless `keepPaid`.
+ */
+export function findingPaymentDues(store: FindingStore, paid: Set<string>, today = new Date(), back = 45, ahead = 120, keepPaid = false): BillDue[] {
+  const t = startOfDay(today);
+  const out: BillDue[] = [];
+  for (const f of Object.values(store)) {
+    if (!f || f.gone || !f.payments?.length) continue;
+    const name = f.name || f.label || 'Payment';
+    for (const p of f.payments) {
+      const key = findingDueKey(p);
+      const days = daysBetween(t, fromDayKey(p.due));
+      if (days < -back || days > ahead) continue;
+      if (!keepPaid && (p.paid || paid.has(key))) continue;
+      out.push({ bill: { id: key, name, amount: p.amount, kind: 'bill', notes: [p.note, 'payment on a money item · added on Life Hub'].filter(Boolean).join(' · ') }, due: p.due, days, key });
+    }
+  }
+  return out;
+}
 
 export const loadFindings = (): FindingStore => readSaved<FindingStore>(FINDINGS_KEY, {});
 function put(next: FindingStore) {

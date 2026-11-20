@@ -10,6 +10,9 @@
 import { FinanceLabel } from "./FinanceDrawer";
 import { useState, type ReactNode } from "react";
 import { Icon } from "../sticker/Icon";
+import { Dialog } from "../sticker/Dialog";
+import { MoneyExtras, useExtrasBadge } from "./MoneyExtras";
+import { findingOf, loadFindings, setFinding, useFindings } from "../../lib/finFindings";
 import {
   amountOf,
   parseSheetDate,
@@ -74,6 +77,7 @@ type Source = {
 const MD_SOURCES: Array<[string, string]> = [
   ["city", "Baltimore City"],
   ["county", "Baltimore County"],
+  ["safezones", "Work zone · SafeZones"],
   ["ccu", "Work zone · CCU"],
   ["mdta", "MDTA (toll flag)"],
   [RENEWAL_STEP, "Registration renewal fee"],
@@ -331,6 +335,8 @@ export type OwedLine = {
   legacyKey?: string;
   /** Always the old row-only key, for links saved before the column was added */
   rowKey?: string;
+  /** The sheet's own figure when an amount found on Life Hub (a letter) overrides it */
+  sheetAmount?: number;
 };
 const rowsOf = (t?: Table | null) =>
   (t?.rows || []).filter((r) => r.some((c) => c.text.trim()));
@@ -365,7 +371,7 @@ export function outstandingParts(
     amt: number,
     note?: number,
     date?: number,
-  ): OwedLine => ({
+  ): OwedLine => withFound({
     // Tab + row + first column: the sheet keeps tables side by side, so row alone isn't unique.
     key: `${r[0].tab}:${r[0].r}:${r[0].c}`,
     legacyKey: `${r[0].tab}:${r[0].r}`,
@@ -382,6 +388,13 @@ export function outstandingParts(
       r.some((c) => c.struck) ||
       (note !== undefined && /complete|paid/i.test(r[note]?.text || "")),
   });
+  // An amount found on Life Hub (e.g. the letter's balance) wins over the sheet's figure; the sheet isn't touched.
+  const found = loadFindings();
+  function withFound(l: OwedLine): OwedLine {
+    const f = findingOf(found, l.key);
+    if (!f || f.amount === undefined || f.amount === null || f.amount === l.amount) return l;
+    return { ...l, sheetAmount: l.amount, amount: f.amount, cell: undefined };
+  }
   const plDues = monthDues
     .filter(
       (d) =>
@@ -460,14 +473,17 @@ function OwedCol({
   groups,
   cell,
   onOpen,
+  paidAt = {},
 }: {
   tone: string;
   title: string;
   groups: Array<[string, OwedLine[]]>;
   cell: CellView;
   onOpen: (id: string) => void;
+  paidAt?: Record<string, string>;
 }) {
   const total = groups.reduce((s, [, xs]) => s + lineSum(xs), 0);
+  const [pop, setPop] = useState<OwedLine | null>(null);
   const line = (x: OwedLine) => (
     <div key={x.key} className={`ob-line${x.done ? " is-settled" : ""}`}>
       {x.itemId ? (
@@ -480,9 +496,10 @@ function OwedCol({
           <FinanceLabel id={`debt:${x.itemId}`} name={x.name} />
         </button>
       ) : (
-        <span className="ob-line-name" title={x.note}>
+        <button type="button" className="ob-line-name" title={x.note || "Open: amount, payments, letters"} onClick={() => setPop(x)}>
           {x.name}
-        </span>
+          <LineBadge fkey={x.key} paidAt={paidAt} />
+        </button>
       )}
       <span className="num">{x.cell ? cell(x.cell, "—") : usd(x.amount)}</span>
       <small>
@@ -552,7 +569,62 @@ function OwedCol({
           ) : null,
         )}
       </div>
+      {pop ? <LinePop line={pop} paidAt={paidAt} close={() => setPop(null)} /> : null}
     </section>
+  );
+}
+
+/** 📎 2 · next $75 11/30 — after a line's name when it has files or payments. */
+function LineBadge({ fkey, paidAt }: { fkey: string; paidAt: Record<string, string> }) {
+  const { files, next } = useExtrasBadge(fkey, paidAt);
+  if (!files && !next) return null;
+  return (
+    <small className="ob-badge">
+      {files ? `📎${files > 1 ? ` ${files}` : ""}` : ""}
+      {files && next ? " · " : ""}
+      {next ? `${usd(next.amount)} by ${md(next.due)}` : ""}
+    </small>
+  );
+}
+
+/** A Current liabilities line's own pop-out: amount (the sheet's or one found on a letter), payments, letters. */
+function LinePop({ line, paidAt, close }: { line: OwedLine; paidAt: Record<string, string>; close: () => void }) {
+  const store = useFindings();
+  const f = findingOf(store, line.key);
+  const sheet = line.sheetAmount ?? (f?.amount != null ? undefined : line.amount);
+  const now = f?.amount != null ? f.amount : line.amount;
+  const [amt, setAmt] = useState(f?.amount != null ? String(f.amount) : "");
+  const saveAmt = () => {
+    const n = Number(amt.replace(/[$,\s]/g, ""));
+    setFinding(line.key, { label: line.name, amount: amt.trim() && Number.isFinite(n) ? n : undefined, checked: new Date().toLocaleDateString("en-CA") });
+  };
+  return (
+    <Dialog label={line.name} onClose={close} className="sk-subpop ob-pop" backClassName="sk-subpop-back">
+      <header className="sk-subpop-head">
+        <Icon name="wallet" size={15} />
+        <b className="sk-subpop-title">{line.name}</b>
+        <button type="button" className="sk-btn is-small is-icon is-quiet" onClick={close} aria-label="Close">
+          <Icon name="close" size={16} />
+        </button>
+      </header>
+      <div className="ob-pop-amt">
+        <b>{usd(now)}</b>
+        <small>
+          {line.sheetAmount !== undefined || (f?.amount != null && sheet !== undefined)
+            ? `owed · sheet says ${usd(line.sheetAmount ?? sheet)}`
+            : "owed · from your sheet"}
+          {line.note ? ` · ${line.note}` : ""}
+        </small>
+      </div>
+      <div className="sk-subpop-row">
+        <label className="sk-subpop-field">
+          <span className="sk-cap">Amount on the letter (blank = use the sheet)</span>
+          <input inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} onBlur={saveAmt} onKeyDown={(e) => e.key === "Enter" && saveAmt()} placeholder={line.sheetAmount !== undefined ? String(line.sheetAmount) : "Same as sheet"} aria-label="Amount found" />
+        </label>
+      </div>
+      {f?.note ? <p className="sk-fd-hint">{f.note}</p> : null}
+      <MoneyExtras fkey={line.key} label={line.name} paidAt={paidAt} />
+    </Dialog>
   );
 }
 
@@ -639,6 +711,7 @@ export function OutstandingView({
           title="Pay laters"
           cell={cell}
           onOpen={onOpen}
+          paidAt={paidAt}
           groups={[["Pay later", parts.payLater]]}
         />
         <OwedCol
@@ -646,6 +719,7 @@ export function OutstandingView({
           title="Cash advances"
           cell={cell}
           onOpen={onOpen}
+          paidAt={paidAt}
           groups={[
             ["Cash advances", parts.cashAdv],
             ["Older advances", parts.advances],
@@ -656,6 +730,7 @@ export function OutstandingView({
           title="Taxes / Legal"
           cell={cell}
           onOpen={onOpen}
+          paidAt={paidAt}
           groups={[["Taxes", parts.taxes]]}
         />
         <OwedCol
@@ -663,6 +738,7 @@ export function OutstandingView({
           title="Projects / Required"
           cell={cell}
           onOpen={onOpen}
+          paidAt={paidAt}
           groups={[["Projects", parts.projects]]}
         />
       </div>

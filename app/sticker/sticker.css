@@ -4433,3 +4433,25 @@
   top: -1px;
   flex: none;
 }
+
+/* Money item pop-outs: payments due + letters filed (MoneyExtras.tsx), Current liabilities line pop-out */
+.mx-extras { display: grid; gap: 12px; margin: 10px 0 4px; }
+.mx-block h4 { margin: 0 0 6px; font-size: 0.86rem; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.mx-block h4 small { font-weight: 400; font-size: 0.74rem; }
+.mx-empty { margin: 0 0 6px; font-size: 0.8rem; }
+.mx-pays { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 4px; }
+.mx-pays li { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 10px; background: color-mix(in srgb, currentColor 6%, transparent); }
+.mx-pays li label { flex: 1; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 0.84rem; cursor: pointer; }
+.mx-pays li small { opacity: 0.7; font-size: 0.75rem; }
+.mx-pays li.is-paid label { opacity: 0.55; text-decoration: line-through; }
+.mx-pays li.is-late span { color: var(--sk-red, #c0392b); font-weight: 600; }
+.mx-payadd { display: flex; gap: 6px; flex-wrap: wrap; }
+.mx-payadd input { min-width: 0; flex: 1 1 90px; font: inherit; font-size: 0.8rem; padding: 4px 8px; border-radius: 8px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); background: transparent; color: inherit; }
+.mx-payadd input[type="date"] { flex: 0 1 140px; }
+.mx-err { color: var(--sk-red, #c0392b); font-size: 0.8rem; margin: 0; }
+.ob-line-name small.ob-badge { display: block; font-size: 0.7rem; opacity: 0.7; font-weight: 400; }
+button.ob-line-name { text-align: left; }
+.ob-pop { width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; }
+.ob-pop-amt { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 4px 0 8px; }
+.ob-pop-amt b { font-size: 1.4rem; }
+.ob-pop-amt small { opacity: 0.75; }

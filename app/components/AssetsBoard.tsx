@@ -199,7 +199,7 @@ export function AssetsBoard({ model, dues, monthDues, paidAt, parts, onOpen }: {
               <button key={a.def.id} type="button" className={`skm-as-card is-${a.def.id}`} onClick={() => onOpen(a)} aria-label={`${a.def.name} details`}>
                 <span className="skm-as-top">
                   <b className="skm-as-name">{a.def.name}</b>
-                  <small>{a.def.what}</small>
+                  <small>{a.meta?.name || a.def.what}</small>
                   <span className="skm-as-owed">{a.progress.owed !== undefined ? money(a.progress.owed) : 'enter amount'}</span>
                 </span>
                 <Bar p={a.progress} />
@@ -367,7 +367,7 @@ export function AssetPanel({ id, model, dues, monthDues, paidAt, onPaid, onBack,
       <div className="bal-drw-head">
         <FinanceType>Asset · financed</FinanceType>
         <FinanceName name={a.def.name} />
-        <p className="mb-dim">{a.def.what}{a.billName ? ` · paid by ${a.billName}` : ''}</p>
+        <p className="mb-dim">{a.meta?.name || a.def.what}{a.billName ? ` · paid by ${a.billName}` : ''}</p>
       </div>
       <AssetBlock id={id} model={model} dues={dues} monthDues={monthDues} paidAt={paidAt} />
       {a.history.length ? (

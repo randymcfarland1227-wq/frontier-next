@@ -126,6 +126,7 @@ import { hubCardDues, useExtraCards } from '../lib/extraCards';
 import { FinanceTaskAdd } from './components/FinanceTaskAdd';
 import { useMoneyMeta } from '../lib/moneyMeta';
 import { payPlanDues, usePayPlans } from '../lib/payPlans';
+import { findingPaymentDues, useFindings } from '../lib/finFindings';
 import { linkedChildren, usePriorityPins } from '../lib/priorityPins';
 import { titlesByKey, withLinkedShelves } from '../lib/linkedSubtasks';
 import { applyBillEdits, useBillEdits } from '../lib/billEdits';
@@ -871,12 +872,13 @@ export function LifeHub() {
   const lifeSubs = useLifeSubs();
   const extraCards = useExtraCards();
   const { meta: moneyMeta } = useMoneyMeta();
+  const findings = useFindings();
   const moneyDues = useMemo(
     () => {
       const sheet = moneyBillDues(moneyModel, paidKeys);
-      return applyBillEdits([...sheet, ...payPlanDues(payPlans, paidKeys), ...withoutSheetTwins(lifeSubDues(lifeSubs, paidKeys), moneyBillDues(moneyModel, new Set<string>())), ...hubCardDues(moneyModel, moneyMeta, extraCards, paidKeys)], billEdits);
+      return applyBillEdits([...sheet, ...payPlanDues(payPlans, paidKeys), ...withoutSheetTwins(lifeSubDues(lifeSubs, paidKeys), moneyBillDues(moneyModel, new Set<string>())), ...hubCardDues(moneyModel, moneyMeta, extraCards, paidKeys), ...findingPaymentDues(findings, paidKeys)], billEdits);
     },
-    [moneyModel, payPlans, paidKeys, billEdits, lifeSubs, extraCards, moneyMeta],
+    [moneyModel, payPlans, paidKeys, billEdits, lifeSubs, extraCards, moneyMeta, findings],
   );
   // Today's List badge: the Doing Now action list plus what you've added from Today / Focus / Sites.
   const unfinished = useTodayListCount(focus, visibleSnapshots, moneyDues.filter(b => !b.skipped));
@@ -904,6 +906,7 @@ export function LifeHub() {
       ...payPlanDues(payPlans, none, now),
       ...withoutSheetTwins(lifeSubDues(lifeSubs, none, now, 45, 120, true), moneyBillDues(moneyModel, none, now)),
       ...hubCardDues(moneyModel, moneyMeta, extraCards, none, now, 45, 120, true),
+      ...findingPaymentDues(findings, none, now, 45, 120, true),
       ...(schedule?.bills || []).flatMap(b => billDues(b, none, now, 45)),
     ];
     const out = applyBillEdits(all, billEdits).filter(inMonth);
@@ -913,7 +916,7 @@ export function LifeHub() {
     return out
       .filter(d => (seen.has(d.key) ? false : (seen.add(d.key), true)))
       .map(d => ({ ...d, days: Math.round((fromDayKey(d.due).getTime() - t0) / 86_400_000) }));
-  }, [moneyModel, payPlans, lifeSubs, schedule, billEdits, extraCards, moneyMeta]);
+  }, [moneyModel, payPlans, lifeSubs, schedule, billEdits, extraCards, moneyMeta, findings]);
   const monthDues = useMemo(() => duesForMonth(new Date()), [duesForMonth]);
 
   // Dated tasks for the calendar: Self tasks with a day, and Priority items given a day there

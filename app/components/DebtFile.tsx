@@ -1,5 +1,6 @@
 "use client";
 
+import { MoneyExtras } from "./MoneyExtras";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Cell, MoneyModel } from "../../lib/money";
 import type { BillDue } from "../../lib/schedule";
@@ -593,6 +594,8 @@ export function Story({
             </span>
           </div>
         </header>
+
+        <MoneyExtras fkey={`item:${item.id}`} label={title.name} />
 
         <div className="dbt-marks">
           {MARKS.map(([s, label]) => (

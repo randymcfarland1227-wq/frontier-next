@@ -10,6 +10,9 @@ import {
   enableBackup,
   getSyncStatus,
   joinWithKey,
+  loginInfo,
+  setLoginPassword,
+  type LoginInfo,
   syncNow,
   SYNC_STATUS_EVENT,
   type SyncStatus,
@@ -88,6 +91,36 @@ export function CloudBackup() {
     setFileMsg(r.ok ? `Restored — ${r.added} item${r.added === 1 ? '' : 's'} brought back.` : r.error || 'Could not restore.');
   }
 
+  const [login, setLogin] = useState<LoginInfo | null>(null);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwUser, setPwUser] = useState('');
+  const [pw1, setPw1] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [pwMsg, setPwMsg] = useState('');
+  const linkedNow = status.state !== 'off';
+  useEffect(() => {
+    if (!linkedNow) return;
+    void loginInfo().then(info => {
+      setLogin(info);
+      if (info?.user) setPwUser(info.user);
+    });
+  }, [linkedNow]);
+  async function savePassword(event: FormEvent) {
+    event.preventDefault();
+    if (!pwUser.trim()) return setPwMsg('Pick a username.');
+    if (pw1.length < 8) return setPwMsg('Use at least 8 characters.');
+    if (pw1 !== pw2) return setPwMsg('The two passwords don’t match.');
+    setPwMsg('Saving…');
+    const r = await setLoginPassword(pwUser, pw1);
+    if (!r.ok) return setPwMsg(r.error === 'offline' ? 'Couldn’t reach the backup — try again.' : 'Couldn’t save it — try again.');
+    setLogin({ set: true, user: pwUser.trim().toLowerCase(), at: new Date().toISOString() });
+    setPw1('');
+    setPw2('');
+    setPwOpen(false);
+    setPwMsg('Saved. Let your browser save this password when it asks; after a wipe it fills it in for you.');
+  }
+  const relink = deviceLink();
+
   async function join(event: FormEvent) {
     event.preventDefault();
     if (!key.trim()) return;
@@ -152,6 +185,40 @@ export function CloudBackup() {
           )}
         </div>
       </div>
+      {on ? (
+        <div className="sk-bk-row">
+          <div className="sk-rs">
+            <strong>Sign-in password</strong>{' '}
+            {login?.set
+              ? `On · username “${login.user}”. If this browser ever loses its link, you just sign in.`
+              : 'Not set. Set a username and password so a cleared browser only needs a sign-in, not your link.'}
+            {pwMsg ? <> {pwMsg}</> : null}
+            {pwOpen ? (
+              <form className="sk-login-form" onSubmit={savePassword} method="post" action="#">
+                <input name="username" autoComplete="username" placeholder="Username" aria-label="Username" value={pwUser} onChange={e => setPwUser(e.target.value)} autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+                <input name="new-password" type="password" autoComplete="new-password" placeholder="New password" aria-label="New password" value={pw1} onChange={e => setPw1(e.target.value)} />
+                <input name="confirm-password" type="password" autoComplete="new-password" placeholder="Same password again" aria-label="Confirm password" value={pw2} onChange={e => setPw2(e.target.value)} />
+                <button type="submit" className="sk-btn is-small">Save Password</button>
+              </form>
+            ) : null}
+          </div>
+          <div className="sk-bk-actions">
+            <button type="button" className="sk-btn is-small is-quiet" onClick={() => { setPwOpen(o => !o); setPwMsg(''); }}>
+              {pwOpen ? 'Cancel' : login?.set ? 'Change Password' : 'Set Password'}
+            </button>
+            {relink ? (
+              <a
+                className="sk-btn is-small is-quiet"
+                href={relink}
+                title="Drag this to your bookmarks bar. Bookmarks survive clearing history and cookies; click it to relink."
+                onClick={e => { e.preventDefault(); setPwMsg('Drag the “Relink Life Hub” button to your bookmarks bar — clicking it later relinks this browser.'); }}
+              >
+                Relink Life Hub
+              </a>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       <div className="sk-bk-row">
         <p className="sk-rs">
           <strong>Safe copies</strong> that don&apos;t depend on any device: {fileMsg || 'download a data file and a recovery sheet, and keep them in Drive or a password manager.'}

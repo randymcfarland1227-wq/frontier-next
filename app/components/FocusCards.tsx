@@ -40,7 +40,7 @@ import {
   type DebtItem,
   type DebtMarks,
 } from "../../lib/debtFile";
-import { mdSources, oosSources, outstandingParts, type OwedLine } from "./OutstandingView";
+import { FLAG_FEE, isFlagged, mdSources, oosSources, outstandingParts, type OwedLine } from "./OutstandingView";
 import { isTaskList, type Entry, type SubList, type SubListKind, type SubTask } from "./FocusSection";
 import { habitOptions, todayIso, useHabitCounts } from "../../lib/locks";
 import { linkOptions, linkStatus } from "../../lib/goalLinks";
@@ -1740,10 +1740,52 @@ function Detail({
 }
 
 const REG_SEED = "reg-lists-v1";
-const needsRegSeed = (x: Entry) => !x.done && /registration\s+renew/i.test(x.title) && !(x.seeded || []).includes(REG_SEED);
+/** v2 (11/20 MVA list): every flag as its own payment task with its full cost, then what to pay before it flags. */
+const REG_FLAGS_SEED = "reg-flags-1120";
+const isRegCard = (x: Entry) => !x.done && /registration\s+renew/i.test(x.title);
+const needsRegSeed = (x: Entry) =>
+  isRegCard(x) && (!(x.seeded || []).includes(REG_SEED) || !(x.seeded || []).includes(REG_FLAGS_SEED));
+
+function regFlagLists(file: DebtFile): SubList[] {
+  const usd = (n: number) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
+  const short = (i: DebtFile["items"][number]) => {
+    const who = i.ticket?.who || "";
+    const where = /county/i.test(who) ? "County" : /city/i.test(who) ? "City" : /transportation/i.test(who) ? "MDTA toll" : /highway|safezones/i.test(who) ? "Work zone" : who;
+    const num = (i.sub || "").split("·").pop()!.replace(/→.*$/, "").trim();
+    return `${where} ${num}`;
+  };
+  const fin = (i: DebtFile["items"][number], text: string): SubTask => ({ id: uid(), text, done: false, fin: { key: `item:${i.id}`, label: i.name } });
+  const md = file.items.filter((i) => i.group === "md");
+  const flags = md.filter(isFlagged).sort((a, b) => (a.ticket?.date || "").localeCompare(b.ticket?.date || ""));
+  const soon = md.filter((i) => !isFlagged(i) && i.blocksRegistration).sort((a, b) => (a.due || "").localeCompare(b.due || ""));
+  const out: SubList[] = [{
+    id: uid(),
+    name: `Clear the ${flags.length} flags (MVA list 11/20)`,
+    tasks: flags.map((i) => {
+      const local = i.ticket?.flagFee || 0;
+      const cost = i.amount === null ? null : i.amount + local + FLAG_FEE;
+      const parts = i.amount === null ? `? ticket + $${FLAG_FEE} MVA` : `${usd(i.amount)} ticket${local ? ` + $${local} flag fee` : ""} + $${FLAG_FEE} MVA`;
+      return fin(i, `${short(i)} · ${cost === null ? "?" : usd(cost)} (${parts})`);
+    }),
+  }];
+  if (soon.length) out.push({
+    id: uid(),
+    name: "Pay before they flag",
+    tasks: soon.map((i) => fin(i, `${short(i)} · ${usd(i.amount || 0)}${i.due ? ` by ${i.due.slice(5, 7)}/${i.due.slice(8, 10)}` : ""}`)),
+  });
+  return out;
+}
 
 /** Research → Payments (tickets) → MD state tax, flags & renewal fee, with research tasks wired to what they fill in. */
-function seedRegistration(x: Entry, file: DebtFile): Entry {
+function seedRegistration(x0: Entry, file: DebtFile): Entry {
+  const x = (x0.seeded || []).includes(REG_SEED) ? x0 : seedRegistrationV1(x0, file);
+  if ((x.seeded || []).includes(REG_FLAGS_SEED)) return x;
+  const lists = x.lists || [];
+  const at = lists.findIndex((l) => l.name === "Research") + 1;
+  return { ...x, lists: [...lists.slice(0, at), ...regFlagLists(file), ...lists.slice(at)], seeded: [...(x.seeded || []), REG_FLAGS_SEED] };
+}
+
+function seedRegistrationV1(x: Entry, file: DebtFile): Entry {
   const srcLabel = (id: string) => `MD tickets · ${mdSources(file).find((s) => s.id === id)?.label || id}`;
   const fin = (key: string, label: string): SubTask => ({ id: uid(), text: label, done: false, fin: { key, label } });
   const task = (text: string, fills?: { key: string; label: string }): SubTask => ({ id: uid(), text, done: false, ...(fills ? { fills } : {}) });

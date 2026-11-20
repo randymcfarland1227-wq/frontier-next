@@ -63,7 +63,7 @@ const unk = (n: number, unknown: boolean) =>
   !unknown ? usd(n) : n ? `${usd(n)} + ?` : "?";
 const counts = (i: DebtItem, marks: DebtMarks) =>
   !i.unverified && !isSettled(marks[i.id]);
-const isFlagged = (i: DebtItem) =>
+export const isFlagged = (i: DebtItem) =>
   Boolean(i.ticket?.flagged) && !/^not /i.test(i.ticket?.flagged || "");
 
 type Source = {

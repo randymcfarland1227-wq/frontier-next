@@ -4461,3 +4461,23 @@ button.ob-line-name { text-align: left; }
 .ob-pop-amt { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 4px 0 8px; }
 .ob-pop-amt b { font-size: 1.4rem; }
 .ob-pop-amt small { opacity: 0.75; }
+
+/* ── Focus list rows (11/20): check | name with its detail line under it | tools. The name always gets the room. ── */
+.sk-app .sk-fd-list > ul > li,
+.sk-app .sk-fd-list > ul > li.sk-fd-finrow { grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; column-gap: 10px; padding: 3px 0; }
+.sk-app .sk-fd-list > ul > li > :first-child { margin-top: 1px; }
+.sk-app .sk-fd-rowmain { display: grid; gap: 2px; min-width: 0; justify-items: start; }
+.sk-app .sk-fd-rowmain > button { max-width: 100%; }
+.sk-app .sk-fd-rowmain .sk-fin-name { -webkit-line-clamp: 3; line-clamp: 3; }
+.sk-app .sk-fd-rowsub,
+.sk-app .sk-fd-finrow .sk-fd-rowsub { font: var(--sk-caption); font-size: 11.5px; color: var(--sk-ink-2); white-space: normal; line-height: 1.35; }
+.sk-app .sk-fd-rowmain .sk-fd-fills { grid-column: auto; grid-row: auto; white-space: normal; text-align: left; }
+.sk-app .sk-fd-rowtools { display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; }
+.sk-app .sk-fd-rowtools > small { font: 700 12.5px/1.2 "DM Sans", system-ui, sans-serif; color: var(--sk-ink); white-space: nowrap; }
+.sk-app li:hover .sk-fd-buy { opacity: .9; filter: none; }
+/* Paid-in-Finance marker: same size as a check circle, dashed, so it doesn't read as a "0". */
+.sk-app .sk-fd-list .sk-fin-dot { width: 22px; height: 22px; border-width: 1.5px; border-style: dashed; opacity: .55; }
+.sk-app .sk-fd-list .sk-fin-dot.is-on { border-style: solid; opacity: 1; }
+/* "Steps" is the default kind: no chip, so the list name has room. */
+.sk-app .sk-fd-lhead .sk-fd-ltype.is-tasks { display: none; }
+.sk-app .sk-fd-lhead input { text-align: left; text-overflow: ellipsis; }

@@ -101,7 +101,16 @@ type FinRow = {
   settled: boolean;
   unverified?: boolean;
   kind: "debt" | "bill";
+  /** Flagged MD ticket: local flag fee + the MVA $30 on top of the ticket (what it really costs to clear). */
+  fees?: number;
 };
+
+/** "City 1000 · $95 ($40 ticket + $25 flag fee + $30 MVA)" → main line + the breakdown underneath. */
+function splitFinText(text: string): [string, string] {
+  const m = /^(.*?)\s*\(([^()]+)\)\s*$/.exec(text);
+  // With a breakdown underneath, the "· $95" moves to the amount on the right (it's the same number).
+  return m ? [m[1].replace(/\s*·\s*\$[\d.,?]+$/, ""), m[2]] : [text, ""];
+}
 
 export function debtItems(file: DebtFile | null, key: string): DebtItem[] {
   if (!file) return [];
@@ -170,6 +179,7 @@ function finRows(
     status: i.unverified ? "unverified" : ctx.marks[i.id]?.status || "open",
     settled: isSettled(ctx.marks[i.id]),
     unverified: i.unverified,
+    fees: isFlagged(i) ? (i.ticket?.flagFee || 0) + FLAG_FEE : 0,
   }));
 }
 
@@ -215,7 +225,7 @@ function finStats(rows: FinRow[]) {
   const done = live.filter((r) => r.settled).length;
   const owed = live
     .filter((r) => !r.settled)
-    .reduce((s, r) => s + (r.amount || 0), 0);
+    .reduce((s, r) => s + (r.amount || 0) + (r.fees || 0), 0);
   return { total: live.length, done, open: live.length - done, owed };
 }
 
@@ -554,7 +564,7 @@ function ListHead({ l, ctx, patch, remove, children }: { l: SubList; ctx: FinCtx
     for (const t of rows) {
       if (!t.fin) continue;
       const fr = finRows(t.fin, ctx);
-      const a = fr.reduce((n, r) => n + (r.amount || 0), 0);
+      const a = fr.reduce((n, r) => n + (r.amount || 0) + (r.fees || 0), 0);
       all += a;
       if (fr.length && fr.every((r) => r.settled)) paid += a;
     }
@@ -891,17 +901,22 @@ function Detail({
   const wideId = !linkedLists && item.site !== "self" && cardLists.length % 2 ? cardLists[cardLists.length - 1].id : "";
   const lede = (item.note || item.why || "").split(/(?<=[.!?])\s/)[0].slice(0, 160);
   // Money across this card's lists: paid · still to pay · to buy (task purchases)
+  // The same ticket can sit in two lists (a "MD tickets · City" group and its own flag row): count each once.
+  // Flag rows already carry the MVA $30 each, so the lump "MVA flag fees (13 × $30)" item is skipped when they're here.
   const money = { paid: 0, pay: 0, buy: 0, total: 0 };
-  for (const l of lists.filter(isTaskList))
-    for (const t of l.tasks) {
-      if (!t.fin) continue;
-      const rows = finRows(t.fin, ctx);
-      const amt = rows.reduce((n, r) => n + (r.amount || 0), 0);
+  const finTasks = lists.filter(isTaskList).flatMap((l) => l.tasks.filter((t) => t.fin).map((t) => ({ t, rows: finRows(t.fin!, ctx) })));
+  const hasFlagRows = finTasks.some((x) => x.rows.some((r) => r.fees));
+  const counted = new Set<string>();
+  for (const { t, rows: all } of finTasks) {
+      if (hasFlagRows && t.fin!.key === "own:mva-flag-fees") continue;
+      const rows = all.filter((r) => !counted.has(r.id));
+      rows.forEach((r) => counted.add(r.id));
+      const amt = rows.reduce((n, r) => n + (r.amount || 0) + (r.fees || 0), 0);
       if (!amt) continue;
       if (rows.every((r) => r.settled)) money.paid += amt;
-      else if (ctx.findings?.[t.fin.key]?.buy) money.buy += amt;
+      else if (ctx.findings?.[t.fin!.key]?.buy) money.buy += amt;
       else money.pay += amt;
-    }
+  }
   money.total = money.paid + money.pay + money.buy;
   const habitRows = lists.filter((l) => l.kind === "habits").flatMap((l) => l.tasks);
   const habitsToday = habitRows.length
@@ -1099,6 +1114,7 @@ function Detail({
                     >
                       <Icon name="check" size={12} />
                     </button>}
+                    <span className="sk-fd-rowmain">
                     {t.fin ? (
                       <button
                         type="button"
@@ -1114,7 +1130,7 @@ function Detail({
                               : openDebtPop(t.fin!.key, t.text)
                         }
                       >
-                        {t.text}
+                        {splitFinText(t.text)[0]}
                       </button>
                     ) : t.pin ? (
                       <button type="button" className="sk-fd-taskopen" title="Open its notes, questions and findings" onClick={() => openTaskPanel(t.pin!)}>
@@ -1132,6 +1148,21 @@ function Detail({
                         {t.note ? <Icon name="pencil" size={12} className="sk-fd-hasnote" /> : null}
                       </button>
                     )}
+                    {t.fin && splitFinText(t.text)[1] ? <small className="sk-fd-rowsub">{splitFinText(t.text)[1]}</small> : null}
+                    {lockOf(t) ? <small className="sk-fd-lock" title={`Waits for “${lockOf(t)}”`}>🔒 after {lockOf(t)}</small> : null}
+                    {!t.fin && t.due ? <small className="sk-fd-due">{shortDate(new Date(`${t.due}T12:00`))}</small> : null}
+                    {t.fills ? (() => {
+                      const rows = finRows(t.fills, ctx);
+                      const pl = planOf(t.fills, ctx);
+                      const amt = rows.length === 1 ? rows[0].amount : undefined;
+                      return (
+                        <button type="button" className="sk-fd-fills" title={`Fills in ${t.fills.label} — tap to type what you found`} onClick={() => setFindOpen({ link: t.fills! })}>
+                          → {t.fills.label}{amt != null ? ` · ${usd(amt)}` : ""}{pl.state !== "unknown" ? ` · ${planShort(pl.state)}` : ""}
+                        </button>
+                      );
+                    })() : null}
+                    </span>
+                    <span className="sk-fd-rowtools">
                     {!t.fin && !t.pin ? (
                       <button
                         type="button"
@@ -1154,18 +1185,6 @@ function Detail({
                       title={t.fin?.label || t.text}
                       sub={`${item.title} · ${l.name || "list"}`}
                     />
-                    {lockOf(t) ? <small className="sk-fd-lock" title={`Waits for “${lockOf(t)}”`}>🔒 after {lockOf(t)}</small> : null}
-                    {!t.fin && t.due ? <small className="sk-fd-due">{shortDate(new Date(`${t.due}T12:00`))}</small> : null}
-                    {t.fills ? (() => {
-                      const rows = finRows(t.fills, ctx);
-                      const pl = planOf(t.fills, ctx);
-                      const amt = rows.length === 1 ? rows[0].amount : undefined;
-                      return (
-                        <button type="button" className="sk-fd-fills" title={`Fills in ${t.fills.label} — tap to type what you found`} onClick={() => setFindOpen({ link: t.fills! })}>
-                          → {t.fills.label}{amt != null ? ` · ${usd(amt)}` : ""}{pl.state !== "unknown" ? ` · ${planShort(pl.state)}` : ""}
-                        </button>
-                      );
-                    })() : null}
                     {t.fin ? <small>{(() => {
                       const rows = finRows(t.fin, ctx);
                       if (!rows.length) return "Not loaded";
@@ -1199,6 +1218,7 @@ function Detail({
                     >
                       <Icon name="close" size={13} />
                     </button>
+                    </span>
                   </MenuRow>
                 ))}
               </ul>

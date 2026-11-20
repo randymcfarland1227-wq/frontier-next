@@ -177,6 +177,20 @@ export function setSelfHome(id: string, home?: string): SelfItem[] {
   return updated;
 }
 
+/**
+ * Convert to project: these tasks now live inside a Self project (`home` = `project:<id>`), so they
+ * leave the Self list and every count without being logged as done. Kept, not deleted, so a synced
+ * copy on another device can't bring them back.
+ */
+export function convertSelfItems(ids: string[], projectId: string): SelfItem[] {
+  const at = new Date().toISOString();
+  const set = new Set(ids);
+  const updated = loadSelfItems().map(i => (set.has(i.id) ? { ...i, home: `project:${projectId}`, starred: false, due: undefined, updatedAt: at } : i));
+  saveSelfItems(updated);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(SELF_ITEMS_EVENT));
+  return updated;
+}
+
 export function toggleSelfStar(id: string): SelfItem[] {
   const at = new Date().toISOString();
   const updated = loadSelfItems().map(i => (i.id === id ? { ...i, starred: !i.starred, updatedAt: at } : i));

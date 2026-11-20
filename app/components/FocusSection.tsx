@@ -2,7 +2,7 @@
 
 import { OPEN_PROJECT_EVENT, openProject } from "../../lib/selfProjects";
 
-import { Fragment, useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Circle, Group, ListHead, PaneHeadContext, Section } from "../sticker/kit";
 import { useFold } from "./Collapsible";
 import { useRowMenu, type RowMenuItem } from "./RowMenu";
@@ -622,6 +622,22 @@ export function useShortTermFocus() {
 }
 
 /** Site tasks linked into a focus card's or project's lists (pin keys). Linking moves a task: its site's pool hides it. */
+/** Tasks moved into a project / focus card list: pin key → the card's title. They leave their site's list and count. */
+export function useFocusListPins(): Map<string, string> {
+  const f = useShortTermFocus();
+  const lists = [f.now[0], f.weeks[0], f.ongoing[0], f.nutrition[0], f.marvel[0]];
+  const map = useMemo(() => {
+    const out = new Map<string, string>();
+    for (const e of lists.flat()) if (!e.done) for (const l of e.lists || []) for (const t of l.tasks) if (t.pin && !out.has(t.pin)) out.set(t.pin, e.title);
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, lists);
+  // Same content → same Map, so counts that depend on it don't recompute every render.
+  const sig = [...map].map((x) => x.join('=')).join('|');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => map, [sig]);
+}
+
 export function useLinkedPins(): Set<string> {
   const f = useShortTermFocus();
   const { lanes } = usePriorityPins();

@@ -12,6 +12,8 @@ export type RowMenuItem = {
   on?: boolean;
   danger?: boolean;
   hidden?: boolean;
+  /** A second step: choosing this swaps the menu to these items (e.g. Move to… → which site) */
+  items?: RowMenuItem[];
 };
 
 const LONG_PRESS_MS = 480;
@@ -119,6 +121,9 @@ export function useRowMenu(items: RowMenuItem[] | (() => RowMenuItem[]), title?:
 function RowMenuPop({ at, items, title, onClose }: { at: { x: number; y: number }; items: RowMenuItem[]; title?: string; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const [sub, setSub] = useState<RowMenuItem | null>(null);
+  const shown = sub ? (sub.items || []).filter(i => !i.hidden) : items;
+  const heading = sub ? sub.label.replace(/…$/, '') : title;
 
   useEffect(() => {
     const el = ref.current;
@@ -134,7 +139,7 @@ function RowMenuPop({ at, items, title, onClose }: { at: { x: number; y: number 
     if (top + h > vh - 8) top = Math.max(8, at.y / z - h - 4);
     setPos({ left, top });
     el.querySelector<HTMLElement>('button, a')?.focus({ preventScroll: true });
-  }, [at]);
+  }, [at, sub]);
 
   useEffect(() => {
     const away = (e: Event) => {
@@ -159,12 +164,12 @@ function RowMenuPop({ at, items, title, onClose }: { at: { x: number; y: number 
       ref={ref}
       className="row-menu"
       role="menu"
-      aria-label={title || 'Actions'}
+      aria-label={heading || 'Actions'}
       style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: 0 }}
       onContextMenu={e => e.preventDefault()}
     >
-      {title ? <div className="row-menu-title">{title}</div> : null}
-      {items.map(i =>
+      {heading ? <div className="row-menu-title">{heading}</div> : null}
+      {shown.map(i =>
         i.href ? (
           <a key={i.label} role="menuitem" className="row-menu-item" href={i.href} target="_blank" rel="noopener noreferrer" onClick={onClose}>
             {i.label}
@@ -177,6 +182,7 @@ function RowMenuPop({ at, items, title, onClose }: { at: { x: number; y: number 
             aria-checked={i.on}
             className={`row-menu-item${i.danger ? ' is-danger' : ''}${i.on ? ' is-on' : ''}`}
             onClick={() => {
+              if (i.items) return setSub(i);
               onClose();
               i.onSelect?.();
             }}

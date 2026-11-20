@@ -4418,3 +4418,18 @@
 .sk-app .sk-brief-open > .sk-brief-title, .sk-app .sk-brief-open > small { display: inline; }
 .sk-app .sk-brief-open > small { white-space: nowrap; }
 .sk-app .sk-brief-open > small::before { content: ' · '; }
+
+/* Self: tiny green dot on each row that counts in the Self total (site tabs) */
+.sk-countdot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34c759;
+  box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.18);
+  margin-right: 7px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+  flex: none;
+}

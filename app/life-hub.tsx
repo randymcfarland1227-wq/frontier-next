@@ -1,5 +1,5 @@
 'use client';
-import { SelfProjectHost } from "./components/FocusSection";
+import { SelfProjectHost, useFocusListPins } from "./components/FocusSection";
 
 import { removePeculiarUmbrellaLanes } from '../lib/peculiarUmbrellas';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -611,7 +611,14 @@ export function LifeHub() {
     return () => window.removeEventListener(FOCUS_LIST_EVENT, reload);
   }, []);
   const { lanes: priorityLanes } = usePriorityPins();
-  const subtaskLinks = useMemo(() => linkedChildren(priorityLanes), [priorityLanes]);
+  const focusListPins = useFocusListPins();
+  // Self tasks moved into a project list count as part of that project, like linked subtasks (the Self
+  // page already hides them; the Self tab count used to still include them: "Self 7" over 4 rows).
+  const subtaskLinks = useMemo(() => {
+    const links = linkedChildren(priorityLanes);
+    for (const [pin, title] of focusListPins) if (pin.startsWith('self:') && !links.has(pin)) links.set(pin, `project:${title}`);
+    return links;
+  }, [priorityLanes, focusListPins]);
   const visibleSnapshots = useMemo(() => {
     const out = { ...baseSnapshots };
     // Removed rows (not done) leave every list and count.
@@ -689,7 +696,7 @@ export function LifeHub() {
     }
     // Linked subtasks: they stay on their site, marked, and only their parent counts.
     const titles = titlesByKey(out);
-    const parentTitle = (key: string) => priorityLanes[key]?.title || titles.get(key) || 'another task';
+    const parentTitle = (key: string) => (key.startsWith('project:') ? key.slice(8) : priorityLanes[key]?.title || titles.get(key) || 'another task');
     // Lists: their tasks leave the pool and each list stands in as one task.
     return applySiteLists(withLinkedShelves(out, subtaskLinks, parentTitle), siteListStore);
   }, [baseSnapshots, selfItems, taskTags, hiddenItems, roleActive, ongoingIds, siteListStore, subtaskLinks, priorityLanes]);

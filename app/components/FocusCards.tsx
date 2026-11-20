@@ -107,6 +107,10 @@ type FinRow = {
 
 /** "City 1000 · $95 ($40 ticket + $25 flag fee + $30 MVA)" → main line + the breakdown underneath. */
 function splitFinText(text: string): [string, string] {
+  const due = /^(.*?)\s*·\s*\$[\d.,]+\s+by\s+(\d\d\/\d\d)$/.exec(text);
+  if (due) return [due[1], `Due ${due[2]}`];
+  const unk = /^(.*?)\s*·\s*\?$/.exec(text);
+  if (unk) return [unk[1], "Amount not known yet"];
   const m = /^(.*?)\s*\(([^()]+)\)\s*$/.exec(text);
   // With a breakdown underneath, the "· $95" moves to the amount on the right (it's the same number).
   return m ? [m[1].replace(/\s*·\s*\$[\d.,?]+$/, ""), m[2]] : [text, ""];
@@ -904,6 +908,8 @@ function Detail({
   // The same ticket can sit in two lists (a "MD tickets · City" group and its own flag row): count each once.
   // Flag rows already carry the MVA $30 each, so the lump "MVA flag fees (13 × $30)" item is skipped when they're here.
   const money = { paid: 0, pay: 0, buy: 0, total: 0 };
+  // Still to pay, split by whether it can go on a payment plan (each item once, like the total).
+  const plans = { can: 0, canN: 0, full: 0, unknown: 0, names: [] as string[] };
   const finTasks = lists.filter(isTaskList).flatMap((l) => l.tasks.filter((t) => t.fin).map((t) => ({ t, rows: finRows(t.fin!, ctx) })));
   const hasFlagRows = finTasks.some((x) => x.rows.some((r) => r.fees));
   const counted = new Set<string>();
@@ -915,7 +921,16 @@ function Detail({
       if (!amt) continue;
       if (rows.every((r) => r.settled)) money.paid += amt;
       else if (ctx.findings?.[t.fin!.key]?.buy) money.buy += amt;
-      else money.pay += amt;
+      else {
+        money.pay += amt;
+        const st = t.fin!.key.startsWith("bill:") ? "none" : planOf(t.fin!, ctx).state;
+        if (st === "yes" || st === "ask") {
+          plans.can += amt;
+          plans.canN += 1;
+          plans.names.push(splitFinText(t.text)[0]);
+        } else if (st === "none") plans.full += amt;
+        else plans.unknown += amt;
+      }
   }
   money.total = money.paid + money.pay + money.buy;
   const habitRows = lists.filter((l) => l.kind === "habits").flatMap((l) => l.tasks);
@@ -1065,7 +1080,7 @@ function Detail({
               </ListHead>
               <ul>
                 {l.tasks.map((t) => (
-                  <MenuRow as="li" key={t.id} title={t.text} items={() => rowMenu(l, t)} className={`${taskDone(t, ctx) ? "is-done" : ""}${t.fin ? " sk-fd-finrow" : ""}${lockOf(t) ? " is-locked" : ""}`}>
+                  <MenuRow as="li" key={t.id} title={t.text} items={() => rowMenu(l, t)} className={`${taskDone(t, ctx) ? "is-done" : ""}${t.fin ? " sk-fd-finrow" : ""}${lockOf(t) ? " is-locked" : ""}${t.fin && !t.fin.key.startsWith("bill:") && !taskDone(t, ctx) && ["yes", "ask"].includes(planOf(t.fin, ctx).state) ? " is-planable" : ""}`}>
                     {t.fin && settable(t.fin.key) ? (
                       <button
                         type="button"
@@ -1202,7 +1217,7 @@ function Detail({
                           title={`${planShort(pl.state)}${pl.line ? ` — ${pl.line}` : ""} · tap to log the amount / payment plan`}
                           onClick={() => setFindOpen({ link: t.fin! })}
                         >
-                          {planShort(pl.state)}
+                          {pl.state === "yes" ? "Plan ✓" : pl.state === "ask" ? "Plan possible" : planShort(pl.state)}
                         </button>
                       );
                     })() : null}
@@ -1487,6 +1502,14 @@ function Detail({
                 <span><i className="is-pay" />To pay {usd(money.pay)}</span>
                 {money.buy ? <span><i className="is-buy" />To buy {usd(money.buy)}</span> : null}
               </div>
+              {plans.canN ? (
+                <div className="sk-fd-plansum" aria-label="Payment plan split">
+                  <span className="is-can"><b>{usd(plans.can)}</b> could go on a payment plan · {plans.canN}</span>
+                  <span className="is-full"><b>{usd(plans.full)}</b> pay in full</span>
+                  {plans.unknown ? <span className="is-unknown"><b>{usd(plans.unknown)}</b> plan not checked</span> : null}
+                  <small title={plans.names.join(" · ")}>{plans.names.join(" · ")}</small>
+                </div>
+              ) : null}
             </section>
           ) : null}
           {item.ongoing || (item.refs || []).some((r) => r.kind === "image") ? <RefsBox item={item} update={update} mode="gallery" /> : null}

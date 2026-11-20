@@ -4481,3 +4481,18 @@ button.ob-line-name { text-align: left; }
 /* "Steps" is the default kind: no chip, so the list name has room. */
 .sk-app .sk-fd-lhead .sk-fd-ltype.is-tasks { display: none; }
 .sk-app .sk-fd-lhead input { text-align: left; text-overflow: ellipsis; }
+
+/* Payment-plan marks (11/20): rows that can go on a plan get a green edge; the money box splits plan vs pay in full. */
+.sk-app .sk-fd-list > ul > li.is-planable { box-shadow: inset 3px 0 0 #2f9e5b; padding-left: 7px; border-radius: 4px; background: color-mix(in srgb, #2f9e5b 7%, transparent); }
+.sk-app .sk-fd-list li.is-planable .sk-fd-plan { background: color-mix(in srgb, #2f9e5b 22%, transparent); border-color: color-mix(in srgb, #2f9e5b 65%, transparent); color: var(--sk-ink); }
+.sk-app .sk-fd-plansum { display: grid; gap: 3px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--sk-line); font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .sk-fd-plansum b { color: var(--sk-ink); font-weight: 800; }
+.sk-app .sk-fd-plansum .is-can { color: var(--sk-ink); box-shadow: inset 3px 0 0 #2f9e5b; padding-left: 7px; }
+.sk-app .sk-fd-plansum small { font-size: 11px; line-height: 1.35; padding-left: 10px; }
+/* Narrow list columns (phone, split view): the tools drop under the name instead of squeezing it. */
+.sk-app .sk-fd-list { container-type: inline-size; }
+@container (max-width: 340px) {
+  .sk-app .sk-fd-list > ul > li,
+  .sk-app .sk-fd-list > ul > li.sk-fd-finrow { grid-template-columns: auto minmax(0, 1fr); }
+  .sk-app .sk-fd-rowtools { grid-column: 2; justify-self: start; flex-wrap: wrap; }
+}

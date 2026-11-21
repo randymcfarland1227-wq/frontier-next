@@ -4561,3 +4561,13 @@ button.ob-line-name { text-align: left; }
   .sk-app .sk-ws-list { max-height: 180px; }
   .sk-app .sk-ws-edit { padding: 16px; min-height: 50vh; }
 }
+/* Worksheet list on the right, narrower, folds to a rail (11/20). */
+.sk-app .sk-ws { grid-template-columns: minmax(0, 1fr) minmax(150px, 190px); }
+.sk-app .sk-ws.is-folded { grid-template-columns: minmax(0, 1fr) 40px; }
+.sk-app .sk-ws > .sk-ws-side { order: 2; }
+.sk-app .sk-ws-sidehead { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 700 12px/1.2 "DM Sans", system-ui, sans-serif; color: var(--sk-ink-2); }
+.sk-app .sk-ws-side.is-rail { justify-items: center; gap: 6px; padding-top: 2px; }
+.sk-app .sk-ws-side.is-rail small { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .sk-ws-side .sk-ws-new { font-size: 12px; }
+@container (max-width: 700px) { .sk-app .sk-ws:not(.is-folded) { grid-template-columns: minmax(0, 1fr); } .sk-app .sk-ws:not(.is-folded) > .sk-ws-side { order: -1; } }
+@media (max-width: 720px) { .sk-app .sk-ws:not(.is-folded) { grid-template-columns: minmax(0, 1fr); } .sk-app .sk-ws:not(.is-folded) > .sk-ws-side { order: -1; } }

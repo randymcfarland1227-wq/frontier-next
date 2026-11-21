@@ -50,6 +50,7 @@ import { getHabitSchedule } from "../../lib/ticktickDone";
 import { habitDueOn } from "../../lib/energy";
 import { localDayKey } from "../../lib/dayKey";
 import { readSaved, STORAGE_KEYS } from "../../lib/storage";
+import { openBillPop, requestPayBill } from "../../lib/finLinks";
 import type { SourceSnapshot } from "../../lib/types";
 import { addSelfItem, SELF_ITEMS_EVENT } from "../../lib/adapters/self";
 import { ResearchButton } from "./ResearchPanel";
@@ -1081,7 +1082,23 @@ function Detail({
               <ul>
                 {l.tasks.map((t) => (
                   <MenuRow as="li" key={t.id} title={t.text} items={() => rowMenu(l, t)} className={`${taskDone(t, ctx) ? "is-done" : ""}${t.fin ? " sk-fd-finrow" : ""}${lockOf(t) ? " is-locked" : ""}${t.fin && !t.fin.key.startsWith("bill:") && !taskDone(t, ctx) && ["yes", "ask"].includes(planOf(t.fin, ctx).state) ? " is-planable" : ""}`}>
-                    {t.fin && settable(t.fin.key) ? (
+                    {t.fin && t.fin.key.startsWith("bill:") && !taskDone(t, ctx) ? (
+                      <button
+                        type="button"
+                        className="sk-circle"
+                        aria-pressed={false}
+                        aria-label={`Mark ${t.text} paid`}
+                        title="Marks it paid in Money too (crosses it off the sheet)"
+                        onClick={() => {
+                          const due = ctx.bills.find((b) => b.key === t.fin!.key.slice(5));
+                          if (!due) return;
+                          const amt = due.bill.amount != null ? ` (${usd(due.bill.amount)})` : "";
+                          if (window.confirm(`Mark ${due.bill.name}${amt} paid? It's crossed off in Money too.`)) requestPayBill(due.key);
+                        }}
+                      >
+                        <Icon name="check" size={12} />
+                      </button>
+                    ) : t.fin && settable(t.fin.key) ? (
                       <button
                         type="button"
                         className={`sk-circle${taskDone(t, ctx) ? " is-on" : ""}`}
@@ -1137,7 +1154,7 @@ function Detail({
                         title={`${t.text} · Open in Finance`}
                         onClick={() =>
                           t.fin!.key.startsWith("bill:")
-                            ? openFinance?.(undefined, "flow")
+                            ? openBillPop(t.fin!.key.slice(5))
                             : t.fin!.key.startsWith("owed:")
                               ? openFinance?.(undefined, "owed")
                               : t.fin!.key.startsWith("own:")
@@ -1431,7 +1448,7 @@ function Detail({
                         title="Open its details"
                         onClick={() =>
                           r.kind === "bill"
-                            ? openFinance?.(undefined, "flow")
+                            ? openBillPop(r.id.slice(5))
                             : openDebtPop(`item:${r.id}`, r.name)
                         }
                       >

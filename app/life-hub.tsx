@@ -44,7 +44,7 @@ import { StickerShell } from './sticker/StickerShell';
 import './sticker/sticker.css';
 import { HomeView } from './components/HomeView';
 import { SourceCard } from './components/SourceCard';
-import { requestOpenDebt } from '../lib/finLinks';
+import { PAY_BILL_EVENT, requestOpenDebt } from '../lib/finLinks';
 import { SiteFocus } from './components/AssignedFocus';
 import { SourceView } from './components/SourceView';
 import { VoiceMemoList } from './components/VoiceMemoList';
@@ -253,6 +253,13 @@ export function LifeHub() {
   const [moneySnap, setMoneySnap] = useState<MoneySnapshot | null>(() => loadCachedMoney());
   const moneyModel = useMemo(() => (moneySnap ? parseMoney(moneySnap) : null), [moneySnap]);
   // Paid on Life Hub: logged here (synced), and a sheet row is crossed off in the sheet too.
+  // Focus-card bill rows (and anything else) can ask to mark a bill paid: lib/finLinks requestPayBill.
+  const payBillRef = useRef<(key: string) => void>(() => {});
+  useEffect(() => {
+    const on = (e: Event) => payBillRef.current(String((e as CustomEvent).detail || ''));
+    window.addEventListener(PAY_BILL_EVENT, on);
+    return () => window.removeEventListener(PAY_BILL_EVENT, on);
+  }, []);
   const payBill = (due: BillDue) => {
     setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }));
     // Keep what was paid, so the pop-outs' history can show last time's amount after the row is gone.
@@ -880,6 +887,12 @@ export function LifeHub() {
     },
     [moneyModel, payPlans, paidKeys, billEdits, lifeSubs, extraCards, moneyMeta, findings],
   );
+  useEffect(() => {
+    payBillRef.current = (key: string) => {
+      const due = moneyDues.find(b => b.key === key);
+      if (due) payBill(due);
+    };
+  });
   // Today's List badge: the Doing Now action list plus what you've added from Today / Focus / Sites.
   const unfinished = useTodayListCount(focus, visibleSnapshots, moneyDues.filter(b => !b.skipped));
   // Money page "This month": every payment this month, paid ones too, and when each was paid.

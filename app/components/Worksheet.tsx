@@ -36,6 +36,12 @@ export function WorksheetTab({ mentions, openMention }: { mentions: MentionOpt[]
     writeSaved("sk-worksheet-open", id);
   };
   const [q, setQ] = useState("");
+  // The saved-sheets list sits on the right and folds to a slim rail (remembered on this device).
+  const [folded, setFoldedState] = useState<boolean>(() => readSaved<boolean>("sk-worksheet-folded", false));
+  const setFolded = (v: boolean) => {
+    setFoldedState(v);
+    writeSaved("sk-worksheet-folded", v);
+  };
   const current = openId && store[openId] && !store[openId].gone ? store[openId] : undefined;
   const shown = q.trim() ? sheets.filter((s) => `${s.title} ${plainOf(s.html)}`.toLowerCase().includes(q.trim().toLowerCase())) : sheets;
 
@@ -47,8 +53,19 @@ export function WorksheetTab({ mentions, openMention }: { mentions: MentionOpt[]
   };
 
   return (
-    <div className="sk-ws">
+    <div className={`sk-ws${folded ? " is-folded" : ""}`}>
+      {folded ? (
+        <aside className="sk-ws-side is-rail" aria-label="Worksheets">
+          <button type="button" className="sk-btn is-small is-icon is-quiet" title="Show worksheets" aria-label="Show worksheets" aria-expanded={false} onClick={() => setFolded(false)}>‹</button>
+          <button type="button" className="sk-btn is-small is-icon" title="New worksheet" aria-label="New worksheet" onClick={create}><Icon name="plus" size={14} /></button>
+          <small>{sheets.length}</small>
+        </aside>
+      ) : (
       <aside className="sk-ws-side" aria-label="Worksheets">
+        <div className="sk-ws-sidehead">
+          <b>Worksheets · {sheets.length}</b>
+          <button type="button" className="sk-btn is-small is-icon is-quiet" title="Hide the list" aria-label="Hide worksheets" aria-expanded onClick={() => setFolded(true)}>›</button>
+        </div>
         <button type="button" className="sk-btn is-small sk-ws-new" onClick={create}>
           <Icon name="plus" size={14} /> New worksheet
         </button>
@@ -68,6 +85,7 @@ export function WorksheetTab({ mentions, openMention }: { mentions: MentionOpt[]
           {!shown.length ? <li className="sk-ws-empty">{q ? "No worksheets match." : "No worksheets yet."}</li> : null}
         </ul>
       </aside>
+      )}
       {current ? (
         <Editor key={current.id} id={current.id} title={current.title} html={current.html} at={current.at} mentions={mentions} openMention={openMention} />
       ) : (

@@ -1080,7 +1080,8 @@ function Detail({
                 </button>
               </ListHead>
               <ul>
-                {l.tasks.map((t) => (
+                {/* Open rows first; done ones stay on, crossed out, below them (order otherwise kept). */}
+                {[...l.tasks].sort((a, b) => Number(taskDone(a, ctx)) - Number(taskDone(b, ctx))).map((t) => (
                   <MenuRow as="li" key={t.id} title={t.text} items={() => rowMenu(l, t)} className={`${taskDone(t, ctx) ? "is-done" : ""}${t.fin ? " sk-fd-finrow" : ""}${lockOf(t) ? " is-locked" : ""}${t.fin && !t.fin.key.startsWith("bill:") && !taskDone(t, ctx) && ["yes", "ask"].includes(planOf(t.fin, ctx).state) ? " is-planable" : ""}`}>
                     {t.fin && t.fin.key.startsWith("bill:") && !taskDone(t, ctx) ? (
                       <button

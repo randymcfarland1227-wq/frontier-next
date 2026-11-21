@@ -114,11 +114,13 @@ export const PaneHeadContext = createContext<HTMLElement | null | undefined>(und
 /** Today tab line: the spot right beside the − % + size control (Sites puts its site selector there). */
 export const PaneToolSlotContext = createContext<HTMLElement | null | undefined>(undefined);
 
-export function PaneZoomButtons({ zoom, set, min, max, step }: PaneZoom) {
+export function PaneZoomButtons({ zoom, set, min, max, step, shown }: PaneZoom & { shown?: number }) {
+  // Fitted smaller than picked (FitZoom): show what's on screen; − steps down from there.
+  const fitted = shown !== undefined && shown < zoom;
   return (
-    <span className="sk-panezoom" role="group" aria-label="Pane size">
-      <button type="button" onClick={() => set(zoom - step)} disabled={zoom <= min} aria-label="Smaller" title="Smaller">−</button>
-      <button type="button" className="sk-panezoom-pct" onClick={() => set(100)} title="Back to 100%">{zoom}%</button>
+    <span className={`sk-panezoom${fitted ? " is-fitted" : ""}`} role="group" aria-label="Pane size">
+      <button type="button" onClick={() => set((fitted ? shown! : zoom) - step)} disabled={(fitted ? shown! : zoom) <= min} aria-label="Smaller" title="Smaller">−</button>
+      <button type="button" className="sk-panezoom-pct" onClick={() => set(100)} title={fitted ? `Fitted to the pane (you picked ${zoom}%). Tap for 100%.` : "Back to 100%"}>{fitted ? shown : zoom}%</button>
       <button type="button" onClick={() => set(zoom + step)} disabled={zoom >= max} aria-label="Bigger" title="Bigger">+</button>
     </span>
   );

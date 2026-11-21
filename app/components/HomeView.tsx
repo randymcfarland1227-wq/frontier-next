@@ -50,6 +50,7 @@ import {
 } from "./FocusSection";
 import { HomeTop } from "../sticker/HomeTop";
 import { MoneyZoom } from "./MoneyZoom";
+import { FitZoom } from "./FitZoom";
 import { HubBoard } from "./HubBoard";
 import { ListHead, PaneHeadContext, PaneToolSlotContext, PaneZoomButtons, REVEAL_EVENT, reveal, Section } from "../sticker/kit";
 import { CapPane } from "../sticker/CapPane";
@@ -300,6 +301,9 @@ export function HomeView({
     setSplitZoomState(next);
     writeSaved("sk-today-split-zoom", next);
   };
+  // The size each pane actually shows after fitting its content (FitZoom); the buttons say when it's smaller than picked.
+  const [shownZoom, setShownZoom] = useState<Record<string, number>>({});
+  const setShown = (k: string, z: number) => setShownZoom((m) => (m[k] === z ? m : { ...m, [k]: z }));
   // Single view zoom: its own saved size (this device), same − % + as each Split pane.
   const [singleZoom, setSingleZoomState] = useState<number>(() => Number(readSaved<number>("sk-today-single-zoom", 100)) || 100);
   const setSingleZoom = (v: number) => {
@@ -686,13 +690,13 @@ export function HomeView({
             ] as const).map(([t, pick], i) => (
               <div key={i} className="sk-splitcol">
                 {/* Money has its own − / + (it starts at 60%), so the pane zoom leaves it alone. */}
-                {todayBar(t, pick, t === "money" ? <MoneyZoom pane /> : <PaneZoomButtons zoom={splitZoom[i]} set={(v) => setSplitZoom(i, v)} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, i === 0, i + 1)}
+                {todayBar(t, pick, t === "money" ? <MoneyZoom pane /> : <PaneZoomButtons zoom={splitZoom[i]} shown={shownZoom[`split${i}`]} set={(v) => setSplitZoom(i, v)} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, i === 0, i + 1)}
                 <PaneHeadContext.Provider value={paneSlots[i + 1]}><PaneToolSlotContext.Provider value={toolSlots[i + 1]}>
-                  <div className="sk-splitzoom" style={t === "money" || splitZoom[i] === 100 ? undefined : { zoom: splitZoom[i] / 100 }}>
+                  <FitZoom zoom={splitZoom[i]} off={t === "money"} watch={t} onFit={(z) => setShown(`split${i}`, z)}>
                     <CapPane key={t} cap="split" label={TODAY_TABS.find(([id]) => id === t)?.[1] || "Today"}>
                       {renderTab(t, i + 1)}
                     </CapPane>
-                  </div>
+                  </FitZoom>
                 </PaneToolSlotContext.Provider></PaneHeadContext.Provider>
               </div>
             ))}
@@ -701,14 +705,14 @@ export function HomeView({
           <>
             {/* The tab row is the Today header: tabs | page size over Refresh sources | the pane's buttons. */}
             {todayBar(tab, pickTodayTab, tab === "money"
-              ? <PaneZoomButtons zoom={moneyZoom} set={setMoneyZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />
-              : <PaneZoomButtons zoom={singleZoom} set={setSingleZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, true, 0)}
+              ? <PaneZoomButtons zoom={moneyZoom} shown={shownZoom.single} set={setMoneyZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />
+              : <PaneZoomButtons zoom={singleZoom} shown={shownZoom.single} set={setSingleZoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} />, true, 0)}
             <PaneHeadContext.Provider value={paneSlots[0]}><PaneToolSlotContext.Provider value={toolSlots[0]}>
-              <div className="sk-splitzoom" style={(tab === "money" ? moneyZoom : singleZoom) === 100 ? undefined : { zoom: (tab === "money" ? moneyZoom : singleZoom) / 100 }}>
+              <FitZoom zoom={tab === "money" ? moneyZoom : singleZoom} watch={tab} onFit={(z) => setShown("single", z)}>
                 <CapPane key={tab} cap="page" label={TODAY_TABS.find(([id]) => id === tab)?.[1] || "Today"}>
                   {renderTab(tab)}
                 </CapPane>
-              </div>
+              </FitZoom>
             </PaneToolSlotContext.Provider></PaneHeadContext.Provider>
           </>
         )}

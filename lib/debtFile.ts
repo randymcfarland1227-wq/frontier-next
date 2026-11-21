@@ -56,6 +56,8 @@ export type DebtItem = {
   step?: string;
   /** Hand-typed project / repair (an asset task): shown under Projects / required */
   project?: boolean;
+  /** Hand-typed pay-later balance (Flex rent…): shown under Current liabilities › Pay later */
+  paylater?: boolean;
   /** Combination letters (MVA invoices, CCU) this item appears in */
   letters?: string[];
   timeline: DebtEvent[];

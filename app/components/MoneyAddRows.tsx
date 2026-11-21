@@ -40,7 +40,7 @@ export function CashAdvanceAdd({ onSave }: { onSave: Save }) {
   if (!open)
     return (
       <div className="tp-add">
-        <button type="button" className="sk-btn is-small is-prominent" onClick={() => setOpen(true)}>+ Add cash advance</button>
+        <button type="button" className="sk-btn is-small is-prominent" onClick={() => setOpen(true)}>+ Got an advance</button>
       </div>
     );
   return (
@@ -65,8 +65,9 @@ export function CashAdvanceAdd({ onSave }: { onSave: Save }) {
           {['Dave', 'MoneyLion', 'Cleo', 'Brigit', 'EarnIn', 'Klover', 'Albert', 'Chime SpotMe'].map(n => <option key={n} value={n} />)}
         </datalist>
       </label>
-      <label><span>Pay back</span><input inputMode="decimal" value={f.amount} onChange={e => setF({ ...f, amount: e.target.value })} placeholder="$" required /></label>
-      <label><span>Due</span><input type="date" value={f.due} onChange={e => setF({ ...f, due: e.target.value })} required /></label>
+      <label><span>Repay amount</span><input inputMode="decimal" value={f.amount} onChange={e => setF({ ...f, amount: e.target.value })} placeholder="$ advance + fees" required /></label>
+      <label><span>Pay back on</span><input type="date" value={f.due} onChange={e => setF({ ...f, due: e.target.value })} required /></label>
+      <p className="mb-dim sub-form-wide" style={{ gridColumn: '1 / -1', margin: 0 }}>Shows as “{f.name.trim() || 'Cleo'} Advance Repay”. The app’s monthly fee is a subscription (“{f.name.trim() || 'Cleo'} Sub”), not an advance.</p>
       <div className="sub-form-actions">
         <button type="submit" className="sk-btn is-small is-prominent" disabled={busy}>{busy ? 'Adding…' : 'Add to sheet'}</button>
         <button type="button" className="sk-btn is-small" onClick={() => setOpen(false)}>Cancel</button>

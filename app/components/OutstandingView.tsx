@@ -29,6 +29,7 @@ import {
   RENEWAL_STEP,
 } from "../../lib/debtFile";
 import { isLedgerPaid } from "../../lib/moneyLedger";
+import { advanceLabel } from "../../lib/billEdits";
 import { readSaved, writeSaved } from "../../lib/storage";
 import {
   isOwedDone,
@@ -529,14 +530,18 @@ export function outstandingParts(
   const cashAdv: OwedLine[] = rowsOf(model?.cashAdvances).map((r) => {
     const l = sheetLine(r, 1, 2, undefined, 0);
     const id = `money:cash:${moneySlug(l.name)}:${l.date || moneySlug(r[0]?.text || "nodate")}`;
-    return paidAt[id] ? { ...l, done: true } : l;
+    const labelled = { ...l, name: advanceLabel("cash", l.name) || l.name };
+    return paidAt[id] ? { ...labelled, done: true } : labelled;
   });
   const liab = nc(/non.?car|liabilit/i);
   const advances: OwedLine[] = rowsOf(liab)
     .filter((r) => !/t-?mobile/i.test(r.map((c) => c.text).join(" ")))
     .map((r) => sheetLine(r, 0, 3, 1));
 
-  const liabItems = (file?.items || []).filter((i) => i.group === "liability");
+  const allLiab = (file?.items || []).filter((i) => i.group === "liability");
+  // Hand-added pay-later balances (Flex rent moved off Overdue) sit with the providers.
+  payLater.push(...allLiab.filter((i) => i.paylater).map(item));
+  const liabItems = allLiab.filter((i) => !i.paylater);
   const taxes: OwedLine[] = [
     ...liabItems.filter((i) => !i.project && !/t-?mobile/i.test(i.name)).map(item),
     ...rowsOf(nc(/regulat/i))

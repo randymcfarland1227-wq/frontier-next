@@ -44,7 +44,7 @@ import { StickerShell } from './sticker/StickerShell';
 import './sticker/sticker.css';
 import { HomeView } from './components/HomeView';
 import { SourceCard } from './components/SourceCard';
-import { PAY_BILL_EVENT, requestOpenDebt } from '../lib/finLinks';
+import { PAY_BILL_EVENT, UNPAY_BILL_EVENT, requestOpenDebt } from '../lib/finLinks';
 import { SiteFocus } from './components/AssignedFocus';
 import { SourceView } from './components/SourceView';
 import { VoiceMemoList } from './components/VoiceMemoList';
@@ -271,6 +271,29 @@ export function LifeHub() {
       if (!res.ok || res.results.some(r => !r.ok)) console.warn('Sheet cross-off failed', due.bill.name, res.error || res.results);
     });
   };
+  // Undo a Paid mark (Money month overview): reopen the ledger entry and un-cross the sheet row,
+  // so a payment whose day has passed goes back to Overdue.
+  const unpayBillRef = useRef<(key: string) => void>(() => {});
+  useEffect(() => {
+    const on = (e: Event) => unpayBillRef.current(String((e as CustomEvent).detail || ''));
+    window.addEventListener(UNPAY_BILL_EVENT, on);
+    return () => window.removeEventListener(UNPAY_BILL_EVENT, on);
+  }, []);
+  useEffect(() => {
+    unpayBillRef.current = (key: string) => {
+      if (!key) return;
+      setLedger(reopenCompletion('radall', key));
+      // A subscription's month is projected from its one sheet row, so that row is the one to un-cross.
+      const prefix = key.startsWith('money:sub:') ? key.split(':').slice(0, 3).join(':') + ':' : '';
+      const item = moneyModel?.items.find(i => i.id === key) || (prefix ? moneyModel?.items.find(i => i.skipped && i.id.startsWith(prefix)) : undefined);
+      const edit = item?.skipped ? crossOffEdit(item, false) : undefined;
+      if (!edit) return;
+      void saveMoneyEdits([edit]).then(res => {
+        if (res.snapshot) setMoneySnap(res.snapshot);
+        if (!res.ok || res.results.some(r => !r.ok)) console.warn('Sheet un-cross failed', key, res.error || res.results);
+      });
+    };
+  });
   // A this-month change in a Money pop-out (amount / due date) is also written into that sheet row.
   useEffect(() => {
     setSheetWriter(async ({ key, amount, date, rename }) => {

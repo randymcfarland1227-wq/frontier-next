@@ -122,6 +122,17 @@ export function setBillDisplayName(bill: Parameters<typeof billRuleKey>[0], name
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BILL_DAYS_EVENT));
 }
 
+/** Cash-advance apps: their monthly fee and their advance repayments share a name, so each gets a label. */
+const ADVANCE_APPS = /^(cleo|dave|moneylion|money lion|brigit|earnin|klover|albert|chime spotme|floatme|empower|varo)$/i;
+
+/** "Cleo" the subscription reads "Cleo Sub"; "Cleo" the cash advance reads "Cleo Advance Repay". Display only: keys stay the same. */
+export function advanceLabel(kind: string | undefined, name: string): string | undefined {
+  const n = name.trim();
+  if (kind === 'cash' && !/repay|advance|sub\b|subscription/i.test(n)) return `${n} Advance Repay`;
+  if (kind === 'sub' && ADVANCE_APPS.test(n)) return `${n} Sub`;
+  return undefined;
+}
+
 export function billDisplayName(bill: Parameters<typeof billRuleKey>[0], days: BillDays): string {
   const rule = days[billRuleKey(bill)];
   return rule?.displayName || rule?.rename || bill.name;
@@ -261,7 +272,7 @@ export function applyBillEdits(dues: BillDue[], edits: BillEdits, today = new Da
       if (rule?.amount !== undefined && rule.amountFrom && d.due.slice(0, 7) >= rule.amountFrom) d = { ...d, bill: { ...d.bill, amount: rule.amount } };
       // Levels are per payment now; an older bill-wide level only covers payments already due when it was set.
       if (rule && (rule.nonCritical !== undefined || rule.priority !== undefined) && (!rule.at || d.due <= rule.at.slice(0, 10))) d = { ...d, bill: { ...d.bill, nonCritical: rule.priority ? undefined : rule.nonCritical ?? d.bill.nonCritical, priority: rule.priority || undefined } };
-      const name = rule?.displayName || rule?.rename;
+      const name = rule?.displayName || rule?.rename || advanceLabel(d.bill.kind, d.bill.name);
       if (name && name !== d.bill.name) {
         d = { ...d, bill: {
           ...d.bill,

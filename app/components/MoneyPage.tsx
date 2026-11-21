@@ -12,6 +12,7 @@ import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useSta
 import { PayPlanner } from './PayPlanner';
 import { debtOptions, purchaseAddEdits, purchaseDeleteEdits } from '../../lib/money';
 import { CashAdvanceAdd, PayLaterAdd } from './MoneyAddRows';
+import { requestUnpayBill } from '../../lib/finLinks';
 import { MoneySelector } from './MoneySelector';
 import { isLedgerPaid, ledgerMonthRows } from '../../lib/moneyLedger';
 import { DebtFile } from './DebtFile';
@@ -803,7 +804,13 @@ function MonthRow({ d, paidAt, onPaid, fullDate = false }: { d: BillDue; paidAt:
         {STATE_TEXT[state](d, paidAt)}
       </span>
       <span className="mm-tools">
-        {done ? null : (
+        {done ? (
+          state === 'paid' || state === 'crossed' ? (
+            <button type="button" className="sk-btn is-small" onClick={() => requestUnpayBill(d.key)} aria-label={`Undo paid for ${d.bill.name}`} title={d.days < 0 ? 'Not paid after all: back to Overdue' : 'Not paid after all: back to the list'}>
+              Undo
+            </button>
+          ) : null
+        ) : (
           <button type="button" className="sk-btn is-small" onClick={() => onPaid(d)} aria-label={`Mark ${d.bill.name} paid`}>
             Paid
           </button>
@@ -3386,7 +3393,11 @@ function LedgerByCategory({ dues, paidAt, model, onPaid, hidePaid, month, strike
                       <span className="ledger-day">{fromDayKey(d.due).getDate()}</span>
                       <span className="ledger-name"><BrandLogo name={d.bill.name} /><ItemName id={d.key}>{d.bill.name}</ItemName><FlagBadges d={d} /></span>
                       <span className="ledger-amt">{money(d.bill.amount) || '?'}</span>
-                      {isDone ? (
+                      {isDone && (st === 'paid' || st === 'crossed') ? (
+                        <button type="button" className="ledger-paid is-undo" onClick={() => requestUnpayBill(d.key)} title={`${STATE_TEXT[st](d, paidAt)} — tap to undo${d.days < 0 ? ' (back to Overdue)' : ''}`} aria-label={`Undo paid for ${d.bill.name}`}>
+                          <span className="is-check">✓</span><span className="is-word">Undo</span>
+                        </button>
+                      ) : isDone ? (
                         <span className="ledger-state" title={STATE_TEXT[st](d, paidAt)}>✓</span>
                       ) : st === 'late' ? (
                         <button type="button" className="ledger-paid is-late" onClick={() => onPaid(d)} title="Past its day — mark paid">

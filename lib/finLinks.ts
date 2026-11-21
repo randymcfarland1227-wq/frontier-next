@@ -39,3 +39,7 @@ export const openBillPop = (dueKey: string) => window.dispatchEvent(new CustomEv
 /** Mark a bill paid on Life Hub from anywhere (life-hub.tsx runs its payBill: ledger + sheet cross-off). */
 export const PAY_BILL_EVENT = 'lifehub:pay-bill';
 export const requestPayBill = (dueKey: string) => window.dispatchEvent(new CustomEvent(PAY_BILL_EVENT, { detail: dueKey }));
+
+/** Undo a Paid mark from anywhere: the ledger entry is reopened and the sheet row un-crossed, so a past-due one is overdue again. */
+export const UNPAY_BILL_EVENT = 'lifehub:unpay-bill';
+export const requestUnpayBill = (dueKey: string) => window.dispatchEvent(new CustomEvent(UNPAY_BILL_EVENT, { detail: dueKey }));

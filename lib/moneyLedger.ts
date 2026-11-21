@@ -1,5 +1,5 @@
 import { ruleDayOf, sameNameTwice, type MoneyItem } from './money';
-import { billDisplayName, loadBillDays } from './billEdits';
+import { advanceLabel, billDisplayName, loadBillDays } from './billEdits';
 import type { BillDue } from './schedule';
 
 /** Display filtering only: never changes the payment ledger or its totals. */
@@ -16,7 +16,8 @@ export function ledgerMonthRows(dues: BillDue[], items: MoneyItem[], today: Date
     if (!item.skipped || !item.date?.startsWith(month) || rows.has(item.id)) continue;
     const [y, m, day] = item.date.split('-').map(Number);
     const source = { name: item.name, kind: item.kind, ruleDay: ruleDayOf(item, duplicateNames) };
-    const name = billDisplayName(source, billDays);
+    const named = billDisplayName(source, billDays);
+    const name = named === item.name ? advanceLabel(item.kind, item.name) || named : named;
     rows.set(item.id, {
       key: item.id, due: item.date,
       days: Math.round((new Date(y, m - 1, day).getTime() - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86_400_000),

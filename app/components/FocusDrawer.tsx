@@ -13,7 +13,7 @@ import { readSaved, writeSaved } from "../../lib/storage";
 import { useDayKey } from "../../lib/dayKey";
 import { SearchPick } from "../sticker/SearchPick";
 import { onDay, type BillDue, type ScheduleSnapshot } from "../../lib/schedule";
-import { PLAN, loadLanes, updatePinDetails, usePriorityPins } from "../../lib/priorityPins";
+import { PLAN, autoShipMix, loadLanes, updatePinDetails, usePriorityPins } from "../../lib/priorityPins";
 import { Row } from "../sticker/kit";
 import { Icon } from "../sticker/Icon";
 import { SITE_GROUPS } from "../sticker/StickerShell";
@@ -214,6 +214,8 @@ export function usePlan(
         .filter((i): i is PriorityItem => Boolean(i)),
     [pins, lanes, catalog],
   );
+  // Ship rows fold into one "Items to ship" list wherever the plan is shown (Daily Brief, Today's List).
+  useEffect(() => autoShipMix(plan, lanes), [plan, lanes]);
   return { plan, catalog, lanes };
 }
 

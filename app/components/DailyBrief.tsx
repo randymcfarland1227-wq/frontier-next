@@ -59,6 +59,8 @@ function restoreAll() {
   window.dispatchEvent(new Event(DISMISS_EVENT));
 }
 const FOLDS_KEY = 'sk-fold-brief-sections';
+/** Words too common to tell two ship items apart. */
+const STOP = new Set(['the', 'and', 'for', 'with', 'size', 'men', 'mens', "men's", 'women', 'womens', 'new', 'nwt']);
 const TAG_LABEL: Record<BucketTag, string> = { ship: 'ship', $: '$', task: 'task', reply: 'reply', appt: 'appt', focus: 'focus', mail: 'mail' };
 
 const SHORT: Record<BriefSection['id'], [string, string]> = {
@@ -167,12 +169,20 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
   const focusCards = useMemo(() => [...focus.now[0], ...focus.weeks[0]].filter(c => c.date || c.eventId).map(c => ({ id: c.id, title: c.title, date: c.date, eventId: c.eventId })), [focus.now, focus.weeks]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const steps = useMemo(() => focusPinItems().filter(i => i.id.startsWith('ftask:')).map(i => ({ id: i.id, title: i.title, detail: i.detail })), [focus.now, focus.weeks, focus.ongoing]);
+  const onList = (r: BucketRow) => r.pins.length > 0 && r.pins.every(k => lanes[k]?.lane === PLAN);
+  // A ship row whose item is already on the Action List (pinned, or a "Ship …" task naming the same item) stays off Do today.
+  const shipWords = (t: string) => new Set(t.toLowerCase().replace(/^\s*(ship|end listing:?)\s+/, '').replace(/\+ end listing.*$/, '').split(/[^a-z0-9']+/).filter(w => w.length > 2 && !STOP.has(w)));
+  const planShips = plan.filter(i => /^\s*ship\b/i.test(lanes[i.key]?.title || i.title)).map(i => shipWords(lanes[i.key]?.title || i.title));
+  const shipOnList = (r: BucketRow) => {
+    if (onList(r)) return true;
+    const w = [...shipWords(r.title)];
+    return planShips.some(p => w.filter(x => p.has(x)).length >= Math.min(3, w.length));
+  };
   const buckets = briefBuckets(sections, bills,
     soon.map(e => ({ id: e.id, title: e.title, start: eventStart(e), allDay: e.allDay })),
     focusCards, steps, new Date(nowMs))
-    .map(b => ({ ...b, rows: b.rows.filter(r => !r.ids.every(id => gone[id])) }));
+    .map(b => ({ ...b, rows: b.rows.filter(r => !r.ids.every(id => gone[id]) && !(r.tag === 'ship' && shipOnList(r))) }));
   const [unfold, setUnfold] = useState<Record<string, boolean>>({});
-  const onList = (r: BucketRow) => r.pins.length > 0 && r.pins.every(k => lanes[k]?.lane === PLAN);
   const sendToList = (r: BucketRow) => {
     if (onList(r)) { r.pins.forEach(unpin); return; }
     // Hub-only pins (appointments) carry their own title; the catalog reads it from the pin.

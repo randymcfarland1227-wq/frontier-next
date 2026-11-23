@@ -28,6 +28,7 @@ import {
   createMix,
   addToMix,
   leaveMix,
+  autoShipMix,
   doneInMix,
   renameMix,
   endMix,
@@ -277,6 +278,8 @@ export function PriorityBoard({
   // its first member; the rest of its members fold into it.
   const mixes = useMemo(() => liveMixes(lanes), [lanes]);
   const steps = useMemo(() => groupSteps(plan, lanes), [plan, lanes]);
+  // Ship rows fold into one "Items to ship" list (rows taken out on purpose stay single).
+  useEffect(() => autoShipMix(plan, lanes), [plan, lanes]);
   const [openMix, setOpenMix] = useState<string | null>(null);
   // The Daily Brief opens a mix in a pop-out: its items, tick them off, open each one's details.
   const [dlgMix, setDlgMix] = useState<string | null>(null);

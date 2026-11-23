@@ -2,7 +2,7 @@
 import { SelfProjectHost, useFocusListPins } from "./components/FocusSection";
 
 import { removePeculiarUmbrellaLanes } from '../lib/peculiarUmbrellas';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import type {
   FeaturedItem,
   FocusItem,
@@ -52,6 +52,7 @@ import { FocusDrawer, useTodayListCount } from './components/FocusDrawer';
 import { SourceBridges } from './components/SourceBridges';
 import {
   loadLedger,
+  restoreReopenedSnapshots,
   recordCompletion,
   computeStats,
   diffSnapshotCompletions,
@@ -241,7 +242,10 @@ export function LifeHub() {
   const [active, setActive] = useState<SpaceId>(typeof window !== 'undefined' && window.location.hash === '#settings' ? 'settings' : 'home');
   const [focusOpen, setFocusOpen] = useState(false);
   const [focus, setFocus] = useState<FocusItem[]>(starterFocus);
-  const [snapshots, setSnapshots] = useState<Record<SourceId, SourceSnapshot>>(emptySnapshots);
+  const [snapshots, saveSnapshots] = useState<Record<SourceId, SourceSnapshot>>(emptySnapshots);
+  const setSnapshots = useCallback((update: SetStateAction<Record<SourceId, SourceSnapshot>>) => {
+    saveSnapshots(current => restoreReopenedSnapshots(typeof update === 'function' ? update(current) : update));
+  }, []);
   const [selfItems, setSelfItems] = useState<SelfItem[]>([]);
   const [ready, setReady] = useState(false);
   const [connectorSyncing, setConnectorSyncing] = useState(false);
@@ -332,7 +336,7 @@ export function LifeHub() {
   const syncSelf = useCallback((items: SelfItem[]) => {
     setSelfItems(items);
     setSnapshots(current => ({ ...current, self: selfSnapshotFrom(items) }));
-  }, []);
+  }, [setSnapshots]);
 
   useEffect(() => {
     const reload = () => syncSelf(loadSelfItems());
@@ -372,7 +376,7 @@ export function LifeHub() {
     } finally {
       setConnectorSyncing(false);
     }
-  }, []);
+  }, [setSnapshots]);
 
   // New day: Home remounts (its Today state starts clean) and every source pulls again — no manual refresh needed.
   const rolledDay = useDayKey();
@@ -423,7 +427,7 @@ export function LifeHub() {
     setReady(true);
     applyFinanceSeed();
     startCloudSync();
-  }, []);
+  }, [setSnapshots]);
 
   useEffect(() => {
     if (!ready) return;
@@ -492,7 +496,7 @@ export function LifeHub() {
       window.removeEventListener(REFRESH_EVENT, pull);
       window.clearInterval(timer);
     };
-  }, [ready]);
+  }, [ready, setSnapshots]);
 
   // Work finished inside the TickTick app (tasks + habit check-ins) — on load, on return, every 10 min.
   useEffect(() => {
@@ -519,7 +523,7 @@ export function LifeHub() {
       window.removeEventListener(REFRESH_EVENT, pull);
       window.clearInterval(timer);
     };
-  }, [ready]);
+  }, [ready, setSnapshots]);
 
   // Cloud backup merged new data into storage (another device, or the old Worker copy).
   const seedLinksRef = useRef<GoalLink[]>([]);
@@ -538,7 +542,7 @@ export function LifeHub() {
     };
     window.addEventListener(SYNCED_EVENT, reload);
     return () => window.removeEventListener(SYNCED_EVENT, reload);
-  }, [syncSelf]);
+  }, [syncSelf, setSnapshots]);
 
   // Tag untagged history once areas are known; re-runs as snapshots arrive with project/kind info.
   const taggedLedger = useMemo(() => {
@@ -892,7 +896,7 @@ export function LifeHub() {
       window.removeEventListener('hashchange', readHashSync);
       window.clearInterval(timer);
     };
-  }, []);
+  }, [setSnapshots]);
 
   // Money on the calendar: the sheet's items + planned payments, minus what's marked paid.
   const payPlans = usePayPlans();
@@ -1012,6 +1016,9 @@ export function LifeHub() {
   /** Uncheck something finished on the hub (lists keep it, struck through). TickTick can't be reopened from here. */
   const reopenOnHub = (source: SourceId, id: string): void => {
     if (source !== 'self' && id.startsWith('self:')) return reopenOnHub('self', id.slice(5));
+    const habit = source === 'ticktick' && (habitSchedule || []).some(h => h.id === id);
+    // Save the undo marker before updating snapshots or starting a source refresh.
+    setLedger(reopenCompletion(source, id, habit ? localDayKey() : undefined));
     if (source === 'self') {
       if (loadSelfItems().find(i => i.id === id)?.done) syncSelf(toggleSelfComplete(id));
     } else {
@@ -1023,13 +1030,10 @@ export function LifeHub() {
       });
     }
     // A TickTick habit: undo only today's check-in, here and on TickTick, then pull it back in.
-    const habit = source === 'ticktick' && (habitSchedule || []).some(h => h.id === id);
     if (habit) {
-      setLedger(reopenCompletion(source, id, localDayKey()));
       void unmarkTickTickHabit(id).then(() => window.dispatchEvent(new Event(REFRESH_EVENT)));
       return;
     }
-    setLedger(reopenCompletion(source, id));
     if (source !== 'self') window.dispatchEvent(new Event(REFRESH_EVENT));
   };
 
@@ -1075,7 +1079,7 @@ export function LifeHub() {
       return;
     }
 
-    setLedger(recordCompletion(source, id, { via: 'hub', title, task: taskNow, focusAreaId: chosenArea }));
+    setLedger(recordCompletion(source, id, { via: 'hub', title, task: taskNow || (featuredNow ? { ...featuredNow, status: 'open' } : undefined), focusAreaId: chosenArea }));
 
     const def = sourceById[source];
     const isIframe = def.bridge === 'iframe';

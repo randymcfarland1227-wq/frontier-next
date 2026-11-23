@@ -123,7 +123,7 @@ export function PriorityPanel({
   const subsDone = originSteps.filter(x => x.done).length + subs.filter(stepDone).length;
   const tools = useRowMenu([
     { label: 'Critical', on: critical, onSelect: onToggleCritical },
-    { label: 'Take off the plan', hidden: !lane, onSelect: onRemove },
+    { label: lane === PLAN ? 'Take off Action List' : 'Take off Doing Now', hidden: !lane, onSelect: onRemove },
     { label: 'Delete', hidden: !onDelete, danger: true, onSelect: () => {
       if (window.confirm(`Delete “${item.title}” from Life Hub? It leaves every list, card and count.`)) onDelete?.();
     } },

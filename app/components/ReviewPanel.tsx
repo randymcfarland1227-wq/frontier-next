@@ -125,7 +125,7 @@ export function ReviewPanel({
                                   <button
                                     type="button"
                                     className="sk-undo"
-                                    title={e.source === 'ticktick' ? 'Uncount it here (reopen the task in TickTick itself)' : 'Not done after all: reopen it'}
+                                    title={e.source === 'ticktick' ? 'Uncount it here (reopen the task in TickTick itself)' : e.source === 'self' ? 'Not done after all: reopen it' : 'Reopen on Life Hub; this does not change its source site'}
                                     onClick={() => reopen(e.source, e.taskId)}
                                   >
                                     Undo

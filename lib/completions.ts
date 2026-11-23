@@ -14,6 +14,8 @@ export type CompletionEntry = {
   /** Unchecked on the hub after it was done: the entry stays (so sync can't bring it back) but no
    *  longer counts, unless it was completed again after this. */
   reopenedAt?: string;
+  /** Details needed to restore a locally dismissed task when its completion is undone. */
+  task?: TaskItem;
   /** origin-done = the source reported it done; origin-snapshot = legacy "disappeared" (dropped) */
   via: 'hub' | 'origin-done' | 'origin-snapshot' | 'connector-diff' | 'self';
   /** Resolved via focus-areas.json at record time; persisted so history stays stable if maps change. */
@@ -73,6 +75,30 @@ function hasSameDay(ledger: CompletionLedger, source: SourceId, taskId: string, 
 /** Done, or unchecked since (and not done again)? */
 export const isReopened = (e: CompletionEntry) => Boolean(e.reopenedAt && e.reopenedAt >= e.completedAt);
 
+/** Undo wins over an unchanged source status; only a dated new completion can supersede it. */
+function reopenedEntries() {
+  return Object.values(readSaved<CompletionLedger>(STORAGE_KEYS.completions, { entries: {} }).entries || {}).filter(entry => isRealCompletion(entry) && isReopened(entry));
+}
+
+export function restoreReopenedSnapshots(snapshots: Record<SourceId, SourceSnapshot>): Record<SourceId, SourceSnapshot> {
+  let next = snapshots;
+  for (const entry of reopenedEntries()) {
+    // Self is restored in its own store; TickTick must be reopened in TickTick itself.
+    if (entry.source === 'self' || entry.source === 'ticktick') continue;
+    const snap = next[entry.source];
+    if (!snap) continue;
+    const task = snap.tasks.find(task => task.id === entry.taskId);
+    // Old Role records stored just a title. Other missing rows need saved task details;
+    // a payment entry, for example, must never be turned into a fabricated finance task.
+    if (!task && !entry.task && !(entry.source === 'role' && /^(hubtask|cert|portfolio):/.test(entry.taskId))) continue;
+    if (task?.completedAt && Date.parse(task.completedAt) > Date.parse(entry.reopenedAt!)) continue;
+    if (task && task.status !== 'done') continue;
+    const restored: TaskItem = { ...entry.task, ...task, id: entry.taskId, title: task?.title || entry.task?.title || entry.title || entry.taskId, status: 'open', completedAt: undefined };
+    next = { ...next, [entry.source]: { ...snap, tasks: task ? snap.tasks.map(task => task.id === entry.taskId ? restored : task) : [...snap.tasks, restored] } };
+  }
+  return next;
+}
+
 export function loadLedger(): CompletionLedger {
   const saved = readSaved<CompletionLedger>(STORAGE_KEYS.completions, { entries: {} });
   const entries = collapseTickTickCopies(
@@ -122,7 +148,7 @@ export function recordCompletion(
     at?: string;
     ledger?: CompletionLedger;
     /** Extra task fields focus rules can match on */
-    task?: Pick<TaskItem, 'kind' | 'projectId' | 'tags'>;
+    task?: Partial<TaskItem>;
     /** Explicit area (e.g. from a promoted capture) — skips rule resolution */
     focusAreaId?: FocusAreaId;
   },
@@ -136,6 +162,7 @@ export function recordCompletion(
     taskId,
     completedAt,
     title: opts?.title,
+    ...(opts?.task ? { task: { ...opts.task, id: taskId, title: opts.title || taskId, status: 'open' } } : {}),
     via: opts?.via || 'hub',
     ...(opts?.focusAreaId
       ? { focusManual: true }
@@ -246,9 +273,14 @@ export function diffSnapshotCompletions(
   if (!previous || !previous.refreshedAt) {
     return current;
   }
+  // Static connector data may lag a live feed. A snapshot rejected by the merge must not log Done.
+  if (Date.parse(next.refreshedAt) < Date.parse(previous.refreshedAt)) return current;
   const prevById = new Map((previous.tasks || []).map(t => [t.id, t]));
+  const reopened = new Map(reopenedEntries().filter(entry => entry.source === source && source !== 'ticktick').map(entry => [entry.taskId, entry]));
   for (const task of next.tasks || []) {
     if (task.status !== 'done') continue;
+    const undo = reopened.get(task.id);
+    if (undo && (!task.completedAt || !(Date.parse(task.completedAt) > Date.parse(undo.reopenedAt!)))) continue;
     const prev = prevById.get(task.id);
     if (prev?.status === 'done') continue;
     // A done task we never saw open, with no date: we can't tell when it was done (e.g. old

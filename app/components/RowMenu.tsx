@@ -166,6 +166,8 @@ function RowMenuPop({ at, items, title, onClose }: { at: { x: number; y: number 
       role="menu"
       aria-label={heading || 'Actions'}
       style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: 0 }}
+      onClick={e => e.stopPropagation()}
+      onPointerDown={e => e.stopPropagation()}
       onContextMenu={e => e.preventDefault()}
     >
       {heading ? <div className="row-menu-title">{heading}</div> : null}

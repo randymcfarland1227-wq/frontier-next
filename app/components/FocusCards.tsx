@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmedProjectBillPayment } from "../../lib/projectFinance";
+
 import { projectContinuation, saveProjectContinuation } from "../../lib/projectContinuation";
 import { openProject } from "../../lib/selfProjects";
 import { goalGroupOf, readGoalTypes } from "../../lib/goalTypes";
@@ -141,8 +143,9 @@ function finRows(
   ctx: FinCtx,
 ): FinRow[] {
   if (link.key.startsWith("bill:")) {
+    const paid = confirmedProjectBillPayment(link.key.slice(5), ctx.ledger);
     const b = ctx.bills.find((x) => x.key === link.key.slice(5));
-    if (b)
+    if (b && !paid)
       return [
         {
           id: link.key,
@@ -156,15 +159,16 @@ function finRows(
           settled: false,
         },
       ];
-    // No longer owed: it was paid (or skipped) on Life Hub.
+    // A partial, offline or different-month feed cannot prove that this payment was cleared.
     return [
       {
         id: link.key,
         kind: "bill",
         name: link.label,
         amount: null,
-        status: "paid",
-        settled: true,
+        status: paid ? "paid" : "Not in current finance data",
+        settled: paid,
+        unverified: !paid,
       },
     ];
   }

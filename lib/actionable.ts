@@ -161,6 +161,22 @@ export function metricsAfterLocalComplete(
   return metrics;
 }
 
+/** Reverse the count change for one locally reopened row. Called only when a row changes to open. */
+export function metricsAfterLocalReopen(sourceId: SourceId, snapshot: SourceSnapshot): Record<string, number> {
+  const metrics = { ...snapshot.metrics };
+  const inc = (key: string) => { if (Number.isFinite(metrics[key])) metrics[key] += 1; };
+  const dec = (key: string) => { if (Number.isFinite(metrics[key])) metrics[key] = Math.max(0, metrics[key] - 1); };
+  switch (sourceId) {
+    case 'gmail': inc('action'); inc('starred'); break;
+    case 'outlook': inc('blue'); break;
+    case 'radall': case 'repair': inc('open'); dec('done'); break;
+    case 'candle': inc('openStudioTasks'); break;
+    case 'move': inc('openTasks'); dec('completedTasks'); break;
+    case 'role': case 'resale': case 'income': inc('open'); break;
+  }
+  return metrics;
+}
+
 /**
  * The count a card or bar shows: the actionable number minus open items already pinned to
  * Doing now (they stay in the card's list). TickTick's "to do" is a due-today sum, so it keeps its own.

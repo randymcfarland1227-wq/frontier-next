@@ -150,6 +150,14 @@ Per-task metadata (all cloud-synced, newest change wins):
   "postMessage protocol").
 - Completing on Life Hub: writes the ledger, then calls the source where supported (TickTick, Role, Gmail
   unstar); other sites stay read-only and Life Hub remembers "done" locally (`restoreReopenedSnapshots`).
+- **Undo on Life Hub** keeps an explicit undo marker and can restore the saved task locally once.
+  Refresh projection only reopens rows the source still supplies; a missing source row is not recreated.
+  Restored rows also restore their applicable open counts. A fresh source open/blocked report after Undo,
+  followed by a newer done report, counts as a new completion even without a completion timestamp.
+  The acknowledgement is a registered device cache; the existing completion/undo merge remains unchanged.
+  Undo does not reverse an action already sent to another site; TickTick retains its separate rules.
+- **Project bill links** missing from current dues stay unverified and carry forward until payment is
+  confirmed by the exact active Radall due-key completion. Missing data alone never means paid.
 - **Self** is Life Hub's own site (`lib/adapters/self.ts`): Self tasks, voice memos inbox, projects.
 - Site pool UI: `app/sticker/Sites.tsx` (preview 6 rows, 4 stars); counts `lib/actionable.ts`.
 

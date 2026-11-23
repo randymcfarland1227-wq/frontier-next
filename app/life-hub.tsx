@@ -53,6 +53,8 @@ import { SourceBridges } from './components/SourceBridges';
 import {
   loadLedger,
   restoreReopenedSnapshots,
+  reopenTaskSnapshot,
+  observeReopenedSource,
   recordCompletion,
   computeStats,
   diffSnapshotCompletions,
@@ -448,9 +450,11 @@ export function LifeHub() {
     const pullGmail = () =>
       void pullGmailSnapshot().then(snap => {
         if (!snap) return;
-        setSnapshots(current =>
-          Date.parse(current.gmail?.refreshedAt || '') >= Date.parse(snap.refreshedAt) ? current : { ...current, gmail: snap },
-        );
+        setSnapshots(current => {
+          if (Date.parse(current.gmail?.refreshedAt || '') >= Date.parse(snap.refreshedAt)) return current;
+          observeReopenedSource(current.gmail, snap);
+          return { ...current, gmail: snap };
+        });
       });
     const pullRole = () =>
       void pullRoleSnapshot().then(snap => {
@@ -465,11 +469,11 @@ export function LifeHub() {
     const pullRadall = () =>
       void pullRadallSnapshot().then(snap => {
         if (!snap) return;
-        setSnapshots(current =>
-          Date.parse(current.radall?.refreshedAt || '') >= Date.parse(snap.refreshedAt)
-            ? current
-            : hideLedgerDone({ ...current, radall: snap }, loadLedger()),
-        );
+        setSnapshots(current => {
+          if (Date.parse(current.radall?.refreshedAt || '') >= Date.parse(snap.refreshedAt)) return current;
+          observeReopenedSource(current.radall, snap);
+          return hideLedgerDone({ ...current, radall: snap }, loadLedger());
+        });
       });
     const pullSchedule = () =>
       void pullScheduleSnapshot().then(snap => {
@@ -1022,12 +1026,7 @@ export function LifeHub() {
     if (source === 'self') {
       if (loadSelfItems().find(i => i.id === id)?.done) syncSelf(toggleSelfComplete(id));
     } else {
-      // Iframe sites keep the row as done locally: open it again (connectors come back on refresh).
-      setSnapshots(current => {
-        const snap = current[source];
-        if (!snap?.tasks.some(t => t.id === id && t.status === 'done')) return current;
-        return { ...current, [source]: { ...snap, tasks: snap.tasks.map(t => (t.id === id ? { ...t, status: 'open' } : t)) } };
-      });
+      setSnapshots(current => ({ ...current, [source]: reopenTaskSnapshot(current[source], id) }));
     }
     // A TickTick habit: undo only today's check-in, here and on TickTick, then pull it back in.
     if (habit) {

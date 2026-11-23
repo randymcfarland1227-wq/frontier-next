@@ -2,6 +2,7 @@
 
 import type { SourceId, SourceSnapshot, TaskItem } from './types';
 import { SOURCE_IDS, sourceById } from './sources';
+import { metricsAfterLocalReopen } from './actionable';
 import { readSaved, writeSaved, STORAGE_KEYS } from './storage';
 import { getFocusConfig, resolveFocusArea, type FocusAreaId } from './focusAreas';
 import { collapseTickTickCopies, isRealCompletion, tickTickTitleKey } from './syncState';
@@ -75,26 +76,63 @@ function hasSameDay(ledger: CompletionLedger, source: SourceId, taskId: string, 
 /** Done, or unchecked since (and not done again)? */
 export const isReopened = (e: CompletionEntry) => Boolean(e.reopenedAt && e.reopenedAt >= e.completedAt);
 
-/** Undo wins over an unchanged source status; only a dated new completion can supersede it. */
+/** Source acknowledgements are a device cache, never an authoritative copy of tasks. */
+const REOPEN_SOURCE_KEY = 'lifehub-reopen-source-observations';
+type ReopenObservation = { undoAt: string; openAt: string };
 function reopenedEntries() {
   return Object.values(readSaved<CompletionLedger>(STORAGE_KEYS.completions, { entries: {} }).entries || {}).filter(entry => isRealCompletion(entry) && isReopened(entry));
 }
 
+/** Call only for an accepted raw source feed, never for a locally projected snapshot. */
+export function observeReopenedSource(previous: SourceSnapshot | undefined, next: SourceSnapshot) {
+  if (!(Date.parse(next.refreshedAt) > Date.parse(previous?.refreshedAt || '1970-01-01'))) return;
+  const observations = readSaved<Record<string, ReopenObservation>>(REOPEN_SOURCE_KEY, {});
+  let changed = false;
+  for (const entry of reopenedEntries()) {
+    if (entry.source !== (next.source === 'search' ? 'role' : next.source) || entry.source === 'self' || entry.source === 'ticktick') continue;
+    const task = next.tasks.find(task => task.id === entry.taskId);
+    if (!task || !['open', 'blocked'].includes(task.status || '') || !(Date.parse(next.refreshedAt) > Date.parse(entry.reopenedAt!))) continue;
+    const key = `${entry.source}::${entry.taskId}`;
+    if (observations[key]?.undoAt === entry.reopenedAt && Date.parse(observations[key].openAt) >= Date.parse(next.refreshedAt)) continue;
+    observations[key] = { undoAt: entry.reopenedAt!, openAt: next.refreshedAt };
+    changed = true;
+  }
+  if (changed) writeSaved(REOPEN_SOURCE_KEY, observations);
+}
+
+function newSourceCompletion(entry: CompletionEntry, task: TaskItem, refreshedAt: string) {
+  if (task.completedAt && Date.parse(task.completedAt) > Date.parse(entry.reopenedAt!)) return true;
+  const seen = readSaved<Record<string, ReopenObservation>>(REOPEN_SOURCE_KEY, {})[`${entry.source}::${entry.taskId}`];
+  return seen?.undoAt === entry.reopenedAt && Date.parse(refreshedAt) > Date.parse(seen.openAt);
+}
+
+function reopenedRow(snapshot: SourceSnapshot, task: TaskItem): SourceSnapshot {
+  const exists = snapshot.tasks.some(row => row.id === task.id);
+  const restored = { ...task, status: 'open', completedAt: undefined };
+  return { ...snapshot, metrics: metricsAfterLocalReopen(snapshot.source === 'search' ? 'role' : snapshot.source, snapshot),
+    tasks: exists ? snapshot.tasks.map(row => row.id === task.id ? restored : row) : [...snapshot.tasks, restored] };
+}
+
+/** Explicit Undo can restore the row locally once, using its existing identity and saved details. */
+export function reopenTaskSnapshot(snapshot: SourceSnapshot, taskId: string): SourceSnapshot {
+  if (snapshot.source === 'self' || snapshot.source === 'ticktick') return snapshot;
+  const task = snapshot.tasks.find(row => row.id === taskId);
+  if (task && task.status !== 'done') return snapshot;
+  const entry = reopenedEntries().find(entry => entry.source === (snapshot.source === 'search' ? 'role' : snapshot.source) && entry.taskId === taskId);
+  if (!entry) return snapshot;
+  if (!task && !entry.task && !(entry.source === 'role' && /^(hubtask|cert|portfolio):/.test(taskId))) return snapshot;
+  return reopenedRow(snapshot, task || entry.task || { id: taskId, title: entry.title || taskId });
+}
+
+/** Project Undo onto rows the source still supplies. Missing source rows stay missing. */
 export function restoreReopenedSnapshots(snapshots: Record<SourceId, SourceSnapshot>): Record<SourceId, SourceSnapshot> {
   let next = snapshots;
   for (const entry of reopenedEntries()) {
-    // Self is restored in its own store; TickTick must be reopened in TickTick itself.
     if (entry.source === 'self' || entry.source === 'ticktick') continue;
-    const snap = next[entry.source];
-    if (!snap) continue;
-    const task = snap.tasks.find(task => task.id === entry.taskId);
-    // Old Role records stored just a title. Other missing rows need saved task details;
-    // a payment entry, for example, must never be turned into a fabricated finance task.
-    if (!task && !entry.task && !(entry.source === 'role' && /^(hubtask|cert|portfolio):/.test(entry.taskId))) continue;
-    if (task?.completedAt && Date.parse(task.completedAt) > Date.parse(entry.reopenedAt!)) continue;
-    if (task && task.status !== 'done') continue;
-    const restored: TaskItem = { ...entry.task, ...task, id: entry.taskId, title: task?.title || entry.task?.title || entry.title || entry.taskId, status: 'open', completedAt: undefined };
-    next = { ...next, [entry.source]: { ...snap, tasks: task ? snap.tasks.map(task => task.id === entry.taskId ? restored : task) : [...snap.tasks, restored] } };
+    const snapshot = next[entry.source];
+    const task = snapshot?.tasks.find(task => task.id === entry.taskId);
+    if (!task || task.status !== 'done' || newSourceCompletion(entry, task, snapshot.refreshedAt)) continue;
+    next = { ...next, [entry.source]: reopenedRow(snapshot, task) };
   }
   return next;
 }
@@ -271,21 +309,24 @@ export function diffSnapshotCompletions(
 ): CompletionLedger {
   let current = ledger ?? loadLedger();
   if (!previous || !previous.refreshedAt) {
+    observeReopenedSource(previous, next);
     return current;
   }
   // Static connector data may lag a live feed. A snapshot rejected by the merge must not log Done.
   if (Date.parse(next.refreshedAt) < Date.parse(previous.refreshedAt)) return current;
+  observeReopenedSource(previous, next);
   const prevById = new Map((previous.tasks || []).map(t => [t.id, t]));
   const reopened = new Map(reopenedEntries().filter(entry => entry.source === source && source !== 'ticktick').map(entry => [entry.taskId, entry]));
   for (const task of next.tasks || []) {
     if (task.status !== 'done') continue;
     const undo = reopened.get(task.id);
-    if (undo && (!task.completedAt || !(Date.parse(task.completedAt) > Date.parse(undo.reopenedAt!)))) continue;
+    if (undo && !newSourceCompletion(undo, task, next.refreshedAt)) continue;
     const prev = prevById.get(task.id);
     if (prev?.status === 'done') continue;
     // A done task we never saw open, with no date: we can't tell when it was done (e.g. old
     // finished Role Hub tasks appearing for the first time), so don't count it as done now.
-    const at = completionTime(task.completedAt);
+    const at = undo && !(Date.parse(task.completedAt || '') > Date.parse(undo.reopenedAt!))
+      ? completionTime(next.refreshedAt) : completionTime(task.completedAt);
     if (!prev && !at) continue;
     current = recordCompletion(source, task.id, {
       title: task.title || prev?.title,

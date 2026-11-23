@@ -89,6 +89,8 @@ export type SubList = { id: string; name: string; tasks: SubTask[]; kind?: SubLi
 export const isTaskList = (l: SubList) => l.kind !== "notes" && l.kind !== "habits";
 
 export type Entry = {
+  continuedFrom?: string;
+  continuedAs?: string;
   id: string;
   title: string;
   /** Scope (what it is) — the old "detail" note */

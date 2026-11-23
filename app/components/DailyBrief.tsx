@@ -16,6 +16,7 @@ import { Circle, Dot, Group, ListHead } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
 import { useDayKey } from '../../lib/dayKey';
 import { FOCUS_PRIORITY_LABEL, type FocusPriority } from '../../lib/focusPriority';
+import { withoutActionListRows } from '../../lib/dailyBrief';
 import { FocusEntryDialog, type LinkItem, type OpenFinance } from './FocusCards';
 import type { Entry, useShortTermFocus } from './FocusSection';
 import { sourceById } from '../../lib/sources';
@@ -181,7 +182,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
   const buckets = briefBuckets(sections, bills,
     soon.map(e => ({ id: e.id, title: e.title, start: eventStart(e), allDay: e.allDay })),
     focusCards, steps, new Date(nowMs))
-    .map(b => ({ ...b, rows: b.rows.filter(r => !r.ids.every(id => gone[id]) && !(r.tag === 'ship' && shipOnList(r))) }));
+    .map(b => ({ ...b, rows: withoutActionListRows(b.rows, key => lanes[key]?.lane === PLAN).filter(r => !r.ids.every(id => gone[id]) && !(r.tag === 'ship' && shipOnList(r))) }));
   const [unfold, setUnfold] = useState<Record<string, boolean>>({});
   const sendToList = (r: BucketRow) => {
     if (onList(r)) { r.pins.forEach(unpin); return; }

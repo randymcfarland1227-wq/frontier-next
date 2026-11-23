@@ -1,5 +1,7 @@
 "use client";
 
+import { projectContinuation, saveProjectContinuation } from "../../lib/projectContinuation";
+import { openProject } from "../../lib/selfProjects";
 import { goalGroupOf, readGoalTypes } from "../../lib/goalTypes";
 import {
   useEffect,
@@ -988,11 +990,55 @@ function Detail({
     remove();
     close();
   };
+  const [continuing, setContinuing] = useState(false);
+  const [nextTitle, setNextTitle] = useState(`${item.title} · ${dayKey(new Date())}`);
+  const [continuationError, setContinuationError] = useState('');
+  const openFinanceLinks = (link: { key: string; label: string }) => {
+    const rows = finRows(link, ctx);
+    if (!rows.length) return [link];
+    return rows.filter(row => !row.settled || row.unverified).map(row => ({
+      key: /^(bill:|owed:|own:)/.test(row.id) ? row.id : `item:${row.id}`, label: row.name,
+    }));
+  };
+  const carriedLists = lists.map(list => ({ ...list, tasks: isTaskList(list)
+    ? list.tasks.flatMap(task => task.fin
+      ? openFinanceLinks(task.fin).map((link, index) => ({ ...task, id: index ? `${task.id}:${index}` : task.id, text: link.label, fin: link, done: false }))
+      : taskDone(task, ctx) ? [] : [task])
+    : list.tasks,
+  })).filter(list => list.tasks.length);
+  const unresolvedLists: string[] = [];
+  for (const id of item.siteLists || []) {
+    const list = ctx.sl?.store[id];
+    if (!list || list.gone) { unresolvedLists.push(id); continue; }
+    const tasks = list.tasks.flatMap(id => {
+      const key = pinKey(list.site, id);
+      const hit = linkedTask(key, ctx);
+      if (hit?.task.status === 'done') return [];
+      return [{ id: `${list.id}:${id}`, text: hit?.task.title || 'Linked task', pin: key, done: false }];
+    });
+    if (tasks.length) carriedLists.push({ id: `carry:${id}`, name: list.name, tasks });
+  }
+  const carriedFinance = (item.fin || []).flatMap(openFinanceLinks);
+  const carriedTasks = (item.siteTasks || []).filter(key => linkedTask(key, ctx)?.task.status !== 'done');
+  const openCount = carriedLists.filter(isTaskList).reduce((count, list) => count + list.tasks.length, 0) + carriedFinance.length + carriedTasks.length + unresolvedLists.length;
+  const carryForward = (event: FormEvent) => {
+    event.preventDefault();
+    if (!nextTitle.trim() || !openCount) return;
+    try {
+      const next = projectContinuation(item, nextTitle, { lists: carriedLists, fin: carriedFinance, siteTasks: carriedTasks, siteLists: unresolvedLists });
+      const id = saveProjectContinuation(item, next);
+      close();
+      openProject(id);
+    } catch (error) {
+      setContinuationError(error instanceof Error ? error.message : 'Could not save the new project. Try again.');
+    }
+  };
   const cardMenu = useRowMenu(
     () => [
       { label: "Plan and settings…", onSelect: () => { if (planRef.current) { planRef.current.open = true; planRef.current.scrollIntoView({ behavior: "smooth", block: "start" }); } } },
       { label: item.inFocus ? "Take out of Short-term focus" : "Show in Short-term focus", hidden: !item.ongoing, on: Boolean(item.inFocus), onSelect: () => update({ inFocus: !item.inFocus }) },
       { label: item.done ? "Marked done — undo" : "Mark the whole focus done", on: Boolean(item.done), onSelect: markDone },
+      { label: "Mark done and create new project with open tasks", hidden: Boolean(item.done), onSelect: () => setContinuing(true) },
       { label: "Take off Doing Now (stays here)", hidden: !doingKey, onSelect: () => { if (doingKey) unpin(doingKey); } },
       { label: "Delete this card…", danger: true, onSelect: deleteCard },
     ],
@@ -1738,6 +1784,15 @@ function Detail({
         </aside>
         </div>
 
+        {continuing ? <form className="sk-form sk-fd-box" style={{ gridTemplateColumns: 'minmax(0, 1fr)' }} onSubmit={carryForward} aria-label="Carry open work to a new project">
+          <label className="sk-field"><span>New project name</span><input value={nextTitle} onChange={event => setNextTitle(event.target.value)} maxLength={120} required /></label>
+          <p className="sk-sec">{openCount ? `${openCount} open item${openCount === 1 ? '' : 's'} will carry forward with the project’s context and references. Unpaid items stay unpaid.` : 'There are no open tasks to carry forward.'}</p>
+          {continuationError ? <p role="alert">{continuationError}</p> : null}
+          <div className="sk-form-actions" style={{ flexWrap: 'wrap' }}>
+            <button type="submit" className="sk-btn is-small" style={{ whiteSpace: 'normal', maxWidth: '100%' }} disabled={!nextTitle.trim() || !openCount}>Mark done and create new project</button>
+            <button type="button" className="sk-btn is-small is-quiet" onClick={() => setContinuing(false)}>Cancel</button>
+          </div>
+        </form> : null}
         <footer className="sk-fd-foot" hidden>
           {item.ongoing ? (
             <button
@@ -1767,6 +1822,7 @@ function Detail({
             <Icon name="check" size={14} />
             {item.done ? "Marked done — undo" : "Mark the whole focus done"}
           </button>
+          {!item.done ? <button type="button" className="sk-btn is-small" style={{ whiteSpace: 'normal', maxWidth: '100%' }} onClick={() => setContinuing(true)}>Mark done and create new project with open tasks</button> : null}
           <button
             type="button"
             className="sk-btn is-small is-quiet"
@@ -2026,7 +2082,7 @@ export function FocusEntryDialog({ bills, events: eventsIn, ...props }: Omit<Par
     kind: "Finance",
   }] : eventsIn;
   const owed = useOwedLines(file, marks, bills);
-  return <Detail {...props} events={events} ctx={{ owed, file, marks, bills, sl, findings, ledger: loadLedger(), ticktick: savedTickTick() }} />;
+  return <Detail key={props.item.id} {...props} events={events} ctx={{ owed, file, marks, bills, sl, findings, ledger: loadLedger(), ticktick: savedTickTick() }} />;
 }
 
 /** Short-term focus as cards: the square shows focus, scope, why and the lists; tap it for the full pop-out. */
@@ -2191,6 +2247,7 @@ export function FocusCards({
       ) : null}
       {openItem ? (
         <Detail
+          key={openItem.id}
           item={!openItem.site && !openItem.section && !openItem.unassigned && defaults?.section ? { ...openItem, section: defaults.section, ongoing: true } : openItem}
           events={events}
           ctx={ctx}

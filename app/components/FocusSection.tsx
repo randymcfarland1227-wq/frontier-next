@@ -965,13 +965,14 @@ export function FocusSection({
 function SendToDoing({ id, label, lanes }: { id: string; label: string; lanes: LaneMap }) {
   const key = pinKey("self", id);
   const on = Boolean(lanes[key]?.lane);
+  const where = lanes[key]?.lane === DECK ? "On Deck" : "Action List";
   return (
     <button
       type="button"
       className={`sk-ftg-pin${on ? " is-on" : ""}`}
       aria-pressed={on}
-      title={on ? `In Doing Now — click to take “${label}” out` : `Send “${label}” to Doing Now`}
-      aria-label={on ? `Take ${label} out of Doing Now` : `Send ${label} to Doing Now`}
+      title={on ? `In ${where} — click to take “${label}” out` : `Add “${label}” to On Deck`}
+      aria-label={on ? `Take ${label} out of Doing Now` : `Add ${label} to On Deck`}
       onClick={(e) => {
         e.stopPropagation();
         if (on) unpin(key);
@@ -979,7 +980,7 @@ function SendToDoing({ id, label, lanes }: { id: string; label: string; lanes: L
       }}
     >
       <Icon name="pin" size={12} />
-      {on ? <span>Doing</span> : null}
+      <span>{on ? where : "Add to On Deck"}</span>
     </button>
   );
 }
@@ -994,16 +995,17 @@ function FocusTaskGroup({ card, code, tag, lanes, fin, onToggle, folded }: { car
     .filter((x) => x.tasks.length || x.fins.length);
   const open = lists.reduce((n, x) => n + x.tasks.filter((t) => !t.done).length, 0);
   const done = lists.reduce((n, x) => n + x.tasks.filter((t) => t.done).length, 0);
+  const finance = lists.reduce((n, x) => n + x.fins.length, 0) + (card.fin?.length || 0);
   return (
     <div className={`sk-ftg${collapsed ? " is-folded" : ""}`}>
       <div className="sk-ftg-headrow">
       <button type="button" className="sk-ftg-head" onClick={() => openProject(card.id)}>
         <span className="sk-ftg-caret" aria-hidden="true">{collapsed ? "▸" : "▾"}</span>
         <span className="sk-ftg-title">{card.title}</span>
-        <span className="sk-ftg-meta">{tag} · {open ? `${open} open` : done ? "all done" : "no steps yet"}{done ? ` · ${done} done` : ""}</span>
+        <span className="sk-ftg-meta">{tag} · {open ? `${open} open` : card.site === "self" ? (finance ? `${finance} finance links` : "Open project") : done ? "all done" : "no steps yet"}{done ? ` · ${done} done` : ""}</span>
       </button>
       <button type="button" className="sk-link" onClick={toggle} aria-expanded={!collapsed}>Steps</button>
-      {open ? <SendToDoing id={focusCardId(code, card.id)} label={card.title} lanes={lanes} /> : null}
+      {open || card.site === "self" ? <SendToDoing id={focusCardId(code, card.id)} label={card.title} lanes={lanes} /> : null}
       </div>
       {collapsed ? null : lists.map(({ l, tasks, fins }) => {
         const left = tasks.filter((t) => !t.done);
@@ -1081,7 +1083,7 @@ export function FocusTaskBoard({ compact, bills }: { compact?: boolean; bills?: 
               <FocusTaskGroup
                 key={p.id}
                 card={p}
-                code="n"
+                code={now.some(c => c.id === p.id) ? "n" : weeks.some(c => c.id === p.id) ? "w" : "o"}
                 tag={`Project · ${tasks.length} items`}
                 lanes={lanes}
                 fin={fin}

@@ -119,7 +119,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
   const { isCritical, toggleCritical } = useFeaturedLevels();
   // Same as the circle in Doing Now: done on its site, off the list; a mix member stays struck through in its mix.
   const finishPlan = (item: PriorityItem) => {
-    if (!complete) return;
+    if (!complete || item.completable === false) return;
     complete(item.source, item);
     unpin(item.key);
     if (isCritical(item.source, item.id)) toggleCritical(item.source, item.id);
@@ -164,7 +164,7 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
     .sort((a, b) => eventStart(a).getTime() - eventStart(b).getTime());
   const cols: BCol[] = [
     { id: 'doing', title: 'Action List', keepAll: true, empty: 'Nothing selected in your Action List yet.', rows: groupSteps(plan, lanes).map((st): BRow => st.kind === 'one'
-      ? { id: `plan:${st.item.key}`, title: st.item.title, note: sourceById[st.item.source].shortName, pin: st.item.key, finish: complete ? () => finishPlan(st.item) : undefined }
+      ? { id: `plan:${st.item.key}`, title: st.item.title, note: sourceById[st.item.source].shortName, pin: st.item.key, finish: complete && st.item.completable !== false ? () => finishPlan(st.item) : undefined }
       : { id: `mix:${st.id}`, title: st.name, mix: st.id, note: [st.done.length ? `${st.done.length} of ${st.items.length + st.done.length} done` : `${st.items.length} items`, [...new Set(st.items.map(i => sourceById[i.source].shortName))].join(' · ')].join(' · ') }) },
   ];
   const focusCards = useMemo(() => [...focus.now[0], ...focus.weeks[0]].filter(c => c.date || c.eventId).map(c => ({ id: c.id, title: c.title, date: c.date, eventId: c.eventId })), [focus.now, focus.weeks]);

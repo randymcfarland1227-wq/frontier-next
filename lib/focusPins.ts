@@ -12,7 +12,7 @@ import type { FeaturedItem } from './types';
 
 type Task = { id: string; text: string; done: boolean; fin?: unknown; note?: string; due?: string };
 type List = { id: string; name: string; tasks: Task[]; kind?: string };
-type Card = { id: string; title: string; done?: boolean; inFocus?: boolean; lists?: List[]; at?: string };
+type Card = { id: string; title: string; site?: string; done?: boolean; inFocus?: boolean; lists?: List[]; at?: string };
 type Saved = { scope: string; items: Card[] };
 
 /** The lists whose cards show in Focus tasks: code → storage key + label. */
@@ -36,7 +36,7 @@ function briefPinItems(): Array<FeaturedItem & { id: string }> {
 }
 
 const load = (key: string) => readSaved<Saved>(key, { scope: '', items: [] });
-const shown = (code: string, c: Card) => !c.done && (code !== 'o' || Boolean(c.inFocus));
+const shown = (code: string, c: Card) => !c.done && (code !== 'o' || Boolean(c.inFocus) || c.site === 'self');
 const real = (t: Task) => !t.fin;
 
 /** Every open focus task and every focus list with open tasks, as Doing Now items (source self). */
@@ -48,15 +48,16 @@ export function focusPinItems(): Array<FeaturedItem & { id: string }> {
       // The whole short-term goal: every task in all its lists.
       const all = (card.lists || []).filter((l) => l.kind !== 'notes' && l.kind !== 'habits').flatMap((l) => l.tasks.filter(real));
       const allOpen = all.filter((t) => !t.done);
-      if (allOpen.length)
+      const project = card.site === 'self';
+      if (allOpen.length || project)
         out.push({
           id: focusCardId(code, card.id),
           title: card.title,
-          detail: `${tag} · ${all.length - allOpen.length} of ${all.length} done · next: ${allOpen[0].text}`,
-          meta: 'Focus goal',
-          completable: true,
-          tag: 'Goal',
-          steps: all.map((t) => ({ id: t.id, text: t.text, done: t.done })),
+          detail: project ? 'Project · open to see lists, bills and details' : `${tag} · ${all.length - allOpen.length} of ${all.length} done · next: ${allOpen[0].text}`,
+          meta: project ? 'Project' : 'Focus goal',
+          completable: !project,
+          tag: project ? 'Project' : 'Goal',
+          steps: project ? undefined : all.map((t) => ({ id: t.id, text: t.text, done: t.done })),
         } as FeaturedItem & { id: string });
       for (const l of card.lists || []) {
         if (l.kind === 'notes' || l.kind === 'habits') continue;
@@ -86,6 +87,15 @@ export function focusPinItems(): Array<FeaturedItem & { id: string }> {
     }
   }
   return [...out, ...briefPinItems()];
+}
+
+/** Resolve an existing card's pin identity; never create a second task or guess its list. */
+export function focusCardPinKey(cardId: string): string | undefined {
+  const available = new Set(focusPinItems().map(item => item.id));
+  for (const { code } of FOCUS_PIN_LISTS) {
+    const id = focusCardId(code, cardId);
+    if (available.has(id)) return `self:${id}`;
+  }
 }
 
 /**

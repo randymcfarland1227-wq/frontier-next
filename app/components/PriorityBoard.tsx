@@ -299,6 +299,7 @@ export function PriorityBoard({
   };
   // One member checked off: it stays in the list, struck through, until the last one is done.
   const finishMember = (id: string, item: PriorityItem, openLeft: number) => {
+    if (item.completable === false) return;
     finish(item);
     if (openLeft <= 1) endMix(id);
     else doneInMix(item.key, item.title);
@@ -311,6 +312,7 @@ export function PriorityBoard({
     updatePinDetails(key, { doneTitle: undefined, lane: PLAN });
   };
   const finishMix = (id: string, items: PriorityItem[]) => {
+    if (items.some(item => item.completable === false)) return;
     items.forEach(finish);
     endMix(id);
   };
@@ -394,6 +396,7 @@ export function PriorityBoard({
     : [];
 
   const finish = (item: PriorityItem) => {
+    if (item.completable === false) return;
     // A locked task can't be checked off until its lock opens.
     if (lockOf(item.key)?.open === false) return;
     // A focus card task/list: mark it done on the card itself (same record).
@@ -546,7 +549,7 @@ export function PriorityBoard({
   };
 
   const check = (item: PriorityItem) =>
-    onComplete ? (
+    onComplete && item.completable !== false ? (
       <Circle onDone={() => finish(item)} label={`Done: ${item.title}`} />
     ) : (
       <span />
@@ -668,7 +671,7 @@ export function PriorityBoard({
                         {i + 1}
                       </span>
                       <span className="sk-rlead">
-                        {onComplete ? (
+                        {onComplete && step.items.every(item => item.completable !== false) ? (
                           <Circle
                             onDone={() => finishMix(step.id, step.items)}
                             label={`Done: ${step.name} (all ${step.items.length})`}
@@ -723,7 +726,7 @@ export function PriorityBoard({
                               className="sk-row"
                             >
                               <span className="sk-rlead">
-                                {onComplete ? (
+                                {onComplete && item.completable !== false ? (
                                   <Circle
                                     onDone={() => finishMember(step.id, item, step.items.length)}
                                     label={`Done: ${item.title}`}
@@ -976,7 +979,7 @@ export function PriorityBoard({
             <ul className="sk-listdlg-tasks">
               {st.items.map((item) => (
                 <li key={item.key}>
-                  {onComplete ? (
+                  {onComplete && item.completable !== false ? (
                     <Circle onDone={() => finishMember(st.id, item, st.items.length)} label={`Done: ${item.title}`} />
                   ) : (
                     <span />
@@ -1043,7 +1046,7 @@ export function PriorityBoard({
           onToggleCritical={() => toggleCritical(openItem.source, openItem.id)}
           onMove={(lane) => move(openItem, lane)}
           onDone={
-            onComplete
+            onComplete && openItem.completable !== false
               ? () => {
                   finish(openItem);
                   setOpenKey(null);

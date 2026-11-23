@@ -3,6 +3,8 @@
 Read this whole file before you touch anything. Randy uses this site every day with his real money,
 tasks and debts in it. A careless push breaks his live site and can write wrong data into his Google Sheet.
 
+For how the hub fits together (goals → focus cards → lists → tasks, Doing Now, TickTick, Daily Brief, sync), read `docs/HUB_SCHEME.md`.
+
 ## What this is
 - React + TypeScript + Vite single-page app, deployed to GitHub Pages.
 - **Live:** https://randymcfarland1227-wq.github.io/frontier-next/

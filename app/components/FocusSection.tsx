@@ -89,6 +89,8 @@ export type SubList = { id: string; name: string; tasks: SubTask[]; kind?: SubLi
 export const isTaskList = (l: SubList) => l.kind !== "notes" && l.kind !== "habits";
 
 export type Entry = {
+  continuedFrom?: string;
+  continuedAs?: string;
   id: string;
   title: string;
   /** Scope (what it is) — the old "detail" note */
@@ -631,7 +633,7 @@ export function useFocusListPins(): Map<string, string> {
     for (const e of lists.flat()) if (!e.done) for (const l of e.lists || []) for (const t of l.tasks) if (t.pin && !out.has(t.pin)) out.set(t.pin, e.title);
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, lists);
+  }, [f.now[0], f.weeks[0], f.ongoing[0], f.nutrition[0], f.marvel[0]]);
   // Same content → same Map, so counts that depend on it don't recompute every render.
   const sig = [...map].map((x) => x.join('=')).join('|');
   // eslint-disable-next-line react-hooks/exhaustive-deps

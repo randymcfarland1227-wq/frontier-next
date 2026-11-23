@@ -129,12 +129,16 @@ export function withoutLater(snaps: Record<SourceId, SourceSnapshot>, now = new 
 export function buildBrief(snapsIn: Record<SourceId, SourceSnapshot>, bills: BillDue[], now = new Date()): BriefSection[] {
   const snaps = withoutLater(snapsIn, now);
   const mail = mailRows(snaps);
+  const roles = [...mail.filter(r => r.category === 'roles'), ...roleRows(snaps.role)];
+  const sales = [...mail.filter(r => r.category === 'sales'), ...saleRows(snaps.resale)];
+  // Scheduled work already represented as mail, a reply or a sale gets one row.
+  const represented = new Set([...mail, ...roles, ...sales].map(row => row.pin).filter(Boolean));
   return [
     { id: 'money', label: 'Money · overdue or due today', rows: money_(bills) },
-    { id: 'tasks', label: 'Tasks · due today & overdue', rows: tasksDue(snaps, now) },
+    { id: 'tasks', label: 'Tasks · due today & overdue', rows: tasksDue(snaps, now).filter(row => !row.pin || !represented.has(row.pin)) },
     { id: 'mail', label: 'Mail needing you', rows: mail.filter(r => r.category === 'mail') },
-    { id: 'roles', label: 'Roles · replies & next steps', rows: [...mail.filter(r => r.category === 'roles'), ...roleRows(snaps.role)] },
-    { id: 'sales', label: 'Sold & selling · to do', rows: [...mail.filter(r => r.category === 'sales'), ...saleRows(snaps.resale)] },
+    { id: 'roles', label: 'Roles · replies & next steps', rows: roles },
+    { id: 'sales', label: 'Sold & selling · to do', rows: sales },
   ];
 }
 
@@ -305,4 +309,19 @@ export function useBriefPush(snaps: Record<SourceId, SourceSnapshot>, bills: Bil
     }, 4000);
     return () => window.clearTimeout(t);
   }, [snaps, bills, incoming]);
+}
+
+/** Remove Action List members before rendering a bucket, including partially pinned groups. */
+export function withoutActionListRows(rows: BucketRow[], isOnList: (pin: string) => boolean): BucketRow[] {
+  return rows.flatMap(row => {
+    if (!row.children) return row.pins.length && row.pins.every(isOnList) ? [] : [row];
+    const children = withoutActionListRows(row.children, isOnList);
+    if (!children.length) return [];
+    if (children.every((child, i) => child === row.children![i]) && children.length === row.children.length) return [row];
+    const label = row.id === 'g:late' ? `${children.length} overdue` : row.id === 'g:due' ? `${children.length} due today` : row.title;
+    return [{ ...row, title: label, children, amount: children.reduce((sum, child) => sum + (child.amount || 0), 0),
+      pinTitle: `${label}${row.tag === '$' ? ' bills' : ''}`,
+      note: [names(children), sum(children) ? money(sum(children)) : ''].filter(Boolean).join(' · '),
+      pins: children.flatMap(child => child.pins), ids: children.flatMap(child => child.ids) }];
+  });
 }

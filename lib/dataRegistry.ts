@@ -9,6 +9,9 @@
 export type SavedKey = { key: string; backup: 'cloud' | 'device' | 'cache'; note?: string };
 
 export const SAVED_KEYS: SavedKey[] = [
+  { key: 'lifehub-worksheets', backup: 'cloud', note: 'Existing worksheet documents' },
+  { key: 'sk-worksheet-folded', backup: 'device' },
+  { key: 'sk-worksheet-open', backup: 'device' },
   { key: 'lifehub-finance-findings', backup: 'cloud', note: 'Finance findings: amount found, payment plan + details, hand-typed money items — cloud-synced' },
   { key: 'lifehub-finance-group-log', backup: 'cloud', note: 'Group-level log on a Finance link (asked about a plan, terms, who/when) — cloud-synced' },
   { key: 'lifehub-site-lists', backup: 'cloud', note: 'Tasks grouped into lists inside one site (members leave the pool; a list is one task)' },

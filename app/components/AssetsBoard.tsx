@@ -192,7 +192,7 @@ export function AssetsBoard({ model, dues, monthDues, paidAt, parts, onOpen }: {
       paymentsLeft: phone.paymentsLeft ?? 30,
       note: phone.note?.replace(/on the Verizon \(not Fios\) bill/, 'on the V mobile bill (usually due the 6th)').replace("month's Verizon bill", "month's V mobile bill"),
     });
-  }, [phone?.billKey]);
+  }, [phone?.billKey, phone?.note, phone?.paymentsLeft]);
   const lines = owedLines(parts);
   const owed = views.reduce((t, a) => t + (a.progress.owed || 0), 0);
   return (

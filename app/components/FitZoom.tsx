@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 
 /** Never shrink a pane below this when fitting it. */
 const FIT_MIN = 50;
@@ -13,7 +13,7 @@ const FIT_MIN = 50;
 export function FitZoom({ zoom, off = false, watch, onFit, children }: { zoom: number; off?: boolean; watch?: unknown; onFit?: (shown: number) => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const report = useRef(onFit);
-  report.current = onFit;
+  useLayoutEffect(() => { report.current = onFit; }, [onFit]);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;

@@ -51,3 +51,15 @@ test('focus ranks are stable, do not mutate storage order, and leave completed i
   assert.deepEqual(orderFocus(items).map(i => i.id), ['high', 'high2', 'low', 'plain', 'done']);
   assert.equal(items[0].id, 'plain');
 });
+
+test('a scheduled Role assessment is represented once as a reply, not repeated as a due task', () => {
+  const snaps = snapshots();
+  snaps.role.tasks = [{ id: 'red-bull', title: 'Complete Red Bull Wingfinder assessment', due: '2026-11-23', status: 'open' }];
+  snaps.role.featured = [{ id: 'red-bull', title: 'Complete Red Bull Wingfinder assessment', detail: 'Role Hub', meta: 'Reply' }];
+  const sections = buildBrief(snaps, [], new Date(2026, 10, 23));
+  assert.equal(sections.flatMap(section => section.rows).filter(row => row.pin === 'role:red-bull').length, 1);
+  assert.equal(sections.find(section => section.id === 'roles')!.rows.length, 1);
+  assert.equal(sections.find(section => section.id === 'tasks')!.rows.length, 0);
+  snaps.role.tasks.push({ id: 'different', title: 'Complete Red Bull Wingfinder assessment', due: '2026-11-23', status: 'open' });
+  assert.equal(buildBrief(snaps, [], new Date(2026, 10, 23)).flatMap(section => section.rows).length, 2, 'different records with the same title remain separate');
+});

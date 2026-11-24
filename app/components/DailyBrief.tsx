@@ -22,6 +22,8 @@ import type { Entry, useShortTermFocus } from './FocusSection';
 import { sourceById } from '../../lib/sources';
 import { focusCollections } from '../../lib/focusRouting';
 import { LOG_LABEL, useTickTickOff } from '../../lib/ticktickLog';
+import { setInboxStatus, useInbox } from '../../lib/routineInbox';
+import { inboxSummary, RoutineInboxPop } from './RoutineInbox';
 
 const SEEN_KEY = 'lifehub-brief-seen';
 const DISMISS_KEY = 'lifehub-brief-dismissed';
@@ -184,6 +186,18 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
     focusCards, steps, new Date(nowMs))
     .map(b => ({ ...b, rows: withoutActionListRows(b.rows, key => lanes[key]?.lane === PLAN).filter(r => !r.ids.every(id => gone[id]) && !(r.tag === 'ship' && shipOnList(r))) }));
   const [unfold, setUnfold] = useState<Record<string, boolean>>({});
+  const inbox = useInbox();
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const inboxRow = inbox.length ? <li key="inbox" className="sk-brow is-today is-inbox">
+    <div className="sk-brow-line">
+      <span className="sk-btag" data-tag="you">you</span>
+      <button type="button" className="sk-brow-main" onClick={() => setInboxOpen(true)} aria-haspopup="dialog" title="Findings from the daily Life Hub check that need you">
+        <span className="sk-brow-title"><span className="sk-brow-text">Needs you · {inbox.length} to confirm</span></span>
+        <small>{inboxSummary(inbox)}</small>
+      </button>
+      <button type="button" className="sk-brow-clear" aria-label="Dismiss all findings" title="Dismiss all (they won’t come back)" onClick={() => setInboxStatus(inbox.map(i => i.id), 'dismissed')}><Icon name="close" size={11} /></button>
+    </div>
+  </li> : null;
   const sendToList = (r: BucketRow) => {
     if (onList(r)) { r.pins.forEach(unpin); return; }
     // Hub-only pins (appointments) carry their own title; the catalog reads it from the pin.
@@ -243,14 +257,15 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
         </section>; return <>{sec(cols[0])}<div className="sk-brief-rest sk-buckets" id="sk-brief-buckets">{buckets.map(b => <section key={b.id} className={`sk-bucket is-${b.id}`} aria-label={b.title}>
           <header className="sk-bucket-head">
             <button type="button" className="sk-bucket-fold" aria-expanded={!folds[`b:${b.id}`]} onClick={() => toggle(`b:${b.id}`)}>
-              <span className="sk-bucket-title">{b.title}</span><span className="sk-bucket-count">{b.rows.length}</span>
+              <span className="sk-bucket-title">{b.title}</span><span className="sk-bucket-count">{b.rows.length + (b.id === 'today' && inboxRow ? 1 : 0)}</span>
             </button>
             <span className="sk-bucket-hint">{b.hint}</span>
           </header>
-          {folds[`b:${b.id}`] ? null : b.rows.length ? <ul className="sk-bucket-rows">{b.rows.map(r => bucketRow(r, 0))}</ul> : <p className="sk-bucket-empty">{b.id === 'today' ? 'Nothing due today. Nice.' : b.id === 'week' ? 'Nothing on the calendar this week.' : 'No open focus tasks.'}</p>}
+          {folds[`b:${b.id}`] ? null : b.rows.length || (b.id === 'today' && inboxRow) ? <ul className="sk-bucket-rows">{b.id === 'today' ? inboxRow : null}{b.rows.map(r => bucketRow(r, 0))}</ul> : <p className="sk-bucket-empty">{b.id === 'today' ? 'Nothing due today. Nice.' : b.id === 'week' ? 'Nothing on the calendar this week.' : 'No open focus tasks.'}</p>}
         </section>)}</div></>; })()}
       </div>
     </Group>
+    {inboxOpen && inbox.length ? <RoutineInboxPop items={inbox} close={() => setInboxOpen(false)} /> : null}
     {selected && selectedList ? <FocusEntryDialog item={selected} events={events} bills={bills} openFinance={openFinance} update={updateFocus} remove={() => selectedList[1](selectedList[0].filter(i => i.id !== selected.id))} close={() => setOpenFocusId(null)} /> : null}
   </>;
 }

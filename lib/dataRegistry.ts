@@ -17,6 +17,7 @@ export const SAVED_KEYS: SavedKey[] = [
   { key: 'lifehub-finance-group-log', backup: 'cloud', note: 'Group-level log on a Finance link (asked about a plan, terms, who/when) — cloud-synced' },
   { key: 'lifehub-site-lists', backup: 'cloud', note: 'Tasks grouped into lists inside one site (members leave the pool; a list is one task)' },
   { key: 'lifehub-research', backup: 'cloud', note: 'Research pop-outs on purchases and to-dos (notes, options, links, prices) — one record per item, cloud-synced' },
+  { key: 'lifehub-routine-inbox', backup: 'cloud', note: 'Daily Brief › Do today › Needs you: findings from the daily Life Hub check to confirm or dismiss — cloud-synced' },
   { key: 'lifehub-packages', backup: 'cloud', note: 'Dashboard › Packages (in / out, tracking, status from shipping email) — cloud-synced' },
   { key: 'lifehub-packages-seeded', backup: 'device', note: 'One-time starter Packages list already added on this device' },
   { key: 'lifehub-rhythm-lists', backup: 'device', note: 'Daily Rhythm list layout on this device' },

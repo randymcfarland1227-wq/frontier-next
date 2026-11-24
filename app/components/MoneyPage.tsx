@@ -3513,6 +3513,7 @@ export function MoneyPage({
   const [ledgerView, setLedgerView] = useSavedChoice('lifehub-money-ledger', LEDGER_IDS, 'date');
   const [acctView, setAcctView] = useSavedChoice('lifehub-money-accounts', ACCT_IDS, 'checking', legacyTab === 'cards' ? 'cards' : undefined);
   const [spendView, setSpendView] = useSavedChoice('lifehub-money-spend', SPEND_IDS, 'out', legacyTab === 'subs' ? 'subs' : legacyTab === 'shop' ? 'shop' : undefined);
+  const [overviewView, setOverviewView] = useState<'overview' | 'summary'>('overview');
   const incomeList = useIncoming();
   const incoming = useMemo(() => incomingDues(incomeList, new Date(), 0, 45), [incomeList]);
   // The balancing sheet also needs this week's past days (deposits already added to an account).
@@ -3765,22 +3766,7 @@ export function MoneyPage({
     { id: 'save', tone: 'save', label: 'Savings & move', figure: '' },
   ];
 
-  return (
-    <PaneHeadContext.Provider value={undefined}>
-    <MoneyPanelCtx.Provider value={panelApi}>
-    <div className="settings-view money-view mny skm">
-      <MoneyDash
-        paneSlot={paneSlot}
-        model={model}
-        overdue={overdue.filter(d => !paidAt[d.key])}
-        monthPaid={monthPaid}
-        monthCount={monthCount}
-        credit={dashCredit}
-        owed={dashOwed}
-        onGo={goDash}
-        onOpenAccount={panelApi.openAccount}
-        onOpenCard={panelApi.openCard}
-        top={
+  const financeTools = (
           <>
             {paneSlot === undefined ? <MoneyZoom /> : null}
             <span className="mny-stand-meta">
@@ -3803,8 +3789,8 @@ export function MoneyPage({
               </p>
             ) : null}
           </>
-        }
-        tabs={
+  );
+  const financeTabs = (
       <nav className="skm-tabs" role="tablist" aria-label="Money sections">
         {TABS.map(t => (
           <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`skm-tab tone-${t.tone}${tab === t.id ? ' is-on' : ''}`} onClick={() => setTab(t.id)}>
@@ -3814,11 +3800,34 @@ export function MoneyPage({
           </button>
         ))}
       </nav>
-        }
-      />
+  );
+
+  return (
+    <PaneHeadContext.Provider value={undefined}>
+    <MoneyPanelCtx.Provider value={panelApi}>
+    <div className="settings-view money-view mny skm" data-finance-view={tab}>
+      {paneSlot === undefined ? <header className="mb-finance-toolbar"><h1 className="sk-large">Money</h1>{financeTools}</header> : paneSlot ? createPortal(<span className="skm-slot-top">{financeTools}</span>, paneSlot) : null}
+      {financeTabs}
 
 
       <div className="mny-panel" role="tabpanel">
+        {tab === 'overview' ? <SubTabs label="Overview views" value={overviewView} onChange={setOverviewView} options={[["overview", "Overview"], ["summary", "Summary Dashboard"]]} /> : null}
+        <section className="mb-summary-dashboard" hidden={tab !== 'overview' || overviewView !== 'summary'} aria-label="Summary Dashboard">
+          <h2 className="sk-hl">Summary Dashboard</h2>
+      <MoneyDash
+        paneSlot={null}
+        model={model}
+        overdue={overdue.filter(d => !paidAt[d.key])}
+        monthPaid={monthPaid}
+        monthCount={monthCount}
+        credit={dashCredit}
+        owed={dashOwed}
+        onGo={goDash}
+        onOpenAccount={panelApi.openAccount}
+        onOpenCard={panelApi.openCard}
+        top={null}
+      />
+        </section>
         {tab === 'flow' ? (
           <SubTabs
             label="Week, month or ledger"
@@ -4047,7 +4056,7 @@ export function MoneyPage({
           </Section>
         ) : null}
 
-        {tab === 'overview' ? (
+        {tab === 'overview' && overviewView === 'overview' ? (
           <div className="mny-stack">
             <Section tone="due" title="Overdue" figure={overdueOpen.length ? money(sum(overdueOpen)) : undefined} figureLabel={overdueOpen.length ? `${overdueOpen.length} to pay` : undefined} hint="Only what is past its day and not paid — what is coming up is in Ledger › Week.">
               {overdueOpen.length ? (

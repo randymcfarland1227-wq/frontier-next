@@ -235,3 +235,12 @@ Per-task metadata (all cloud-synced, newest change wins):
   Removing a provider archives its new-advance option and preserves history; any open repayments remain visible until paid.
 - Existing sheet and older liability advances keep their existing pop-outs and completion controls within
   the provider detail. They are displayed without automatic migration, copying, or changing their paid state.
+
+### Finance overview layout (2026-11-24)
+- The six Money dashboard cards live in Overview → Summary Dashboard. Other Finance tabs retain only
+  the compact toolbar and navigation above their content. Overview's original content stays in its Overview subtab.
+- The dashboard stays mounted while hidden so its existing balance/card freshness observers keep working;
+  hidden cards take no layout space and do not appear in the accessibility tree.
+- Finance tab labels now follow the existing Tabs display choice with readable minimum sizes, including
+  the split pane's Money zoom. Section titles/figures are more restrained and still follow Headers choices.
+- No new stored preferences, money rules, figures, payment state, or write paths change.

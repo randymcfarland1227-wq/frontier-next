@@ -63,6 +63,8 @@ export type Finding = {
   refs?: FocusRef[];
   /** Payments due on this item (e.g. a $75 minimum by 11/30). Each one shows in the pop-out and in the to-pay list. */
   payments?: FindingPayment[];
+  /** A separate advance draw; provider account survives repayment. Each draw has its own record. */
+  cashAdvance?: { provider: string; received: number; takenOn: string };
   at: string;
   gone?: boolean;
 };
@@ -86,9 +88,9 @@ export function findingPaymentDues(store: FindingStore, paid: Set<string>, today
     for (const p of f.payments) {
       const key = findingDueKey(p);
       const days = daysBetween(t, fromDayKey(p.due));
-      if (days < -back || days > ahead) continue;
+      if (!f.cashAdvance && (days < -back || days > ahead)) continue;
       if (!keepPaid && (p.paid || paid.has(key))) continue;
-      out.push({ bill: { id: key, name, amount: p.amount, kind: 'bill', notes: [p.note, 'payment on a money item · added on Life Hub'].filter(Boolean).join(' · ') }, due: p.due, days, key });
+      out.push({ bill: { id: key, name, amount: p.amount, kind: f.cashAdvance ? 'cash' : 'bill', notes: [p.note, f.cashAdvance ? 'cash advance repayment · added on Life Hub' : 'payment on a money item · added on Life Hub'].filter(Boolean).join(' · ') }, due: p.due, days, key });
     }
   }
   return out;

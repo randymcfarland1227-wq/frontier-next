@@ -65,9 +65,10 @@ function ListDialog({ list, close }: { list: SiteList; close: () => void }) {
           className="sk-fd-title"
           value={list.name}
           onChange={(e) => renameSiteList(list.id, e.target.value)}
-          onBlur={(e) => renameSiteList(list.id, e.target.value.trim())}
+          onBlur={(e) => { if (!list.auto) renameSiteList(list.id, e.target.value.trim()); }}
           aria-label="List name"
           maxLength={60}
+          readOnly={Boolean(list.auto)}
           data-autofocus
         />
         <button type="button" className="sk-btn is-small is-icon" onClick={close} aria-label="Close">
@@ -86,7 +87,10 @@ function ListDialog({ list, close }: { list: SiteList; close: () => void }) {
             </button>
           </>
         ) : (
-          <button type="button" className="sk-btn is-small" onClick={() => placePin(deckKey, PLAN)}>
+          <button type="button" className="sk-btn is-small" onClick={() => {
+              if (list.auto === 'shipping') list.tasks.forEach(id => unpin(pinKey(list.site, id)));
+              placePin(deckKey, PLAN);
+            }}>
             ＋ Add list to Doing Now
           </button>
         )}
@@ -116,19 +120,19 @@ function ListDialog({ list, close }: { list: SiteList; close: () => void }) {
               {t.title}
               {hasNotes(list.site, t.id) ? " ✎" : ""}
             </button>
-            <button
+            {list.auto ? null : <button
               type="button"
               className="sk-btn is-small is-quiet"
               onClick={() => removeFromSiteList(list.id, t.id)}
               title="Take it out of the list and put it back in the pool"
             >
               Take out
-            </button>
+            </button>}
           </li>
         ))}
         {!open.length ? <li className="sk-empty">Everything in this list is done.</li> : null}
       </ul>
-      <div className="sk-listdlg-add">
+      {list.auto ? null : <><div className="sk-listdlg-add">
         <span className="sk-cap">Add a {site.shortName} task (it leaves the pool)</span>
         <SearchPick
           options={pool}
@@ -172,7 +176,7 @@ function ListDialog({ list, close }: { list: SiteList; close: () => void }) {
         >
           Delete list (tasks go back to the pool)
         </button>
-      </footer>
+      </footer></>}
     </Dialog>
   );
 }

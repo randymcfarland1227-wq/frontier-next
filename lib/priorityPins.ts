@@ -381,17 +381,17 @@ export function leaveMix(key: string) {
 }
 
 /** Action List rows that start with "Ship …" fold into one "Items to ship" list (2 or more). */
-export const SHIP_MIX = { auto: 'ship', name: 'Items to ship', test: /^\s*ship\b/i };
+export const SHIP_MIX = { auto: 'ship', name: 'Ship Items', test: /^\s*ship\b/i };
 
 /**
  * Keep the Action List's ship rows in one "Items to ship" list so they don't flood it. Rows
  * taken out on purpose (Remove from this list → ownRow) stay single. Does nothing when already tidy.
  */
-export function autoShipMix(items: Array<{ key: string; title: string }>, _shown?: LaneMap) {
+export function autoShipMix(items: Array<{ key: string; title: string; tag?: string }>, _shown?: LaneMap) {
   void _shown; // Callers may pass their view; the saved map remains authoritative.
   // Read the saved map, not the caller's copy: two lists on screen run this in the same render.
   const lanes = loadLanes();
-  const loose = items.filter((i) => SHIP_MIX.test.test(lanes[i.key]?.title || i.title) && !lanes[i.key]?.mix && !lanes[i.key]?.ownRow);
+  const loose = items.filter((i) => (SHIP_MIX.test.test(lanes[i.key]?.title || i.title) || /^ship(?:ping)?\b/i.test(i.tag || '')) && !lanes[i.key]?.mix && !lanes[i.key]?.ownRow);
   if (!loose.length) return;
   const existing = Object.entries(lanes).find(([k, e]) => k.startsWith('mix:') && e && !e.gone && e.auto === SHIP_MIX.auto);
   if (existing) {

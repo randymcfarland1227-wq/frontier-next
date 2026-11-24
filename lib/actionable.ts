@@ -186,7 +186,7 @@ export function shownMetric(id: SourceId, snapshot: SourceSnapshot, lanes: LaneM
   // Already handled elsewhere: in Doing Now, or organized into a focus card / ongoing goal.
   const inDoingNow = new Set(
     [...snapshot.tasks.filter(t => t.status !== 'done'), ...snapshot.featured]
-      .filter(x => lanes[pinKey(id, x.id)]?.lane || planned?.(pinKey(id, x.id), x.title))
+      .filter(x => lanes[pinKey(id, x.id)]?.lane || planned?.(pinKey(id, x.id), x.title) || ('shippingTasks' in x && (x.shippingTasks as TaskItem[] | undefined)?.every(t => lanes[pinKey(id,t.id)]?.lane || planned?.(pinKey(id,t.id),t.title))))
       .map(x => x.id),
   ).size;
   const deduct = id !== 'ticktick' && id !== 'self' && Number.isFinite(base.value) ? Math.min(inDoingNow, base.value) : 0;

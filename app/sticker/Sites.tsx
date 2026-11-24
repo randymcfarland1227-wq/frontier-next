@@ -170,7 +170,7 @@ function TaskRow({
   /** Picking tasks to group into a list */
   select?: { picked: boolean; toggle: () => void };
 }) {
-  const isList = task.kind === "list";
+  const isList = Boolean(task.siteListId);
   const key = pinKey(sourceId, task.id);
   // Self keeps a star button; everywhere else right-click / long-press opens the star + day menu.
   const dayMenus = sourceId !== "self";

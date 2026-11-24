@@ -18,7 +18,7 @@ export const SITE_LISTS_KEY = 'lifehub-site-lists';
 export const SITE_LISTS_EVENT = 'lifehub:site-lists';
 export const OPEN_SITE_LIST_EVENT = 'lifehub:open-site-list';
 
-export type SiteList = { id: string; site: SourceId; name: string; tasks: string[]; at: string; gone?: boolean; alsoIn?: SourceId[] };
+export type SiteList = { id: string; site: SourceId; name: string; tasks: string[]; at: string; gone?: boolean; alsoIn?: SourceId[]; auto?: 'shipping' };
 export type SiteListStore = Record<string, SiteList>;
 
 const now = () => new Date().toISOString();
@@ -32,6 +32,27 @@ const live = (s: SiteListStore) => Object.values(s).filter(l => l && !l.gone);
 /** Which list (if any) a task already belongs to — a task is in at most one list. */
 export function listOfTask(store: SiteListStore, site: SourceId, taskId: string): SiteList | undefined {
   return live(store).find(l => l.site === site && l.tasks.includes(taskId));
+}
+
+/** Source IDs like Resale's `list:<inventory id>` are real tasks, not Hub lists. */
+export function siteListForTask(store: SiteListStore, site: SourceId, taskId: string): SiteList | undefined {
+  if (!taskId.startsWith('list:')) return;
+  const list = store[taskId.slice(5)];
+  return list && !list.gone && (list.site === site || list.alsoIn?.includes(site)) ? list : undefined;
+}
+
+export const isShippingTask = (task: TaskItem) => task.kind === 'ship' || task.briefKind === 'shipping' || /^ship(?:ping)?(?:\b|$)/i.test(task.tag || '') || /^ship\b/i.test(task.title);
+
+/** Read-only view: shipment rows stay source tasks; their container counts as one. */
+export function withShippingLists(snapshots: Partial<Record<SourceId, SourceSnapshot>>, saved: SiteListStore): SiteListStore {
+  const store = { ...saved };
+  for (const [site, snap] of Object.entries(snapshots) as Array<[SourceId,SourceSnapshot]>) {
+    const tasks = snap.tasks.filter(t => isShippingTask(t) && !listOfTask(saved,site,t.id));
+    if (!tasks.some(t => t.status !== 'done')) continue;
+    const id = `shipping:${site}`;
+    store[id] = { id, site, name:'Ship Items', tasks:tasks.map(t=>t.id), at:'', auto:'shipping' };
+  }
+  return store;
 }
 
 export function createSiteList(site: SourceId, name: string, taskIds: string[]): string {
@@ -138,7 +159,9 @@ export function applySiteLists<T extends Partial<Record<SourceId, SourceSnapshot
         detail: `${open.length} of ${total} left`,
         status: 'open',
         kind: 'list',
+        siteListId: list.id,
         tag: 'List',
+        ...(list.auto === 'shipping' ? {shippingTasks:open} : {}),
         ...(due ? { due } : {}),
       };
       tasks.push(row);

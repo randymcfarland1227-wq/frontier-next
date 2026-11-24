@@ -25,7 +25,7 @@ import { ReviewPanel } from "./ReviewPanel";
 import { DailyBrief, BriefSummary } from "./DailyBrief";
 import { useBriefPush } from "../../lib/dailyBrief";
 import { shownMetric } from "../../lib/actionable";
-import { PLAN, usePriorityPins } from "../../lib/priorityPins";
+import { PLAN, groupSteps, usePriorityPins } from "../../lib/priorityPins";
 import { criticalKeys, useFeaturedLevels } from "../../lib/featuredLevels";
 import {
   addDays,
@@ -83,12 +83,13 @@ function PrioritySummary() {
   const { pins, lanes } = usePriorityPins();
   const { levels } = useFeaturedLevels();
   const critical = criticalKeys(levels).length;
-  const plan = pins.filter((k) => lanes[k]?.lane === PLAN).length;
+  const plan = groupSteps(pins.filter((k) => lanes[k]?.lane === PLAN).map(key=>({key})), lanes).length;
+  const deck = pins.filter(k=>lanes[k]?.lane !== PLAN).length;
   return (
     <>
       {[
         `${plan} on your list`,
-        `${pins.length - plan} pinned on deck`,
+        `${deck} pinned on deck`,
         critical ? `${critical} critical` : null,
       ]
         .filter(Boolean)

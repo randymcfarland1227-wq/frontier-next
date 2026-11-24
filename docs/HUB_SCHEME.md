@@ -221,3 +221,17 @@ Per-task metadata (all cloud-synced, newest change wins):
 - Undo Paid only covers this month's view; MDTA flag row stray "· ?" (`splitFinText`) unfixed.
 - Big files to split before large changes: `MoneyPage.tsx`, `FocusCards.tsx`, `MoneyBoards.tsx`,
   `Sites.tsx`, `worker/index.ts`.
+
+
+### Cash advance accounts and draws (2026-11-24)
+- Cash advances use persistent provider records (`cash-provider:<name>`) and separate UUID draw records
+  (`cash-advance:<uuid>`) in the existing finance findings map. No sheet rows are moved or rewritten.
+- A draw stores received amount/date and one repayment amount/date. `findingPaymentDues` exposes the same
+  repayment key as kind `cash` in To Pay, Week, Ledger, Calendar, Daily Brief and project bill pickers.
+  One-off advances remain overdue until paid; they do not expire at the usual findings lookback boundary.
+- Paid status/history comes from the active Radall completion for that exact repayment key. Payment clears
+  the provider's outstanding amount, retains the draw/history, and never removes the provider. Undo restores it.
+- Each draw is a separate findings record, so concurrent advances merge rather than replacing an account array.
+  Removing a provider archives its new-advance option and preserves history; any open repayments remain visible until paid.
+- Existing sheet and older liability advances keep their existing pop-outs and completion controls within
+  the provider detail. They are displayed without automatic migration, copying, or changing their paid state.

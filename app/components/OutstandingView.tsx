@@ -7,12 +7,13 @@
  * then part 2 in three columns: Pay laters · Taxes / Legal · Projects / Required.
  */
 
+import { CashAdvanceAccounts } from "./CashAdvanceAccounts";
 import { FinanceLabel } from "./FinanceDrawer";
 import { useState, type ReactNode } from "react";
 import { Icon } from "../sticker/Icon";
 import { Dialog } from "../sticker/Dialog";
 import { MoneyExtras, useExtrasBadge } from "./MoneyExtras";
-import { findingOf, loadFindings, setFinding, useFindings } from "../../lib/finFindings";
+import { findingDueKey, findingPaymentDues, findingOf, loadFindings, setFinding, useFindings } from "../../lib/finFindings";
 import {
   amountOf,
   parseSheetDate,
@@ -29,7 +30,7 @@ import {
   RENEWAL_STEP,
 } from "../../lib/debtFile";
 import { isLedgerPaid } from "../../lib/moneyLedger";
-import { advanceLabel } from "../../lib/billEdits";
+import { applyBillEdits, loadBillEdits, advanceLabel } from "../../lib/billEdits";
 import { readSaved, writeSaved } from "../../lib/storage";
 import {
   isOwedDone,
@@ -533,6 +534,14 @@ export function outstandingParts(
     const labelled = { ...l, name: advanceLabel("cash", l.name) || l.name };
     return paidAt[id] ? { ...labelled, done: true } : labelled;
   });
+  // Separate draws from the advance log share the same repayment keys as To Pay.
+  const loggedDues = applyBillEdits(findingPaymentDues(found, new Set(), new Date(), 365000, 365000, true), loadBillEdits());
+  for (const f of Object.values(found)) {
+    if (!f || f.gone || !f.cashAdvance || !f.payments?.[0]) continue;
+    const key = findingDueKey(f.payments[0]);
+    const due = loggedDues.find(d => d.key === key);
+    if (due) cashAdv.push({key:f.key, name:f.name || "Advance", amount:due.bill.amount, date:due.due, done:Boolean(paidAt[key])});
+  }
   const liab = nc(/non.?car|liabilit/i);
   const advances: OwedLine[] = rowsOf(liab)
     .filter((r) => !/t-?mobile/i.test(r.map((c) => c.text).join(" ")))
@@ -587,6 +596,7 @@ function OwedCol({
   cell,
   onOpen,
   paidAt = {},
+  embedded = false,
 }: {
   tone: string;
   title: string;
@@ -594,6 +604,7 @@ function OwedCol({
   cell: CellView;
   onOpen: (id: string) => void;
   paidAt?: Record<string, string>;
+  embedded?: boolean;
 }) {
   const total = groups.reduce((s, [, xs]) => s + lineSum(xs), 0);
   const [pop, setPop] = useState<OwedLine | null>(null);
@@ -651,15 +662,15 @@ function OwedCol({
     </div>
   );
   return (
-    <section className={`sk-group tone-${tone} skm-sec ob-col`}>
-      <header className="sk-ghead skm-head">
+    <section className={embedded ? "mb-ca-legacy" : `sk-group tone-${tone} skm-sec ob-col`}>
+      {embedded ? null : <header className="sk-ghead skm-head">
         <div className="skm-titles">
           <h2 className="sk-hl">{title}</h2>
         </div>
         <div className="skm-fig">
           <b>{usd(total)}</b>
         </div>
-      </header>
+      </header>}
       <div className="sk-gbody skm-body">
         {groups.map(([label, xs]) =>
           xs.length ? (
@@ -669,8 +680,8 @@ function OwedCol({
                   {label} <span>{usd(lineSum(xs))}</span>
                 </h5>
               ) : null}
-              {xs.filter((x) => !x.done || x.itemId).map((x) => line(x))}
-              {xs.some((x) => x.done && !x.itemId) ? (
+              {xs.filter((x) => embedded || !x.done || x.itemId).map((x) => line(x))}
+              {!embedded && xs.some((x) => x.done && !x.itemId) ? (
                 <details className="ob-done">
                   <summary>
                     Done · {xs.filter((x) => x.done && !x.itemId).length}
@@ -739,6 +750,14 @@ function LinePop({ line, paidAt, close }: { line: OwedLine; paidAt: Record<strin
       <MoneyExtras fkey={line.key} label={line.name} paidAt={paidAt} />
     </Dialog>
   );
+}
+
+export function CashAdvanceSection({cashAdv, advances, paidAt, cell, onOpen}: {
+  cashAdv: OwedLine[]; advances: OwedLine[]; paidAt: Record<string,string>; cell: CellView; onOpen: (id:string)=>void;
+}) {
+  const lines=[...cashAdv,...advances].filter(l=>!l.key.startsWith("cash-advance:"));
+  return <CashAdvanceAccounts paidAt={paidAt} legacy={lines.map(l=>({key:l.key,name:l.name,amount:l.amount ?? undefined,due:l.date,done:l.done,unverified:l.unverified}))}
+    renderLegacy={keys=><OwedCol embedded tone="card" title="Existing advances" cell={cell} onOpen={onOpen} paidAt={paidAt} groups={[["Existing advances",lines.filter(l=>keys.includes(l.key))]]}/>} />;
 }
 
 export function OutstandingView({
@@ -830,17 +849,7 @@ export function OutstandingView({
           paidAt={paidAt}
           groups={[["Pay later", parts.payLater]]}
         />
-        <OwedCol
-          tone="card"
-          title="Cash advances"
-          cell={cell}
-          onOpen={onOpen}
-          paidAt={paidAt}
-          groups={[
-            ["Cash advances", parts.cashAdv],
-            ["Older advances", parts.advances],
-          ]}
-        />
+        <CashAdvanceSection cashAdv={parts.cashAdv} advances={parts.advances} paidAt={paidAt} cell={cell} onOpen={onOpen} />
         <OwedCol
           tone="plan"
           title="Taxes / Legal"

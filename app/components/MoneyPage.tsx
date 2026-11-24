@@ -11,8 +11,8 @@ import { createPortal } from 'react-dom';
 import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PayPlanner } from './PayPlanner';
 import { debtOptions, purchaseAddEdits, purchaseDeleteEdits } from '../../lib/money';
-import { CashAdvanceAdd, PayLaterAdd } from './MoneyAddRows';
-import { requestUnpayBill } from '../../lib/finLinks';
+import { PayLaterAdd } from './MoneyAddRows';
+import { requestOpenDebt, requestUnpayBill } from '../../lib/finLinks';
 import { MoneySelector } from './MoneySelector';
 import { isLedgerPaid, ledgerMonthRows } from '../../lib/moneyLedger';
 import { DebtFile } from './DebtFile';
@@ -20,7 +20,7 @@ import { CardPayoff } from './CardPayoff';
 import { billHistory } from '../../lib/billHistory';
 import { AccountsBoard, CardsTable, LoansTable, MoneyDash, PaySources, WeekBoard, cardRows, loanRows, nearest, type CardRow, type CellView, type DashCredit } from './MoneyBoards';
 import { cardSig, figsKey, freshLabel, freshPatches } from '../../lib/cardFresh';
-import { outstandingParts, ticketTotals } from './OutstandingView';
+import { CashAdvanceSection, outstandingParts, ticketTotals } from './OutstandingView';
 import { AssetBlock, AssetPanel, AssetsBoard } from './AssetsBoard';
 import { ASSETS, assetKey, loanSeenKey, type AssetId } from '../../lib/assets';
 import { useOwedDone } from '../../lib/owedComplete';
@@ -3907,10 +3907,7 @@ export function MoneyPage({
         ) : null}
 
         {tab === 'spend' && spendView === 'cash' ? (
-          <Section tone="due" title={`Cash advances · ${monthName}`} hint="Dave, MoneyLion, Cleo… from the Cash Advances block on the Randy tab. Nothing counts as paid until you tap Paid." figure={money(weekLeft(['cash']))} figureLabel="left this week" href={link('Randy')}>
-            <CashAdvanceAdd onSave={save} />
-            <MonthView dues={monthDues} paidAt={paidAt} model={model} onPaid={onPaid} kinds={['cash']} foldPaid />
-          </Section>
+          <CashAdvanceSection cashAdv={parts.cashAdv} advances={parts.advances} paidAt={paidAt} cell={cell} onOpen={id => { requestOpenDebt(id); setTab('owed'); }} />
         ) : null}
 
         {tab === 'spend' && spendView === 'paylater' ? (

@@ -3,6 +3,7 @@
 import { confirmedProjectBillPayment } from "../../lib/projectFinance";
 
 import { projectContinuation, saveProjectContinuation } from "../../lib/projectContinuation";
+import { focusCardPinKey } from "../../lib/focusPins";
 import { openProject } from "../../lib/selfProjects";
 import { goalGroupOf, readGoalTypes } from "../../lib/goalTypes";
 import {
@@ -18,7 +19,7 @@ import { MenuRow, useRowMenu, type RowMenuItem } from "./RowMenu";
 import { useFold } from "./Collapsible";
 import { Icon } from "../sticker/Icon";
 import { deleteRemote, docTag, downloadRef, fetchRefBlob, formatSize, linkLabel, normalizeUrl, openRef, sortRefs, uploadRef, type FocusRef } from "../../lib/focusRefs";
-import { openTaskPanel, pinKey, unpin, usePriorityPins } from "../../lib/priorityPins";
+import { DECK, PLAN, openTaskPanel, pinKey, placePin, unpin, usePriorityPins } from "../../lib/priorityPins";
 import { openDebtPop } from "./DebtPop";
 import { FindingPop, type FindingTarget } from "./FindingPop";
 import { addOwnItem, findingOf, ownItems, planLine, planShort, setFinding, useFindings, type FindingStore, type PlanState } from "../../lib/finFindings";
@@ -988,6 +989,7 @@ function Detail({
   };
   // Doing Now pins a whole card as `self:fcard:<code>:<id>`; taking it off there must never delete the card.
   const { lanes: doingLanes } = usePriorityPins();
+  const availableDoingKey = focusCardPinKey(item.id);
   const doingKey = ["n", "w", "o"].map((c) => `self:fcard:${c}:${item.id}`).find((k) => doingLanes[k]?.lane);
   const deleteCard = () => {
     if (!window.confirm(`Delete the card “${item.title}” and every list and task on it?\n\nThis can't be undone.${doingKey ? " To only take it off Doing Now, use “Take off Doing Now” instead." : ""}`)) return;
@@ -1043,6 +1045,7 @@ function Detail({
       { label: item.inFocus ? "Take out of Short-term focus" : "Show in Short-term focus", hidden: !item.ongoing, on: Boolean(item.inFocus), onSelect: () => update({ inFocus: !item.inFocus }) },
       { label: item.done ? "Marked done — undo" : "Mark the whole focus done", on: Boolean(item.done), onSelect: markDone },
       { label: "Mark done and create new project with open tasks", hidden: Boolean(item.done), onSelect: () => setContinuing(true) },
+      { label: "Add to On Deck", hidden: Boolean(item.done || doingKey || !availableDoingKey), onSelect: () => { if (availableDoingKey) placePin(availableDoingKey, DECK); } },
       { label: "Take off Doing Now (stays here)", hidden: !doingKey, onSelect: () => { if (doingKey) unpin(doingKey); } },
       { label: "Delete this card…", danger: true, onSelect: deleteCard },
     ],
@@ -1798,6 +1801,9 @@ function Detail({
           </div>
         </form> : null}
         <footer className="sk-fd-foot" hidden>
+          {!item.done && availableDoingKey ? <button type="button" className="sk-btn is-small" onClick={() => {
+            if (!doingKey) placePin(availableDoingKey, DECK);
+          }} disabled={Boolean(doingKey)}>{doingKey ? (doingLanes[doingKey]?.lane === PLAN ? "In Action List" : "On Deck") : "Add to On Deck"}</button> : null}
           {item.ongoing ? (
             <button
               type="button"

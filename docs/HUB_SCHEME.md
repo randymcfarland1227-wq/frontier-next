@@ -123,6 +123,10 @@ Per-task metadata (all cloud-synced, newest change wins):
 - Focus-card lists/tasks can be sent here: `lib/focusPins.ts` ids `flist:<code>:<card>:<list>` and
   `ftask:<code>:<card>:<list>:<task>` (card stays the only record). Brief rows with no site item pin as
   `self:brief:<id>`.
+- Self project rows and the shared project pop-out offer **Add to On Deck**. Finance-only, linked-only
+  and empty active projects use the same `self:fcard:<code>:<id>` identity; no Self task is copied.
+  From On Deck the existing menu moves the project to Action List. A project opens its full editor;
+  it has no bulk-Done circle in Doing Now/Daily Brief/Today's List. Take off Doing Now only unpins it.
 - `openTaskPanel(pinKey)` from any card opens the item's panel in Doing Now.
 
 ## 5. TickTick (tasks + habits)

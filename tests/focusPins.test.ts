@@ -48,3 +48,40 @@ test('a whole short-term goal can go to Doing Now; checking it off marks all its
   assert.deepEqual(after.items[0].lists[0].tasks.map((t: { done: boolean }) => t.done), [true, true, false]);
   assert.equal(focusPinItems().length, 0);
 });
+
+test('Self finance-only projects use one shared container pin through On Deck, Action List and removal', async () => {
+  const { focusPinItems, focusCardPinKey } = await import('../lib/focusPins');
+  const { placePin, unpin, loadLanes, DECK, PLAN } = await import('../lib/priorityPins');
+  store.clear();
+  const project = {id:'finance-project',site:'self',title:'Financial centering',lists:[{id:'bills',kind:'pay',name:'Bills',tasks:[{id:'bill',text:'Sample bill',done:false,fin:{key:'bill:sample',label:'Sample bill'}}]}]};
+  const saved=JSON.stringify({scope:'keep',items:[project]});
+  store.set('lifehub-focus-now2',saved);
+  const key=focusCardPinKey(project.id)!;
+  assert.equal(key,'self:fcard:n:finance-project');
+  const items=focusPinItems();
+  assert.equal(items.length,1);
+  assert.equal(items[0].completable,false,'a project is opened, not bulk-completed from Doing Now');
+  placePin(key,DECK);
+  assert.equal(loadLanes()[key].lane,DECK);
+  placePin(key,PLAN);
+  assert.equal(loadLanes()[key].lane,PLAN);
+  unpin(key);
+  assert.equal(loadLanes()[key].lane,null);
+  assert.equal(store.get('lifehub-focus-now2'),saved,'placement never edits the shared project or its bills');
+  assert.equal(store.has('lifehub-completions'),false);
+});
+
+test('empty and linked-only Self projects remain eligible; week/ongoing pins resolve their actual storage list', async () => {
+  const { focusPinItems, focusCardPinKey } = await import('../lib/focusPins');
+  store.clear();
+  const projects: {id:string;site:string;title:string;lists:never[];siteTasks?:string[];done?:boolean}[]=[{id:'empty',site:'self',title:'Empty project',lists:[]},{id:'linked',site:'self',title:'Linked project',siteTasks:['role:sample'],lists:[]}];
+  store.set('lifehub-focus-weeks2',JSON.stringify({scope:'',items:projects}));
+  store.set('lifehub-focus-ongoing',JSON.stringify({scope:'',items:[{id:'ongoing',site:'self',title:'Self direction',lists:[]}]}));
+  assert.equal(focusCardPinKey('empty'),'self:fcard:w:empty');
+  assert.equal(focusCardPinKey('linked'),'self:fcard:w:linked');
+  assert.equal(focusCardPinKey('ongoing'),'self:fcard:o:ongoing');
+  assert.equal(focusPinItems().length,3);
+  projects[0]={...projects[0],done:true};
+  store.set('lifehub-focus-weeks2',JSON.stringify({scope:'',items:projects}));
+  assert.equal(focusCardPinKey('empty'),undefined,'archived project leaves the catalog');
+});

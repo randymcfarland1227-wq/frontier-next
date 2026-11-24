@@ -20,7 +20,7 @@ import { Circle, ListHead, Row, Tag } from '../sticker/kit';
 import { Icon } from '../sticker/Icon';
 import { VoiceMemoList } from './VoiceMemoList';
 import { CatchLists, catchPatch } from './CatchLists';
-import { loadLanes, openParentPicker, openTaskPanel, pinDragProps, pinKey, saveLanes, usePriorityPins } from '../../lib/priorityPins';
+import { DECK, loadLanes, openParentPicker, openTaskPanel, pinDragProps, pinKey, saveLanes, usePriorityPins } from '../../lib/priorityPins';
 import { convertSelfItems } from '../../lib/adapters/self';
 import { addOngoingGoal } from '../../lib/ongoingGoals';
 import { addToSiteList, createSiteList, listOfTask, openSiteList, useSiteListStore } from '../../lib/siteLists';
@@ -129,7 +129,7 @@ export function CapturesPanel({
   /** Move a task to another site's card */
   onTaskMove?: (id: string, home: string) => void;
 }) {
-  const { isPinned } = usePriorityPins();
+  const { isPinned, addPin, removePin } = usePriorityPins();
   const [kind, setKind] = useState<Kind>('task');
   const [bulk, setBulk] = useState(false);
   const [title, setTitle] = useState('');
@@ -219,6 +219,7 @@ export function CapturesPanel({
     showToast(`Now a project · ${t.title}`);
   };
   const taskMenu = (t: SelfItem): RowMenuItem[] => [
+    { label: isPinned('self', t.id) ? 'Take off Doing Now (stays here)' : 'Add to On Deck', hidden: t.done, onSelect: () => isPinned('self', t.id) ? removePin('self', t.id) : addPin('self', t.id, DECK) },
     ...(t.done ? [] : [{ label: 'Add to new list…', onSelect: () => newList(t) }]),
     ...(t.done ? [] : myLists.map(l => ({ label: `Add to list: ${l.name}`, onSelect: () => addToSiteList(l.id, [t.id]) }))),
     { label: t.starred ? 'Unstar' : 'Star', onSelect: () => onTaskStar(t.id), hidden: t.done },

@@ -13,7 +13,7 @@ import { readSaved, writeSaved } from "../../lib/storage";
 import { useDayKey } from "../../lib/dayKey";
 import { SearchPick } from "../sticker/SearchPick";
 import { onDay, type BillDue, type ScheduleSnapshot } from "../../lib/schedule";
-import { PLAN, autoShipMix, loadLanes, updatePinDetails, usePriorityPins } from "../../lib/priorityPins";
+import { PLAN, autoShipMix, openTaskPanel, loadLanes, updatePinDetails, usePriorityPins } from "../../lib/priorityPins";
 import { Row } from "../sticker/kit";
 import { Icon } from "../sticker/Icon";
 import { SITE_GROUPS } from "../sticker/StickerShell";
@@ -494,7 +494,8 @@ export function FocusDrawer({
           {plan.map((item) => (
             <Row
               key={item.key}
-              lead={
+              onOpen={item.completable === false ? () => openTaskPanel(item.key) : undefined}
+              lead={item.completable === false ? undefined :
                 <button
                   type="button"
                   className="sk-circle"

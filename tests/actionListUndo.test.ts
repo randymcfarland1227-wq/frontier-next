@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { diffSnapshotCompletions, loadLedger, recordCompletion, reopenCompletion, restoreReopenedSnapshots, reopenTaskSnapshot, observeReopenedSource, type CompletionLedger } from '../lib/completions';
+import { diffSnapshotCompletions, loadLedger, recordCompletion, reopenCompletion, restoreReopenedSnapshots, reopenTaskSnapshot, observeReopenedSource, respectCompletionUndos, saveLedger, type CompletionLedger } from '../lib/completions';
 import { loadLanes, placePin, PLAN, unpin } from '../lib/priorityPins';
 import { emptySnapshots } from '../lib/sources';
 import { STORAGE_KEYS } from '../lib/storage';
@@ -186,4 +186,50 @@ test('the newest raw open acknowledgement protects against a done feed older tha
   const olderDone=feed('done','2020-01-02T13:00:00.000Z');
   assert.deepEqual(diffSnapshotCompletions('role',newest,olderDone).entries,{});
   assert.equal(restoreReopenedSnapshots({...emptySnapshots(),role:olderDone}).role.tasks[0].status,'open');
+});
+
+test('a delayed history backfill save cannot overwrite a newer Review Undo', () => {
+  memory.clear();
+  const stale = recordCompletion('role',id,{via:'hub',title,task,at:at(3)});
+  reopenCompletion('role',id);
+  saveLedger(stale);
+  assert.deepEqual(loadLedger().entries,{},'the old render must not erase the Undo marker');
+  assert.ok(raw().entries[`role::${id}`].reopenedAt);
+});
+
+test('an unrelated completion based on an older ledger cannot revive a task undone meanwhile', () => {
+  memory.clear();
+  const stale = recordCompletion('role',id,{via:'hub',title,task,at:at(3)});
+  reopenCompletion('role',id);
+  const result=recordCompletion('self','other-task',{via:'self',title:'Other sample task',ledger:stale});
+  assert.equal(result.entries[`role::${id}`],undefined,'returned ledger must respect the later Undo');
+  assert.ok(result.entries['self::other-task']);
+  assert.equal(loadLedger().entries[`role::${id}`],undefined);
+});
+
+
+test('a queued pre-Undo UI result stays excluded from Review and survives an old cloud copy', async () => {
+  const { mergeState } = await import('../lib/syncState');
+  memory.clear();
+  const pending = recordCompletion('role',id,{via:'hub',title,task,at:at(3)});
+  reopenCompletion('role',id);
+  const undone=raw();
+  assert.deepEqual(respectCompletionUndos(pending).entries,{});
+  for (const [a,b] of [[pending,undone],[undone,pending]]) {
+    const merged=mergeState({completions:a},{completions:b});
+    memory.set(STORAGE_KEYS.completions,JSON.stringify(merged.completions));
+    assert.deepEqual(loadLedger().entries,{});
+    assert.deepEqual(respectCompletionUndos(pending).entries,{});
+  }
+});
+
+test('a delayed save preserves the latest Undo timestamp and task details', () => {
+  seedUndo();
+  const older=raw();
+  const newer=structuredClone(older);
+  newer.entries[`role::${id}`].reopenedAt='2020-01-04T10:00:00.000Z';
+  memory.set(STORAGE_KEYS.completions,JSON.stringify(newer));
+  saveLedger(older);
+  assert.equal(raw().entries[`role::${id}`].reopenedAt,'2020-01-04T10:00:00.000Z');
+  assert.equal(raw().entries[`role::${id}`].task?.originUrl,task.originUrl);
 });

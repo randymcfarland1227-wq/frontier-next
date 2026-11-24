@@ -52,6 +52,7 @@ import { FocusDrawer, useTodayListCount } from './components/FocusDrawer';
 import { SourceBridges } from './components/SourceBridges';
 import {
   loadLedger,
+  respectCompletionUndos,
   restoreReopenedSnapshots,
   reopenTaskSnapshot,
   observeReopenedSource,
@@ -252,7 +253,11 @@ export function LifeHub() {
   const [ready, setReady] = useState(false);
   const [connectorSyncing, setConnectorSyncing] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [ledger, setLedger] = useState<CompletionLedger>({ entries: {} });
+  const [ledger, saveLedgerState] = useState<CompletionLedger>({ entries: {} });
+  // A refresh queued before Undo must not put its old completion list back on screen.
+  const setLedger = useCallback((next: CompletionLedger) => {
+    saveLedgerState(() => respectCompletionUndos(next));
+  }, []);
   // Google Calendar + Finances bills (private, via the Worker); last good copy kept offline.
   const [schedule, setSchedule] = useState<ScheduleSnapshot | null>(() => loadCachedSchedule());
   // Radall sheet money tabs (private, via the Worker) — Money page + money on the calendar.
@@ -378,7 +383,7 @@ export function LifeHub() {
     } finally {
       setConnectorSyncing(false);
     }
-  }, [setSnapshots]);
+  }, [setLedger, setSnapshots]);
 
   // New day: Home remounts (its Today state starts clean) and every source pulls again — no manual refresh needed.
   const rolledDay = useDayKey();
@@ -429,7 +434,7 @@ export function LifeHub() {
     setReady(true);
     applyFinanceSeed();
     startCloudSync();
-  }, [setSnapshots]);
+  }, [setLedger, setSnapshots]);
 
   useEffect(() => {
     if (!ready) return;
@@ -500,7 +505,7 @@ export function LifeHub() {
       window.removeEventListener(REFRESH_EVENT, pull);
       window.clearInterval(timer);
     };
-  }, [ready, setSnapshots]);
+  }, [setLedger, ready, setSnapshots]);
 
   // Work finished inside the TickTick app (tasks + habit check-ins) — on load, on return, every 10 min.
   useEffect(() => {
@@ -527,7 +532,7 @@ export function LifeHub() {
       window.removeEventListener(REFRESH_EVENT, pull);
       window.clearInterval(timer);
     };
-  }, [ready, setSnapshots]);
+  }, [setLedger, ready, setSnapshots]);
 
   // Cloud backup merged new data into storage (another device, or the old Worker copy).
   const seedLinksRef = useRef<GoalLink[]>([]);
@@ -546,7 +551,7 @@ export function LifeHub() {
     };
     window.addEventListener(SYNCED_EVENT, reload);
     return () => window.removeEventListener(SYNCED_EVENT, reload);
-  }, [syncSelf, setSnapshots]);
+  }, [setLedger, syncSelf, setSnapshots]);
 
   // Tag untagged history once areas are known; re-runs as snapshots arrive with project/kind info.
   const taggedLedger = useMemo(() => {
@@ -900,7 +905,7 @@ export function LifeHub() {
       window.removeEventListener('hashchange', readHashSync);
       window.clearInterval(timer);
     };
-  }, [setSnapshots]);
+  }, [setLedger, setSnapshots]);
 
   // Money on the calendar: the sheet's items + planned payments, minus what's marked paid.
   const payPlans = usePayPlans();

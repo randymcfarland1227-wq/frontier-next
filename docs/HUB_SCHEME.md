@@ -160,6 +160,8 @@ Per-task metadata (all cloud-synced, newest change wins):
   followed by a newer done report, counts as a new completion even without a completion timestamp.
   The acknowledgement is a registered device cache; the existing completion/undo merge remains unchanged.
   Undo does not reverse an action already sent to another site; TickTick retains its separate rules.
+  Background history saves and queued UI results also respect the latest stored Undo marker, even if
+  they still contain the old completion. A later real completion can still count again.
 - **Project bill links** missing from current dues stay unverified and carry forward until payment is
   confirmed by the exact active Radall due-key completion. Missing data alone never means paid.
 - **Self** is Life Hub's own site (`lib/adapters/self.ts`): Self tasks, voice memos inbox, projects.

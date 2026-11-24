@@ -149,12 +149,29 @@ export function loadLedger(): CompletionLedger {
   return { entries: Object.fromEntries(Object.entries(entries).filter(([, e]) => !isReopened(e))) };
 }
 
-export function saveLedger(ledger: CompletionLedger) {
-  // Keep the "unchecked" markers loadLedger leaves out, so a sync never revives those completions.
+/** Background work can finish with a ledger captured before Review's Undo. Keep the newer
+ * marker even when that stale copy still contains the same completion key. */
+function withLatestUndos(ledger: CompletionLedger): CompletionLedger {
   const saved = readSaved<CompletionLedger>(STORAGE_KEYS.completions, { entries: {} }).entries || {};
   const entries = { ...ledger.entries };
-  for (const [k, e] of Object.entries(saved)) if (!entries[k] && e && isReopened(e)) entries[k] = e;
-  writeSaved(STORAGE_KEYS.completions, { entries });
+  for (const [key, entry] of Object.entries(saved)) {
+    if (!entry || !isReopened(entry)) continue;
+    const incoming = entries[key];
+    if (!incoming || incoming.completedAt <= entry.reopenedAt!) {
+      entries[key] = { ...entry, ...incoming, reopenedAt: [entry.reopenedAt!, incoming?.reopenedAt || ''].sort().pop() };
+    }
+  }
+  return { entries };
+}
+
+/** Apply current Undo markers to delayed UI results as well as saved history. */
+export function respectCompletionUndos(ledger: CompletionLedger): CompletionLedger {
+  const { entries } = withLatestUndos(ledger);
+  return { entries: Object.fromEntries(Object.entries(entries).filter(([, entry]) => isRealCompletion(entry) && !isReopened(entry))) };
+}
+
+export function saveLedger(ledger: CompletionLedger) {
+  writeSaved(STORAGE_KEYS.completions, withLatestUndos(ledger));
 }
 
 const localDay = (iso?: string) => {
@@ -191,7 +208,7 @@ export function recordCompletion(
     focusAreaId?: FocusAreaId;
   },
 ): CompletionLedger {
-  const ledger = opts?.ledger ?? loadLedger();
+  const ledger = respectCompletionUndos(opts?.ledger ?? loadLedger());
   const completedAt = opts?.at || new Date().toISOString();
   const key = ledgerKey(source, taskId, completedAt);
   if (ledger.entries[key] || hasSameDay(ledger, source, taskId, completedAt, opts?.title)) return ledger;

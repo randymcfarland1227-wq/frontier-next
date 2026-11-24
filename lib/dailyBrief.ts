@@ -127,7 +127,8 @@ export function withoutLater(snaps: Record<SourceId, SourceSnapshot>, now = new 
 }
 
 export function buildBrief(snapsIn: Record<SourceId, SourceSnapshot>, bills: BillDue[], now = new Date()): BriefSection[] {
-  const snaps = withoutLater(snapsIn, now);
+  const expanded = Object.fromEntries(Object.entries(snapsIn).map(([id,snap]) => [id,{...snap,tasks:snap.tasks.flatMap(t=>t.shippingTasks || [t])}])) as Record<SourceId, SourceSnapshot>;
+  const snaps = withoutLater(expanded, now);
   const mail = mailRows(snaps);
   const roles = [...mail.filter(r => r.category === 'roles'), ...roleRows(snaps.role)];
   const sales = [...mail.filter(r => r.category === 'sales'), ...saleRows(snaps.resale)];

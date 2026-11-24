@@ -13,7 +13,7 @@ import { readSaved, writeSaved } from "../../lib/storage";
 import { useDayKey } from "../../lib/dayKey";
 import { SearchPick } from "../sticker/SearchPick";
 import { onDay, type BillDue, type ScheduleSnapshot } from "../../lib/schedule";
-import { PLAN, autoShipMix, openTaskPanel, loadLanes, updatePinDetails, usePriorityPins } from "../../lib/priorityPins";
+import { PLAN, groupSteps, requestOpenMix, autoShipMix, openTaskPanel, loadLanes, updatePinDetails, usePriorityPins } from "../../lib/priorityPins";
 import { Row } from "../sticker/kit";
 import { Icon } from "../sticker/Icon";
 import { SITE_GROUPS } from "../sticker/StickerShell";
@@ -230,12 +230,12 @@ export function useTodayListCount(
   snapshots: Record<SourceId, SourceSnapshot>,
   bills: BillDue[],
 ) {
-  const { plan, catalog } = usePlan(snapshots, bills);
+  const { plan, catalog, lanes } = usePlan(snapshots, bills);
   const inPlan = new Set(plan.map((i) => i.key));
   const added = listed(focus).filter(
     (f) => !isDone(f, catalog) && !(f.ref && inPlan.has(f.ref)),
   );
-  return plan.length + added.length;
+  return groupSteps(plan, lanes).length + added.length;
 }
 
 /**
@@ -267,7 +267,7 @@ export function FocusDrawer({
   const [scope, setScope] = useState<Scope>("all");
   const [tab, setTab] = useState<"list" | "parking">("list");
   const closeRef = useRef<HTMLButtonElement>(null);
-  const { plan, catalog } = usePlan(snapshots, bills);
+  const { plan, catalog, lanes } = usePlan(snapshots, bills);
   const brief = useBrief(snapshots, bills);
 
   // Focus moves in once when the sheet opens. `close` is a new function on every parent render
@@ -376,8 +376,9 @@ export function FocusDrawer({
   const added = listed(focus).filter(
     (f) => !(f.ref && plan.some((i) => i.key === f.ref)),
   );
-  const left = plan.length + added.filter((f) => !isDone(f, catalog)).length;
-  const total = plan.length + added.length;
+  const steps = groupSteps(plan, lanes);
+  const left = steps.length + added.filter((f) => !isDone(f, catalog)).length;
+  const total = steps.length + added.length;
 
   if (!open || typeof document === "undefined") return null;
   const host =
@@ -491,8 +492,10 @@ export function FocusDrawer({
 
         <h3 className="sk-cap sk-todayh">Action list · from Doing Now</h3>
         <div className="sk-list sk-todaylist">
-          {plan.map((item) => (
-            <Row
+          {steps.map(step => {
+            if (step.kind === 'mix') return <Row key={`mix:${step.id}`} title={step.name} sub={`${step.items.length} items`} onOpen={()=>{requestOpenMix(step.id);close();}} />;
+            const item = step.item;
+            return <Row
               key={item.key}
               onOpen={item.completable === false ? () => openTaskPanel(item.key) : undefined}
               lead={item.completable === false ? undefined :
@@ -511,7 +514,7 @@ export function FocusDrawer({
                 close();
               })}
             />
-          ))}
+          })}
           {!plan.length ? (
             <p className="sk-empty">
               Nothing in the Doing Now action list. Add things there and they

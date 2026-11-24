@@ -167,6 +167,15 @@ Per-task metadata (all cloud-synced, newest change wins):
 - **Self** is Life Hub's own site (`lib/adapters/self.ts`): Self tasks, voice memos inbox, projects.
 - Site pool UI: `app/sticker/Sites.tsx` (preview 6 rows, 4 stars); counts `lib/actionable.ts`.
 
+Task list fixes (2026-11-24): native Resale listing IDs (`list:<item>`) are source tasks, not Hub list IDs.
+Only a real entry in the Hub list store opens a list dialog. Local completion projection also covers
+iframe refreshes; Undo still restores the original task identity. Self's custom task workspace applies
+the same hidden-item marks as its count. Focus headers fold their steps; Details opens the full editor.
+Shipping tasks are grouped into a derived **Ship Items** list per source, without copying or writing
+source records. Membership follows the source pool and excludes tasks already in user-made lists.
+The original members feed Daily Brief matching; mixed Action List groups count as one step in headers
+and Today's List. Completing a member still completes only that source task.
+
 ## 7. Daily Brief
 - `lib/dailyBrief.ts` (pure, so a routine report reads the same list) — `buildBrief()` sections:
   Money overdue/due today · Tasks due today & overdue · Mail needing you · Roles replies & next steps ·

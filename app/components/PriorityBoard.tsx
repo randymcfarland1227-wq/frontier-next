@@ -1,7 +1,7 @@
 "use client";
 import { openProject } from "../../lib/selfProjects";
 
-import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type DragEvent, type ReactNode } from "react";
 import { Dialog } from "../sticker/Dialog";
 import { tagTone } from "../../lib/tagTone";
 import type { FeaturedItem, SourceId, SourceSnapshot } from "../../lib/types";
@@ -53,7 +53,7 @@ import { MenuRow } from "./RowMenu";
 import { countdown, fromDayKey, money, type BillDue } from "../../lib/schedule";
 import { Circle, Dot, ListHead, Tag } from "../sticker/kit";
 import { Icon } from "../sticker/Icon";
-import { openSiteList, useSiteLists } from "../../lib/siteLists";
+import { siteListForTask, openSiteList, useSiteLists } from "../../lib/siteLists";
 import { removeItem } from "../../lib/siteMoves";
 import { renameSelfItem } from "../../lib/adapters/self";
 import { completeFocusPin, focusPinItems, isFocusPinId } from "../../lib/focusPins";
@@ -108,7 +108,7 @@ export function buildCatalog(
         key,
       });
     }
-    for (const task of snap.tasks || []) {
+    for (const task of (snap.tasks || []).flatMap(task => [task, ...(task.shippingTasks || [])])) {
       if (task.status === "done") continue;
       const key = pinKey(id, task.id);
       if (catalog.has(key)) continue;
@@ -118,7 +118,7 @@ export function buildCatalog(
         detail: task.detail || "",
         meta: task.starred ? "Starred" : task.status || "Task",
         originUrl: task.originUrl,
-        completable: true,
+        completable: !task.siteListId,
         tag: task.tag,
         steps: task.steps,
         source: id,
@@ -177,6 +177,7 @@ export function PriorityBoard({
   bills?: BillDue[];
 }) {
   const { lanes, pins } = usePriorityPins();
+  const sl = useSiteLists();
   const { levels, levelOf, cycle, setLevel, isCritical, toggleCritical } =
     useFeaturedLevels();
   const [query, setQuery] = useState("");
@@ -194,18 +195,22 @@ export function PriorityBoard({
     };
   }, []);
   const [openKey, setOpenKeyRaw] = useState<string | null>(null);
-  const setOpenKey = (key: string | null) => {
-    if (key?.startsWith('self:fcard:')) {
+  const setOpenKey = useCallback((key: string | null) => {
+    const list = key ? siteListForTask(sl.store, key.split(':')[0] as SourceId, key.slice(key.indexOf(':') + 1)) : undefined;
+    if (list) {
+      setOpenKeyRaw(null);
+      openSiteList(list.id);
+    } else if (key?.startsWith('self:fcard:')) {
       setOpenKeyRaw(null);
       openProject(key.split(':').slice(3).join(':'));
     } else setOpenKeyRaw(key);
-  };
+  }, [sl.store]);
   useEffect(() => {
     const open = (e: Event) =>
       setOpenKey(String((e as CustomEvent).detail || "") || null);
     window.addEventListener(OPEN_TASK_EVENT, open);
     return () => window.removeEventListener(OPEN_TASK_EVENT, open);
-  }, []);
+  }, [setOpenKey]);
   // "Make subtask of…" on a row: pick the task it gets linked into.
   const [linkFor, setLinkFor] = useState<string | null>(null);
   useEffect(() => {
@@ -216,7 +221,6 @@ export function PriorityBoard({
   // Row whose 📅 day line is open
   const [dayFor, setDayFor] = useState<string | null>(null);
 
-  const sl = useSiteLists();
   // Locks: re-read the completion log whenever the feeds or the plan change.
   const ledgerNow = useMemo(() => loadLedger(), [snapshots, lanes]); // eslint-disable-line react-hooks/exhaustive-deps
   const habitLocks = Object.values(lanes).flatMap((e) => (e?.lock?.kind === "habit" ? [{ habitId: e.lock.habitId, from: e.lock.from }] : []));
@@ -462,7 +466,7 @@ export function PriorityBoard({
           type="button"
           className="sk-rmain"
           onClick={() =>
-            item.id.startsWith("list:")
+            Boolean(siteListForTask(sl.store, item.source, item.id))
               ? openSiteList(item.id.slice(5))
               : setOpenKey(item.key)
           }
@@ -560,7 +564,7 @@ export function PriorityBoard({
   const titleOfKey = (key: string) => lanes[key]?.title || catalog.get(key)?.title;
   const taskPickOpts = (skip: string) =>
     [...catalog.values()]
-      .filter((c) => c.key !== skip && !c.key.startsWith("radall:bill:") && !c.id.startsWith("list:"))
+      .filter((c) => c.key !== skip && !c.key.startsWith("radall:bill:") && !siteListForTask(sl.store, c.source, c.id))
       .map((c) => ({ key: c.key, label: c.title, sub: sourceById[c.source]?.shortName }));
   const openLane: Lane | null = openKey
     ? ((lanes[openKey]?.lane as Lane | null) ??
@@ -646,7 +650,7 @@ export function PriorityBoard({
               title="Action List"
               meta={
                 plan.length
-                  ? `${plan.length} in the order you'll do them`
+                  ? `${steps.length} in the order you'll do them`
                   : "In the order you’ll do it"
               }
             />
@@ -1058,7 +1062,7 @@ export function PriorityBoard({
             setOpenKey(null);
           }}
           onRename={
-            openItem.id.startsWith("list:")
+            Boolean(siteListForTask(sl.store, openItem.source, openItem.id))
               ? undefined
               : (title) => {
                   if (openItem.source === "self") renameSelfItem(openItem.id, title);
@@ -1068,7 +1072,7 @@ export function PriorityBoard({
           }
           onDelete={
             // Focus card / list / task pins live on their card: Doing Now can only take them off, never delete.
-            openItem.id.startsWith("list:") || isFocusPinId(openItem.id) || isFocusPinId(openItem.id.replace(/^self:/, ""))
+            Boolean(siteListForTask(sl.store, openItem.source, openItem.id)) || isFocusPinId(openItem.id) || isFocusPinId(openItem.id.replace(/^self:/, ""))
               ? undefined
               : () => {
                   if (openItem.id.startsWith("self:")) removeItem("self", openItem.id.slice(5));

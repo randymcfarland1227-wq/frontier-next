@@ -40,6 +40,10 @@ export type FeaturedItem = {
 };
 
 export type TaskItem = {
+  /** Derived shipping container; source members retain their identities and completions. */
+  shippingTasks?: TaskItem[];
+  /** A Hub-owned list, distinct from an origin task whose ID also begins with list:. */
+  siteListId?: string;
   /** Optional classification supplied by a mail-sync agent. */
   briefKind?: 'reply' | 'shipping' | 'mail';
   id: string;

@@ -21,9 +21,10 @@ import { Icon } from '../sticker/Icon';
 import { VoiceMemoList } from './VoiceMemoList';
 import { CatchLists, catchPatch } from './CatchLists';
 import { DECK, loadLanes, openParentPicker, openTaskPanel, pinDragProps, pinKey, saveLanes, usePriorityPins } from '../../lib/priorityPins';
+import { isHidden, useHiddenItems } from '../../lib/siteMoves';
 import { convertSelfItems } from '../../lib/adapters/self';
 import { addOngoingGoal } from '../../lib/ongoingGoals';
-import { addToSiteList, createSiteList, listOfTask, openSiteList, useSiteListStore } from '../../lib/siteLists';
+import { addToSiteList, createSiteList, listOfTask, openSiteList, useSiteListStore, useSiteLists } from '../../lib/siteLists';
 
 /** Where a Self task can be moved (it then shows in that site's card). */
 export const MOVE_TO: Array<[string, string]> = [
@@ -181,7 +182,9 @@ export function CapturesPanel({
 
   const areaName = (id?: string) => areas.find(a => a.id === id)?.name;
   /** Everything a Self task row used to show as buttons — star, pin, day, move — lives in its right-click / long-press menu. */
-  const listStore = useSiteListStore();
+  const savedLists = useSiteListStore();
+  const listStore = {...savedLists, ...useSiteLists().store};
+  const hidden = useHiddenItems();
   const linkedPins = useLinkedPins();
   const myLists = Object.values(listStore).filter(l => l && !l.gone && l.site === 'self');
   const newList = (t: SelfItem) => {
@@ -221,7 +224,7 @@ export function CapturesPanel({
   const taskMenu = (t: SelfItem): RowMenuItem[] => [
     { label: isPinned('self', t.id) ? 'Take off Doing Now (stays here)' : 'Add to On Deck', hidden: t.done, onSelect: () => isPinned('self', t.id) ? removePin('self', t.id) : addPin('self', t.id, DECK) },
     ...(t.done ? [] : [{ label: 'Add to new list…', onSelect: () => newList(t) }]),
-    ...(t.done ? [] : myLists.map(l => ({ label: `Add to list: ${l.name}`, onSelect: () => addToSiteList(l.id, [t.id]) }))),
+    ...(t.done ? [] : myLists.filter(l=>!l.auto).map(l => ({ label: `Add to list: ${l.name}`, onSelect: () => addToSiteList(l.id, [t.id]) }))),
     { label: t.starred ? 'Unstar' : 'Star', onSelect: () => onTaskStar(t.id), hidden: t.done },
     { label: 'Make subtask of…', onSelect: () => openParentPicker(pinKey('self', t.id)), hidden: t.done },
     { label: 'Convert to project', onSelect: () => convertToProject(t), hidden: t.done },
@@ -233,7 +236,7 @@ export function CapturesPanel({
   ];
   // Dated tasks first (soonest first), then the rest in the order they were added.
   // Tasks moved to another site live in that site's card now.
-  const mine = selfItems.filter(i => !i.home);
+  const mine = selfItems.filter(i => !i.home && !isHidden(hidden, 'self', i.id));
   const allOpen = mine
     .filter(i => !i.done && !listOfTask(listStore, 'self', i.id) && !linkedPins.has(`self:${i.id}`))
     .map((t, i) => ({ t, i }))
@@ -485,7 +488,7 @@ export function CapturesPanel({
         <div className="sk-list" role="tabpanel" aria-label="Tasks">
           {openTasks.length === 0 && myLists.length === 0 ? <p className="sk-empty">No Self tasks yet.</p> : null}
           {[...myLists].sort((a, b) => Number(isPinned('self', `list:${a.id}`)) - Number(isPinned('self', `list:${b.id}`))).map(l => {
-            const open = l.tasks.filter(id => selfItems.some(i => i.id === id && !i.done)).length;
+            const open = l.tasks.filter(id => selfItems.some(i => i.id === id && !i.done && !isHidden(hidden, 'self', i.id))).length;
             return (
               <Row
                 key={l.id}

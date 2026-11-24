@@ -11,6 +11,7 @@ import type {
   SpaceId,
   TaskItem,
 } from '../lib/types';
+import { hideLedgerDone } from '../lib/completionSnapshots';
 import { emptySnapshots, normalizeSourceId, sourceById, sources } from '../lib/sources';
 import { readSaved, writeSaved, STORAGE_KEYS } from '../lib/storage';
 import { applyHubStars, HUB_STAR_SOURCES, HUB_STARS_EVENT, loadHubStars, setHubStar } from '../lib/hubStars';
@@ -114,7 +115,7 @@ import { isHidden, loadHidden, restoreItem, useHiddenItems } from '../lib/siteMo
 import { SiteListHost } from './components/SiteListDialog';
 import { ResearchHost } from './components/ResearchPanel';
 import { DebtPopHost } from './components/DebtPop';
-import { applySiteLists, openSiteList, SiteListsContext, useSiteListStore } from '../lib/siteLists';
+import { applySiteLists, siteListForTask, withShippingLists, openSiteList, SiteListsContext, useSiteListStore } from '../lib/siteLists';
 import { FOCUS_LIST_EVENT, moveFitnessToOngoing, ONGOING_KEY, readOngoingIds, seedOngoingGoals } from '../lib/ongoingGoals';
 import { useRoleActive, withRoleShelves, withTaggedShelves } from '../lib/roleShelves';
 import { LogsView } from './components/LogsView';
@@ -195,49 +196,6 @@ function mergeConnectorSnapshots(
   return next;
 }
 
-function localDay(iso: string) {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-}
-
-/**
- * Connector snapshots are written once each morning, so an item marked Done on the hub is still
- * in the file until the next sync. Hide anything the ledger already has as done so it stays gone
- * after a refresh. TickTick ids repeat (recurring tasks, habits), so only today's Done hides them.
- */
-function hideLedgerDone(
-  snapshots: Record<SourceId, SourceSnapshot>,
-  ledger: CompletionLedger,
-): Record<SourceId, SourceSnapshot> {
-  const today = localDay(new Date().toISOString());
-  const done = new Set<string>();
-  for (const e of Object.values(ledger.entries)) {
-    if (e.source === 'ticktick' && localDay(e.completedAt) !== today) continue;
-    done.add(`${e.source}::${e.taskId}`);
-  }
-  let next = snapshots;
-  for (const id of CONNECTOR_SOURCE_IDS) {
-    let snap = next[id];
-    if (!snap) continue;
-    const isDone = (itemId: string) => done.has(`${id}::${itemId}`);
-    const hide = new Set([
-      ...snap.tasks.filter(t => t.status !== 'done' && isDone(t.id)).map(t => t.id),
-      ...snap.featured.filter(f => isDone(f.id) && !snap!.tasks.some(t => t.id === f.id && t.status === 'done')).map(f => f.id),
-    ]);
-    if (!hide.size) continue;
-    let metrics = snap.metrics;
-    for (const itemId of hide) metrics = metricsAfterLocalComplete(id, { ...snap, metrics }, itemId);
-    snap = {
-      ...snap,
-      metrics,
-      tasks: snap.tasks.filter(t => !hide.has(t.id)),
-      featured: snap.featured.filter(f => !hide.has(f.id)),
-    };
-    next = { ...next, [id]: snap };
-  }
-  return next;
-}
-
 /** Titles compared the way the sheet sync matches them (case and spacing ignored). */
 const sameTitle = (t: string) => t.toLowerCase().replace(/\s+/g, ' ').trim();
 
@@ -247,7 +205,7 @@ export function LifeHub() {
   const [focus, setFocus] = useState<FocusItem[]>(starterFocus);
   const [snapshots, saveSnapshots] = useState<Record<SourceId, SourceSnapshot>>(emptySnapshots);
   const setSnapshots = useCallback((update: SetStateAction<Record<SourceId, SourceSnapshot>>) => {
-    saveSnapshots(current => restoreReopenedSnapshots(typeof update === 'function' ? update(current) : update));
+    saveSnapshots(current => restoreReopenedSnapshots(hideLedgerDone(typeof update === 'function' ? update(current) : update, loadLedger())));
   }, []);
   const [selfItems, setSelfItems] = useState<SelfItem[]>([]);
   const [ready, setReady] = useState(false);
@@ -663,7 +621,7 @@ export function LifeHub() {
     for (const [pin, title] of focusListPins) if (pin.startsWith('self:') && !links.has(pin)) links.set(pin, `project:${title}`);
     return links;
   }, [priorityLanes, focusListPins]);
-  const visibleSnapshots = useMemo(() => {
+  const taskPools = useMemo(() => {
     const out = { ...baseSnapshots };
     // Removed rows (not done) leave every list and count.
     if (Object.keys(hiddenItems).length) {
@@ -738,12 +696,18 @@ export function LifeHub() {
     if (out.move && ongoingIds.length) {
       out.move = { ...out.move, featured: out.move.featured.filter(f => !(f.completable === false && ongoingIds.includes(`move-goal-${f.id}`))) };
     }
-    // Linked subtasks: they stay on their site, marked, and only their parent counts.
-    const titles = titlesByKey(out);
+    return out;
+  }, [baseSnapshots, selfItems, taskTags, hiddenItems, roleActive, ongoingIds]);
+
+  // Lists need the ungrouped records (including moved Self tasks), while linked subtasks only
+  // count through their parent. Keep the source records available to their existing pop-outs.
+  const linkedPools = useMemo(() => {
+    const titles = titlesByKey(taskPools);
     const parentTitle = (key: string) => (key.startsWith('project:') ? key.slice(8) : priorityLanes[key]?.title || titles.get(key) || 'another task');
-    // Lists: their tasks leave the pool and each list stands in as one task.
-    return applySiteLists(withLinkedShelves(out, subtaskLinks, parentTitle), siteListStore);
-  }, [baseSnapshots, selfItems, taskTags, hiddenItems, roleActive, ongoingIds, siteListStore, subtaskLinks, priorityLanes]);
+    return withLinkedShelves(taskPools, subtaskLinks, parentTitle);
+  }, [taskPools, subtaskLinks, priorityLanes]);
+  const displaySiteLists = useMemo(() => withShippingLists(linkedPools, siteListStore), [linkedPools, siteListStore]);
+  const visibleSnapshots = useMemo(() => applySiteLists(linkedPools, displaySiteLists), [linkedPools, displaySiteLists]);
 
   // One-time: Move OS's three goals become ongoing goals (shown in Today and on the Move page as
   // "Moving goals"), and the physical goals become the first fitness focus. Deleting a card keeps it deleted.
@@ -1043,7 +1007,8 @@ export function LifeHub() {
 
   const completeOnHub = (source: SourceId, id: string, chosenArea?: string): void => {
     // A list is finished by finishing its tasks: open it instead.
-    if (id.startsWith('list:')) return openSiteList(id.slice(5));
+    const list = siteListForTask(displaySiteLists, source, id);
+    if (list) return openSiteList(list.id);
     // A Self task shown on another site's card is still a Self task.
     if (source !== 'self' && id.startsWith('self:')) return completeOnHub('self', id.slice(5), chosenArea);
     // Locked (waiting on a list, a task or N habit check-ins): it can't be checked off yet.
@@ -1288,7 +1253,7 @@ goalsData ? (
             />
   );
   return (
-    <SiteListsContext.Provider value={{ store: siteListStore, snapshots: baseSnapshots, complete: (site, taskId) => completeOnHub(site, taskId), reopen: (site, taskId) => reopenOnHub(site, taskId), doneOf: (site, taskId) => { const e = ledger.entries[`${site}::${taskId}`]; return e?.title ? { title: e.title, at: e.completedAt } : undefined; } }}>
+    <SiteListsContext.Provider value={{ store: displaySiteLists, snapshots: taskPools, complete: (site, taskId) => completeOnHub(site, taskId), reopen: (site, taskId) => reopenOnHub(site, taskId), doneOf: (site, taskId) => { const e = ledger.entries[`${site}::${taskId}`]; return e?.title ? { title: e.title, at: e.completedAt } : undefined; } }}>
     <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' ? 'home' : active}`} data-color-mode={theme}>
       <StickerShell
         active={active}

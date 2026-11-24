@@ -999,12 +999,12 @@ function FocusTaskGroup({ card, code, tag, lanes, fin, onToggle, folded }: { car
   return (
     <div className={`sk-ftg${collapsed ? " is-folded" : ""}`}>
       <div className="sk-ftg-headrow">
-      <button type="button" className="sk-ftg-head" onClick={() => openProject(card.id)}>
+      <button type="button" className="sk-ftg-head" onClick={toggle} aria-expanded={!collapsed}>
         <span className="sk-ftg-caret" aria-hidden="true">{collapsed ? "▸" : "▾"}</span>
         <span className="sk-ftg-title">{card.title}</span>
         <span className="sk-ftg-meta">{tag} · {open ? `${open} open` : card.site === "self" ? (finance ? `${finance} finance links` : "Open project") : done ? "all done" : "no steps yet"}{done ? ` · ${done} done` : ""}</span>
       </button>
-      <button type="button" className="sk-link" onClick={toggle} aria-expanded={!collapsed}>Steps</button>
+      <button type="button" className="sk-link" aria-label={`Open ${card.title} details`} onClick={() => openProject(card.id)}>Details</button>
       {open || card.site === "self" ? <SendToDoing id={focusCardId(code, card.id)} label={card.title} lanes={lanes} /> : null}
       </div>
       {collapsed ? null : lists.map(({ l, tasks, fins }) => {

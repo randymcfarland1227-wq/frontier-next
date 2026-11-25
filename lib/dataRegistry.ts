@@ -22,6 +22,7 @@ export const SAVED_KEYS: SavedKey[] = [
   { key: 'lifehub-rhythm-lists', backup: 'device', note: 'Daily Rhythm list layout on this device' },
   { key: 'sk-today-board', backup: 'device', note: 'Home board view on/off' },
   { key: 'sk-today-board-zoom', backup: 'device', note: 'Home board zoom %' },
+  { key: 'sk-board-boxes', backup: 'device', note: 'Dashboard: each box’s zoom % and collapsed state (this device)' },
   { key: 'lifehub-balance-offer-view', backup: 'device' },
   { key: 'lifehub-balance-open-groups', backup: 'device' },
   { key: 'lifehub-balance-picks', backup: 'cloud', note: "Balancing sheet picks (bills / incoming put on the sheet) — cloud-synced" },

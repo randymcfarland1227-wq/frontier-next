@@ -4753,3 +4753,16 @@ button.ob-line-name { text-align: left; }
 .sk-inbox-btn.is-done { color: #0e9f6e; border-color: color-mix(in srgb, #0e9f6e 45%, transparent); }
 .sk-inbox-btn:hover { background: color-mix(in srgb, var(--sk-ink) 8%, transparent); }
 .sk-inbox-foot { display: flex; justify-content: flex-end; }
+
+/* Needs you pop-out: reply to the daily check (2026-11-25) */
+.sk-inbox-list li { grid-template-columns: 1fr auto auto auto; }
+.sk-inbox-btn.is-reply.is-on { color: #2f6fec; border-color: color-mix(in srgb, #2f6fec 45%, transparent); }
+.sk-inbox-reply, .sk-inbox-answer { margin: 4px 0 0; padding: 6px 8px; border-radius: 10px; font: var(--sk-secondary); font-size: 14px; display: grid; gap: 2px; }
+.sk-inbox-reply { background: color-mix(in srgb, #2f6fec 12%, transparent); }
+.sk-inbox-answer { background: color-mix(in srgb, #0e9f6e 14%, transparent); }
+.sk-inbox-reply span, .sk-inbox-answer span { font: var(--sk-caption); opacity: .75; }
+.sk-inbox-wait { font: var(--sk-caption); font-style: normal; color: #2f6fec; }
+.sk-inbox-write { display: grid; gap: 6px; margin-top: 6px; }
+.sk-inbox-write textarea { width: 100%; box-sizing: border-box; font: var(--sk-secondary); font-size: 14px; padding: 8px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--sk-ink) 22%, transparent); background: color-mix(in srgb, var(--sk-paper, #fff) 70%, transparent); color: var(--sk-ink); resize: vertical; }
+.sk-inbox-write > div { display: flex; gap: 10px; align-items: center; }
+.sk-inbox-list li.is-replied { opacity: .85; }

@@ -22,7 +22,7 @@ import type { Entry, useShortTermFocus } from './FocusSection';
 import { sourceById } from '../../lib/sources';
 import { focusCollections } from '../../lib/focusRouting';
 import { LOG_LABEL, useTickTickOff } from '../../lib/ticktickLog';
-import { setInboxStatus, useInbox } from '../../lib/routineInbox';
+import { needsYou, setInboxStatus, useInbox } from '../../lib/routineInbox';
 import { inboxSummary, RoutineInboxPop } from './RoutineInbox';
 
 const SEEN_KEY = 'lifehub-brief-seen';
@@ -192,10 +192,10 @@ export function DailyBrief({ snapshots, bills, schedule, enter, focus, events, o
     <div className="sk-brow-line">
       <span className="sk-btag" data-tag="you">you</span>
       <button type="button" className="sk-brow-main" onClick={() => setInboxOpen(true)} aria-haspopup="dialog" title="Findings from the daily Life Hub check that need you">
-        <span className="sk-brow-title"><span className="sk-brow-text">Needs you · {inbox.length} to confirm</span></span>
+        <span className="sk-brow-title"><span className="sk-brow-text">{needsYou(inbox).length ? `Needs you · ${needsYou(inbox).length} to confirm` : `Needs you · ${inbox.length} waiting on the daily check`}</span></span>
         <small>{inboxSummary(inbox)}</small>
       </button>
-      <button type="button" className="sk-brow-clear" aria-label="Dismiss all findings" title="Dismiss all (they won’t come back)" onClick={() => setInboxStatus(inbox.map(i => i.id), 'dismissed')}><Icon name="close" size={11} /></button>
+      <button type="button" className="sk-brow-clear" aria-label="Dismiss open findings" title="Dismiss the open ones (they won’t come back); replies stay" onClick={() => setInboxStatus(inbox.filter(i => !i.status).map(i => i.id), 'dismissed')}><Icon name="close" size={11} /></button>
     </div>
   </li> : null;
   const sendToList = (r: BucketRow) => {

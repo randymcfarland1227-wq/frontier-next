@@ -4660,3 +4660,8 @@ button.ob-line-name { text-align: left; }
 .mb-plplans li.is-late { box-shadow: inset 3px 0 0 #dc2626; }
 .mb-plplans li small { opacity: .7; }
 .mny-provider-open { all: unset; cursor: pointer; text-decoration: underline dotted; }
+.tp-wish-table { width: 100%; }
+.tp-wish-table td:nth-child(2) { width: 100%; }
+.tp-wish-table .tp-wish-name { display: block; }
+.tp-wish-table .tp-amt { margin-top: 3px; width: 70px; font-size: 12px; }
+.tp-wish-table .mtable-act { white-space: nowrap; }

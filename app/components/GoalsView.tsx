@@ -7,6 +7,7 @@
  */
 import { useContext, useState, type FormEvent } from 'react';
 import { focusListView } from '../../lib/focusRouting';
+import { isProject } from '../../lib/selfProjects';
 import { goalGroupOf } from '../../lib/goalTypes';
 import { dayKey } from '../../lib/schedule';
 import type { BillDue } from '../../lib/schedule';
@@ -18,11 +19,15 @@ import { useShortTermFocus } from './FocusSection';
 
 const NEW = '__new__';
 
+const newGoalId = () => `${Date.now()}`;
+
 export function GoalsView({ events = [], bills = [], openFinance }: { events?: LinkItem[]; bills?: BillDue[]; openFinance?: OpenFinance }) {
   // Inside a Today pane the tab line is the header: no Section box, the + goes up into the tab line's slot.
   const paneHead = useContext(PaneHeadContext);
   const focus = useShortTermFocus();
-  const [items, save] = focus.ongoing;
+  const [allGoals, save] = focus.ongoing;
+  // Projects share the record but aren't goals.
+  const items = allGoals.filter((i) => !isProject(i));
   const groups = [...new Set(items.map(goalGroupOf))].sort((a, b) => (a === 'Other' ? 1 : b === 'Other' ? -1 : a.localeCompare(b)));
   const [adding, setAdding] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -38,7 +43,7 @@ export function GoalsView({ events = [], bills = [], openFinance }: { events?: L
     e.preventDefault();
     const goalType = (type === NEW ? newType : type).trim();
     if (!title.trim() || !goalType) return;
-    save([...items, { id: `${Date.now()}`, title: title.trim(), ongoing: true, goalType, added: dayKey(new Date()), at: new Date().toISOString() }]);
+    save([...allGoals, { id: newGoalId(), title: title.trim(), ongoing: true, goalType, added: dayKey(new Date()), at: new Date().toISOString() }]);
     setAdding(null);
   };
   const open_ = items.filter((i) => !i.done).length;
@@ -59,7 +64,7 @@ export function GoalsView({ events = [], bills = [], openFinance }: { events?: L
           </form>
         ) : null}
         {groups.length ? groups.map((g) => {
-          const list = focusListView(focus.ongoing, (i) => goalGroupOf(i) === g);
+          const list = focusListView(focus.ongoing, (i) => !isProject(i) && goalGroupOf(i) === g);
           const left = list[0].filter((i) => !i.done).length;
           return (
             <Group key={g} tone="focus" icon="target" title={g} meta={`${left} open`} className="sk-goal-group"

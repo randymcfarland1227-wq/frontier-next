@@ -342,6 +342,8 @@ export const MONEY_KINDS: Record<MoneyKind, { label: string; plural: string; col
 export type MoneyItem = {
   /** Stable per occurrence: kind + name + date */
   id: string;
+  /** Logged by hand, one payment at a time (Randy tab "More Cards", e.g. Atlas): never projected into later months */
+  logged?: boolean;
   kind: MoneyKind;
   name: string;
   amount?: number;
@@ -435,7 +437,7 @@ export function rollForward(items: MoneyItem[], today: Date, ahead = 75): MoneyI
   const limit = dayKey(addDays(startOfDay(today), ahead));
   const groups = new Map<string, MoneyItem[]>();
   for (const i of items) {
-    if (!i.date || i.status || !(i.kind === 'bill' || i.kind === 'card' || i.kind === 'sub') || /split/i.test(i.name)) continue;
+    if (!i.date || i.status || i.logged || !(i.kind === 'bill' || i.kind === 'card' || i.kind === 'sub') || /split/i.test(i.name)) continue;
     const key = `${i.kind}:${slug(i.name)}:${Number(i.date.slice(8))}`;
     groups.set(key, [...(groups.get(key) || []), i]);
   }
@@ -738,7 +740,8 @@ export function parseMoney(snap: MoneySnapshot, today = new Date()): MoneyModel 
     ...itemsFrom(ledger, 'paylater', { date: 0, name: 1, amount: 3, provider: 4, installment: 2 }, today),
     ...itemsFrom(cashAdvances, 'cash', { date: 0, name: 1, amount: 2 }, today),
     // A card from "More Cards" with a due date: its balance is the payment.
-    ...itemsFrom(moreCards ? { ...moreCards, rows: moreCards.rows.filter(r => r[2]?.text) } : null, 'card', { date: 2, name: 0, amount: 1 }, today),
+    // Logged one at a time (Atlas wants its full balance a set number of days after use), so it's never rolled into later months.
+    ...itemsFrom(moreCards ? { ...moreCards, rows: moreCards.rows.filter(r => r[2]?.text) } : null, 'card', { date: 2, name: 0, amount: 1 }, today).map(i => ({ ...i, logged: true })),
   ];
   for (const row of subsOther) {
     items.push({

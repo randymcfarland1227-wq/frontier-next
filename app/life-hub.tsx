@@ -28,6 +28,7 @@ import {
   SELF_ITEMS_EVENT,
   type SelfItem,
 } from '../lib/adapters/self';
+import { makeDueSelfRepeats } from '../lib/selfRepeats';
 import { tagOf, useTaskTags } from '../lib/taskTags';
 import {
   CONNECTOR_SOURCE_IDS,
@@ -380,6 +381,7 @@ export function LifeHub() {
     setFocus(migrateFocus(savedFocus));
     const snaps = migrateSnapshots(savedSnaps);
     removePeculiarUmbrellaLanes();
+    makeDueSelfRepeats();
     const self = loadSelfItems();
     snaps.self = selfSnapshotFrom(self);
     setSelfItems(self);

@@ -92,6 +92,7 @@ export const SAVED_KEYS: SavedKey[] = [
   { key: 'lifehub-schedule-view', backup: 'device' },
   { key: 'lifehub-seeded-goals', backup: 'device' },
   { key: 'lifehub-self-inbox', backup: 'cloud' },
+  { key: 'lifehub-self-repeats-made', backup: 'device', note: 'Repeating Self tasks this device already made (lib/selfRepeats.ts)' },
   { key: 'lifehub-selfpins-cleared', backup: 'device' },
   { key: 'lifehub-site-icons', backup: 'cloud', note: "Uploaded site pictures (Self photo, brand logos) — cloud-synced" },
   { key: 'lifehub-source-snapshots', backup: 'cache' },

@@ -46,7 +46,7 @@ export function WishList({ kind, items }: { kind: "need" | "want"; items: Findin
               {open.map((f) => (
                 <WishRow key={f.key} f={f} extra={
                   <>
-                    <button type="button" className="sk-btn is-small" title={`Move it to ${other === "need" ? "Needed" : "Wants"}`} onClick={() => setFinding(f.key, { wish: other })}>→ {other === "need" ? "Needed" : "Wants"}</button>
+                    <button type="button" className="sk-btn is-small" title={`Move it to ${other === "need" ? "Needed" : "Wants"}`} aria-label={`Move ${f.name} to ${other === "need" ? "Needed" : "Wants"}`} onClick={() => setFinding(f.key, { wish: other })}>→</button>
                     <button type="button" className="row-action ghost" aria-label={`Delete ${f.name}`} title="Delete" onClick={() => window.confirm(`Delete ${f.name}?`) && removeFinding(f.key)}>✕</button>
                   </>
                 } />
@@ -84,8 +84,6 @@ function WishRow({ f, extra }: { f: Finding; extra?: React.ReactNode }) {
           {name}
           {f.where ? <small> · {f.where}</small> : null}
         </button>
-      </td>
-      <td className="num">
         <input
           className="tp-amt"
           inputMode="decimal"
@@ -100,7 +98,7 @@ function WishRow({ f, extra }: { f: Finding; extra?: React.ReactNode }) {
         />
       </td>
       <td className="mtable-act">
-        <ResearchButton rkey={f.rkey || f.key} title={name} sub={sub} label="Details" />
+        <ResearchButton rkey={f.rkey || f.key} title={name} sub={sub} />
         {extra}
       </td>
     </tr>

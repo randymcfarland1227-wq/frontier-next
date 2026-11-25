@@ -10,7 +10,8 @@ import { localDayKey } from './dayKey';
 import { readSaved, writeSaved } from './storage';
 import { loadSelfItems, saveSelfItems, SELF_ITEMS_EVENT, type SelfItem } from './adapters/self';
 
-type RepeatRule = { id: string; title: string; detail: string; home?: string } & (
+/** `start` (YYYY-MM-DD): no task for an occurrence before this day. */
+type RepeatRule = { id: string; title: string; detail: string; start: string; home?: string } & (
   | { weekday: number } // 0 = Sunday … 5 = Friday
   | { monthDay: number }
 );
@@ -21,12 +22,14 @@ export const SELF_REPEATS: RepeatRule[] = [
     title: 'Paylater Date/Amount Verification',
     detail: 'Check what Money › Pay later says against each pay-later app (Zip, Afterpay, Klarna, Affirm…): next date and amount.',
     weekday: 5,
+    start: '2026-11-25',
   },
   {
     id: 'card-verify',
     title: 'Credit Card Update / Next Payment Amount Verification',
     detail: 'For each card: check the next payment date and amount, then update the site with the current balance, available credit and upcoming payment.',
     monthDay: 23,
+    start: '2026-11-25',
   },
 ];
 
@@ -55,6 +58,7 @@ export function makeDueSelfRepeats(today = new Date()): boolean {
   for (const rule of SELF_REPEATS) {
     const day = lastOccurrence(rule, today);
     const key = localDayKey(day);
+    if (key < rule.start) continue;
     const id = `self-rep-${rule.id}-${key}`;
     if (made.has(id)) continue;
     made.add(id);

@@ -82,6 +82,8 @@ export type SyncedState = {
   research: Record<string, { at: string } & Record<string, unknown>>;
   /** Today › Worksheet documents (title + rich text); newest wins per sheet, deletes are tombstones (lib/worksheets.ts) */
   worksheets: Record<string, { at: string } & Record<string, unknown>>;
+  /** "Needs you" findings from the daily Life Hub check; newest wins per id, Done/Dismissed stay (lib/routineInbox.ts) */
+  inbox: Record<string, { at: string } & Record<string, unknown>>;
 };
 
 /**
@@ -163,6 +165,7 @@ export function emptyState(): SyncedState {
     packages: {},
     research: {},
     worksheets: {},
+    inbox: {},
   };
 }
 
@@ -216,6 +219,7 @@ export function normalizeState(raw: unknown): SyncedState {
     packages: s.packages && typeof s.packages === 'object' ? s.packages : {},
     research: s.research && typeof s.research === 'object' ? s.research : {},
     worksheets: s.worksheets && typeof s.worksheets === 'object' ? s.worksheets : {},
+    inbox: s.inbox && typeof s.inbox === 'object' ? s.inbox : {},
   };
 }
 
@@ -325,6 +329,7 @@ export function mergeState(aRaw: unknown, bRaw: unknown): SyncedState {
     packages: mergeLevels(a.packages, b.packages),
     research: mergeLevels(a.research, b.research),
     worksheets: mergeLevels(a.worksheets, b.worksheets),
+    inbox: mergeLevels(a.inbox, b.inbox),
   };
 }
 

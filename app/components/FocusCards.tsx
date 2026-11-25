@@ -4,7 +4,7 @@ import { confirmedProjectBillPayment } from "../../lib/projectFinance";
 
 import { projectContinuation, saveProjectContinuation } from "../../lib/projectContinuation";
 import { focusCardPinKey } from "../../lib/focusPins";
-import { openProject } from "../../lib/selfProjects";
+import { isProject, openProject } from "../../lib/selfProjects";
 import { goalGroupOf, readGoalTypes } from "../../lib/goalTypes";
 import {
   useEffect,
@@ -715,12 +715,12 @@ function Card({
       onKeyDown={onKey}
       aria-label={`${item.title} — open details`}
     >
-      {item.site || item.section || item.ongoing ? (
+      {item.site || item.section || item.ongoing || isProject(item) ? (
         <span className="sk-fcard-tags">
           {item.site || item.section ? (
             <span className="sk-fcard-site">{item.section ? FOCUS_SECTION_LABELS[item.section] : sourceById[item.site!]?.shortName}</span>
           ) : null}
-          {item.ongoing ? <span className="sk-fcard-ongoing">Ongoing</span> : null}
+          {isProject(item) ? <span className="sk-fcard-ongoing">Project</span> : item.ongoing ? <span className="sk-fcard-ongoing">{item.inFocus ? "Goal · in focus" : "Goal"}</span> : item.site ? <span className="sk-fcard-ongoing">Short-term focus</span> : null}
         </span>
       ) : null}
       {item.ongoing || item.section ? null : (
@@ -910,7 +910,7 @@ function Detail({
   // An odd last list card takes the full width (no empty half beside it).
   const cardLists = lists.filter((x) => x.kind !== "notes" && x.kind !== "habits");
   const linkedLists = (item.siteLists || []).filter((id) => ctx.sl?.store[id] && !ctx.sl.store[id].gone).length;
-  const wideId = !linkedLists && item.site !== "self" && cardLists.length % 2 ? cardLists[cardLists.length - 1].id : "";
+  const wideId = !linkedLists && !isProject(item) && cardLists.length % 2 ? cardLists[cardLists.length - 1].id : "";
   const lede = (item.note || item.why || "").split(/(?<=[.!?])\s/)[0].slice(0, 160);
   // Money across this card's lists: paid · still to pay · to buy (task purchases)
   // The same ticket can sit in two lists (a "MD tickets · City" group and its own flag row): count each once.
@@ -1042,7 +1042,10 @@ function Detail({
   const cardMenu = useRowMenu(
     () => [
       { label: "Plan and settings…", onSelect: () => { if (planRef.current) { planRef.current.open = true; planRef.current.scrollIntoView({ behavior: "smooth", block: "start" }); } } },
-      { label: item.inFocus ? "Take out of Short-term focus" : "Show in Short-term focus", hidden: !item.ongoing, on: Boolean(item.inFocus), onSelect: () => update({ inFocus: !item.inFocus }) },
+      { label: item.inFocus ? "Take out of Short-term focus" : "Show in Short-term focus", hidden: !item.ongoing || isProject(item), on: Boolean(item.inFocus), onSelect: () => update({ inFocus: !item.inFocus }) },
+      // A plain project keeps the same record (lists, links, Doing Now pin) but leaves Short-term focus and Goals.
+      { label: "Make it just a project", hidden: isProject(item), onSelect: () => update({ kind: "project", inFocus: false }) },
+      { label: item.ongoing ? "Make it a goal again" : "Make it a short-term focus", hidden: item.kind !== "project" || item.site === "self", onSelect: () => update({ kind: undefined }) },
       { label: item.done ? "Marked done — undo" : "Mark the whole focus done", on: Boolean(item.done), onSelect: markDone },
       { label: "Mark done and create new project with open tasks", hidden: Boolean(item.done), onSelect: () => setContinuing(true) },
       { label: "Add to On Deck", hidden: Boolean(item.done || doingKey || !availableDoingKey), onSelect: () => { if (availableDoingKey) placePin(availableDoingKey, DECK); } },
@@ -1065,7 +1068,7 @@ function Detail({
     <Dialog
       label={item.title}
       onClose={close}
-      className={`sk-fdetail${item.site === "self" ? " is-project" : ""}`}
+      className={`sk-fdetail${isProject(item) ? " is-project" : ""}`}
       backClassName="sk-fdetail-back"
       dataSite={item.site || undefined}
     >
@@ -1559,7 +1562,7 @@ function Detail({
         </div>
 
         <aside className="sk-fd-side">
-          {money.total && item.site !== "self" ? (
+          {money.total && !isProject(item) ? (
             <section className="sk-fd-box sk-fd-money">
               <h3 className="sk-fd-sideh"><i className="sk-fd-dot is-pay" />Money for this</h3>
               <div className="sk-fd-moneybig"><b>{usd(money.pay + money.buy)}</b> <span>left of {usd(money.total)}</span></div>
@@ -2108,7 +2111,10 @@ export function FocusCards({
   defaults,
   ticktick,
   ledger,
+  addAs,
 }: {
+  /** The + asks what it is (Project / Short-term focus / Goal); each choice saves the new entry and returns its id */
+  addAs?: Array<{ id: string; label: string; add: (title: string) => string }>;
   /** Last TickTick pull + completion log (ongoing goals show their linked habits/tasks) */
   ticktick?: SourceSnapshot;
   ledger?: CompletionLedger;
@@ -2187,6 +2193,7 @@ export function FocusCards({
   const [openId, setOpenId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [adding, setAdding] = useState(false);
+  const [addKind, setAddKind] = useState(addAs?.[0]?.id || "");
   const lists = [list, ...extra];
   const all = lists.flatMap(([items], li) => items.map((item) => ({ item, li })));
   const patchIn = (id: string, fn: (x: Entry) => Entry | null) => {
@@ -2202,8 +2209,10 @@ export function FocusCards({
   const add = (e: FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    const id = `${Date.now()}`;
-    list[1]([...list[0], { ...defaults, id, title: title.trim(), added: dayKey(new Date()) }]);
+    const pick = addAs?.find((k) => k.id === addKind) || addAs?.[0];
+    let id = `${Date.now()}`;
+    if (pick) id = pick.add(title.trim());
+    else list[1]([...list[0], { ...defaults, id, title: title.trim(), added: dayKey(new Date()) }]);
     setTitle("");
     setAdding(false);
     setOpenId(id);
@@ -2221,6 +2230,14 @@ export function FocusCards({
     <>
       {noAdd ? null : adding ? (
         <form className="sk-fc-add" onSubmit={add}>
+          {addAs?.length ? (
+            <span className="sk-seg" role="group" aria-label="Add it as">
+              {addAs.map((k) => (
+                <button key={k.id} type="button" aria-pressed={addKind === k.id}
+                  onMouseDown={(e) => e.preventDefault()} onClick={() => setAddKind(k.id)}>{k.label}</button>
+              ))}
+            </span>
+          ) : null}
           <input
             autoFocus
             value={title}

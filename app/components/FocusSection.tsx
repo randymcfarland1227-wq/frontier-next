@@ -1,6 +1,6 @@
 "use client";
 
-import { OPEN_PROJECT_EVENT, openProject } from "../../lib/selfProjects";
+import { OPEN_PROJECT_EVENT, isProject, openProject } from "../../lib/selfProjects";
 
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Circle, Group, ListHead, PaneHeadContext, Section } from "../sticker/kit";
@@ -129,6 +129,8 @@ export type Entry = {
   inFocus?: boolean;
   /** An ongoing goal: a direction, not a one-time task (made from Self) */
   ongoing?: boolean;
+  /** 'project' = a plain project: pinnable to Doing Now, kept out of Short-term focus and Goals (lib/selfProjects isProject) */
+  kind?: "project";
   /** Goals page grouping ("Move", "Fitness"…); empty = grouped by its site / section */
   goalType?: string;
   /** Finance lists linked in as sub-task lists (key says which debt-file items: see lib/finLinks) */
@@ -619,7 +621,7 @@ export function useShortTermFocus() {
   const marvel = useFocusList("lifehub-focus-marvel-goals");
   const fitness = useFitnessFocus();
   // Short-term = what needs catching up; ongoing goals (and the fitness / nutrition / Marvel directions) aren't counted.
-  const open = [...now[0], ...weeks[0], ...ongoing[0].filter((i) => i.inFocus)].filter((i) => !i.done).length;
+  const open = [...now[0], ...weeks[0], ...ongoing[0].filter((i) => i.inFocus)].filter((i) => !i.done && !isProject(i)).length;
   return { now, weeks, ongoing, nutrition, marvel, fitness, open };
 }
 
@@ -671,7 +673,10 @@ export function ShortTermFocus({
   const pursuits = activePursuits(snapshots?.income);
   // A goal promoted to Short-term focus is the SAME record (so edits show in both places): it appears in the
   // top grid and on its site, and is left out of the "Ongoing goals" row below so it isn't shown twice here.
-  const promoted = focusListView(focus.ongoing, (i) => Boolean(i.inFocus));
+  const promoted = focusListView(focus.ongoing, (i) => Boolean(i.inFocus) && !isProject(i));
+  // Projects share the record but live on their site / in Self, never in Short-term focus.
+  const nowFocus = focusListView(focus.now, (i) => !isProject(i));
+  const weeksFocus = focusListView(focus.weeks, (i) => !isProject(i));
   return (
     <Group
       tone="focus"
@@ -680,8 +685,8 @@ export function ShortTermFocus({
       meta={focus.open || undefined}
     >
       <FocusCards
-        list={focus.now}
-        extra={[focus.weeks, promoted, focus.nutrition, focus.fitness, focus.marvel]}
+        list={nowFocus}
+        extra={[weeksFocus, promoted, focus.nutrition, focus.fitness, focus.marvel]}
         events={events}
         bills={bills}
         openFinance={openFinance}
@@ -804,7 +809,7 @@ export function FocusSection({
   ];
   // Goals typed for this area (Goals page group "Nutrition", "Fitness", "Marvel") that aren't already in its focus list.
   const areaGoals = (sec: FocusSectionId) =>
-    focusListView(focus.ongoing, (i) => !i.done && i.section !== sec && goalGroupOf(i).toLowerCase().includes(sec === "fitness" ? "fit" : sec));
+    focusListView(focus.ongoing, (i) => !i.done && !isProject(i) && i.section !== sec && goalGroupOf(i).toLowerCase().includes(sec === "fitness" ? "fit" : sec));
   const goalsBlock = (sec: FocusSectionId) => {
     const g = areaGoals(sec);
     return g[0].length ? (
@@ -1002,10 +1007,10 @@ function FocusTaskGroup({ card, code, tag, lanes, fin, onToggle, folded }: { car
       <button type="button" className="sk-ftg-head" onClick={toggle} aria-expanded={!collapsed}>
         <span className="sk-ftg-caret" aria-hidden="true">{collapsed ? "▸" : "▾"}</span>
         <span className="sk-ftg-title">{card.title}</span>
-        <span className="sk-ftg-meta">{tag} · {open ? `${open} open` : card.site === "self" ? (finance ? `${finance} finance links` : "Open project") : done ? "all done" : "no steps yet"}{done ? ` · ${done} done` : ""}</span>
+        <span className="sk-ftg-meta">{tag} · {open ? `${open} open` : isProject(card) ? (finance ? `${finance} finance links` : "Open project") : done ? "all done" : "no steps yet"}{done ? ` · ${done} done` : ""}</span>
       </button>
       <button type="button" className="sk-link" aria-label={`Open ${card.title} details`} onClick={() => openProject(card.id)}>Details</button>
-      {open || card.site === "self" ? <SendToDoing id={focusCardId(code, card.id)} label={card.title} lanes={lanes} /> : null}
+      {open || isProject(card) ? <SendToDoing id={focusCardId(code, card.id)} label={card.title} lanes={lanes} /> : null}
       </div>
       {collapsed ? null : lists.map(({ l, tasks, fins }) => {
         const left = tasks.filter((t) => !t.done);
@@ -1063,12 +1068,12 @@ export function FocusTaskBoard({ compact, bills }: { compact?: boolean; bills?: 
   const groups: Array<{ card: Entry; code: string; tag: string; items: Entry[]; save: (e: Entry[]) => void }> = [
     ...now.map((card) => ({ card, code: "n", tag: "Right now", items: now, save: saveNow })),
     ...weeks.map((card) => ({ card, code: "w", tag: "Next few weeks", items: weeks, save: saveWeeks })),
-    ...ongoing.filter((c) => c.inFocus || c.site === "self").map((card) => ({ card, code: "o", tag: "Ongoing", items: ongoing, save: saveOngoing })),
-  ].filter((g) => !g.card.done && g.card.site !== "self").sort((a, b) =>
+    ...ongoing.filter((c) => c.inFocus || isProject(c)).map((card) => ({ card, code: "o", tag: "Ongoing", items: ongoing, save: saveOngoing })),
+  ].filter((g) => !g.card.done && !isProject(g.card)).sort((a, b) =>
     Number(Boolean(lanes[pinKey("self", focusCardId(a.code, a.card.id))]?.lane)) -
     Number(Boolean(lanes[pinKey("self", focusCardId(b.code, b.card.id))]?.lane)));
   // Projects (made in Self) are their own thing: listed apart, folded, not mixed into the focus tasks.
-  const projects = [...now, ...weeks, ...ongoing].filter((c) => c.site === "self" && !c.done);
+  const projects = [...now, ...weeks, ...ongoing].filter((c) => isProject(c) && !c.done);
   const saveOf = (c: Entry) => (now.some((x) => x.id === c.id) ? [now, saveNow] as const : weeks.some((x) => x.id === c.id) ? [weeks, saveWeeks] as const : [ongoing, saveOngoing] as const);
   const openCount = groups.reduce((n, g) => n + (g.card.lists || []).filter(isTaskList).reduce((m, l) => m + l.tasks.filter((t) => !t.fin && !t.done).length, 0), 0);
   return (

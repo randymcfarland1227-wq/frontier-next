@@ -267,7 +267,7 @@ export function CapturesPanel({
       setDoneDay(localDay());
       setTab('tasks');
     } else if (kind === 'project') {
-      addSelfProject(title, notes, why, '', (home || 'self') as SourceId);
+      addSelfProject(title, notes, why, '', (home || 'self') as SourceId, home ? { kind: 'project' } : {});
       showToast(`Project added${home ? ` on ${siteName(home)}` : ''} · ${title.trim()}`);
     } else if (kind === 'ongoing') {
       addOngoingGoal({ title, note: notes, why, site: goalSite });

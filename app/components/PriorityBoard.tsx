@@ -394,7 +394,8 @@ export function PriorityBoard({
           (i) =>
             !placed.has(i.key) &&
             (i.title.toLowerCase().includes(q) ||
-              sourceById[i.source].shortName.toLowerCase().includes(q)),
+              sourceById[i.source].shortName.toLowerCase().includes(q) ||
+              (i.key.startsWith("self:fcard:") && String(i.tag || "").toLowerCase().includes(q))),
         )
         .slice(0, 8)
     : [];
@@ -596,8 +597,8 @@ export function PriorityBoard({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Pull in a task from any site"
-            aria-label="Find a task to add to Doing now"
+            placeholder="Pull in a task, project, focus or goal"
+            aria-label="Find a task, project, short-term focus or goal to add to Doing now"
           />
           {matches.length ? (
             <div className="sk-pop" role="listbox">
@@ -633,7 +634,7 @@ export function PriorityBoard({
             </div>
           ) : q ? (
             <div className="sk-pop">
-              <p className="sk-empty">No open task matches “{query.trim()}”.</p>
+              <p className="sk-empty">No open task, project or goal matches “{query.trim()}”.</p>
             </div>
           ) : null}
         </div>

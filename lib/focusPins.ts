@@ -9,6 +9,7 @@ import { readSaved, writeSaved, STORAGE_KEYS } from './storage';
 import { FOCUS_LIST_EVENT, ONGOING_KEY } from './ongoingGoals';
 import { stampChanges } from './focusSync';
 import type { FeaturedItem } from './types';
+import { isProject } from './selfProjects';
 
 type Task = { id: string; text: string; done: boolean; fin?: unknown; note?: string; due?: string };
 type List = { id: string; name: string; tasks: Task[]; kind?: string };
@@ -36,7 +37,7 @@ function briefPinItems(): Array<FeaturedItem & { id: string }> {
 }
 
 const load = (key: string) => readSaved<Saved>(key, { scope: '', items: [] });
-const shown = (code: string, c: Card) => !c.done && (code !== 'o' || Boolean(c.inFocus) || c.site === 'self');
+const shown = (code: string, c: Card) => !c.done && (code !== 'o' || Boolean(c.inFocus) || isProject(c));
 const real = (t: Task) => !t.fin;
 
 /** Every open focus task and every focus list with open tasks, as Doing Now items (source self). */
@@ -44,21 +45,27 @@ export function focusPinItems(): Array<FeaturedItem & { id: string }> {
   const out: Array<FeaturedItem & { id: string }> = [];
   for (const { code, key, tag } of FOCUS_PIN_LISTS) {
     for (const card of load(key).items || []) {
-      if (!card || !shown(code, card)) continue;
-      // The whole short-term goal: every task in all its lists.
+      if (!card || card.done) continue;
+      // The whole card: every task in all its lists. Every open project, short-term focus card and goal can be
+      // pinned (and found by Doing Now's search) as a whole, even with no open steps.
       const all = (card.lists || []).filter((l) => l.kind !== 'notes' && l.kind !== 'habits').flatMap((l) => l.tasks.filter(real));
       const allOpen = all.filter((t) => !t.done);
-      const project = card.site === 'self';
-      if (allOpen.length || project)
-        out.push({
-          id: focusCardId(code, card.id),
-          title: card.title,
-          detail: project ? 'Project · open to see lists, bills and details' : `${tag} · ${all.length - allOpen.length} of ${all.length} done · next: ${allOpen[0].text}`,
-          meta: project ? 'Project' : 'Focus goal',
-          completable: !project,
-          tag: project ? 'Project' : 'Goal',
-          steps: project ? undefined : all.map((t) => ({ id: t.id, text: t.text, done: t.done })),
-        } as FeaturedItem & { id: string });
+      const project = isProject(card);
+      const goal = !project && code === 'o' && !card.inFocus;
+      const kind = project ? 'Project' : goal ? 'Goal' : 'Short-term focus';
+      out.push({
+        id: focusCardId(code, card.id),
+        title: card.title,
+        detail: project ? 'Project · open to see lists, bills and details'
+          : allOpen.length ? `${kind} · ${all.length - allOpen.length} of ${all.length} done · next: ${allOpen[0].text}`
+          : `${kind} · open to add steps`,
+        meta: project ? 'Project' : goal ? 'Goal' : 'Focus goal',
+        completable: !project && !goal && allOpen.length > 0,
+        tag: kind,
+        steps: project || !all.length ? undefined : all.map((t) => ({ id: t.id, text: t.text, done: t.done })),
+      } as FeaturedItem & { id: string });
+      // Lists and single steps stay limited to what shows in Short-term focus / projects.
+      if (!shown(code, card)) continue;
       for (const l of card.lists || []) {
         if (l.kind === 'notes' || l.kind === 'habits') continue;
         const tasks = l.tasks.filter(real);

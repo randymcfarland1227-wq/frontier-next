@@ -32,7 +32,8 @@ test('focus lists and tasks become Doing Now items, and checking one off marks i
   completeFocusPin(focusListId('n', 'c1', 'l1'));
   const after = JSON.parse(store.get('lifehub-focus-now2')!);
   assert.deepEqual(after.items[0].lists[0].tasks.map((t: { done: boolean }) => t.done), [true, true, false]);
-  assert.equal(focusPinItems().length, 0);
+  // Its list and steps drop out; the open card itself stays findable/pinnable, with nothing left to check off.
+  assert.deepEqual(focusPinItems().map((i) => [i.id, i.completable]), [[focusCardId('n', 'c1'), false]]);
   // Reopen from Doing Now
   completeFocusPin(focusTaskId('n', 'c1', 'l1', 't2'), false);
   assert.equal(JSON.parse(store.get('lifehub-focus-now2')!).items[0].lists[0].tasks[1].done, false);
@@ -46,7 +47,17 @@ test('a whole short-term goal can go to Doing Now; checking it off marks all its
   completeFocusPin(focusCardId('w', 'c1'));
   const after = JSON.parse(store.get('lifehub-focus-weeks2')!);
   assert.deepEqual(after.items[0].lists[0].tasks.map((t: { done: boolean }) => t.done), [true, true, false]);
-  assert.equal(focusPinItems().length, 0);
+  assert.deepEqual(focusPinItems().map((i) => [i.id, i.completable]), [[focusCardId('w', 'c1'), false]]);
+});
+
+test('every open project, short-term focus card and goal is a whole-card Doing Now item; done cards are not', async () => {
+  const { focusPinItems, focusCardId } = await import('../lib/focusPins');
+  store.clear();
+  store.set('lifehub-focus-now2', JSON.stringify({ scope: '', items: [{ id: 'p1', title: 'Repairs', site: 'repair', kind: 'project' }, { id: 'f1', title: 'Rent', lists: [] }, { id: 'd1', title: 'Old', done: true }] }));
+  store.set('lifehub-focus-ongoing', JSON.stringify({ scope: '', items: [{ id: 'g1', title: 'Fitness', ongoing: true }] }));
+  const items = focusPinItems();
+  assert.deepEqual(items.map((i) => [i.id, i.tag]), [[focusCardId('n', 'p1'), 'Project'], [focusCardId('n', 'f1'), 'Short-term focus'], [focusCardId('o', 'g1'), 'Goal']]);
+  assert.ok(items.every((i) => i.completable === false), 'no steps → nothing to bulk-complete');
 });
 
 test('Self finance-only projects use one shared container pin through On Deck, Action List and removal', async () => {

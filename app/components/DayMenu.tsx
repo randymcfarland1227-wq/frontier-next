@@ -5,6 +5,10 @@ import { useId, useState } from 'react';
 import { DECK, linkedChildren, openParentPicker, placePin, unlinkSubtask, updatePinDetails, usePriorityPins } from '../../lib/priorityPins';
 import { MOVE_TARGETS } from '../../lib/siteMoves';
 import { openResearch } from '../../lib/research';
+import { isHabitTask, logTickTick, type LogOutcome } from '../../lib/ticktickLog';
+import { readSaved, STORAGE_KEYS } from '../../lib/storage';
+import { REFRESH_EVENT } from '../../lib/syncNow';
+import type { SourceId, SourceSnapshot } from '../../lib/types';
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -63,6 +67,20 @@ export function DayMenu({
   const { lanes } = usePriorityPins();
   const due = lanes[itemKey]?.lane ? lanes[itemKey]?.due : undefined;
   const ref = useRef<HTMLDivElement>(null);
+  // A TickTick row: TickTick's own Won't do (tasks) / Skip and Uncompleted (habits), written to TickTick.
+  const [tickMsg, setTickMsg] = useState('');
+  const tickTask = itemKey.startsWith('ticktick:')
+    ? readSaved<Partial<Record<SourceId, SourceSnapshot>>>(STORAGE_KEYS.snapshots, {}).ticktick?.tasks.find(t => t.id === itemKey.slice(9))
+    : undefined;
+  const tickLog = (o: LogOutcome) => {
+    if (!tickTask) return;
+    setTickMsg('Saving to TickTick…');
+    void logTickTick(tickTask, o).then(ok => {
+      if (!ok) { setTickMsg('Not saved to TickTick'); return; }
+      window.dispatchEvent(new Event(REFRESH_EVENT));
+      onClose();
+    });
+  };
   const closeRef = useRef(onClose);
   useEffect(() => {
     closeRef.current = onClose;
@@ -179,6 +197,17 @@ export function DayMenu({
           ))}
         </select>
       ) : null}
+      {tickTask ? (
+        isHabitTask(tickTask) ? (
+          <>
+            <button type="button" className="day-menu-btn" title="TickTick Skip: today is off for this habit, no streak change" onClick={() => tickLog('skipped')}>Skip today</button>
+            <button type="button" className="day-menu-btn" title="TickTick Uncompleted: logged as not done today" onClick={() => tickLog('notdone')}>Uncompleted</button>
+          </>
+        ) : (
+          <button type="button" className="day-menu-btn" title="TickTick Won't do: closes this one without counting it done; a repeating task comes back on its next date" onClick={() => tickLog('wontdo')}>Won&apos;t do</button>
+        )
+      ) : null}
+      {tickMsg ? <small className="day-menu-note">{tickMsg}</small> : null}
       {onRemove ? (
         <button
           type="button"

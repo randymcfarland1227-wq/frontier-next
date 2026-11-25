@@ -47,7 +47,7 @@ import './sticker/sticker.css';
 import { HomeView } from './components/HomeView';
 import { SourceCard } from './components/SourceCard';
 import { PAY_BILL_EVENT, UNPAY_BILL_EVENT, requestOpenDebt } from '../lib/finLinks';
-import { LOAN_ADJUST_EVENT, addLoanLog, balanceEdit, loanLog, loanRowByName, loanRowOfDue, removeLoanLog, type LoanAdjust } from '../lib/loanLog';
+import { LOAN_ADJUST_EVENT, addLoanLog, balanceEdit, loanLog, loanRowByName, loanRowOfDue, payHubLoan, removeLoanLog, unpayHubLoan, type LoanAdjust } from '../lib/loanLog';
 import { SiteFocus } from './components/AssignedFocus';
 import { SourceView } from './components/SourceView';
 import { VoiceMemoList } from './components/VoiceMemoList';
@@ -131,7 +131,7 @@ import { billDues, fromDayKey, loadCachedSchedule, paidBillKeys, pullScheduleSna
 import { lifeSubDues, useLifeSubs, withoutSheetTwins } from '../lib/lifeSubs';
 import { hubCardDues, useExtraCards } from '../lib/extraCards';
 import { FinanceTaskAdd } from './components/FinanceTaskAdd';
-import { useMoneyMeta } from '../lib/moneyMeta';
+import { metaName, useMoneyMeta } from '../lib/moneyMeta';
 import { payPlanDues, usePayPlans } from '../lib/payPlans';
 import { findingPaymentDues, useFindings } from '../lib/finFindings';
 import { linkedChildren, usePriorityPins } from '../lib/priorityPins';
@@ -262,6 +262,8 @@ export function LifeHub() {
       moveLoan(loanRow, due.bill.amount, { kind: 'payment', date: localDayKey(), due: due.key }, edit ? [edit] : []);
       return;
     }
+    // A loan added on Life Hub: its balance lives in moneyMeta, so the payment comes off there.
+    payHubLoan(due.key, due.bill.amount, localDayKey(), new Set((moneyModel?.creditAccounts?.rows || []).map(r => metaName(r[0]?.text || '')).filter(Boolean)));
     if (!edit) return;
     void saveMoneyEdits([edit]).then(res => {
       if (res.snapshot) setMoneySnap(res.snapshot);
@@ -293,6 +295,7 @@ export function LifeHub() {
     unpayBillRef.current = (key: string) => {
       if (!key) return;
       setLedger(reopenCompletion('radall', key));
+      unpayHubLoan(key);
       // Undo a loan payment: put its amount back on the balance and drop the log line.
       const loanRow = moneyModel?.creditAccounts?.rows.find(r => r[0]?.text.trim() && loanLog(r[0].text).some(e => e.due === key && e.kind === 'payment'));
       const logged = loanRow ? loanLog(loanRow[0].text).find(e => e.due === key) : undefined;

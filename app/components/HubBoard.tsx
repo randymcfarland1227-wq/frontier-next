@@ -100,23 +100,72 @@ function Ring({ pct, color, size = 92, stroke = 10, children }: { pct: number; c
   );
 }
 
-function Panel({ title, icon, accent, meta, onOpen, className = "", children }: { title: string; icon: string; accent: string; meta?: ReactNode; onOpen?: () => void; className?: string; children: ReactNode }) {
+/* Each box keeps its own zoom and collapse on this device ("sk-board-boxes"), keyed by its title. */
+type BoxPref = { zoom?: number; closed?: boolean };
+const BOX_KEY = "sk-board-boxes";
+const BOX_EVENT = "lifehub:board-boxes";
+function useBoxPref(id: string): [BoxPref, (patch: BoxPref) => void] {
+  const [pref, setPref] = useState<BoxPref>(() => readSaved<Record<string, BoxPref>>(BOX_KEY, {})[id] || {});
+  useEffect(() => {
+    const on = () => setPref(readSaved<Record<string, BoxPref>>(BOX_KEY, {})[id] || {});
+    window.addEventListener(BOX_EVENT, on);
+    return () => window.removeEventListener(BOX_EVENT, on);
+  }, [id]);
+  const update = (patch: BoxPref) => {
+    const all = readSaved<Record<string, BoxPref>>(BOX_KEY, {});
+    const next = { ...(all[id] || {}), ...patch };
+    if (next.zoom === 100) delete next.zoom;
+    if (!next.closed) delete next.closed;
+    if (Object.keys(next).length) all[id] = next;
+    else delete all[id];
+    writeSaved(BOX_KEY, all);
+    setPref(next);
+    window.dispatchEvent(new CustomEvent(BOX_EVENT));
+  };
+  return [pref, update];
+}
+
+/** − 100% + and ▾ for one box. Zoom scales what's inside, so the box grows or shrinks with it. */
+function BoxTools({ title, pref, update }: { title: string; pref: BoxPref; update: (p: BoxPref) => void }) {
+  const zoom = pref.zoom || 100;
+  const step = (d: number) => update({ zoom: Math.min(200, Math.max(60, zoom + d)) });
   return (
-    <section className={`hb-panel ${className}`} style={{ "--acc": accent } as CSSProperties}>
+    <span className="hb-tools">
+      {!pref.closed ? (
+        <>
+          <button type="button" onClick={() => step(-10)} disabled={zoom <= 60} aria-label={`Smaller ${title}`} title="Smaller">−</button>
+          <button type="button" className="hb-zoom" onClick={() => update({ zoom: 100 })} title="Back to 100%">{zoom}%</button>
+          <button type="button" onClick={() => step(10)} disabled={zoom >= 200} aria-label={`Bigger ${title}`} title="Bigger">+</button>
+        </>
+      ) : null}
+      <button type="button" className="hb-fold" onClick={() => update({ closed: !pref.closed })} aria-expanded={!pref.closed} aria-label={`${pref.closed ? "Open" : "Collapse"} ${title}`} title={pref.closed ? "Open" : "Collapse"}>
+        {pref.closed ? "▸" : "▾"}
+      </button>
+    </span>
+  );
+}
+
+function Panel({ title, icon, accent, meta, onOpen, className = "", children }: { title: string; icon: string; accent: string; meta?: ReactNode; onOpen?: () => void; className?: string; children: ReactNode }) {
+  const [pref, update] = useBoxPref(title);
+  const zoom = pref.zoom || 100;
+  return (
+    <section className={`hb-panel ${className}${pref.closed ? " is-closed" : ""}`} style={{ "--acc": accent } as CSSProperties}>
       <header className="hb-head">
         <button type="button" className="hb-title" onClick={onOpen} title={`Open ${title}`}>
           <span className="hb-chip" aria-hidden="true">{icon}</span>
           {title}
         </button>
-        {meta != null ? <span className="hb-meta">{meta}</span> : null}
+        {meta != null && !pref.closed ? <span className="hb-meta">{meta}</span> : null}
+        <BoxTools title={title} pref={pref} update={update} />
       </header>
-      {children}
+      {pref.closed ? null : <div className="hb-body" style={zoom !== 100 ? ({ zoom: zoom / 100 } as CSSProperties) : undefined}>{children}</div>}
     </section>
   );
 }
 
 /* ── Sky clock ── */
 function SkyClock({ now, events }: { now: Date; events: CalEvent[] }) {
+  const [pref, update] = useBoxPref("Sky clock");
   const sun = sunTimes(now);
   const { reading, state, retry } = useWeather();
   useEffect(() => {
@@ -141,10 +190,11 @@ function SkyClock({ now, events }: { now: Date; events: CalEvent[] }) {
   const timed = events.filter((e) => !e.allDay);
 
   return (
-    <section className="hb-panel hb-sky" data-phase={phase}>
+    <section className={`hb-panel hb-sky${pref.closed ? " is-closed" : ""}`} data-phase={phase} style={pref.zoom && !pref.closed ? ({ zoom: pref.zoom / 100 } as CSSProperties) : undefined}>
       <div className="hb-stars" aria-hidden="true" />
       <div className="hb-sky-top">
         <span className="hb-greet">{greet(now.getHours())}, Randy</span>
+        <BoxTools title="Sky clock" pref={pref} update={update} />
         <span className="hb-phase">{phase === "night" ? "🌙 Night" : phase === "dawn" ? "🌅 Sunrise" : phase === "dusk" ? "🌇 Golden hour" : "☀️ Daytime"}</span>
       </div>
       <div className="hb-dial">

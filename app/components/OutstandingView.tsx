@@ -10,6 +10,7 @@
 import { CashAdvanceAccounts } from "./CashAdvanceAccounts";
 import { FinanceLabel } from "./FinanceDrawer";
 import { useState, type ReactNode } from "react";
+import { openPayLater } from "../../lib/finLinks";
 import { Icon } from "../sticker/Icon";
 import { Dialog } from "../sticker/Dialog";
 import { MoneyExtras, useExtrasBadge } from "./MoneyExtras";
@@ -445,6 +446,8 @@ export type OwedLine = {
   legacyKey?: string;
   /** Always the old row-only key, for links saved before the column was added */
   rowKey?: string;
+  /** A pay-later provider line (Klarna…): opens that provider's pop-out */
+  provider?: string;
   /** The sheet's own figure when an amount found on Life Hub (a letter) overrides it */
   sheetAmount?: number;
 };
@@ -522,6 +525,7 @@ export function outstandingParts(
     return {
       ...sheetLine(r, 0, 1),
       name: prov,
+      provider: prov,
       date: next?.due,
       note: next ? `next ${money(next.bill.amount)}` : undefined,
     };
@@ -620,7 +624,7 @@ function OwedCol({
           <FinanceLabel id={`debt:${x.itemId}`} name={x.name} />
         </button>
       ) : (
-        <button type="button" className="ob-line-name" title={x.note || "Open: amount, payments, letters"} onClick={() => setPop(x)}>
+        <button type="button" className="ob-line-name" title={x.provider ? "Open: owed, purchasing power, active plans" : x.note || "Open: amount, payments, letters"} onClick={() => (x.provider ? openPayLater(x.provider) : setPop(x))}>
           {x.name}
           <LineBadge fkey={x.key} paidAt={paidAt} />
         </button>

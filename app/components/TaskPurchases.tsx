@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { addOwnItem, ownItems, removeFinding, setFinding, useFindings, type Finding } from "../../lib/finFindings";
 import { ResearchButton } from "./ResearchPanel";
+import { openResearch } from "../../lib/research";
 
 const usd = (n?: number | null) =>
   typeof n === "number" ? `$${n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}` : "";
@@ -39,16 +40,20 @@ export function WishList({ kind, items }: { kind: "need" | "want"; items: Findin
   return (
     <div className="tp tp-wish">
       {open.length ? (
-        <ul>
-          {open.map((f) => (
-            <Row key={f.key} f={f} extra={
-              <>
-                <button type="button" className="sk-btn is-small" title={`Move it to ${other === "need" ? "Needed" : "Wants"}`} onClick={() => setFinding(f.key, { wish: other })}>→ {other === "need" ? "Needed" : "Wants"}</button>
-                <button type="button" className="row-action ghost" aria-label={`Delete ${f.name}`} title="Delete" onClick={() => window.confirm(`Delete ${f.name}?`) && removeFinding(f.key)}>✕</button>
-              </>
-            } />
-          ))}
-        </ul>
+        <div className="mtable-wrap">
+          <table className="mtable tp-wish-table">
+            <tbody>
+              {open.map((f) => (
+                <WishRow key={f.key} f={f} extra={
+                  <>
+                    <button type="button" className="sk-btn is-small" title={`Move it to ${other === "need" ? "Needed" : "Wants"}`} onClick={() => setFinding(f.key, { wish: other })}>→ {other === "need" ? "Needed" : "Wants"}</button>
+                    <button type="button" className="row-action ghost" aria-label={`Delete ${f.name}`} title="Delete" onClick={() => window.confirm(`Delete ${f.name}?`) && removeFinding(f.key)}>✕</button>
+                  </>
+                } />
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
       <form className="tp-add" onSubmit={(e) => { e.preventDefault(); add(); }}>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={kind === "need" ? "＋ Add a need (on Life Hub)" : "＋ Add a want (on Life Hub)"} aria-label={kind === "need" ? "Add a need" : "Add a want"} />
@@ -57,10 +62,48 @@ export function WishList({ kind, items }: { kind: "need" | "want"; items: Findin
       {bought.length ? (
         <details className="tp-done">
           <summary>{bought.length} bought</summary>
-          <ul>{bought.map((f) => <Row key={f.key} f={f} />)}</ul>
+          <div className="mtable-wrap"><table className="mtable tp-wish-table"><tbody>{bought.map((f) => <WishRow key={f.key} f={f} />)}</tbody></table></div>
         </details>
       ) : null}
     </div>
+  );
+}
+
+/** A Life Hub need / want, laid out like the sheet's rows: Bought · item (tap for its details pop-out) · cost · tools. */
+function WishRow({ f, extra }: { f: Finding; extra?: React.ReactNode }) {
+  const [amt, setAmt] = useState(f.amount != null ? String(f.amount) : "");
+  const sub = `Money › Purchases › ${f.wish === "need" ? "Needed" : "Wants"}`;
+  const name = f.name || "Untitled";
+  return (
+    <tr className={f.paid ? "is-struck" : ""}>
+      <td className="mtable-check">
+        <input type="checkbox" checked={Boolean(f.paid)} aria-label={`Bought: ${name}`} title={f.paid ? "Bought — tap to undo" : "Mark bought"} onChange={(e) => setFinding(f.key, { paid: e.target.checked })} />
+      </td>
+      <td>
+        <button type="button" className="mcell tp-wish-name" title="Open: notes, links and prices" onClick={() => openResearch(f.rkey || f.key, name, sub)}>
+          {name}
+          {f.where ? <small> · {f.where}</small> : null}
+        </button>
+      </td>
+      <td className="num">
+        <input
+          className="tp-amt"
+          inputMode="decimal"
+          placeholder="$ cost"
+          value={amt}
+          onChange={(e) => setAmt(e.target.value)}
+          onBlur={() => {
+            const n = Number(amt.replace(/[^0-9.]/g, ""));
+            setFinding(f.key, { amount: amt.trim() && Number.isFinite(n) ? n : null });
+          }}
+          aria-label={`Cost of ${name}`}
+        />
+      </td>
+      <td className="mtable-act">
+        <ResearchButton rkey={f.rkey || f.key} title={name} sub={sub} label="Details" />
+        {extra}
+      </td>
+    </tr>
   );
 }
 

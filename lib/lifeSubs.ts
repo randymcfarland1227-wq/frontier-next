@@ -145,6 +145,12 @@ export function lifeSubDues(subs: LifeSub[], paid: Set<string>, today = new Date
   for (const s of subs) {
     if (!charges(s)) continue;
     const created = startOfDay(new Date(s.createdAt));
+    // A subscription charges itself: once a later charge is marked paid, the earlier ones are settled too
+    // (Atlas Smart Pay: Nov 24 marked paid left Oct 24 "overdue").
+    const prefix = `money:lhsub:${s.id}:`;
+    const paidThrough = !s.kind || s.kind === 'sub'
+      ? [...paid].filter(k => k.startsWith(prefix)).map(k => k.slice(prefix.length)).sort().pop()
+      : undefined;
     for (let i = -2; i <= 5; i++) {
       const y = t.getFullYear();
       const m = t.getMonth() + i;
@@ -158,7 +164,7 @@ export function lifeSubDues(subs: LifeSub[], paid: Set<string>, today = new Date
       const nth = s.times && s.start ? paymentIndex(s.start, due, s.cycle) : 0;
       if (s.times && nth >= s.times) continue;
       const key = `money:lhsub:${s.id}:${due}`;
-      if (!keepPaid && paid.has(key)) continue;
+      if (!keepPaid && (paid.has(key) || (paidThrough && due < paidThrough))) continue;
       out.push({
         bill: { id: key, name: s.name, amount: s.amount, kind: s.kind && s.kind !== 'sub' ? 'bill' : 'sub', notes: [s.kind === 'loan' ? 'Loan' : s.kind === 'bill' ? 'Bill' : 'Subscription', s.status === 'trial' ? 'Trial' : '', s.times === 1 ? 'One-time' : s.times ? `Payment ${nth + 1} of ${s.times}` : '', 'added on Life Hub'].filter(Boolean).join(' · ') },
         due,

@@ -1,14 +1,14 @@
 'use client';
 
-import type { SourceSnapshot } from '../../lib/types';
+import type { SourceSnapshot, TaskItem } from '../../lib/types';
 import { setRoleActive, shelfOf } from '../../lib/roleShelves';
 
 /**
  * Lists kept apart from a site's open tasks. Role Hub (Certs to get, Portfolio to add): Active moves
  * one into the open tasks and the open row's ☆ menu has ↩ to put it back. Resale (Decisions to make,
- * Waiting on offers): handled on the Resale site, so rows just open it.
+ * Waiting on offers): rows open the Resale site; Done checks one off here (already listed / decided).
  */
-export function ShelfList({ snapshot, compact = false }: { snapshot: SourceSnapshot; compact?: boolean }) {
+export function ShelfList({ snapshot, compact = false, onComplete }: { snapshot: SourceSnapshot; compact?: boolean; onComplete?: (task: TaskItem) => void }) {
   const shelves = (snapshot.shelves || []).filter(s => s.items.length);
   if (!shelves.length) return null;
   return (
@@ -42,6 +42,16 @@ export function ShelfList({ snapshot, compact = false }: { snapshot: SourceSnaps
                     aria-label={`Make ${t.title} active`}
                   >
                     Active →
+                  </button>
+                ) : onComplete && t.status !== 'done' ? (
+                  <button
+                    type="button"
+                    className="row-action"
+                    onClick={() => onComplete(t)}
+                    title="Done — e.g. it's already listed. Checks it off here and on its site."
+                    aria-label={`Complete ${t.title}`}
+                  >
+                    Done
                   </button>
                 ) : null}
               </li>

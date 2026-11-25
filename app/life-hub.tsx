@@ -1071,7 +1071,8 @@ export function LifeHub() {
       return;
     }
     const snapNow = snapshotsRef.current[source];
-    const taskNow = snapNow?.tasks?.find(t => t.id === id);
+    // Resale's Decisions / prep shelves hold real items too (no open-task row of their own).
+    const taskNow = snapNow?.tasks?.find(t => t.id === id) || snapNow?.shelves?.flatMap(s => s.items).find(t => t.id === id);
     const featuredNow = snapNow?.featured?.find(f => f.id === id);
     const selfItem = source === 'self' ? loadSelfItems().find(i => i.id === id) : undefined;
     const title = taskNow?.title || featuredNow?.title || selfItem?.title;
@@ -1101,7 +1102,11 @@ export function LifeHub() {
       return;
     }
 
-    setLedger(recordCompletion(source, id, { via: 'hub', title, task: taskNow || (featuredNow ? { ...featuredNow, status: 'open' } : undefined), focusAreaId: chosenArea }));
+    // An overdue TickTick task is one occurrence of its series: TickTick moves it to its next due date
+    // (the next overdue copy shows next), so its Done counts on the day it was due, not as today's.
+    // Same rule the TickTick feed uses for tasks finished late in the app (lib/ticktickDone.ts).
+    const lateDay = source === 'ticktick' && taskNow && taskNow.kind !== 'habit' && taskNow.due && taskNow.due < localDayKey() ? taskNow.due : undefined;
+    setLedger(recordCompletion(source, id, { via: 'hub', title, task: taskNow || (featuredNow ? { ...featuredNow, status: 'open' } : undefined), focusAreaId: chosenArea, ...(lateDay ? { at: new Date(`${lateDay}T12:00:00`).toISOString() } : {}) }));
 
     const def = sourceById[source];
     const isIframe = def.bridge === 'iframe';
@@ -1118,11 +1123,13 @@ export function LifeHub() {
         ? snap.tasks.filter(task => task.id !== id)
         : snap.tasks.map(task => (task.id === id ? { ...task, status: 'done' } : task));
       const featured = snap.featured.filter(item => item.id !== id);
+      const shelves = snap.shelves?.map(s => ({ ...s, items: s.items.filter(item => item.id !== id) }));
       return {
         ...current,
         [source]: {
           ...snap,
           featured,
+          ...(shelves ? { shelves } : {}),
           tasks,
           metrics: nextMetrics,
         },
@@ -1144,6 +1151,8 @@ export function LifeHub() {
         });
         if (projectId) {
           completeTickTickTaskInBackground({ taskId: id, projectId });
+          // Pull TickTick again so the series' next occurrence (or today's) shows right away.
+          if (lateDay) window.setTimeout(() => window.dispatchEvent(new Event(REFRESH_EVENT)), 4000);
         } else {
           console.warn(
             '[Life Hub] TickTick complete skipped — missing projectId',

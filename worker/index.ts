@@ -852,11 +852,35 @@ async function handleTaskWontDo(request: Request, env: Env): Promise<Response> {
   const projectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
   if (!/^[0-9a-f]{12,40}$/i.test(taskId) || !projectId) return jsonResponse({ ok: false, error: "bad_input" }, 400, origin);
   try {
-    await ttFetch(env, `/task/${encodeURIComponent(taskId)}`, {
+    // A repeating task is one record per series: setting it to won't do would close the whole series.
+    // TickTick's own Won't Do closes just this occurrence and moves the series to its next date, so:
+    // complete it (TickTick advances the series and files this occurrence as a done copy), then turn
+    // that copy into won't do. A one-off task is simply set to won't do.
+    const task = (await ttFetch(env, `/project/${encodeURIComponent(projectId)}/task/${encodeURIComponent(taskId)}`)) as Record<string, unknown> | null;
+    if (!task || !task.repeatFlag) {
+      await ttFetch(env, `/task/${encodeURIComponent(taskId)}`, {
+        method: "POST",
+        body: JSON.stringify({ id: taskId, projectId, status: -1 }),
+      });
+      return jsonResponse({ ok: true, repeat: false }, 200, origin);
+    }
+    const before = Date.now();
+    await ttFetch(env, `/project/${encodeURIComponent(projectId)}/task/${encodeURIComponent(taskId)}/complete`, { method: "POST" });
+    const fmt = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, ".000+0000");
+    const done = ((await ttFetch(env, "/task/completed", {
       method: "POST",
-      body: JSON.stringify({ id: taskId, projectId, status: -1 }),
+      body: JSON.stringify({ projectIds: [projectId], startDate: fmt(before - 5 * 60_000), endDate: fmt(Date.now() + 60_000) }),
+    })) as Array<Record<string, unknown>> | null) || [];
+    // The copy of this occurrence: same title in the same list, completed just now (newest first).
+    const copy = done
+      .filter(t => t && t.status === 2 && t.title === task.title && t.projectId === projectId)
+      .sort((a, b) => Date.parse(ttTime(b.completedTime) || "") - Date.parse(ttTime(a.completedTime) || ""))[0];
+    if (!copy || typeof copy.id !== "string") return jsonResponse({ ok: true, repeat: true, marked: false }, 200, origin);
+    await ttFetch(env, `/task/${encodeURIComponent(copy.id)}`, {
+      method: "POST",
+      body: JSON.stringify({ id: copy.id, projectId, status: -1 }),
     });
-    return jsonResponse({ ok: true }, 200, origin);
+    return jsonResponse({ ok: true, repeat: true, marked: true, copyId: copy.id }, 200, origin);
   } catch (e) {
     return jsonResponse({ ok: false, error: (e as Error).message }, 502, origin);
   }

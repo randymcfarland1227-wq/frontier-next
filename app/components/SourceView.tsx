@@ -141,7 +141,7 @@ export function SourceView({
                 fill={sourceId === "ticktick"}
               />
             </section>
-            <ShelfList snapshot={snapshot} />
+            <ShelfList snapshot={snapshot} onComplete={sourceId === "role" ? undefined : onCompleteTask} />
           </>
         )}
       </section>

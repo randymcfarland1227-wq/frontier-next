@@ -32,7 +32,9 @@ export function hideLedgerDone(
       ...snap.tasks.filter(t => t.status !== 'done' && isDone(t.id)).map(t => t.id),
       ...snap.featured.filter(f => isDone(f.id) && !snap!.tasks.some(t => t.id === f.id && t.status === 'done')).map(f => f.id),
     ]);
-    if (!hide.size) continue;
+    // Shelf items (Resale prep / decisions) checked off on the hub stay off too.
+    const shelfDone = id !== 'ticktick' && Boolean(snap.shelves?.some(sh => sh.items.some(i => isDone(i.id))));
+    if (!hide.size && !shelfDone) continue;
     let metrics = snap.metrics;
     for (const itemId of hide) metrics = metricsAfterLocalComplete(id, { ...snap, metrics }, itemId);
     snap = {
@@ -40,6 +42,7 @@ export function hideLedgerDone(
       metrics,
       tasks: isConnectorSource(id) ? snap.tasks.filter(t => !hide.has(t.id)) : snap.tasks.map(t => hide.has(t.id) ? {...t,status:'done'} : t),
       featured: snap.featured.filter(f => !hide.has(f.id)),
+      ...(shelfDone ? { shelves: snap.shelves!.map(sh => ({ ...sh, items: sh.items.filter(i => !isDone(i.id)) })) } : {}),
     };
     next = { ...next, [id]: snap };
   }

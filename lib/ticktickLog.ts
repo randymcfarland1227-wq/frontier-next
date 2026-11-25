@@ -113,7 +113,19 @@ export async function logTickTick(task: Pick<TaskItem, 'id' | 'kind' | 'projectI
   else saveDayLog({ ...log, wontDoTasks: [...new Set([...log.wontDoTasks, task.id])] });
   try {
     const res = await fetch(`${WORKER}${path}`, { method: 'POST', headers, body: JSON.stringify(body) });
-    if (res.ok) return true;
+    if (res.ok) {
+      // A repeating task's Won't do closes only this occurrence (a copy) and moves the series on, so the
+      // series itself (same id, next due date) isn't marked here: it shows again when its next date comes.
+      if (!habit && ((await res.json().catch(() => ({}))) as { repeat?: boolean }).repeat) {
+        const now = load();
+        const { [task.id]: _was, ...keep } = now.map;
+        void _was;
+        save({ ...now, map: keep });
+        const day = loadDayLog();
+        saveDayLog({ ...day, wontDoTasks: day.wontDoTasks.filter(id => id !== task.id) });
+      }
+      return true;
+    }
   } catch {
     /* fall through */
   }

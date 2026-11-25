@@ -9,6 +9,7 @@
  */
 import { ASSETS } from './assets';
 import { amountOf, type Cell, type CellEdit, type MoneyModel } from './money';
+import { loadLifeSubs } from './lifeSubs';
 import { loadMoneyMeta, metaName, setMeta, type LoanLogEntry } from './moneyMeta';
 import type { BillDue } from './schedule';
 
@@ -59,6 +60,43 @@ export function addLoanLog(loan: string, entry: LoanLogEntry) {
 }
 export function removeLoanLog(loan: string, id: string) {
   setMeta(loanLogKey(loan), { log: loanLog(loan).filter((e) => e.id !== id) });
+}
+
+/**
+ * Loans added on Life Hub (lifesubs kind 'loan') have no sheet cell: their balance is moneyMeta
+ * `loan:<name>.bal`. A Paid mark on one of their dues (`money:lhsub:<id>:<day>`) takes the payment
+ * off that balance and logs it as a payment; Undo Paid puts it back. Returns true when it moved.
+ */
+const hubLoanOfKey = (key: string) => {
+  const m = /^money:lhsub:(.+):\d{4}-\d{2}-\d{2}$/.exec(key);
+  return m ? loadLifeSubs().find((x) => x.id === m[1] && x.kind === 'loan' && !x.removed) : undefined;
+};
+export function payHubLoan(key: string, amount: number | undefined, day: string, sheetNames: Set<string>): boolean {
+  const loan = hubLoanOfKey(key);
+  if (!loan || !(amount && amount > 0) || sheetNames.has(metaName(loan.name)) || loanLog(loan.name).some((e) => e.due === key)) return false;
+  const metaKey = `loan:${metaName(loan.name)}`;
+  const before = loadMoneyMeta()[metaKey]?.bal;
+  if (typeof before !== 'number') {
+    // No balance typed yet: still keep the payment in the log, nothing to subtract from.
+    addLoanLog(loan.name, { id: `pay:${key}`, date: day, kind: 'payment', amount, due: key, sheet: false });
+    return true;
+  }
+  const after = Math.max(0, round2(before - amount));
+  setMeta(metaKey, { bal: after });
+  addLoanLog(loan.name, { id: `pay:${key}`, date: day, kind: 'payment', amount, due: key, before, after });
+  return true;
+}
+export function unpayHubLoan(key: string): boolean {
+  const loan = hubLoanOfKey(key);
+  const logged = loan ? loanLog(loan.name).find((e) => e.due === key && e.kind === 'payment') : undefined;
+  if (!loan || !logged) return false;
+  removeLoanLog(loan.name, logged.id);
+  if (logged.sheet !== false) {
+    const metaKey = `loan:${metaName(loan.name)}`;
+    const bal = loadMoneyMeta()[metaKey]?.bal;
+    if (typeof bal === 'number') setMeta(metaKey, { bal: round2(bal + logged.amount) });
+  }
+  return true;
 }
 
 export type Payoff = { months: number; date: Date; interest: number } | null;

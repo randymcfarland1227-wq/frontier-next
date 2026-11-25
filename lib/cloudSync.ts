@@ -5,7 +5,7 @@
  * or inside a "link another device" URL fragment (fragments are never sent to servers).
  */
 
-import { loadLedger } from './completions';
+import { loadLedgerWithUndos } from './completions';
 import { hashText, PCC_KEY, type CandleBundle } from './candleSync';
 import { loadCaptures } from './captures';
 import { loadSelfItems } from './adapters/self';
@@ -152,7 +152,7 @@ function writeCandle(next: CandleBundle): boolean {
 
 export function readLocalState(): SyncedState {
   return normalizeState({
-    completions: loadLedger(),
+    completions: loadLedgerWithUndos(),
     captures: loadCaptures(),
     self: loadSelfItems(),
     goalLinks: readSaved<LocalGoalLinks>(STORAGE_KEYS.goalLinks, { added: [], removed: [] }),

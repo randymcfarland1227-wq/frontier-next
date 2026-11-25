@@ -149,6 +149,13 @@ export function loadLedger(): CompletionLedger {
   return { entries: Object.fromEntries(Object.entries(entries).filter(([, e]) => !isReopened(e))) };
 }
 
+/** Every saved completion, Undo markers included. Cloud sync must send these: without the
+ * markers the server's older "done" copy wins the merge and an Undo flips straight back. */
+export function loadLedgerWithUndos(): CompletionLedger {
+  const saved = readSaved<CompletionLedger>(STORAGE_KEYS.completions, { entries: {} });
+  return { entries: Object.fromEntries(Object.entries(saved.entries || {}).filter(([, e]) => e && isRealCompletion(e))) };
+}
+
 /** Background work can finish with a ledger captured before Review's Undo. Keep the newer
  * marker even when that stale copy still contains the same completion key. */
 function withLatestUndos(ledger: CompletionLedger): CompletionLedger {

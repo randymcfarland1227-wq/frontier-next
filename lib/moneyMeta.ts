@@ -67,6 +67,26 @@ export type MetaEntry = {
   asOf?: string;
   start?: string;
   billKey?: string;
+  /** loanlog:<loan> (lib/loanLog.ts): payments and credits that moved a loan's balance, newest last */
+  log?: LoanLogEntry[];
+};
+
+/** One change to a loan's balance logged on Life Hub: a payment marked Paid, or a credit / adjustment typed in the loan pop-out. */
+export type LoanLogEntry = {
+  id: string;
+  /** Day it happened (YYYY-MM-DD) */
+  date: string;
+  kind: 'payment' | 'credit';
+  /** How much it took off the balance */
+  amount: number;
+  note?: string;
+  /** The bill's due key, for payments (so Undo Paid can put it back) */
+  due?: string;
+  /** Balance before / after, as written to the sheet */
+  before?: number;
+  after?: number;
+  /** false when the sheet write failed (the balance didn't move there) */
+  sheet?: boolean;
 };
 export type MoneyMeta = Record<string, MetaEntry>;
 

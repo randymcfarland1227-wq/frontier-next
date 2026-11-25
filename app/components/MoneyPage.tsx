@@ -12,7 +12,7 @@ import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useSta
 import { PayPlanner } from './PayPlanner';
 import { debtOptions, purchaseAddEdits, purchaseDeleteEdits } from '../../lib/money';
 import { PayLaterAdd } from './MoneyAddRows';
-import { requestOpenDebt, requestUnpayBill } from '../../lib/finLinks';
+import { OPEN_PAYLATER_EVENT, openPayLater, requestOpenDebt, requestUnpayBill } from '../../lib/finLinks';
 import { MoneySelector } from './MoneySelector';
 import { isLedgerPaid, ledgerMonthRows } from '../../lib/moneyLedger';
 import { DebtFile } from './DebtFile';
@@ -26,7 +26,9 @@ import { ASSETS, assetKey, loanSeenKey, type AssetId } from '../../lib/assets';
 import { useOwedDone } from '../../lib/owedComplete';
 import { metaName, setMeta, useMoneyMeta, type MetaEntry } from '../../lib/moneyMeta';
 import { isSettled, owedOf } from '../../lib/debtFile';
-import { bankRows } from './MoneyBoards';
+import { bankRows, type LoanRow } from './MoneyBoards';
+import { loanLog, loanLogKey, loanPayoff, requestLoanAdjust } from '../../lib/loanLog';
+import type { LoanLogEntry } from '../../lib/moneyMeta';
 import { UpdateFiguresButton } from './UpdateFigures';
 import { BrandLogo } from './BrandLogo';
 import { Icon } from '../sticker/Icon';
@@ -1942,7 +1944,7 @@ function useIncomingLanding(model: MoneyModel | null, book: Book, save: Save) {
 }
 
 /** Open any item's panel from anywhere on the Money page. */
-type PanelState = { type: 'line' | 'acct' | 'card' | 'item' | 'loan' | 'sub' | 'asset'; id: string; back?: PanelState };
+type PanelState = { type: 'line' | 'acct' | 'card' | 'item' | 'loan' | 'sub' | 'asset' | 'paylater'; id: string; back?: PanelState };
 const MoneyPanelCtx = createContext<{ openLine: (key: string) => void; openAccount: (name: string) => void; openCard: (name: string) => void; openItem: (key: string) => void; openLoan: (name: string) => void; openAsset: (id: string) => void; openSub: (name: string) => void; openDue: (key: string) => void; has: (key: string) => boolean }>({
   openLine: () => {},
   openAccount: () => {},
@@ -2860,6 +2862,7 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
           <label className="is-wide">Lender / what it’s for<input type="text" defaultValue={l.hub.note || ''} onBlur={e => updateLifeSub(l.hub!.id, { note: e.target.value.trim() || undefined })} /></label>
         </div>
       ) : null}
+      {asset ? null : <LoanPlan l={l} apr={m?.apr} paidThisMonth={Boolean(state && PAID_STATES.includes(state))} />}
       <SinceField metaKey={l.key} label="Loan started" />
       <PaidHistory list={history} paidAt={paidAt} model={model} current={l.due} />
       <div className="bal-dlg-actions">
@@ -2869,6 +2872,132 @@ function LoanPanel({ name, model, dues, monthDues, paidAt, onPaid, onBack, onClo
         ) : null}
         {l.due && state && !PAID_STATES.includes(state) ? <button type="button" className="sk-btn is-small is-prominent" onClick={() => { onPaid(l.due!); onClose(); }}>Mark paid</button> : null}
       </div>
+    </Modal>
+  );
+}
+
+/**
+ * A loan's payoff and balance log (Fortiva, Nelnet): when it's paid off at the payment due now or at a
+ * typed one, interest or none, and every payment / credit that moved the balance. Logging a credit writes
+ * the new balance into the sheet's Bal cell (life-hub.tsx moveLoan); a loan added on Life Hub keeps it here.
+ */
+function LoanPlan({ l, apr, paidThisMonth }: { l: LoanRow; apr?: number; paidThisMonth: boolean }) {
+  const { get } = useMoneyMeta();
+  const log: LoanLogEntry[] = (get(loanLogKey(l.name))?.log as LoanLogEntry[] | undefined) || [];
+  const [what, setWhat] = useState('');
+  const [amt, setAmt] = useState('');
+  const [day, setDay] = useState(dayKey(new Date()));
+  const [note, setNote] = useState('');
+  const bal = l.bal;
+  const rate = apr && apr > 0 ? apr : 0;
+  const now = new Date();
+  // First payment the projection counts: this month's if it isn't paid yet, else next month's.
+  const first = l.due && !paidThisMonth ? fromDayKey(l.due.due) : new Date(now.getFullYear(), now.getMonth() + 1, l.due ? fromDayKey(l.due.due).getDate() : 1);
+  const pay = l.payment;
+  const base = bal !== undefined && pay ? loanPayoff(bal, pay, rate, first) : null;
+  const altN = Number(what.replace(/[$,\s]/g, ''));
+  const alt = bal !== undefined && what.trim() && altN > 0 ? loanPayoff(bal, altN, rate, first) : undefined;
+  const monthYear = (d: Date) => d.toLocaleDateString([], { month: 'short', year: 'numeric' });
+  const line = (p: ReturnType<typeof loanPayoff>, at: number) =>
+    p ? `${money(at)}/mo → paid off ${monthYear(p.date)} · ${p.months} payment${p.months === 1 ? '' : 's'}${rate ? ` · ${money(p.interest)} interest` : ''}` : `${money(at)}/mo never catches up with the interest`;
+  const submit = () => {
+    const n = Number(amt.replace(/[$,\s]/g, ''));
+    if (!(n > 0)) return;
+    if (l.hub) {
+      // Added on Life Hub: no sheet cell, so the balance and the log live here.
+      const before = l.bal ?? 0;
+      const after = Math.max(0, Math.round((before - n) * 100) / 100);
+      setMeta(l.key, { bal: after });
+      setMeta(loanLogKey(l.name), { log: [...loanLog(l.name), { id: `credit:${Date.now().toString(36)}`, date: day, kind: 'credit', amount: n, note: note.trim() || undefined, before, after }] });
+    } else requestLoanAdjust({ loan: l.name, amount: n, date: day, note: note.trim() || undefined });
+    setAmt('');
+    setNote('');
+  };
+  return (
+    <section className="bal-drw-sec mb-loanplan">
+      <h4>Payoff</h4>
+      <p className="mb-dim">{rate ? `${rate}% APR: interest is added each month, so part of every payment goes to interest.` : 'No interest: the balance only goes down, by what you pay or are credited.'}</p>
+      {bal === undefined ? (
+        <p className="mny-empty">No balance yet{l.hub ? '. Type it under Loan terms.' : ' in the sheet’s Bal cell.'}</p>
+      ) : !pay ? (
+        <p className="mny-empty">No monthly payment found to project from.</p>
+      ) : (
+        <p className="mb-loanplan-now"><b>{line(base, pay)}</b>{paidThisMonth ? <small> · this month’s payment is done</small> : null}</p>
+      )}
+      {bal !== undefined ? (
+        <label className="mb-loanplan-what">
+          What if I pay $<input inputMode="decimal" value={what} onChange={e => setWhat(e.target.value)} placeholder={pay ? String(pay) : 'amount'} aria-label="Monthly amount to try" />/mo
+          {alt !== undefined ? <span>{line(alt, altN)}</span> : null}
+        </label>
+      ) : null}
+      <h4>Balance log</h4>
+      {log.length ? (
+        <ul className="mb-loanlog">
+          {[...log].sort((a, b) => b.date.localeCompare(a.date)).map(e => (
+            <li key={e.id}>
+              <span>{fromDayKey(e.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              <b>{e.kind === 'payment' ? 'Payment' : 'Credit'}{e.note ? ` · ${e.note}` : ''}</b>
+              <span className="num">−{money(e.amount)}</span>
+              <small>{e.sheet === false ? 'sheet not updated: change the Bal cell by hand' : e.after !== undefined ? `balance ${money(e.after)}` : ''}</small>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mny-empty">Nothing logged yet. Payments you mark Paid from now on, and credits you add below, show here and move the balance{l.hub ? '' : ' in the sheet'}.</p>
+      )}
+      <form className="mb-cp-edit mb-loanlog-add" onSubmit={e => { e.preventDefault(); submit(); }}>
+        <label>Credit / adjustment $<input inputMode="decimal" value={amt} onChange={e => setAmt(e.target.value)} placeholder="30" required /></label>
+        <label>Day<input type="date" value={day} onChange={e => setDay(e.target.value)} /></label>
+        <label className="is-wide">Why<input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. account credit, fee refund" /></label>
+        <button type="submit" className="sk-btn is-small">Log it (takes it off the balance)</button>
+      </form>
+    </section>
+  );
+}
+
+/** A pay-later provider's hub: what's owed, purchasing power left, and each active plan with its next payment. */
+function PayLaterPanel({ provider, model, paidAt, onBack, onClose }: { provider: string; model: MoneyModel; paidAt: Record<string, string>; onBack?: () => void; onClose: () => void }) {
+  const k = metaName(provider);
+  const sum = (model.paylaterSums?.rows || []).find(r => metaName(r[0]?.text.replace(/\s*sum$/i, '') || '') === k);
+  const today = dayKey(new Date());
+  const open = model.items
+    .filter(i => i.kind === 'paylater' && metaName(i.provider || '') === k && !i.skipped && !paidAt[i.id])
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const plans = new Map<string, typeof open>();
+  for (const i of open) plans.set(i.name, [...(plans.get(i.name) || []), i]);
+  const left = open.reduce((s2, i) => s2 + (i.amount || 0), 0);
+  const late = open.filter(i => i.date && i.date < today);
+  const short = (d?: string) => (d ? fromDayKey(d).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'no date');
+  return (
+    <Modal label={provider} onClose={onClose} onBack={onBack}>
+      <div className="bal-drw-head">
+        <FinanceType>Pay later</FinanceType>
+        <h3>{provider}</h3>
+        {late.length ? <p className="bal-drw-chips"><span className="is-short">{late.length} past due · {money(late.reduce((s2, i) => s2 + (i.amount || 0), 0))}</span></p> : null}
+      </div>
+      <div className="mb-cp-figs">
+        <span><small>owed (sheet)</small><b>{sum?.[1]?.text || '—'}</b></span>
+        <span><small>purchasing power</small><b>{sum?.[3]?.text || '—'}</b></span>
+        <span><small>active plans</small><b>{plans.size}</b></span>
+        <span><small>payments left</small><b>{open.length} · {money(left)}</b></span>
+      </div>
+      <section className="bal-drw-sec">
+        <h4>Active plans</h4>
+        {plans.size ? (
+          <ul className="mb-plplans">
+            {[...plans].map(([name, rows]) => (
+              <li key={name} className={rows[0].date && rows[0].date < today ? 'is-late' : ''}>
+                <b>{name}</b>
+                <span>next {short(rows[0].date)} · {money(rows[0].amount || 0)}{rows[0].installment ? ` · ${rows[0].installment}` : ''}</span>
+                <small>{rows.length} left · {money(rows.reduce((s2, i) => s2 + (i.amount || 0), 0))} · last {short(rows[rows.length - 1].date)}</small>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mny-empty">No open payments for {provider} in the sheet’s Full Ledger.</p>
+        )}
+      </section>
+      <p className="mb-dim">From the sheet’s Pay later sums and Full Ledger. Paid rows (ticked on Life Hub or crossed out in the sheet) are left out.</p>
     </Modal>
   );
 }
@@ -3562,6 +3691,11 @@ export function MoneyPage({
   useIncomingLanding(model, book, save);
   const owedDone = useOwedDone();
   const [panel, setPanel] = useState<PanelState | null>(null);
+  useEffect(() => {
+    const on = (e: Event) => setPanel(cur => ({ type: 'paylater', id: String((e as CustomEvent).detail || ''), back: cur || undefined }));
+    window.addEventListener(OPEN_PAYLATER_EVENT, on);
+    return () => window.removeEventListener(OPEN_PAYLATER_EVENT, on);
+  }, []);
   const detailDues = useMemo(() =>
     ledgerMonthRows([...dues, ...monthDues], model?.items || [], new Date()), [dues, monthDues, model]);
   const panelApi = useMemo(
@@ -3678,7 +3812,7 @@ export function MoneyPage({
   // Research pop-out on a sheet Needed / Wants row (keyed by its name — sheet rows have no id).
   const sheetResearch = (row: Cell[], list: string) => {
     const name = row[1]?.text || row.find((c, i) => i > 0 && c.text && amountOf(c.text) === undefined)?.text || '';
-    return name ? <ResearchButton rkey={sheetBuyKey(name)} title={name} sub={`Money › Purchases › ${list}`} /> : null;
+    return name ? <ResearchButton rkey={sheetBuyKey(name)} title={name} sub={`Money › Purchases › ${list}`} label="Details" /> : null;
   };
   const moveTo = (row: Cell[], target: Table | null, label: string) => {
     const after = lastRow(target);
@@ -3950,7 +4084,7 @@ export function MoneyPage({
                   <div className="mny-providers">
                     {pay.rows.map(r => (
                       <div key={r[0].r} className="mny-provider">
-                        <strong>{r[0].text.replace(/\s*sum$/i, '')}</strong>
+                        <button type="button" className="mny-provider-open" title="Open: owed, purchasing power and every active plan" onClick={() => openPayLater(r[0].text.replace(/\s*sum$/i, '').trim())}><strong>{r[0].text.replace(/\s*sum$/i, '')}</strong></button>
                         <span>
                           <EditCell cell={r[1]} onSave={save} /> owed
                         </span>
@@ -4138,6 +4272,11 @@ export function MoneyPage({
         ) : null}
 
         {tab === 'owed' ? <DebtFile scope="owed" model={model} monthDues={monthDues} paidAt={paidAt} cell={cell} /> : null}
+        {tab === 'owed' && model.creditAccounts ? (
+          <Section tone="plan" title="Loans · paying down" hint="Fixed payments that only go down (Fortiva, Nelnet, the Toyota). Tap one for % paid, payoff date and its balance log. Not in the total above: it's the same list as Credit › Loans.">
+            <LoansTable model={model} monthDues={monthDues} paidAt={paidAt} cell={cell} onOpen={panelApi.openLoan} />
+          </Section>
+        ) : null}
 
         {tab === 'debts' ? (
           <div className="mny-stack">
@@ -4250,6 +4389,8 @@ export function MoneyPage({
         <AssetPanel key={panel.id} id={panel.id as AssetId} model={model} dues={dues} monthDues={monthDues} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : panel?.type === 'sub' ? (
         <SubPanel key={panel.id} name={panel.id} model={model} dues={detailDues} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
+      ) : panel?.type === 'paylater' ? (
+        <PayLaterPanel key={panel.id} provider={panel.id} model={model} paidAt={paidAt} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : panel?.type === 'item' ? (
         <ItemPanel key={panel.id} id={panel.id} dues={detailDues} model={model} paidAt={paidAt} onPaid={onPaid} onBack={panel.back ? () => setPanel(panel.back!) : undefined} onClose={() => setPanel(null)} />
       ) : null}

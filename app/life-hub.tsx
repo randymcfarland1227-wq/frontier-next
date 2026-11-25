@@ -47,6 +47,7 @@ import './sticker/sticker.css';
 import { HomeView } from './components/HomeView';
 import { SourceCard } from './components/SourceCard';
 import { PAY_BILL_EVENT, UNPAY_BILL_EVENT, requestOpenDebt } from '../lib/finLinks';
+import { LOAN_ADJUST_EVENT, addLoanLog, balanceEdit, loanLog, loanRowByName, loanRowOfDue, removeLoanLog, type LoanAdjust } from '../lib/loanLog';
 import { SiteFocus } from './components/AssignedFocus';
 import { SourceView } from './components/SourceView';
 import { VoiceMemoList } from './components/VoiceMemoList';
@@ -230,17 +231,56 @@ export function LifeHub() {
     window.addEventListener(PAY_BILL_EVENT, on);
     return () => window.removeEventListener(PAY_BILL_EVENT, on);
   }, []);
+  // A loan's balance (Fortiva, Nelnet…) moves in the sheet's Bal cell when its payment is marked Paid or a credit is logged.
+  const moveLoan = (row: NonNullable<ReturnType<typeof loanRowOfDue>>, amount: number, entry: { kind: 'payment' | 'credit'; date: string; note?: string; due?: string }, also: CellEdit[] = []) => {
+    const loan = row[0].text.trim();
+    const id = entry.due ? `pay:${entry.due}` : `credit:${Date.now().toString(36)}`;
+    const ed = balanceEdit(row, amount);
+    if (!ed) {
+      addLoanLog(loan, { id, amount, ...entry, sheet: false });
+      if (also.length) void saveMoneyEdits(also).then(res => { if (res.snapshot) setMoneySnap(res.snapshot); });
+      return;
+    }
+    addLoanLog(loan, { id, amount, ...entry, before: ed.before, after: ed.after });
+    // One write with the row's cross-off (if any), so the snapshot that comes back has both.
+    void saveMoneyEdits([...also, ed.edit]).then(res => {
+      if (res.snapshot) setMoneySnap(res.snapshot);
+      if (!res.ok || res.results.some(r => !r.ok)) {
+        addLoanLog(loan, { id, amount, ...entry, before: ed.before, after: ed.after, sheet: false });
+        console.warn('Loan balance write failed', loan, res.error || res.results);
+      }
+    });
+  };
   const payBill = (due: BillDue) => {
     setLedger(recordCompletion('radall', due.key, { title: `Paid ${due.bill.name}`, via: 'hub' }));
+
     // Keep what was paid, so the pop-outs' history can show last time's amount after the row is gone.
     if (due.bill.amount !== undefined) setMoneyMetaEntry(`paid:${due.key}`, { amount: due.bill.amount, name: due.bill.origName ?? due.bill.name, paidKind: due.bill.kind || 'bill', paidDue: due.orig || due.due });
     const edit = crossOffEdit(moneyModel?.items.find(i => i.id === due.key));
+    const loanRow = moneyModel ? loanRowOfDue(moneyModel, due) : undefined;
+    if (loanRow && due.bill.amount && !loanLog(loanRow[0].text).some(e => e.due === due.key)) {
+      moveLoan(loanRow, due.bill.amount, { kind: 'payment', date: localDayKey(), due: due.key }, edit ? [edit] : []);
+      return;
+    }
     if (!edit) return;
     void saveMoneyEdits([edit]).then(res => {
       if (res.snapshot) setMoneySnap(res.snapshot);
       if (!res.ok || res.results.some(r => !r.ok)) console.warn('Sheet cross-off failed', due.bill.name, res.error || res.results);
     });
   };
+  // Credits / adjustments typed in a loan pop-out (lib/loanLog requestLoanAdjust).
+  const loanAdjustRef = useRef<(d: LoanAdjust) => void>(() => {});
+  useEffect(() => {
+    loanAdjustRef.current = (d: LoanAdjust) => {
+      const row = moneyModel ? loanRowByName(moneyModel, d.loan) : undefined;
+      if (row && d.amount) moveLoan(row, d.amount, { kind: 'credit', date: d.date, note: d.note });
+    };
+  });
+  useEffect(() => {
+    const on = (e: Event) => loanAdjustRef.current((e as CustomEvent).detail as LoanAdjust);
+    window.addEventListener(LOAN_ADJUST_EVENT, on);
+    return () => window.removeEventListener(LOAN_ADJUST_EVENT, on);
+  }, []);
   // Undo a Paid mark (Money month overview): reopen the ledger entry and un-cross the sheet row,
   // so a payment whose day has passed goes back to Overdue.
   const unpayBillRef = useRef<(key: string) => void>(() => {});
@@ -253,6 +293,14 @@ export function LifeHub() {
     unpayBillRef.current = (key: string) => {
       if (!key) return;
       setLedger(reopenCompletion('radall', key));
+      // Undo a loan payment: put its amount back on the balance and drop the log line.
+      const loanRow = moneyModel?.creditAccounts?.rows.find(r => r[0]?.text.trim() && loanLog(r[0].text).some(e => e.due === key && e.kind === 'payment'));
+      const logged = loanRow ? loanLog(loanRow[0].text).find(e => e.due === key) : undefined;
+      if (loanRow && logged) {
+        removeLoanLog(loanRow[0].text, logged.id);
+        const ed = logged.sheet === false ? undefined : balanceEdit(loanRow, -logged.amount);
+        if (ed) void saveMoneyEdits([ed.edit]).then(res => { if (res.snapshot) setMoneySnap(res.snapshot); });
+      }
       // A subscription's month is projected from its one sheet row, so that row is the one to un-cross.
       const prefix = key.startsWith('money:sub:') ? key.split(':').slice(0, 3).join(':') + ':' : '';
       const item = moneyModel?.items.find(i => i.id === key) || (prefix ? moneyModel?.items.find(i => i.skipped && i.id.startsWith(prefix)) : undefined);

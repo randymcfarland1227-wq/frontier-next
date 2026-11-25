@@ -41,5 +41,8 @@ export const PAY_BILL_EVENT = 'lifehub:pay-bill';
 export const requestPayBill = (dueKey: string) => window.dispatchEvent(new CustomEvent(PAY_BILL_EVENT, { detail: dueKey }));
 
 /** Undo a Paid mark from anywhere: the ledger entry is reopened and the sheet row un-crossed, so a past-due one is overdue again. */
+/** Open a pay-later provider's pop-out (Klarna, Affirm…) on the Money page. */
+export const OPEN_PAYLATER_EVENT = 'lifehub:open-paylater';
+export const openPayLater = (provider: string) => window.dispatchEvent(new CustomEvent(OPEN_PAYLATER_EVENT, { detail: provider }));
 export const UNPAY_BILL_EVENT = 'lifehub:unpay-bill';
 export const requestUnpayBill = (dueKey: string) => window.dispatchEvent(new CustomEvent(UNPAY_BILL_EVENT, { detail: dueKey }));

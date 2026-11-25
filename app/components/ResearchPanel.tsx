@@ -18,7 +18,7 @@ import {
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: n % 1 ? 2 : 0 });
 
 /** The small 🔎 button on a purchase or to-do row. Lit when the record has something in it. */
-export function ResearchButton({ rkey, title, sub, className = "" }: { rkey: string; title: string; sub?: string; className?: string }) {
+export function ResearchButton({ rkey, title, sub, className = "", label }: { rkey: string; title: string; sub?: string; className?: string; label?: string }) {
   const store = useResearch();
   const rec = researchOf(store, rkey);
   const lit = hasResearch(rec);
@@ -35,6 +35,7 @@ export function ResearchButton({ rkey, title, sub, className = "" }: { rkey: str
       }}
     >
       <Icon name="search" size={12} />
+      {label ? <span className="sk-rs-label">{label}</span> : null}
       {n ? <small>{n}</small> : null}
     </button>
   );

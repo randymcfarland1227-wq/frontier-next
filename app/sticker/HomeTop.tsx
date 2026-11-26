@@ -60,7 +60,7 @@ function SplitReadout({
   hint,
 }: {
   icon: IconName;
-  parts: { label: string; done: number; total: number }[];
+  parts: { label: string; done: number; total: number; open: string[] }[];
   onPress: () => void;
   hint: string;
 }) {
@@ -69,7 +69,7 @@ function SplitReadout({
       type="button"
       className="sk-ro sk-ro-split tone-habit"
       onClick={onPress}
-      title={hint}
+      aria-label={hint}
     >
       <span className="sk-ro-top">
         <span>
@@ -95,6 +95,20 @@ function SplitReadout({
               <small className="sk-pie-count">
                 {p.label} · {p.done}/{p.total}
               </small>
+              {/* Hover / focus: what's still open in this half. */}
+              <span className="sk-ro-openpop" aria-hidden="true">
+                <b>
+                  {p.open.length ? `${p.open.length} open ${p.label.toLowerCase()}` : `All ${p.label.toLowerCase()} done`}
+                </b>
+                {p.open.length ? (
+                  <span className="sk-ro-openlist">
+                    {p.open.slice(0, 12).map((t, i) => (
+                      <span key={i}>{t}</span>
+                    ))}
+                    {p.open.length > 12 ? <i>+{p.open.length - 12} more</i> : null}
+                  </span>
+                ) : null}
+              </span>
             </span>
           );
         })}
@@ -349,10 +363,15 @@ export function HomeTop({
     : Math.max(0, (Number(tt?.metrics?.habits) || 0) - day.skippedHabits);
   const habitsLogged = day.habitsDone + day.skippedHabits;
   const habitsTotal = habitsLogged + openHabits;
-  const openTasks = (tt?.tasks || []).filter(
+  const openHabitTitles = habitTasks.filter((t) => !day.offIds.has(t.id)).map((t) => t.title);
+  const openTaskItems = (tt?.tasks || []).filter(
     (t) =>
       t.status !== "done" && t.kind !== "habit" && !t.id.startsWith("habit-"),
-  ).length;
+  );
+  const openTasks = openTaskItems.length;
+  const openTaskTitles = [...openTaskItems]
+    .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"))
+    .map((t) => t.title);
   const tasksLogged = day.tasksDone + day.wontDoTasks;
   const tasksTotal = tasksLogged + openTasks;
   const overdue = Number(tt?.metrics?.overdue) || 0;
@@ -449,8 +468,8 @@ export function HomeTop({
           onPress={() => enter("ticktick")}
           hint={`TickTick today — habits: ${day.habitsDone} done · ${day.skippedHabits} skipped · ${openHabits} open. Tasks: ${day.tasksDone} done · ${day.wontDoTasks} won't do · ${openTasks} open — opens TickTick`}
           parts={[
-            { label: "Habits", done: habitsLogged, total: habitsTotal },
-            { label: "Tasks", done: tasksLogged, total: tasksTotal },
+            { label: "Habits", done: habitsLogged, total: habitsTotal, open: openHabitTitles },
+            { label: "Tasks", done: tasksLogged, total: tasksTotal, open: openTaskTitles },
           ]}
         />
       </section>

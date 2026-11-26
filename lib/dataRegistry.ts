@@ -11,6 +11,7 @@ export type SavedKey = { key: string; backup: 'cloud' | 'device' | 'cache'; note
 export const SAVED_KEYS: SavedKey[] = [
   { key: 'lifehub-reopen-source-observations', backup: 'cache', note: 'Source open acknowledgements after a local Undo; safe to rebuild' },
   { key: 'lifehub-worksheets', backup: 'cloud', note: 'Existing worksheet documents' },
+  { key: 'lifehub-site-map', backup: 'cloud', note: 'Map board: island spots + notes — cloud-synced' },
   { key: 'sk-worksheet-folded', backup: 'device' },
   { key: 'sk-worksheet-open', backup: 'device' },
   { key: 'lifehub-finance-findings', backup: 'cloud', note: 'Finance findings: amount found, payment plan + details, hand-typed money items — cloud-synced' },

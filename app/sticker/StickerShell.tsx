@@ -80,8 +80,6 @@ const PAGES: { id: SpaceId; label: string; icon: IconName; hint: string }[] = [
 export function StickerShell({
   active,
   enter,
-  unfinished,
-  openFocus,
   onRefresh,
   syncing,
   syncLabel,
@@ -266,19 +264,20 @@ export function StickerShell({
     </>
   );
 
-  const todayButton = (
+  // Map took Today's List's place here; Today's List opens from Home's Today button.
+  const mapButton = (
     <button
       type="button"
       className="sk-navi"
+      aria-current={current("map")}
       onClick={() => {
         setMore(false);
-        openFocus();
+        go("map");
       }}
-      title="Today: what you said you'd do today"
+      title="Map: every site you've built, in one place"
     >
-      <Icon name="checks" />
-      <span className="sk-navl">Today&apos;s List</span>
-      {unfinished ? <span className="sk-navcount">{unfinished}</span> : null}
+      <Icon name="map" />
+      <span className="sk-navl">Map</span>
     </button>
   );
 
@@ -332,7 +331,7 @@ export function StickerShell({
               <span className="sk-navl">{p.label}</span>
             </button>
           ))}
-          {todayButton}
+          {mapButton}
         </nav>
         <nav className="sk-nav" aria-label="Sites">
           {sites}
@@ -412,7 +411,7 @@ export function StickerShell({
                 <Icon name="close" size={14} />
               </button>
             </div>
-            {todayButton}
+            {mapButton}
             {sites}
             <div className="sk-sidefoot">{tools}</div>
           </div>

@@ -52,6 +52,7 @@ import { SiteFocus } from './components/AssignedFocus';
 import { SourceView } from './components/SourceView';
 import { VoiceMemoList } from './components/VoiceMemoList';
 import { FocusDrawer, useTodayListCount } from './components/FocusDrawer';
+import { MapView } from './components/MapView';
 import { SourceBridges } from './components/SourceBridges';
 import {
   loadLedger,
@@ -1316,7 +1317,7 @@ goalsData ? (
   );
   return (
     <SiteListsContext.Provider value={{ store: displaySiteLists, snapshots: taskPools, complete: (site, taskId) => completeOnHub(site, taskId), reopen: (site, taskId) => reopenOnHub(site, taskId), doneOf: (site, taskId) => { const e = ledger.entries[`${site}::${taskId}`]; return e?.title ? { title: e.title, at: e.completedAt } : undefined; } }}>
-    <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' ? 'home' : active}`} data-color-mode={theme}>
+    <main className={`frontier-shell sk-on theme-${active === 'home' || active === 'settings' || active === 'why' || active === 'money' || active === 'logs' || active === 'map' ? 'home' : active}`} data-color-mode={theme}>
       <StickerShell
         active={active}
         enter={enter}
@@ -1393,6 +1394,8 @@ goalsData ? (
         />
       ) : active === 'money' ? (
         moneyPage
+      ) : active === 'map' ? (
+        <MapView snapshots={visibleSnapshots} enter={enter} />
       ) : active === 'logs' ? (
         <LogsView />
       ) : active === 'why' ? (

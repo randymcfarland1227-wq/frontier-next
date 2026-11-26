@@ -4896,3 +4896,27 @@ button.ob-line-name { text-align: left; }
 .sk-app .map-shelf li { display: grid; padding: 5px 9px; border-radius: 10px; background: color-mix(in srgb, var(--sk-ink) 5%, transparent); }
 .sk-app .map-shelf li a, .sk-app .map-shelf li span { font: 600 12px/1.3 "DM Sans", system-ui, sans-serif; color: var(--sk-ink); }
 .sk-app .map-shelf li small { font: 11px/1.3 "DM Sans", system-ui, sans-serif; color: var(--sk-ink-2); }
+
+/* ── Habits & Tasks sticker: hover a half to see what's still open (2026-11-25) ── */
+.sk-app .sk-ro-split .sk-ro-half { position: relative; }
+.sk-app .sk-ro-openpop {
+  position: absolute; z-index: 40; top: calc(100% + 8px); left: -6px; width: max-content; min-width: 200px; max-width: min(300px, 80vw);
+  display: grid; gap: 6px; padding: 10px 12px; text-align: left; white-space: normal;
+  background: color-mix(in srgb, var(--sk-ink) 5%, var(--sk-page)); color: var(--sk-ink); border: 2px solid var(--sk-edge); border-radius: 12px; box-shadow: 3px 3px 0 var(--sk-edge);
+  opacity: 0; visibility: hidden; transform: translateY(-4px); transition: opacity .15s, transform .15s, visibility 0s .15s; pointer-events: none;
+}
+.sk-app .sk-ro-split .sk-ro-half + .sk-ro-half .sk-ro-openpop { left: auto; right: -6px; }
+.sk-app .sk-ro-openpop > b { font: 600 12px/1.3 "DM Sans", system-ui, sans-serif; color: var(--sk-ink-2); text-transform: uppercase; letter-spacing: .05em; }
+.sk-app .sk-ro-openlist { display: grid; gap: 4px; }
+.sk-app .sk-ro-openlist > span {
+  font: 400 13px/1.35 "DM Sans", system-ui, sans-serif; padding-left: 14px; position: relative;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.sk-app .sk-ro-openlist > span::before { content: ""; position: absolute; left: 0; top: .4em; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .6; }
+.sk-app .sk-ro-openlist > i { font: 600 12px/1.3 "DM Sans", system-ui, sans-serif; color: var(--sk-ink-2); font-style: normal; }
+@media (hover: hover) {
+  .sk-app .sk-ro-split .sk-ro-half:hover .sk-ro-openpop { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+}
+.sk-app .sk-ro-split:focus-visible .sk-ro-openpop { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+/* The sticker has its own layer (transform + backdrop blur), so lift it above the Today card while its pop-out shows. */
+.sk-app .sk-ro-split:is(:hover, :focus-visible) { position: relative; z-index: 60; }

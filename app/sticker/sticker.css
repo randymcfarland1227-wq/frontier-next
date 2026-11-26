@@ -4844,3 +4844,55 @@ button.ob-line-name { text-align: left; }
   .sk-app .sk-sched .sk-month:not(.sk-weekview) .sk-day.is-pastwk { flex-direction: column; }
   .sk-app .sk-sched .sk-month:not(.sk-weekview) .sk-day.is-pastwk .sk-ddots { margin-top: 0; }
 }
+
+/* ═══ Map: every site on one board, islands around Life Hub (app/components/MapView.tsx) ═══ */
+.sk-app .map-view { display: grid; gap: 14px; padding: 4px 0 24px; }
+.sk-app .map-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.sk-app .map-sub { margin: 2px 0 0; color: var(--sk-ink-2); font: var(--sk-caption); }
+.sk-app .map-board { position: relative; border-radius: 24px; border: 1px solid var(--sk-line); overflow: hidden;
+  background: radial-gradient(circle at 50% 400px, color-mix(in srgb, #7a5fd0 10%, transparent) 0, transparent 340px),
+    radial-gradient(circle, color-mix(in srgb, var(--sk-ink) 9%, transparent) 1px, transparent 1.5px) 0 0 / 22px 22px, var(--sk-card); }
+.sk-app .map-board.is-stacked { display: grid; gap: 12px; padding: 12px; overflow: visible; }
+.sk-app .map-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.sk-app .map-lines line { stroke-width: 1.5; stroke-linecap: round; }
+.sk-app .map-lines .is-hub { stroke: color-mix(in srgb, #7a5fd0 45%, transparent); stroke-dasharray: 4 6; }
+.sk-app .map-lines .is-site { stroke: color-mix(in srgb, var(--sk-ink) 45%, transparent); }
+.sk-app .map-hub { position: absolute; left: 50%; transform: translate(-50%, -50%); z-index: 1; display: grid; place-items: center; width: 150px; height: 150px; border-radius: 50%; text-align: center;
+  background: color-mix(in srgb, #7a5fd0 16%, var(--sk-card)); border: 2px solid color-mix(in srgb, #7a5fd0 55%, transparent); box-shadow: 0 0 0 10px color-mix(in srgb, #7a5fd0 8%, transparent); }
+.sk-app .map-hub b { font: var(--sk-headline); color: var(--sk-ink); align-self: end; }
+.sk-app .map-hub span { font: var(--sk-caption); color: var(--sk-ink-2); align-self: start; }
+.sk-app .map-board.is-stacked .map-hub { position: static; transform: none; width: auto; height: auto; border-radius: 16px; padding: 10px; box-shadow: none; }
+.sk-app .map-island { --map-c: #7a5fd0; position: absolute; z-index: 2; width: min(31%, 400px); padding: 10px; border-radius: 18px;
+  background: color-mix(in srgb, var(--map-c) 8%, var(--sk-card)); border: 1.5px solid color-mix(in srgb, var(--map-c) 45%, transparent); box-shadow: 0 8px 24px #0000001a; }
+.sk-app .map-board.is-stacked .map-island { position: static; width: auto; }
+.sk-app .map-island-head { display: flex; align-items: center; gap: 9px; padding: 2px 4px 8px; cursor: grab; touch-action: none; user-select: none; }
+.sk-app .map-board.is-stacked .map-island-head { cursor: default; }
+.sk-app .map-island-head:active { cursor: grabbing; }
+.sk-app .map-island-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--map-c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--map-c) 22%, transparent); }
+.sk-app .map-island-name { margin: 0; font: 700 15px/1.2 "DM Sans", system-ui, sans-serif; color: var(--sk-ink); }
+.sk-app .map-island-blurb { font: var(--sk-caption); color: var(--sk-ink-2); }
+.sk-app .map-island-count { margin-left: auto; min-width: 24px; padding: 2px 8px; border-radius: 99px; text-align: center; font: 700 12px/1.4 "DM Sans", system-ui, sans-serif; color: var(--sk-ink); background: color-mix(in srgb, var(--map-c) 22%, transparent); }
+.sk-app .map-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.sk-app .map-card { display: grid; gap: 2px; align-content: start; min-width: 0; padding: 6px 8px; border-radius: 12px; background: var(--sk-card); border: 1px solid var(--sk-line); }
+.sk-app .map-card-top { display: flex; align-items: center; gap: 6px; }
+.sk-app .map-card-name { min-width: 0; font: 700 12.5px/1.25 "DM Sans", system-ui, sans-serif; color: var(--sk-ink); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-app .map-card-name span { opacity: .45; font-size: 11px; }
+.sk-app .map-card-name:hover { text-decoration: underline; }
+.sk-app .map-card-what { font: 11.5px/1.3 "DM Sans", system-ui, sans-serif; color: var(--sk-ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sk-app .map-dot { flex: none; width: 8px; height: 8px; margin-left: auto; border-radius: 50%; }
+.sk-app .map-dot.is-fresh { background: #2fa565; box-shadow: 0 0 0 3px #2fa56533; }
+.sk-app .map-dot.is-quiet { background: #d39a1f; }
+.sk-app .map-dot.is-stale { background: #9a96a8; }
+.sk-app .map-card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.sk-app .map-tag { padding: 1px 7px; border-radius: 99px; font: 600 10.5px/1.5 "DM Sans", system-ui, sans-serif; color: var(--sk-ink-2); background: color-mix(in srgb, var(--sk-ink) 7%, transparent); }
+.sk-app .map-tag.is-feeds { border: 0; color: var(--sk-ink); background: color-mix(in srgb, #7a5fd0 18%, transparent); cursor: pointer; }
+.sk-app .map-tag.is-feeds:hover { background: color-mix(in srgb, #7a5fd0 32%, transparent); }
+.sk-app .map-note { display: block; width: 100%; margin-top: 8px; padding: 6px 9px; border: 1px dashed color-mix(in srgb, var(--map-c) 45%, transparent); border-radius: 10px; background: none; color: var(--sk-ink-2); text-align: left; font: 12px/1.4 "DM Sans", system-ui, sans-serif; white-space: pre-wrap; cursor: text; }
+.sk-app .map-note.has-text { border-style: solid; color: var(--sk-ink); background: color-mix(in srgb, #f5d76e 22%, var(--sk-card)); }
+.sk-app .map-note-edit { display: block; box-sizing: border-box; width: 100%; min-height: 80px; margin-top: 8px; padding: 6px 9px; border: 1px solid var(--map-c); border-radius: 10px; background: var(--sk-card); color: var(--sk-ink); font: 12px/1.4 "DM Sans", system-ui, sans-serif; resize: vertical; }
+.sk-app .map-shelf { padding: 10px 12px; border-radius: 18px; border: 1px dashed var(--sk-line); opacity: .8; }
+.sk-app .map-shelf-title { margin: 0 0 8px; font: 700 13px/1.2 "DM Sans", system-ui, sans-serif; color: var(--sk-ink-2); }
+.sk-app .map-shelf ul { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.sk-app .map-shelf li { display: grid; padding: 5px 9px; border-radius: 10px; background: color-mix(in srgb, var(--sk-ink) 5%, transparent); }
+.sk-app .map-shelf li a, .sk-app .map-shelf li span { font: 600 12px/1.3 "DM Sans", system-ui, sans-serif; color: var(--sk-ink); }
+.sk-app .map-shelf li small { font: 11px/1.3 "DM Sans", system-ui, sans-serif; color: var(--sk-ink-2); }

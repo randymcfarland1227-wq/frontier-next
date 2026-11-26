@@ -17,6 +17,7 @@ import { GROUP_LOG_KEY } from './groupLog';
 import { FINDINGS_KEY } from './finFindings';
 import { RESEARCH_KEY } from './research';
 import { WORKSHEETS_KEY } from './worksheets';
+import { SITE_MAP_KEY } from './siteMap';
 import { INBOX_KEY } from './routineInbox';
 import { FOCUS_LIST_KEYS, FOCUS_TOMBS_KEY, readFocusState, writeFocusState } from './focusSync';
 
@@ -63,6 +64,8 @@ const SYNCED_KEYS: string[] = [
   FINDINGS_KEY,
   'lifehub-packages',
   INBOX_KEY,
+  WORKSHEETS_KEY,
+  SITE_MAP_KEY,
 ];
 
 export type SyncStatus = {
@@ -188,6 +191,7 @@ export function readLocalState(): SyncedState {
     packages: readSaved('lifehub-packages', {}),
     research: readSaved(RESEARCH_KEY, {}),
     worksheets: readSaved(WORKSHEETS_KEY, {}),
+    siteMap: readSaved(SITE_MAP_KEY, {}),
     inbox: readSaved(INBOX_KEY, {}),
   });
 }
@@ -228,6 +232,7 @@ function writeLocalState(next: SyncedState): boolean {
     ['lifehub-packages', current.packages, next.packages],
     [RESEARCH_KEY, current.research, next.research],
     [WORKSHEETS_KEY, current.worksheets, next.worksheets],
+    [SITE_MAP_KEY, current.siteMap, next.siteMap],
     [INBOX_KEY, current.inbox, next.inbox],
   ];
   let changed = false;

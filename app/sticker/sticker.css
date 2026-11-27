@@ -4920,3 +4920,40 @@ button.ob-line-name { text-align: left; }
 .sk-app .sk-ro-split:focus-visible .sk-ro-openpop { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
 /* The sticker has its own layer (transform + backdrop blur), so lift it above the Today card while its pop-out shows. */
 .sk-app .sk-ro-split:is(:hover, :focus-visible) { position: relative; z-index: 60; }
+
+/* Worksheet › Sheet view (app/components/WorksheetSheet.tsx): the Sheet toggle sits just before @ Link */
+.sk-app .sk-ws-bar > .sk-ws-flip, .sk-app .sk-wsg-bar > .sk-ws-flip { margin-left: auto; font-weight: 700; border-color: var(--sk-line); }
+.sk-app .sk-ws-bar > .sk-ws-flip + .sk-ws-at { margin-left: 0; }
+.sk-app .sk-ws-flip.is-on { background: var(--sk-ink); color: var(--sk-page); border-color: var(--sk-ink); }
+.sk-app .sk-wsg { display: grid; gap: 6px; min-width: 0; }
+.sk-app .sk-wsg-bar { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 5px; padding: 5px 6px; border: 1.5px solid var(--sk-line); border-radius: 12px; background: var(--sk-page); }
+.sk-app .sk-wsg-bar > button { height: 28px; padding: 0 8px; display: inline-grid; place-items: center; border: 1px solid var(--sk-line); border-radius: 7px; background: none; color: var(--sk-ink); font: 600 12.5px/1 "DM Sans", system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
+.sk-app .sk-wsg-bar > button:hover:not(:disabled) { background: color-mix(in srgb, var(--sk-ink) 8%, transparent); }
+.sk-app .sk-wsg-bar > button:disabled { opacity: .45; cursor: default; }
+.sk-app .sk-wsg-bar > .sk-ws-flip.is-on:hover { background: color-mix(in srgb, var(--sk-ink) 85%, transparent); }
+.sk-app .sk-wsg-name { min-width: 44px; padding: 0 6px; height: 28px; display: inline-grid; place-items: center; border: 1px solid var(--sk-line); border-radius: 7px; font: 700 12.5px/1 "DM Mono", ui-monospace, monospace; color: var(--sk-ink); }
+.sk-app .sk-wsg-fxlabel { font: italic 700 13px/1 Georgia, serif; color: var(--sk-ink-2); }
+.sk-app .sk-wsg-fx { flex: 1; min-width: 60px; height: 28px; padding: 0 8px; border: 1px solid var(--sk-line); border-radius: 7px; background: var(--sk-page); color: var(--sk-ink); font: 500 13px/1 "DM Mono", ui-monospace, monospace; }
+.sk-app .sk-wsg-fx:focus { outline: 2px solid var(--sk-edge); outline-offset: -1px; }
+.sk-app .sk-wsg-wrap { max-height: 62vh; overflow: auto; border: 1.5px solid var(--sk-line); border-radius: 12px; background: var(--sk-page); outline: none; }
+.sk-app .sk-wsg-wrap:focus-visible { border-color: var(--sk-edge); }
+.sk-app .sk-wsg-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; font: 400 13px/1 "DM Sans", system-ui, sans-serif; color: var(--sk-ink); }
+.sk-app .sk-wsg-table th { position: sticky; z-index: 1; background: color-mix(in srgb, var(--sk-ink) 6%, var(--sk-page)); color: var(--sk-ink-2); font: 600 11px/1 "DM Sans", system-ui, sans-serif; border-right: 1px solid var(--sk-line); border-bottom: 1px solid var(--sk-line); user-select: none; }
+.sk-app .sk-wsg-table thead th { top: 0; height: 22px; }
+.sk-app .sk-wsg-table tbody th { left: 0; width: 38px; min-width: 38px; text-align: center; }
+.sk-app .sk-wsg-table th.is-on { background: color-mix(in srgb, var(--sk-ink) 16%, var(--sk-page)); color: var(--sk-ink); }
+.sk-app .sk-wsg-corner { left: 0; z-index: 2 !important; width: 38px; }
+.sk-app .sk-wsg-table td { position: relative; width: 96px; min-width: 96px; max-width: 96px; height: 26px; padding: 0 6px; border-right: 1px solid color-mix(in srgb, var(--sk-line) 70%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--sk-line) 70%, transparent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: cell; }
+.sk-app .sk-wsg-table td.is-num { text-align: right; font-variant-numeric: tabular-nums; }
+.sk-app .sk-wsg-table td.is-err { color: #d1242f; font-weight: 700; }
+.sk-app .sk-wsg-table td.is-on { outline: 2px solid #0969da; outline-offset: -2px; background: color-mix(in srgb, #0969da 8%, transparent); }
+.sk-app .sk-wsg-in { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0 6px; border: 0; outline: 2px solid #0969da; outline-offset: -2px; background: var(--sk-page); color: var(--sk-ink); font: 500 13px/1 "DM Mono", ui-monospace, monospace; box-sizing: border-box; }
+.sk-app .sk-wsg-hint { font: var(--sk-caption); font-size: 11px; color: var(--sk-ink-2); }
+@media (max-width: 640px) {
+  .sk-app .sk-wsg-bar { flex-wrap: wrap; }
+  .sk-app .sk-wsg-fx { order: 5; flex-basis: 100%; }
+  .sk-app .sk-wsg-table td { width: 84px; min-width: 84px; max-width: 84px; height: 30px; }
+}
+.sk-app .sk-wsg-wrap { position: relative; }
+.sk-app .sk-wsg:has(.sk-wsg-catch:focus) .sk-wsg-wrap { border-color: var(--sk-edge); }
+.sk-app .sk-wsg-catch { position: fixed; top: 0; left: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; font-size: 16px; pointer-events: none; }

@@ -4958,7 +4958,4 @@ button.ob-line-name { text-align: left; }
 .sk-app .sk-wsg:has(.sk-wsg-catch:focus) .sk-wsg-wrap { border-color: var(--sk-edge); }
 .sk-app .sk-wsg-catch { position: fixed; top: 0; left: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; font-size: 16px; pointer-events: none; }
 
-/* Focus card auto lists (lib/autoLists.ts): one row of add buttons above New list; "Auto" tag in the list head. */
-.sk-app .sk-fd-autobar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--sk-s2); padding: 2px 2px 0; }
-.sk-app .sk-fd-autobar .sk-btn:disabled { opacity: .45; cursor: default; }
 .sk-app .sk-fd-lauto { flex: none; font: 800 9.5px/1.6 "DM Sans", sans-serif; letter-spacing: .05em; text-transform: uppercase; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, var(--fd-pay) 24%, transparent); outline: 1.5px dashed color-mix(in srgb, var(--fd-pay) 70%, transparent); outline-offset: -1.5px; color: var(--sk-ink); cursor: help; }

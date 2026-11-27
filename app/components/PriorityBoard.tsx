@@ -49,6 +49,8 @@ import { taskDone } from "../../lib/locks";
 import { SearchPick } from "../sticker/SearchPick";
 import { LINKED_SHELF } from "../../lib/linkedSubtasks";
 import { DayMenu } from "./DayMenu";
+import { isHabitTask, logTickTick } from "../../lib/ticktickLog";
+import { REFRESH_EVENT } from "../../lib/syncNow";
 import { MenuRow } from "./RowMenu";
 import { countdown, fromDayKey, money, type BillDue } from "../../lib/schedule";
 import { Circle, Dot, ListHead, Tag } from "../sticker/kit";
@@ -1058,6 +1060,28 @@ export function PriorityBoard({
                 }
               : undefined
           }
+          onSkip={(() => {
+            // A TickTick row: TickTick's own Won't do (tasks) / Skip today (habits), same as the row menu.
+            if (openItem.source !== "ticktick") return undefined;
+            const tt = snapshots.ticktick?.tasks.find((t) => t.id === openItem.id);
+            if (!tt) return undefined;
+            const habit = isHabitTask(tt);
+            return {
+              label: habit ? "Skip today" : "Won't do",
+              hint: habit
+                ? "TickTick Skip: today doesn't count against the habit"
+                : "TickTick Won't do: closes this one without counting it done; a repeating task comes back on its next date",
+              run: async () => {
+                const ok = await logTickTick(tt, habit ? "skipped" : "wontdo");
+                if (ok) {
+                  remove(openItem);
+                  setOpenKey(null);
+                  window.dispatchEvent(new Event(REFRESH_EVENT));
+                }
+                return ok;
+              },
+            };
+          })()}
           onRemove={() => {
             remove(openItem);
             setOpenKey(null);

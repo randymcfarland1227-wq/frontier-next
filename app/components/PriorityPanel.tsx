@@ -51,6 +51,7 @@ export function PriorityPanel({
   onToggleCritical,
   onMove,
   onDone,
+  onSkip,
   onRemove,
   onRename,
   onDelete,
@@ -87,6 +88,8 @@ export function PriorityPanel({
   onToggleCritical: () => void;
   onMove: (lane: Lane) => void;
   onDone?: () => void;
+  /** TickTick's own Won't do (tasks) / Skip today (habits): resolves false if TickTick didn't save it */
+  onSkip?: { label: string; hint: string; run: () => Promise<boolean> };
   onRemove: () => void;
   enter: (id: SourceId) => void;
   close: () => void;
@@ -112,6 +115,7 @@ export function PriorityPanel({
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const [note, setNote] = useState(entry?.note || '');
   const [newStep, setNewStep] = useState('');
+  const [skipState, setSkipState] = useState<'' | 'saving' | 'failed'>('');
   const before = entry?.before || [];
   const [newSub, setNewSub] = useState('');
   const subs = entry?.subs || [];
@@ -517,6 +521,20 @@ export function PriorityPanel({
               Add to action list →
             </button>
           )}
+          {onSkip ? (
+            <button
+              type="button"
+              className="plan-panel-action ghost plan-panel-skip"
+              title={onSkip.hint}
+              disabled={skipState === 'saving'}
+              onClick={() => {
+                setSkipState('saving');
+                void onSkip.run().then((ok) => setSkipState(ok ? '' : 'failed'));
+              }}
+            >
+              {skipState === 'saving' ? 'Saving…' : skipState === 'failed' ? 'Not saved · retry' : onSkip.label}
+            </button>
+          ) : null}
           {onDone ? (
             <button type="button" className="plan-panel-action plan-panel-done" onClick={onDone} disabled={lock?.open === false} title={lock?.open === false ? lock.text : undefined}>
               {lock?.open === false ? 'Locked' : 'Done'}

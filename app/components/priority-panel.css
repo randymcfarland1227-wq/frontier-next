@@ -147,3 +147,7 @@
   }
   .sk-app:has(.plan-panel-compact) .row-menu-item { min-height: calc(40px / var(--pp-page-zoom, 1)); }
 }
+
+/* Won't do / Skip today (TickTick rows) sits just left of Done. */
+.sk-app .plan-panel-actions .plan-panel-skip { margin-left: auto; }
+.sk-app .plan-panel-actions .plan-panel-skip + .plan-panel-done { margin-left: 8px; }

@@ -4925,3 +4925,9 @@ button.ob-line-name { text-align: left; }
 .sk-app .sk-fd-autobar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--sk-s2); padding: 2px 2px 0; }
 .sk-app .sk-fd-autobar .sk-btn:disabled { opacity: .45; cursor: default; }
 .sk-app .sk-fd-lauto { flex: none; font: 800 9.5px/1.6 "DM Sans", sans-serif; letter-spacing: .05em; text-transform: uppercase; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, var(--fd-pay) 24%, transparent); outline: 1.5px dashed color-mix(in srgb, var(--fd-pay) 70%, transparent); outline-offset: -1.5px; color: var(--sk-ink); cursor: help; }
+
+/* Doing Now from a focus row: On Deck + Action List pills share one slot (SendToDoing). */
+.sk-ftg-pins { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.sk-ftg-pins .sk-ftg-pin { margin-left: 0; }
+.sk-ftg-subhead .sk-ftg-pins { margin-left: 4px; }
+.sk-app .sk-fd-rowmain .sk-ftg-pins { display: flex; flex-wrap: wrap; margin: 4px 0 0; }

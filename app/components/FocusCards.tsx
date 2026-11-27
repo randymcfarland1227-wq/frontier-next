@@ -3,7 +3,7 @@
 import { confirmedProjectBillPayment } from "../../lib/projectFinance";
 
 import { projectContinuation, saveProjectContinuation } from "../../lib/projectContinuation";
-import { focusCardPinKey } from "../../lib/focusPins";
+import { focusCardPinKey, focusPinItems, focusTaskPinKey } from "../../lib/focusPins";
 import { isProject, openProject } from "../../lib/selfProjects";
 import { goalGroupOf, readGoalTypes } from "../../lib/goalTypes";
 import {
@@ -48,7 +48,7 @@ import {
   type DebtMarks,
 } from "../../lib/debtFile";
 import { FLAG_FEE, isFlagged, mdSources, oosSources, outstandingParts, type OwedLine } from "./OutstandingView";
-import { isTaskList, type Entry, type SubList, type SubListKind, type SubTask } from "./FocusSection";
+import { isTaskList, SendToDoing, type Entry, type SubList, type SubListKind, type SubTask } from "./FocusSection";
 import { habitOptions, todayIso, useHabitCounts } from "../../lib/locks";
 import { linkOptions, linkStatus } from "../../lib/goalLinks";
 import { LOG_LABEL, tickTickOffMap } from "../../lib/ticktickLog";
@@ -1005,6 +1005,16 @@ function Detail({
         label: `Move to ${x.name || "list"}`,
         onSelect: () => setLists(lists.map((y) => (y.id === l.id ? { ...y, tasks: y.tasks.filter((z) => z.id !== t.id) } : y.id === x.id ? { ...y, tasks: [...y.tasks, t] } : y))),
       })),
+    ...(() => {
+      const k = stepPin(l, t);
+      if (!k) return [];
+      const lane = doingLanes[k]?.lane;
+      return [
+        { label: "Add to Action List", hidden: lane === PLAN, onSelect: () => placePin(k, PLAN) },
+        { label: "Add to On Deck", hidden: Boolean(lane), onSelect: () => placePin(k, DECK) },
+        { label: "Take off Doing Now (stays here)", hidden: !lane, onSelect: () => unpin(k) },
+      ];
+    })(),
     { label: "Remove", danger: true, onSelect: () => dropFrom(l, t) },
   ];
   const markDone = () => {
@@ -1017,6 +1027,9 @@ function Detail({
   // Doing Now pins a whole card as `self:fcard:<code>:<id>`; taking it off there must never delete the card.
   const { lanes: doingLanes } = usePriorityPins();
   const availableDoingKey = focusCardPinKey(item.id);
+  // One open step on this card → its own Doing Now item (On Deck or the Action List).
+  const pinIds = new Set(focusPinItems().map((x) => x.id));
+  const stepPin = (l: SubList, t: SubTask) => (t.fin || t.done ? undefined : focusTaskPinKey(item.id, l.id, t.id, pinIds));
   const doingKey = ["n", "w", "o"].map((c) => `self:fcard:${c}:${item.id}`).find((k) => doingLanes[k]?.lane);
   const deleteCard = () => {
     if (!window.confirm(`Delete the card “${item.title}” and every list and task on it?\n\nThis can't be undone.${doingKey ? " To only take it off Doing Now, use “Take off Doing Now” instead." : ""}`)) return;
@@ -1076,6 +1089,7 @@ function Detail({
       { label: item.done ? "Marked done — undo" : "Mark the whole focus done", on: Boolean(item.done), onSelect: markDone },
       { label: "Mark done and create new project with open tasks", hidden: Boolean(item.done), onSelect: () => setContinuing(true) },
       { label: "Add to On Deck", hidden: Boolean(item.done || doingKey || !availableDoingKey), onSelect: () => { if (availableDoingKey) placePin(availableDoingKey, DECK); } },
+      { label: "Add to Action List", hidden: Boolean(item.done || !availableDoingKey || (doingKey && doingLanes[doingKey]?.lane === PLAN)), onSelect: () => { if (availableDoingKey) placePin(doingKey || availableDoingKey, PLAN); } },
       { label: "Take off Doing Now (stays here)", hidden: !doingKey, onSelect: () => { if (doingKey) unpin(doingKey); } },
       { label: "Delete this card…", danger: true, onSelect: deleteCard },
     ],
@@ -1277,6 +1291,7 @@ function Detail({
                         </button>
                       );
                     })() : null}
+                    {stepPin(l, t) ? <SendToDoing pin={stepPin(l, t)} label={t.text} lanes={doingLanes} /> : null}
                     </span>
                     <span className="sk-fd-rowtools">
                     {!t.fin && !t.pin ? (

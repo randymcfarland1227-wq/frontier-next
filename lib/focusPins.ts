@@ -105,6 +105,14 @@ export function focusCardPinKey(cardId: string): string | undefined {
   }
 }
 
+/** Pin key (`self:ftask:…`) for one open step on a card, when Doing Now can show it; never guesses. */
+export function focusTaskPinKey(cardId: string, listId: string, taskId: string, available = new Set(focusPinItems().map(item => item.id))): string | undefined {
+  for (const { code } of FOCUS_PIN_LISTS) {
+    const id = focusTaskId(code, cardId, listId, taskId);
+    if (available.has(id)) return `self:${id}`;
+  }
+}
+
 /**
  * Mark a focus task (or every open task in a focus list) done on its card.
  * Returns true when it found the card record.

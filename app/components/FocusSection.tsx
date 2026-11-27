@@ -28,7 +28,7 @@ import type { FocusRef } from "../../lib/focusRefs";
 import { activePursuits, type GoalLink } from "../../lib/goalLinks";
 import { assignedFocusLists, focusListView, type FocusSectionId } from "../../lib/focusRouting";
 import flowMap from "../../public/data/flow-map.json";
-import { DECK, linkedChildren, pinKey, placePin, unpin, usePriorityPins, type LaneMap } from "../../lib/priorityPins";
+import { DECK, PLAN, linkedChildren, pinKey, placePin, unpin, usePriorityPins, type LaneMap } from "../../lib/priorityPins";
 import { focusCardId, focusListId, focusTaskId } from "../../lib/focusPins";
 
 type Snaps = Record<SourceId, SourceSnapshot>;
@@ -968,26 +968,44 @@ export function FocusSection({
 }
 
 /** Send-to-Doing-Now toggle for a focus list or task (pinned under Self, see lib/focusPins.ts). */
-function SendToDoing({ id, label, lanes }: { id: string; label: string; lanes: LaneMap }) {
-  const key = pinKey("self", id);
-  const on = Boolean(lanes[key]?.lane);
-  const where = lanes[key]?.lane === DECK ? "On Deck" : "Action List";
+/** Doing Now from a focus row: On Deck or straight to the Action List (pinKey or a self id). */
+export function SendToDoing({ id, pin, label, lanes }: { id?: string; pin?: string; label: string; lanes: LaneMap }) {
+  const key = pin || pinKey("self", id!);
+  const lane = lanes[key]?.lane;
+  const on = Boolean(lane);
+  const where = lane === DECK ? "On Deck" : "Action List";
   return (
-    <button
-      type="button"
-      className={`sk-ftg-pin${on ? " is-on" : ""}`}
-      aria-pressed={on}
-      title={on ? `In ${where} — click to take “${label}” out` : `Add “${label}” to On Deck`}
-      aria-label={on ? `Take ${label} out of Doing Now` : `Add ${label} to On Deck`}
-      onClick={(e) => {
-        e.stopPropagation();
-        if (on) unpin(key);
-        else placePin(key, DECK);
-      }}
-    >
-      <Icon name="pin" size={12} />
-      <span>{on ? where : "Add to On Deck"}</span>
-    </button>
+    <span className="sk-ftg-pins">
+      <button
+        type="button"
+        className={`sk-ftg-pin${on ? " is-on" : ""}`}
+        aria-pressed={on}
+        title={on ? `In ${where} — click to take “${label}” out` : `Add “${label}” to On Deck`}
+        aria-label={on ? `Take ${label} out of Doing Now` : `Add ${label} to On Deck`}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (on) unpin(key);
+          else placePin(key, DECK);
+        }}
+      >
+        <Icon name="pin" size={12} />
+        <span>{on ? where : "Add to On Deck"}</span>
+      </button>
+      {lane === PLAN ? null : (
+        <button
+          type="button"
+          className="sk-ftg-pin"
+          title={`Put “${label}” on the Action List`}
+          aria-label={`Add ${label} to the Action List`}
+          onClick={(e) => {
+            e.stopPropagation();
+            placePin(key, PLAN);
+          }}
+        >
+          <span>{on ? "→ Action List" : "Action List"}</span>
+        </button>
+      )}
+    </span>
   );
 }
 

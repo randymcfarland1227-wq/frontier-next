@@ -10,6 +10,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent a
 import { cleanHtml, deleteWorksheet, newWorksheet, saveWorksheet, useWorksheets } from "../../lib/worksheets";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { Icon } from "../sticker/Icon";
+import { sheetOf, shown, evaluateSheet, type SheetData } from "../../lib/sheetFormula";
+import { SheetGrid } from "./WorksheetSheet";
 
 export type MentionOpt = { key: string; label: string; sub?: string; group: string };
 
@@ -26,6 +28,12 @@ const fmtWhen = (iso: string) => {
     : d.toLocaleDateString([], { month: "short", day: "numeric" });
 };
 const plainOf = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+/** The sheet's visible values as one line (for search and the list preview). */
+const sheetText = (d?: SheetData) => {
+  if (!d || !d.cells || !Object.keys(d.cells).length) return "";
+  const v = evaluateSheet(d.cells);
+  return Object.entries(d.cells).map(([k, raw]) => shown(raw, v[k])).join(" ");
+};
 
 export function WorksheetTab({ mentions, openMention }: { mentions: MentionOpt[]; openMention: (key: string) => void }) {
   const store = useWorksheets();
@@ -43,7 +51,7 @@ export function WorksheetTab({ mentions, openMention }: { mentions: MentionOpt[]
     writeSaved("sk-worksheet-folded", v);
   };
   const current = openId && store[openId] && !store[openId].gone ? store[openId] : undefined;
-  const shown = q.trim() ? sheets.filter((s) => `${s.title} ${plainOf(s.html)}`.toLowerCase().includes(q.trim().toLowerCase())) : sheets;
+  const shown = q.trim() ? sheets.filter((s) => `${s.title} ${plainOf(s.html)} ${sheetText(s.sheet)}`.toLowerCase().includes(q.trim().toLowerCase())) : sheets;
 
   const create = () => setOpenId(newWorksheet(""));
   const remove = (id: string, title: string) => {
@@ -75,7 +83,7 @@ export function WorksheetTab({ mentions, openMention }: { mentions: MentionOpt[]
             <li key={s.id} className={s.id === current?.id ? "is-on" : ""}>
               <button type="button" className="sk-ws-open" onClick={() => setOpenId(s.id)} aria-current={s.id === current?.id}>
                 <b>{s.title || "Untitled worksheet"}</b>
-                <small>{fmtWhen(s.at)} · {plainOf(s.html).slice(0, 60) || "Empty"}</small>
+                <small>{fmtWhen(s.at)} · {plainOf(s.html).slice(0, 60) || (sheetText(s.sheet) ? `Sheet · ${sheetText(s.sheet).slice(0, 50)}` : "Empty")}</small>
               </button>
               <button type="button" className="sk-btn is-small is-icon is-quiet" aria-label={`Delete ${s.title || "Untitled worksheet"}`} title="Delete" onClick={() => remove(s.id, s.title)}>
                 <Icon name="close" size={13} />
@@ -87,7 +95,7 @@ export function WorksheetTab({ mentions, openMention }: { mentions: MentionOpt[]
       </aside>
       )}
       {current ? (
-        <Editor key={current.id} id={current.id} title={current.title} html={current.html} at={current.at} mentions={mentions} openMention={openMention} />
+        <Editor key={current.id} id={current.id} title={current.title} html={current.html} sheet={current.sheet} view={current.view} at={current.at} mentions={mentions} openMention={openMention} />
       ) : (
         <div className="sk-ws-blank">
           <p>Scratch space for working things out: notes, math, plans. Type @ to link a task, goal or money item.</p>
@@ -100,7 +108,7 @@ export function WorksheetTab({ mentions, openMention }: { mentions: MentionOpt[]
   );
 }
 
-function Editor({ id, title, html, at, mentions, openMention }: { id: string; title: string; html: string; at: string; mentions: MentionOpt[]; openMention: (key: string) => void }) {
+function Editor({ id, title, html, sheet, view: startView, at, mentions, openMention }: { id: string; title: string; html: string; sheet?: SheetData; view?: "notes" | "sheet"; at: string; mentions: MentionOpt[]; openMention: (key: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const timer = useRef<number | undefined>(undefined);
   const [name, setName] = useState(title);
@@ -110,6 +118,10 @@ function Editor({ id, title, html, at, mentions, openMention }: { id: string; ti
   // @ mention picker: the text typed after @, where to show it, which row is highlighted
   const [mq, setMq] = useState<{ text: string; x: number; y: number } | null>(null);
   const [mi, setMi] = useState(0);
+  // Notes ⇄ Sheet: both stay mounted once opened, so flipping back finds each exactly as left.
+  const [view, setView] = useState<"notes" | "sheet">(startView === "sheet" ? "sheet" : "notes");
+  const [sheetSeen, setSheetSeen] = useState(view === "sheet");
+  const [sheetStart] = useState<SheetData>(() => sheetOf(sheet));
 
   // Load once per sheet; after that the editor owns its DOM (re-rendering innerHTML would move the caret).
   useEffect(() => {
@@ -131,6 +143,22 @@ function Editor({ id, title, html, at, mentions, openMention }: { id: string; ti
     timer.current = window.setTimeout(flush, 700);
   };
   useEffect(() => () => flush(), [flush]);
+  const flip = () => {
+    const next = view === "sheet" ? "notes" : "sheet";
+    if (next === "sheet") {
+      flush();
+      setSheetSeen(true);
+      setMq(null);
+    }
+    setView(next);
+    saveWorksheet(id, { view: next });
+    if (next === "notes") window.setTimeout(() => ref.current?.focus(), 0);
+  };
+  const flipBtn = (
+    <button type="button" className={`sk-ws-flip${view === "sheet" ? " is-on" : ""}`} aria-pressed={view === "sheet"} title={view === "sheet" ? "Back to the notes" : "Open this worksheet's spreadsheet for math"} onClick={flip}>
+      ▦ Sheet
+    </button>
+  );
 
   // The toolbar's menus (style, size, colors) take focus; keep the last selection in the page and put it back first.
   const lastRange = useRef<Range | null>(null);
@@ -253,6 +281,7 @@ function Editor({ id, title, html, at, mentions, openMention }: { id: string; ti
         />
         <small className="sk-ws-saved" aria-live="polite">{dirty ? "Saving…" : `Saved ${fmtWhen(saved)}`}</small>
       </header>
+      {view === "notes" ? (
       <div className="sk-ws-bar" role="toolbar" aria-label="Formatting" onMouseDown={(e) => (e.target as HTMLElement).closest("button, summary") && e.preventDefault()}>
         <button type="button" title="Undo (⌘Z)" aria-label="Undo" onClick={() => exec("undo")}>↶</button>
         <button type="button" title="Redo (⇧⌘Z)" aria-label="Redo" onClick={() => exec("redo")}>↷</button>
@@ -292,9 +321,16 @@ function Editor({ id, title, html, at, mentions, openMention }: { id: string; ti
         <button type="button" title="Center" aria-label="Center" onClick={() => exec("justifyCenter")}>≡</button>
         <button type="button" title="Line" aria-label="Insert a line" onClick={() => exec("insertHorizontalRule")}>―</button>
         <button type="button" title="Clear formatting" aria-label="Clear formatting" onClick={() => exec("removeFormat")}>T̸</button>
+        {flipBtn}
         <button type="button" className="sk-ws-at" title="Link a task, goal or money item" aria-label="Insert a link with @" onClick={() => { ref.current?.focus(); document.execCommand("insertText", false, "@"); checkMention(); }}>@ Link</button>
       </div>
-      <div className="sk-ws-page">
+      ) : null}
+      {sheetSeen ? (
+        <div hidden={view !== "sheet"}>
+          <SheetGrid data={sheetStart} tools={flipBtn} onChange={(d) => { saveWorksheet(id, { sheet: d }); setSaved(new Date().toISOString()); }} />
+        </div>
+      ) : null}
+      <div className="sk-ws-page" hidden={view === "sheet"}>
         <div
           ref={ref}
           className="sk-ws-edit"

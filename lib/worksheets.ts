@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { readSaved, writeSaved } from './storage';
+import type { SheetData } from './sheetFormula';
 
 export const WORKSHEETS_KEY = 'lifehub-worksheets';
 export const WORKSHEETS_EVENT = 'lifehub:worksheets';
@@ -17,6 +18,10 @@ export type Worksheet = {
   title: string;
   /** Sanitized HTML from the editor */
   html: string;
+  /** Sheet view: grid cells as typed (formulas start with =); missing on older worksheets */
+  sheet?: SheetData;
+  /** Which side was open last: the notes or the sheet */
+  view?: 'notes' | 'sheet';
   created: string;
   at: string;
   gone?: boolean;
@@ -37,7 +42,7 @@ export function newWorksheet(title = ''): string {
   return id;
 }
 
-export function saveWorksheet(id: string, patch: Partial<Pick<Worksheet, 'title' | 'html'>>) {
+export function saveWorksheet(id: string, patch: Partial<Pick<Worksheet, 'title' | 'html' | 'sheet' | 'view'>>) {
   const s = loadWorksheets();
   const prev = s[id];
   if (!prev || prev.gone) return;
@@ -47,7 +52,7 @@ export function saveWorksheet(id: string, patch: Partial<Pick<Worksheet, 'title'
 export function deleteWorksheet(id: string) {
   const s = loadWorksheets();
   if (!s[id]) return;
-  put({ ...s, [id]: { ...s[id], html: '', gone: true, at: new Date().toISOString() } });
+  put({ ...s, [id]: { ...s[id], html: '', sheet: undefined, gone: true, at: new Date().toISOString() } });
 }
 
 export function useWorksheets(): WorksheetStore {

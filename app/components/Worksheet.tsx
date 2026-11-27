@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { cleanHtml, deleteWorksheet, newWorksheet, saveWorksheet, useWorksheets } from "../../lib/worksheets";
+import { cleanHtml, deleteWorksheet, newWorksheet, OPEN_WORKSHEET_EVENT, saveWorksheet, useWorksheets } from "../../lib/worksheets";
 import { readSaved, writeSaved } from "../../lib/storage";
 import { Icon } from "../sticker/Icon";
 import { sheetOf, shown, evaluateSheet, type SheetData } from "../../lib/sheetFormula";
@@ -43,6 +43,12 @@ export function WorksheetTab({ mentions, openMention }: { mentions: MentionOpt[]
     setOpenIdState(id);
     writeSaved("sk-worksheet-open", id);
   };
+  // A task or project's "Open ↗" (lib/worksheets.ts openWorksheet) picks the worksheet here.
+  useEffect(() => {
+    const on = (e: Event) => setOpenIdState(String((e as CustomEvent).detail || ""));
+    window.addEventListener(OPEN_WORKSHEET_EVENT, on);
+    return () => window.removeEventListener(OPEN_WORKSHEET_EVENT, on);
+  }, []);
   const [q, setQ] = useState("");
   // The saved-sheets list sits on the right and folds to a slim rail (remembered on this device).
   const [folded, setFoldedState] = useState<boolean>(() => readSaved<boolean>("sk-worksheet-folded", false));

@@ -1,5 +1,5 @@
 "use client";
-import { openProject } from "../../lib/selfProjects";
+import { addSelfProject, openProject } from "../../lib/selfProjects";
 
 import { useCallback, useEffect, useMemo, useState, type DragEvent, type ReactNode } from "react";
 import { Dialog } from "../sticker/Dialog";
@@ -58,7 +58,7 @@ import { Icon } from "../sticker/Icon";
 import { siteListForTask, openSiteList, useSiteLists } from "../../lib/siteLists";
 import { removeItem } from "../../lib/siteMoves";
 import { renameSelfItem } from "../../lib/adapters/self";
-import { completeFocusPin, focusPinItems, isFocusPinId } from "../../lib/focusPins";
+import { completeFocusPin, focusCardId, focusPinItems, isFocusPinId } from "../../lib/focusPins";
 import { FOCUS_LIST_EVENT } from "../../lib/ongoingGoals";
 import { LOG_LABEL, useTickTickOff } from "../../lib/ticktickLog";
 
@@ -1082,6 +1082,30 @@ export function PriorityBoard({
               },
             };
           })()}
+          onMakeProject={
+            isFocusPinId(openItem.id) || isFocusPinId(openItem.id.replace(/^self:/, "")) || openItem.id.startsWith("mix:")
+              ? undefined
+              : () => {
+                  // The task becomes the project's first step (linked, so checking it there checks it on its site);
+                  // its subtasks, plan and worksheet come along, and the project takes its place in Doing Now.
+                  const e = lanes[openItem.key];
+                  const title = e?.title || openItem.title;
+                  const tid = () => crypto.randomUUID();
+                  const steps = [
+                    { id: tid(), text: title, done: false, pin: openItem.key },
+                    ...(e?.subs || []).map((x) => ({ id: tid(), text: x.text, done: x.done, ...(x.fin ? { fin: x.fin } : {}), ...(x.pin ? { pin: x.pin } : {}) })),
+                  ];
+                  const note = [openItem.detail, e?.note].filter((x) => x && x.trim()).join("\n\n");
+                  const id = addSelfProject(title, note, "", openItem.originUrl || "", openItem.source, {
+                    kind: "project",
+                    lists: [{ id: tid(), name: "Steps", tasks: steps }],
+                    ...(e?.worksheet ? { worksheet: e.worksheet } : {}),
+                  });
+                  placePin(`self:${focusCardId("n", id)}`, e?.lane || DECK);
+                  remove(openItem);
+                  setOpenKey(null);
+                }
+          }
           onRemove={() => {
             remove(openItem);
             setOpenKey(null);

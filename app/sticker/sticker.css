@@ -4973,3 +4973,20 @@ button.ob-line-name { text-align: left; }
 .sk-app .sk-wsg-bar { position: static; }
 .sk-app .sk-wsg-tools > button:disabled { opacity: .45; cursor: default; }
 .sk-app .sk-wsg-none { background: repeating-linear-gradient(45deg, #ccc 0 3px, #fff 3px 6px) !important; }
+
+/* A worksheet kept inside a task / project (LinkedWorksheet.tsx). */
+.sk-app .lw-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.sk-app .lw-pick > :first-child { flex: 1 1 220px; }
+.sk-app :is(.lw-new, .lw-link) { background: none; border: 0; padding: 2px 4px; font: 700 12.5px/1.3 "DM Sans", system-ui, sans-serif; color: var(--sk-ink); opacity: .75; cursor: pointer; white-space: nowrap; }
+.sk-app :is(.lw-new, .lw-link):hover { opacity: 1; text-decoration: underline; }
+.sk-app .lw-box { display: grid; gap: 8px; min-width: 0; }
+.sk-app .lw-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sk-app .lw-head b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 14px/1.3 "DM Sans", system-ui, sans-serif; }
+.sk-app .lw-seg { display: inline-flex; border: 1.5px solid var(--sk-edge); border-radius: 8px; overflow: hidden; flex: none; }
+.sk-app .lw-seg button { border: 0; background: none; padding: 2px 9px; font: 700 11.5px/1.5 "DM Sans", system-ui, sans-serif; color: var(--sk-ink); cursor: pointer; }
+.sk-app .lw-seg button.is-on { background: var(--sk-ink); color: var(--sk-page); }
+.sk-app .lw-sheet { max-height: 420px; overflow: auto; border: 1px solid var(--sk-line); border-radius: 8px; }
+.sk-app .lw-notes { max-height: 320px; overflow: auto; padding: 8px 10px; border: 1px solid var(--sk-line); border-radius: 8px; font-size: 14px; line-height: 1.45; }
+.sk-app .lw-empty { margin: 0; font-size: 13px; opacity: .7; }
+.sk-app .sk-fd-ws { grid-column: 1 / -1; display: grid; gap: 8px; }
+.sk-app .sk-fd-ws > .sk-fd-sideh { margin: 0; }

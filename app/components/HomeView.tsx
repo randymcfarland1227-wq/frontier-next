@@ -410,8 +410,10 @@ export function HomeView({
       <BriefSummary snapshots={snapshots} bills={bills} />
     );
   useEffect(() => {
-    const onReveal = (e: Event) =>
-      (e as CustomEvent).detail === "brief" && setTodayTab("brief");
+    const onReveal = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      if (d === "brief" || d === "worksheet") setTodayTab(d);
+    };
     window.addEventListener(REVEAL_EVENT, onReveal);
     return () => window.removeEventListener(REVEAL_EVENT, onReveal);
   }, []);

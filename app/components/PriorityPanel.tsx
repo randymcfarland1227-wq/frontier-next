@@ -17,6 +17,7 @@ import { MenuRow, useRowMenu } from './RowMenu';
 import { useFinLinker } from './FocusCards';
 import { addOwnItem } from '../../lib/finFindings';
 import type { BillDue } from '../../lib/schedule';
+import { LinkedWorksheet } from './LinkedWorksheet';
 import './priority-panel.css';
 
 type PickOpt = { key: string; label: string; sub?: string };
@@ -52,6 +53,7 @@ export function PriorityPanel({
   onMove,
   onDone,
   onSkip,
+  onMakeProject,
   onRemove,
   onRename,
   onDelete,
@@ -90,6 +92,8 @@ export function PriorityPanel({
   onDone?: () => void;
   /** TickTick's own Won't do (tasks) / Skip today (habits): resolves false if TickTick didn't save it */
   onSkip?: { label: string; hint: string; run: () => Promise<boolean> };
+  /** Turn this task into a project (it becomes the project's first step) */
+  onMakeProject?: () => void;
   onRemove: () => void;
   enter: (id: SourceId) => void;
   close: () => void;
@@ -127,6 +131,9 @@ export function PriorityPanel({
   const subsDone = originSteps.filter(x => x.done).length + subs.filter(stepDone).length;
   const tools = useRowMenu([
     { label: 'Critical', on: critical, onSelect: onToggleCritical },
+    { label: 'Turn into a project…', hidden: !onMakeProject, onSelect: () => {
+      if (window.confirm(`Turn “${item.title}” into a project? It gets its own card with lists, bills and references; this task becomes its first step, and its subtasks and worksheet come along.`)) onMakeProject?.();
+    } },
     { label: lane === PLAN ? 'Take off Action List' : 'Take off Doing Now', hidden: !lane, onSelect: onRemove },
     { label: 'Delete', hidden: !onDelete, danger: true, onSelect: () => {
       if (window.confirm(`Delete “${item.title}” from Life Hub? It leaves every list, card and count.`)) onDelete?.();
@@ -494,6 +501,11 @@ export function PriorityPanel({
               <small>A linked task stays on its site, marked “Linked to”, and only this task counts.</small>
             </div>
           ) : null}
+        </section>
+
+        <section className="plan-panel-sec plan-panel-worksheet">
+          <h3 id="plan-ws">Worksheet<PlanHelp text="Keep a worksheet (math, notes) inside this task. It still lives in Home › Worksheet too." /></h3>
+          <LinkedWorksheet id={entry?.worksheet} title={item.title} onLink={(id) => updatePinDetails(item.key, { worksheet: id })} />
         </section>
 
         <section className="plan-panel-sec plan-panel-property plan-panel-note">

@@ -5,11 +5,17 @@
  * Errors show as #ERR (bad formula), #REF (bad ref), #DIV/0, #VALUE (text in math), #NAME (unknown function), #CYCLE.
  */
 
-export type SheetData = { cols: number; rows: number; cells: Record<string, string> };
+/** widths: column index → px, only for columns dragged away from the default */
+export type CellFmt = { b?: true; i?: true; s?: true; bg?: string; fg?: string; al?: 'left' | 'center' | 'right' };
+/** widths: column index → px, only for columns dragged away from the default · fmt: cell id → bold/italic/strike/colors/align */
+export type SheetData = { cols: number; rows: number; cells: Record<string, string>; widths?: Record<string, number>; fmt?: Record<string, CellFmt> };
 export const SHEET_COLS = 10;
 export const SHEET_ROWS = 20;
 export const MAX_COLS = 52;
 export const MAX_ROWS = 500;
+export const COL_W = 96;
+export const MIN_COL_W = 36;
+export const MAX_COL_W = 600;
 
 export const blankSheet = (): SheetData => ({ cols: SHEET_COLS, rows: SHEET_ROWS, cells: {} });
 
@@ -20,7 +26,30 @@ export function sheetOf(s: unknown): SheetData {
   const n = (v: unknown, def: number, max: number) => (typeof v === 'number' && v >= 1 ? Math.min(max, Math.floor(v)) : def);
   const cells: Record<string, string> = {};
   for (const [k, v] of Object.entries(d.cells)) if (typeof v === 'string' && v !== '' && /^[A-Z]+\d+$/.test(k)) cells[k] = v;
-  return { cols: n(d.cols, SHEET_COLS, MAX_COLS), rows: n(d.rows, SHEET_ROWS, MAX_ROWS), cells };
+  const out: SheetData = { cols: n(d.cols, SHEET_COLS, MAX_COLS), rows: n(d.rows, SHEET_ROWS, MAX_ROWS), cells };
+  if (d.widths && typeof d.widths === 'object') {
+    const widths: Record<string, number> = {};
+    for (const [k, v] of Object.entries(d.widths)) if (/^\d+$/.test(k) && Number(k) < MAX_COLS && typeof v === 'number' && Number.isFinite(v)) widths[k] = Math.min(MAX_COL_W, Math.max(MIN_COL_W, Math.round(v)));
+    if (Object.keys(widths).length) out.widths = widths;
+  }
+  if (d.fmt && typeof d.fmt === 'object') {
+    const fmt: Record<string, CellFmt> = {};
+    const hex = (v: unknown) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v : undefined);
+    for (const [k, v] of Object.entries(d.fmt)) {
+      if (!/^[A-Z]+\d+$/.test(k) || !v || typeof v !== 'object') continue;
+      const f = cleanFmt({ b: v.b === true || undefined, i: v.i === true || undefined, s: v.s === true || undefined, bg: hex(v.bg), fg: hex(v.fg), al: v.al === 'left' || v.al === 'center' || v.al === 'right' ? v.al : undefined });
+      if (f) fmt[k] = f;
+    }
+    if (Object.keys(fmt).length) out.fmt = fmt;
+  }
+  return out;
+}
+
+/** Drops unset keys; undefined when nothing is left. */
+export function cleanFmt(f: CellFmt): CellFmt | undefined {
+  const out: CellFmt = {};
+  for (const [k, v] of Object.entries(f)) if (v !== undefined && v !== '') (out as Record<string, unknown>)[k] = v;
+  return Object.keys(out).length ? out : undefined;
 }
 
 export function colName(i: number): string {

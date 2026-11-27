@@ -70,3 +70,13 @@ test('old worksheets without a sheet, or junk, load as a blank 10×20 grid', () 
   assert.deepEqual(sheetOf(undefined), { cols: 10, rows: 20, cells: {} });
   assert.deepEqual(sheetOf({ cells: { A1: '1', bad: 'x', B2: 5 }, rows: 3 }), { cols: 10, rows: 3, cells: { A1: '1' } });
 });
+
+test('column widths survive a reload and junk widths are dropped or clamped', () => {
+  assert.deepEqual(sheetOf({ cells: {}, widths: { 0: 180, 1: 5, 2: 9999, x: 50, 3: 'wide' } }).widths, { 0: 180, 1: 36, 2: 600 });
+  assert.equal(sheetOf({ cells: {} }).widths, undefined);
+});
+
+test('cell formats load cleanly; bad colors and keys are dropped', () => {
+  const s = sheetOf({ cells: {}, fmt: { A1: { b: true, bg: '#fff3a3', al: 'right' }, B2: { fg: 'red', i: 'yes' }, junk: { b: true } } });
+  assert.deepEqual(s.fmt, { A1: { b: true, bg: '#fff3a3', al: 'right' } });
+});

@@ -4943,16 +4943,16 @@ button.ob-line-name { text-align: left; }
 .sk-app .sk-wsg-table tbody th { left: 0; width: 38px; min-width: 38px; text-align: center; }
 .sk-app .sk-wsg-table th.is-on { background: color-mix(in srgb, var(--sk-ink) 16%, var(--sk-page)); color: var(--sk-ink); }
 .sk-app .sk-wsg-corner { left: 0; z-index: 2 !important; width: 38px; }
-.sk-app .sk-wsg-table td { position: relative; width: 96px; min-width: 96px; max-width: 96px; height: 26px; padding: 0 6px; border-right: 1px solid color-mix(in srgb, var(--sk-line) 70%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--sk-line) 70%, transparent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: cell; }
+.sk-app .sk-wsg-table td { position: relative; height: 26px; padding: 0 6px; border-right: 1px solid color-mix(in srgb, var(--sk-line) 70%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--sk-line) 70%, transparent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: cell; }
 .sk-app .sk-wsg-table td.is-num { text-align: right; font-variant-numeric: tabular-nums; }
 .sk-app .sk-wsg-table td.is-err { color: #d1242f; font-weight: 700; }
-.sk-app .sk-wsg-table td.is-on { outline: 2px solid #0969da; outline-offset: -2px; background: color-mix(in srgb, #0969da 8%, transparent); }
+.sk-app .sk-wsg-table td.is-on { outline: 2px solid #0969da; outline-offset: -2px; box-shadow: inset 0 0 0 999px color-mix(in srgb, #0969da 8%, transparent); }
+.sk-app .sk-wsg-table td.is-in { box-shadow: inset 0 0 0 999px color-mix(in srgb, #0969da 14%, transparent); }
 .sk-app .sk-wsg-in { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0 6px; border: 0; outline: 2px solid #0969da; outline-offset: -2px; background: var(--sk-page); color: var(--sk-ink); font: 500 13px/1 "DM Mono", ui-monospace, monospace; box-sizing: border-box; }
 .sk-app .sk-wsg-hint { font: var(--sk-caption); font-size: 11px; color: var(--sk-ink-2); }
 @media (max-width: 640px) {
-  .sk-app .sk-wsg-bar { flex-wrap: wrap; }
-  .sk-app .sk-wsg-fx { order: 5; flex-basis: 100%; }
-  .sk-app .sk-wsg-table td { width: 84px; min-width: 84px; max-width: 84px; height: 30px; }
+  .sk-app .sk-wsg-table td { height: 30px; }
+  .sk-app .sk-wsg-rs { width: 14px; }
 }
 .sk-app .sk-wsg-wrap { position: relative; }
 .sk-app .sk-wsg:has(.sk-wsg-catch:focus) .sk-wsg-wrap { border-color: var(--sk-edge); }
@@ -4965,3 +4965,11 @@ button.ob-line-name { text-align: left; }
 .sk-ftg-pins .sk-ftg-pin { margin-left: 0; }
 .sk-ftg-subhead .sk-ftg-pins { margin-left: 4px; }
 .sk-app .sk-fd-rowmain .sk-ftg-pins { display: flex; flex-wrap: wrap; margin: 4px 0 0; }
+.sk-app .sk-wsg-table thead th { overflow: visible; }
+.sk-app .sk-wsg-rs { position: absolute; top: 0; right: -1px; z-index: 2; width: 9px; height: 100%; cursor: col-resize; touch-action: none; }
+.sk-app .sk-wsg-rs::after { content: ""; position: absolute; top: 3px; bottom: 3px; right: 0; width: 3px; border-radius: 2px; background: transparent; }
+.sk-app .sk-wsg-rs:hover::after, .sk-app .sk-wsg-rs.is-on::after, .sk-app .sk-wsg-rs:focus-visible::after { background: #0969da; }
+.sk-app .sk-wsg-rs:focus-visible { outline: none; }
+.sk-app .sk-wsg-bar { position: static; }
+.sk-app .sk-wsg-tools > button:disabled { opacity: .45; cursor: default; }
+.sk-app .sk-wsg-none { background: repeating-linear-gradient(45deg, #ccc 0 3px, #fff 3px 6px) !important; }

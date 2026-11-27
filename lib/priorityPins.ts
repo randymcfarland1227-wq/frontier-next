@@ -99,6 +99,8 @@ export type LaneEntry = {
   ownRow?: boolean;
   /** On a `mix:<id>` entry: made by Life Hub (Items to ship), so new matching rows join it */
   auto?: string;
+  /** A worksheet (lib/worksheets.ts id) kept inside this task */
+  worksheet?: string;
 };
 export type LaneMap = Record<string, LaneEntry>;
 
@@ -225,7 +227,7 @@ export function unlinkSubtask(child: string) {
 }
 
 /** Change an item's note / "Before this" list (kept even if it's taken off the plan). */
-export function updatePinDetails(key: string, patch: Partial<Pick<LaneEntry, 'note' | 'before' | 'subs' | 'lock' | 'due' | 'title' | 'doneTitle' | 'lane'>>) {
+export function updatePinDetails(key: string, patch: Partial<Pick<LaneEntry, 'note' | 'before' | 'subs' | 'lock' | 'due' | 'title' | 'doneTitle' | 'lane' | 'worksheet'>>) {
   const map = loadLanes();
   const prev = map[key] || { lane: null, order: 0, at: '' };
   map[key] = { ...prev, ...patch, at: new Date().toISOString() };

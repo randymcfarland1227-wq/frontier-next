@@ -140,6 +140,8 @@ export type Entry = {
   habitGoal?: HabitGoal;
   /** References: links, documents and images for this focus (lib/focusRefs.ts) */
   refs?: FocusRef[];
+  /** A worksheet (lib/worksheets.ts id) kept inside this card */
+  worksheet?: string;
   /** Ongoing goals: TickTick habits / recurring tasks that move it forward (lib/goalLinks.ts) */
   links?: GoalLink[];
 };

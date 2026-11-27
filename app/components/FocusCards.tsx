@@ -48,6 +48,7 @@ import {
   type DebtMarks,
 } from "../../lib/debtFile";
 import { FLAG_FEE, isFlagged, mdSources, oosSources, outstandingParts, type OwedLine } from "./OutstandingView";
+import { LinkedWorksheet } from "./LinkedWorksheet";
 import { isTaskList, SendToDoing, type Entry, type SubList, type SubListKind, type SubTask } from "./FocusSection";
 import { habitOptions, todayIso, useHabitCounts } from "../../lib/locks";
 import { linkOptions, linkStatus } from "../../lib/goalLinks";
@@ -1571,6 +1572,10 @@ function Detail({
             );
           })}
 
+          <section className="sk-fd-box sk-fd-ws" aria-label="Worksheet">
+            <h3 className="sk-fd-sideh">Worksheet</h3>
+            <LinkedWorksheet id={item.worksheet} title={item.title} onLink={(id) => update({ worksheet: id })} />
+          </section>
           <form className="sk-fd-box sk-fd-newlist" onSubmit={addList}>
             <span className="sk-cap">New list</span>
             <span className="sk-fd-kinds" role="radiogroup" aria-label="List type">

@@ -85,3 +85,12 @@ export function cleanHtml(html: string): string {
   });
   return root.innerHTML;
 }
+
+/** Open one worksheet in Home › Worksheet (switches the tab and scrolls to it). */
+export const OPEN_WORKSHEET_EVENT = 'lifehub:open-worksheet';
+export function openWorksheet(id: string) {
+  writeSaved('sk-worksheet-open', id);
+  window.dispatchEvent(new CustomEvent(OPEN_WORKSHEET_EVENT, { detail: id }));
+  window.dispatchEvent(new CustomEvent('sk:reveal', { detail: 'worksheet' }));
+  requestAnimationFrame(() => document.getElementById('sk-brief')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+}

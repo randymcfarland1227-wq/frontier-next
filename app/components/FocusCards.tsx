@@ -26,6 +26,8 @@ import { addOwnItem, findingOf, ownItems, planLine, planShort, setFinding, useFi
 import { setOwedDone, useOwedDone } from "../../lib/owedComplete";
 import { loadCachedMoney, parseMoney } from "../../lib/money";
 import { paidBillKeys } from "../../lib/schedule";
+import { AUTO_RULES, syncAutoLists } from "../../lib/autoLists";
+import { incomingDues, useIncoming } from "../../lib/incoming";
 import { latestLine, useGroupLog } from "../../lib/groupLog";
 import { openSiteList, renameSiteList, useSiteLists, viewOfList, type SiteListsContextValue } from "../../lib/siteLists";
 import { Dialog } from "../sticker/Dialog";
@@ -585,6 +587,7 @@ function ListHead({ l, ctx, patch, remove, children }: { l: SubList; ctx: FinCtx
   const { bind, menu } = useRowMenu(
     () => [
       ...KIND_LABELS.filter(([k]) => k !== kind).map(([k, label]) => ({ label: `Make it ${label}`, onSelect: () => patch({ kind: k === "tasks" ? undefined : k }) })),
+      { label: "Stop filling it on its own", hidden: !l.auto, onSelect: () => patch({ auto: undefined, autoSkip: undefined }) },
       { label: "Delete list", danger: true, onSelect: remove },
     ],
     l.name,
@@ -594,7 +597,7 @@ function ListHead({ l, ctx, patch, remove, children }: { l: SubList; ctx: FinCtx
       <header className="sk-fd-lhead" {...bind}>
         <i className={`sk-fd-dot is-${kind}`} />
         {children}
-        <span className={`sk-fd-ltype is-${kind}`}>{KIND_LABELS.find(([k]) => k === kind)?.[1]}</span>
+        {l.auto ? <span className="sk-fd-lauto" title={AUTO_RULES.find((r) => r.rule === l.auto)?.hint}>Auto</span> : <span className={`sk-fd-ltype is-${kind}`}>{KIND_LABELS.find(([k]) => k === kind)?.[1]}</span>}
         <span className="sk-fd-lmeta">{meta}</span>
       </header>
       <div className="sk-fd-lbar"><i className={`is-${kind}`} style={{ width: `${rows.length ? (done / rows.length) * 100 : 0}%` }} /></div>
@@ -871,6 +874,24 @@ function Detail({
   const setLists = (next: SubList[]) => update({ lists: next });
   const patchList = (id: string, patch: Partial<SubList>) =>
     setLists(lists.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  // Auto lists (Overdue / Due today / Before next pay) keep themselves filled from the bills.
+  const incoming = useIncoming();
+  const payday = incomingDues(incoming, new Date(), 0, 30).filter((d) => (d.item.amount || 0) > 0 && d.days > 0).map((d) => d.due).sort()[0] ?? null;
+  useEffect(() => {
+    const next = syncAutoLists(lists, ctx.bills, payday, uid);
+    if (next) setLists(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lists, ctx.bills, payday]);
+  const addAuto = (rule: (typeof AUTO_RULES)[number]) => {
+    const same = lists.find((l) => !l.auto && l.name.trim().toLowerCase() === rule.name.toLowerCase());
+    if (same) patchList(same.id, { auto: rule.rule, kind: "pay" });
+    else setLists([...lists, { id: uid(), name: rule.name, tasks: [], kind: "pay", auto: rule.rule }]);
+  };
+  const dropFrom = (l: SubList, t: SubTask) =>
+    patchList(l.id, {
+      tasks: l.tasks.filter((x) => x.id !== t.id),
+      ...(l.auto && t.fin ? { autoSkip: [...new Set([...(l.autoSkip || []), t.fin.key])] } : {}),
+    });
   const addList = (e: FormEvent) => {
     e.preventDefault();
     if (!listName.trim()) return;
@@ -978,7 +999,7 @@ function Detail({
         label: `Move to ${x.name || "list"}`,
         onSelect: () => setLists(lists.map((y) => (y.id === l.id ? { ...y, tasks: y.tasks.filter((z) => z.id !== t.id) } : y.id === x.id ? { ...y, tasks: [...y.tasks, t] } : y))),
       })),
-    { label: "Remove", danger: true, onSelect: () => patchList(l.id, { tasks: l.tasks.filter((x) => x.id !== t.id) }) },
+    { label: "Remove", danger: true, onSelect: () => dropFrom(l, t) },
   ];
   const markDone = () => {
     if (!item.done) {
@@ -1299,11 +1320,7 @@ function Detail({
                       type="button"
                       className="sk-btn is-small is-icon is-quiet"
                       aria-label={`Remove ${t.text}`}
-                      onClick={() =>
-                        patchList(l.id, {
-                          tasks: l.tasks.filter((x) => x.id !== t.id),
-                        })
-                      }
+                      onClick={() => dropFrom(l, t)}
                     >
                       <Icon name="close" size={13} />
                     </button>
@@ -1531,6 +1548,19 @@ function Detail({
             );
           })}
 
+          <div className="sk-fd-autobar" role="group" aria-label="Lists that fill themselves with bills">
+            <span className="sk-cap">Auto list</span>
+            {AUTO_RULES.map((r) => {
+              const has = lists.some((l) => l.auto === r.rule);
+              const label = r.rule === "payday" && payday ? `${r.name} (${shortDate(fromDayKey(payday))})` : r.name;
+              return (
+                <button key={r.rule} type="button" className="sk-btn is-small" disabled={has || (r.rule === "payday" && !payday)} title={r.rule === "payday" && !payday ? "No payday found in Money › Incoming" : has ? "Already on this card" : r.hint} onClick={() => addAuto(r)}>
+                  <Icon name="plus" size={13} />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
           <form className="sk-fd-box sk-fd-newlist" onSubmit={addList}>
             <span className="sk-cap">New list</span>
             <span className="sk-fd-kinds" role="radiogroup" aria-label="List type">

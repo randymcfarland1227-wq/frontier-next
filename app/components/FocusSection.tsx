@@ -1,5 +1,6 @@
 "use client";
 
+import type { AutoRule } from "../../lib/autoLists";
 import { OPEN_PROJECT_EVENT, isProject, openProject } from "../../lib/selfProjects";
 
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
@@ -85,7 +86,7 @@ export type SubTask = {
 };
 /** tasks (default): checkable steps + finance rows · notes: plain bullet details · habits: today's TickTick habits. Only tasks count toward %. */
 export type SubListKind = "tasks" | "pay" | "buy" | "notes" | "habits";
-export type SubList = { id: string; name: string; tasks: SubTask[]; kind?: SubListKind };
+export type SubList = { id: string; name: string; tasks: SubTask[]; kind?: SubListKind; /** Fills itself with bills (lib/autoLists.ts) */ auto?: AutoRule; /** Bills taken off this auto list: not added back */ autoSkip?: string[] };
 export const isTaskList = (l: SubList) => l.kind !== "notes" && l.kind !== "habits";
 
 export type Entry = {

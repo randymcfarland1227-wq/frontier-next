@@ -4920,3 +4920,8 @@ button.ob-line-name { text-align: left; }
 .sk-app .sk-ro-split:focus-visible .sk-ro-openpop { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
 /* The sticker has its own layer (transform + backdrop blur), so lift it above the Today card while its pop-out shows. */
 .sk-app .sk-ro-split:is(:hover, :focus-visible) { position: relative; z-index: 60; }
+
+/* Focus card auto lists (lib/autoLists.ts): one row of add buttons above New list; "Auto" tag in the list head. */
+.sk-app .sk-fd-autobar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--sk-s2); padding: 2px 2px 0; }
+.sk-app .sk-fd-autobar .sk-btn:disabled { opacity: .45; cursor: default; }
+.sk-app .sk-fd-lauto { flex: none; font: 800 9.5px/1.6 "DM Sans", sans-serif; letter-spacing: .05em; text-transform: uppercase; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, var(--fd-pay) 24%, transparent); outline: 1.5px dashed color-mix(in srgb, var(--fd-pay) 70%, transparent); outline-offset: -1.5px; color: var(--sk-ink); cursor: help; }

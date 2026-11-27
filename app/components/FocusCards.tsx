@@ -26,7 +26,7 @@ import { addOwnItem, findingOf, ownItems, planLine, planShort, setFinding, useFi
 import { setOwedDone, useOwedDone } from "../../lib/owedComplete";
 import { loadCachedMoney, parseMoney } from "../../lib/money";
 import { paidBillKeys } from "../../lib/schedule";
-import { AUTO_RULES, syncAutoLists } from "../../lib/autoLists";
+import { AUTO_RULES, syncAutoLists, type AutoRule } from "../../lib/autoLists";
 import { incomingDues, useIncoming } from "../../lib/incoming";
 import { latestLine, useGroupLog } from "../../lib/groupLog";
 import { openSiteList, renameSiteList, useSiteLists, viewOfList, type SiteListsContextValue } from "../../lib/siteLists";
@@ -882,11 +882,17 @@ function Detail({
     if (next) setLists(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lists, ctx.bills, payday]);
-  const addAuto = (rule: (typeof AUTO_RULES)[number]) => {
-    const same = lists.find((l) => !l.auto && l.name.trim().toLowerCase() === rule.name.toLowerCase());
-    if (same) patchList(same.id, { auto: rule.rule, kind: "pay" });
-    else setLists([...lists, { id: uid(), name: rule.name, tasks: [], kind: "pay", auto: rule.rule }]);
-  };
+  // "Fill this list automatically" rows at the top of each list's link dropdown.
+  const openBills = ctx.bills.filter((b) => !b.skipped);
+  const autoCount = { overdue: openBills.filter((b) => b.days < 0).length, today: openBills.filter((b) => b.days === 0).length, payday: payday ? openBills.filter((b) => b.due < payday).length : 0 };
+  const autoOpts = (l: SubList): Opt[] =>
+    AUTO_RULES.filter((r) => r.rule !== l.auto && !lists.some((x) => x.auto === r.rule) && (r.rule !== "payday" || payday)).map((r) => ({
+      key: `auto:${r.rule}`,
+      label: r.rule === "overdue" ? "All overdue bills" : r.rule === "today" ? "All bills due today" : `All bills due before next pay (${shortDate(fromDayKey(payday!))})`,
+      sub: `${autoCount[r.rule]} now · keeps itself filled`,
+      group: "Fill this list automatically",
+    }));
+  const addAuto = (l: SubList, rule: AutoRule) => patchList(l.id, { auto: rule, kind: l.kind === "buy" ? "buy" : "pay", autoSkip: undefined });
   const dropFrom = (l: SubList, t: SubTask) =>
     patchList(l.id, {
       tasks: l.tasks.filter((x) => x.id !== t.id),
@@ -1362,12 +1368,14 @@ function Detail({
                 </button>
               </form>
               <SearchPick
-                options={l.kind === "pay" ? [...finOpts, ...taskOpts] : [...taskOpts, ...finOpts]}
+                options={[...autoOpts(l), ...(l.kind === "pay" ? [...finOpts, ...taskOpts] : [...taskOpts, ...finOpts])]}
                 label={`Link a task or money item to ${l.name}`}
                 placeholder="+ Link a task or bill from any site"
                 disabled={!finOpts.length && !taskOpts.length}
                 onPick={(o) =>
-                  o.key.startsWith("pin:")
+                  o.key.startsWith("auto:")
+                    ? addAuto(l, o.key.slice(5) as AutoRule)
+                    : o.key.startsWith("pin:")
                     ? patchList(l.id, { tasks: [...l.tasks, { id: uid(), text: o.label, done: false, pin: o.key.slice(4) }] })
                     : addFinance(l, { key: o.key, label: o.label })
                 }
@@ -1563,19 +1571,6 @@ function Detail({
             );
           })}
 
-          <div className="sk-fd-autobar" role="group" aria-label="Lists that fill themselves with bills">
-            <span className="sk-cap">Auto list</span>
-            {AUTO_RULES.map((r) => {
-              const has = lists.some((l) => l.auto === r.rule);
-              const label = r.rule === "payday" && payday ? `${r.name} (${shortDate(fromDayKey(payday))})` : r.name;
-              return (
-                <button key={r.rule} type="button" className="sk-btn is-small" disabled={has || (r.rule === "payday" && !payday)} title={r.rule === "payday" && !payday ? "No payday found in Money › Incoming" : has ? "Already on this card" : r.hint} onClick={() => addAuto(r)}>
-                  <Icon name="plus" size={13} />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
           <form className="sk-fd-box sk-fd-newlist" onSubmit={addList}>
             <span className="sk-cap">New list</span>
             <span className="sk-fd-kinds" role="radiogroup" aria-label="List type">
